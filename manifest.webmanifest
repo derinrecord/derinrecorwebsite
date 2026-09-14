@@ -1,0 +1,11 @@
+{
+  "name": "Derin Record",
+  "short_name": "Derin Record",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#17131a",
+  "theme_color": "#17131a",
+  "icons": [
+    { "src": "assets/demo-cassette-derin-record.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
