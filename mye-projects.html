@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Projelerim — Derin Record</title>
+  <link rel="stylesheet" href="branch.css">
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="header">
+    <a class="home" href="index.html"><span>←</span> SİTEYE DÖN</a>
+    <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+  </header>
+  <main class="admin-main">
+    <p class="eyebrow">ANTRENÖR ALANI</p>
+    <h1>PROJELERİM<br><span>VE AŞAMALAR.</span></h1>
+    <p id="projects-status">Hesap kontrol ediliyor...</p>
+    <section id="projects-app" hidden></section>
+  </main>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth.js?v=20260914"></script>
+  <script>
+    (async () => {
+      await window.DerinAuth.ready;
+      const { configured, user, client } = window.DerinAuth;
+      const status = document.getElementById('projects-status');
+      const app = document.getElementById('projects-app');
+
+      if (!configured) {
+        status.textContent = 'Supabase bağlantısı eksik.';
+        return;
+      }
+      if (!user) {
+        status.innerHTML = 'Projelerinizi görmek için lütfen giriş yapın. <button class="account-button" id="proj-login">GİRİŞ YAP</button>';
+        document.getElementById('proj-login').onclick = () => window.DerinAuth.open();
+        return;
+      }
+
+      status.textContent = `Kullanıcı: ${user.email}`;
+      app.hidden = false;
+
+      const { data: projects, error } = await client
+        .from('music_projects')
+        .select('*')
+        .eq('coach_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        app.innerHTML = `<p>Projeler yüklenirken hata oluştu: ${error.message}</p>`;
+        return;
+      }
+
+      if (!projects || projects.length === 0) {
+        app.innerHTML = '<div class="admin-panel"><p>Henüz aktif bir müzik projeniz bulunmuyor.</p></div>';
+        return;
+      }
+
+      const statusMap = {
+        'draft_review': 'Taslak İnceleme',
+        'coach_approved': 'Antrenör Onayladı',
+        'payment_pending': 'Ödeme Bekliyor',
+        'payment_verified': 'Ödeme Doğrulandı',
+        'final_unlocked': 'Final Kilit Açıldı',
+        'completed': 'Tamamlandı'
+      };
+
+      app.innerHTML = `
+        <div class="admin-panel" style="margin-top: 2rem;">
+          <h2>AKTİF PROJELERİNİZ</h2>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Proje Adı</th>
+                <th>Aşama</th>
+                <th>Tarih</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${projects.map(p => `
+                <tr>
+                  <td><strong>${p.title}</strong></td>
+                  <td><span style="color: var(--yellow);">${statusMap[p.status] || p.status}</span></td>
+                  <td>${new Date(p.created_at).toLocaleDateString('tr-TR')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    })();
+  </script>
+</body>
+</html>
