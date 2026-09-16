@@ -94,3 +94,71 @@
 h2{padding-top:6px}
 .services{padding-top:150px}
 .manifesto{padding-top:150px}
+/* ============================================
+   ALT SAYFALAR (.header + branch.css yapısı)
+   aerobik, akrobatik, artistik, ritmik,
+   cocuk-fitness, chat, admin, news, license,
+   projects, music-request, energy-map ...
+   ============================================ */
+
+.header{
+  position:sticky; top:12px; z-index:20;
+  width:min(1180px,94vw); margin:12px auto 0;
+  padding:14px 24px; border-radius:22px;
+  border:1px solid var(--glass-line); border-bottom:1px solid var(--glass-line);
+  background:var(--glass-bg);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shadow);
+}
+.header::after{
+  content:""; position:absolute; inset:0; border-radius:22px; pointer-events:none;
+  background:linear-gradient(120deg,rgba(255,255,255,.2),transparent 32%,
+             transparent 68%,rgba(203,36,104,.14));
+  mix-blend-mode:overlay;
+}
+.header > *{position:relative; z-index:1}
+
+/* Sayfa içeriği sabit başlığın altında kalmasın */
+main{scroll-margin-top:96px}
+
+/* Hesap / giriş butonları */
+.account-button,.home{
+  border-radius:14px; padding:10px 16px;
+  background:rgba(255,255,255,.07);
+  border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  transition:background .2s,transform .2s;
+}
+.account-button:hover,.home:hover{
+  background:rgba(255,255,255,.15); transform:translateY(-2px);
+}
+
+/* Kart benzeri yüzeyler */
+.panel,.card,.box,.branch-card,.project-card,.news-card,.license-card,.demo-card{
+  border-radius:24px;
+  background:var(--glass-bg);
+  border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shadow);
+}
+
+/* Form alanları */
+input:not([type=file]):not([type=checkbox]):not([type=radio]),
+textarea,select{
+  border-radius:14px;
+  border:1px solid var(--glass-line);
+  background:rgba(255,255,255,.06);
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+}
+input:focus,textarea:focus,select:focus{
+  outline:0; border-color:rgba(255,255,255,.45);
+  box-shadow:0 0 0 4px rgba(255,255,255,.08);
+}
+
+@media(max-width:760px){
+  .header{top:8px; width:94vw; padding:12px 16px; border-radius:18px}
+}
+
+@supports not (backdrop-filter:blur(1px)){
+  .header,.panel,.card,.box{background:rgba(20,20,24,.92)}
+}
