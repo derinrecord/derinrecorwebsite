@@ -24,7 +24,7 @@
       <div class="music-link-box"><span>OLUŞTURULAN LİNK</span>
         <p class="music-link-empty">Parçanın linkini oluşturduğunda kaset burada görünecek.</p>
         <div class="music-link-card" draggable="false" hidden>
-          <img src="assets/cassette-derin-record.jpg" alt="Derin Record kaseti">
+          <img src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti">
           <small>KASETİ DERİN RECORD'A SÜRÜKLE</small>
           <a class="music-generated-link" target="_blank" rel="noreferrer"></a>
         </div></div>
