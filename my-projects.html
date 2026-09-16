@@ -1,2 +1,84 @@
-<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PROJELERİM — Derin Record</title><link rel="stylesheet" href="branch.css"><link rel="stylesheet" href="auth.css"><link rel="stylesheet" href="account-layout.css"><style>.m{max-width:950px;margin:auto;padding:8rem 1.5rem}.card{background:#1b1715;border:1px solid #534842;padding:1.3rem;margin:1rem 0;overflow-wrap:anywhere}.card h2{font-size:1.3rem}.status{color:#ef8b7e;font-weight:bold}select, #refresh{background:#2b2521;color:white;padding:.7rem;border:1px solid #756257;max-width:100%}#s{margin:1rem 0}</style></head><body data-view="coach"><div class="noise"></div><header class="header"><a class="home" href="index.html">← ANA SAYFA</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header><main class="m"><p class="eyebrow">PROJE TAKİBİ</p><h1>PROJELERİM</h1><p>Taslak incelemeden teslime kadar proje aşamalarını takip et.</p><a href="project-flow.html">Aşamalar hakkında</a><p id="s" role="status">Hesap kontrol ediliyor…</p><button id="refresh" type="button">Yenile</button><section id="list"></section></main><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="auth.js?v=20260914"></script><script src="projects.js?v=1"></script></body></html>
-<link rel="stylesheet" href="glass.css?v=2" />
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PROJELERİM — Derin Record</title>
+<link rel="stylesheet" href="branch.css">
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="glass.css?v=2">
+<style>
+  .proj-group{margin:30px 0}
+  .proj-group > h2{font-size:13px;letter-spacing:.16em;opacity:.65;margin:0 0 14px}
+  .proj-empty{opacity:.45;font-size:13px;padding:14px 0}
+
+  .proj-card{position:relative;margin-bottom:18px;padding:26px 28px;border-radius:28px;
+    background:linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.035));
+    border:1px solid rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.3)}
+  .proj-card h3{margin:0 0 4px;font-size:18px}
+  .proj-card .meta{font-size:12px;opacity:.6;margin:0 0 20px}
+
+  /* Adımlı ilerleme çubuğu */
+  .track{display:flex;align-items:flex-start;margin:22px 0 18px}
+  .track-step{flex:1;position:relative;text-align:center;font-size:10px;letter-spacing:.06em;
+    opacity:.4;transition:opacity .3s}
+  .track-step.done,.track-step.now{opacity:1}
+  .track-dot{width:16px;height:16px;border-radius:50%;margin:0 auto 9px;
+    background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.25);transition:.35s}
+  .track-step.done .track-dot{background:#18c37d;border-color:#18c37d;box-shadow:0 0 14px rgba(24,195,125,.6)}
+  .track-step.now .track-dot{background:#e0c341;border-color:#e0c341;
+    box-shadow:0 0 0 6px rgba(224,195,65,.18),0 0 18px rgba(224,195,65,.7);
+    animation:tpulse 1.9s ease-in-out infinite}
+  @keyframes tpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+  .track-step::before{content:"";position:absolute;top:7px;left:-50%;width:100%;height:2px;
+    background:rgba(255,255,255,.14)}
+  .track-step:first-child::before{display:none}
+  .track-step.done::before,.track-step.now::before{background:#18c37d}
+
+  /* Kaset + dalga formu */
+  .proj-player{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:18px 0 6px;
+    padding:16px;border-radius:22px;background:rgba(0,0,0,.28);
+    border:1px solid rgba(255,255,255,.12)}
+  .proj-player img.cassette{width:96px;border-radius:10px;flex:0 0 auto}
+  .proj-wave{flex:1 1 200px;min-width:180px}
+  .proj-wave canvas{width:100%;height:56px;display:block}
+  .proj-play{padding:12px 20px;border-radius:15px;border:1px solid rgba(255,255,255,.4);
+    background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(255,255,255,.65));
+    color:#131313;font:inherit;font-weight:600;cursor:pointer}
+
+  .proj-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+  .proj-actions select,.proj-actions input[type=file]{padding:11px 14px;border-radius:14px;
+    border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit}
+  .proj-actions button{padding:11px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.07);color:inherit;font:inherit;font-size:12px;cursor:pointer}
+  .proj-actions button:hover{background:rgba(255,255,255,.15)}
+
+  .fb-box{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1)}
+  .fb-list{list-style:none;margin:0 0 12px;padding:0}
+  .fb-list li{padding:9px 0;font-size:13px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .fb-list li small{display:block;opacity:.5;font-size:11px;margin-top:3px}
+  .fb-box textarea{width:100%;min-height:70px;padding:12px 14px;border-radius:14px;
+    border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<header class="header">
+  <a class="home" href="index.html"><span>←</span> ANA SAYFA</a>
+  <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+</header>
+<main class="admin-main">
+  <p class="eyebrow">DERİN RECORD</p>
+  <h1>PROJELERİM<br><span>VE AŞAMALAR.</span></h1>
+  <p id="s" role="status">Hesap kontrol ediliyor…</p>
+  <button id="refresh" type="button" hidden>Yenile</button>
+  <section id="list"></section>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+<script src="auth.js?v=20260914"></script>
+<script src="projects.js?v=20260917"></script>
+</body>
+</html>
