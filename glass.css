@@ -390,3 +390,7 @@ input:focus,textarea:focus,select:focus{
 }
 .site-header nav::after{content:none !important}
 .site-header nav a:nth-child(4){margin-left:0 !important}
+.site-header nav{justify-content:flex-end !important;gap:8px !important}
+.site-header nav a{margin-left:0 !important;margin-right:0 !important;order:0 !important;flex:0 0 auto !important}
+.site-header nav::after{content:none !important}
+.site-header .account-actions{margin-left:auto !important;margin-right:0 !important}
