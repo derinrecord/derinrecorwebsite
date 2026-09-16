@@ -6,7 +6,8 @@
     .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 
   let client = null;
-  let state = { brands: [], folders: [], tracks: [], players: [], broadcast: [] };
+  let state = { brands: [], folders: [], tracks: [], players: [], broadcast: [], announcements: [] };
+  let recorder = null, chunks = [], recStream = null;
 
   const coverUrl = path => client.storage.from('radio-covers').getPublicUrl(path).data.publicUrl;
 
@@ -30,23 +31,25 @@
   }
 
   async function refresh() {
-    const [brands, folders, tracks, players, broadcast] = await Promise.all([
+    const [brands, folders, tracks, players, broadcast, announcements] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order').order('sort_order'),
       client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at').order('label'),
-      client.from('brand_broadcast').select('brand_id,folder_id,updated_at')
+      client.from('brand_broadcast').select('brand_id,folder_id,updated_at'),
+      client.from('radio_announcements').select('id,brand_id,storage_path,label,created_at').order('created_at', { ascending: false }).limit(10)
     ]);
     state = {
       brands: brands.data || [], folders: folders.data || [], tracks: tracks.data || [],
-      players: players.data || [], broadcast: broadcast.data || []
+      players: players.data || [], broadcast: broadcast.data || [], announcements: announcements.data || []
     };
     render();
   }
 
   function render() {
-    const { brands, folders, tracks, players, broadcast } = state;
+    const { brands, folders, tracks, players, broadcast, announcements } = state;
     const folderOptions = folders.map(f => `<option value="${f.id}">${safe(f.name)}</option>`).join('');
+    const brandOptions = brands.map(b => `<option value="${b.id}">${safe(b.name)}</option>`).join('');
     const playerBase = location.href.replace(/[^/]*$/, '') + 'radyo.html?key=';
 
     byId('radio-app').innerHTML = `
@@ -114,7 +117,7 @@
       <section class="radio-panel">
         <h2>4 — ŞUBE CİHAZLARI</h2>
         <div class="radio-row">
-          <select id="player-brand"><option value="">Marka seçin</option>${brands.map(b => `<option value="${b.id}">${safe(b.name)}</option>`).join('')}</select>
+          <select id="player-brand"><option value="">Marka seçin</option>${brandOptions}</select>
           <input id="player-label" placeholder="Şube adı (örn. Chemex Alsancak)">
           <button id="player-add">EKLE</button>
         </div>
@@ -142,6 +145,22 @@
                 folders.map(f => `<option value="${f.id}"${current?.folder_id === f.id ? ' selected' : ''}>${safe(f.name)}</option>`).join('')
               }</select></span></li>`;
           }).join('') : '<li>Önce marka ekleyin.</li>'}
+        </ul>
+      </section>
+
+      <section class="radio-panel">
+        <h2>6 — ANLIK ANONS</h2>
+        <div class="radio-row">
+          <select id="anons-brand"><option value="">Marka seçin</option>${brandOptions}</select>
+          <input id="anons-label" placeholder="Not (örn. Kampanya duyurusu)">
+          <button id="anons-rec">🎙 KAYDA BAŞLA</button>
+        </div>
+        <p class="radio-msg" id="anons-msg">Marka seçip kayda başlayın. Bitirdiğinizde anons tüm şubelere gönderilir.</p>
+        <ul class="radio-list">
+          ${announcements.length ? announcements.map(a => `<li>
+            <span><strong>${safe(a.label || 'Anons')}</strong>
+              <small>${safe(brands.find(b => b.id === a.brand_id)?.name || '—')} · ${new Date(a.created_at).toLocaleString('tr-TR')}</small></span>
+            <button data-del-anons="${a.id}" data-path="${safe(a.storage_path)}">SİL</button></li>`).join('') : '<li>Henüz anons yok.</li>'}
         </ul>
       </section>`;
 
@@ -207,10 +226,7 @@
         const up = await client.storage.from('radio-audio').upload(path, file, { contentType: file.type || 'audio/mpeg' });
         if (up.error) { msg.textContent = 'Yükleme hatası: ' + up.error.message; return; }
         const { error } = await client.from('radio_tracks').insert({
-          folder_id: folderId,
-          title: file.name.replace(/\.[^.]+$/, ''),
-          storage_path: path,
-          sort_order: existing + done
+          folder_id: folderId, title: file.name.replace(/\.[^.]+$/, ''), storage_path: path, sort_order: existing + done
         });
         if (error) { msg.textContent = 'Kayıt hatası: ' + error.message; return; }
         done++;
@@ -258,6 +274,52 @@
       };
     });
 
+    byId('anons-rec').onclick = async () => {
+      const msg = byId('anons-msg');
+      const button = byId('anons-rec');
+
+      if (recorder && recorder.state === 'recording') {
+        recorder.stop();
+        return;
+      }
+
+      const brandId = byId('anons-brand').value;
+      if (!brandId) { msg.textContent = 'Önce marka seçin.'; return; }
+      const label = byId('anons-label').value.trim();
+
+      try {
+        recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        msg.textContent = 'Mikrofona erişilemedi: ' + err.name;
+        return;
+      }
+
+      chunks = [];
+      recorder = new MediaRecorder(recStream);
+      recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+
+      recorder.onstop = async () => {
+        recStream.getTracks().forEach(t => t.stop());
+        button.textContent = '🎙 KAYDA BAŞLA';
+        msg.textContent = 'Gönderiliyor…';
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+        const ext = (recorder.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+        const path = `${brandId}/${Date.now()}.${ext}`;
+        const up = await client.storage.from('radio-announcements').upload(path, blob, { contentType: blob.type });
+        if (up.error) { msg.textContent = 'Yükleme hatası: ' + up.error.message; return; }
+        const { error } = await client.from('radio_announcements').insert({
+          brand_id: brandId, storage_path: path, label: label || null
+        });
+        msg.textContent = error ? error.message : 'Anons tüm şubelere gönderildi.';
+        byId('anons-label').value = '';
+        if (!error) await refresh();
+      };
+
+      recorder.start();
+      button.textContent = '⏹ DURDUR VE GÖNDER';
+      msg.textContent = 'Kayıt sürüyor… Konuşun, bitince durdurun.';
+    };
+
     app.querySelectorAll('[data-copy]').forEach(button => {
       button.onclick = async () => {
         try { await navigator.clipboard.writeText(button.dataset.copy); button.textContent = 'KOPYALANDI'; }
@@ -282,6 +344,11 @@
     app.querySelectorAll('[data-del-player]').forEach(b => b.onclick = async () => {
       if (!confirm('Şube silinecek. Emin misiniz?')) return;
       await client.from('brand_players').delete().eq('id', b.dataset.delPlayer); await refresh();
+    });
+    app.querySelectorAll('[data-del-anons]').forEach(b => b.onclick = async () => {
+      if (!confirm('Anons silinecek. Emin misiniz?')) return;
+      await client.storage.from('radio-announcements').remove([b.dataset.path]);
+      await client.from('radio_announcements').delete().eq('id', b.dataset.delAnons); await refresh();
     });
   }
 
