@@ -6,10 +6,10 @@
   let client = null, brandId = null, queue = [], index = 0, started = false, lastStamp = null;
 
   const setState = text => { byId('state').textContent = text; };
+  const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
-  function publicUrl(path) {
-    return client.storage.from('radio-audio').getPublicUrl(path).data.publicUrl;
-  }
+  const audioUrl = path => client.storage.from('radio-audio').getPublicUrl(path).data.publicUrl;
+  const coverUrl = path => client.storage.from('radio-covers').getPublicUrl(path).data.publicUrl;
 
   function shuffled(list) {
     const copy = list.slice();
@@ -27,6 +27,7 @@
       byId('brand').textContent = 'Geçersiz yayın anahtarı';
       byId('now').textContent = '';
       byId('folder').textContent = '';
+      byId('cover').style.display = 'none';
       audio.pause();
       setState('Bu link tanınmadı. Lütfen Derin Record ile iletişime geçin.');
       return;
@@ -35,6 +36,10 @@
     const head = data[0];
     brandId = head.brand_id;
     byId('brand').textContent = head.brand_name;
+
+    const cover = byId('cover');
+    if (head.cover_path) { cover.src = coverUrl(head.cover_path); cover.style.display = 'block'; }
+    else { cover.style.display = 'none'; }
 
     const tracks = data.filter(row => row.track_id);
     const changed = restart || head.updated_at !== lastStamp;
@@ -61,9 +66,9 @@
   function play() {
     if (!queue.length) return;
     const track = queue[index % queue.length];
-    audio.src = publicUrl(track.storage_path);
+    audio.src = audioUrl(track.storage_path);
     audio.play().then(() => {
-      byId('now').innerHTML = '<span class="dot"></span>' + track.title.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+      byId('now').innerHTML = '<span class="dot"></span>' + safe(track.title);
       setState('');
     }).catch(() => {
       byId('start').hidden = false;
