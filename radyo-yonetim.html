@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kurumsal Radyo — Derin Record</title>
+<link rel="stylesheet" href="branch.css">
+<link rel="stylesheet" href="auth.css">
+<style>
+  .radio-panel{margin:28px 0;padding:22px;border:1px solid rgba(255,255,255,.14);border-radius:22px;background:rgba(255,255,255,.03)}
+  .radio-panel h2{margin:0 0 14px;font-size:15px;letter-spacing:.14em}
+  .radio-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+  .radio-row input,.radio-row select{flex:1 1 180px;padding:11px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.25);color:inherit;font:inherit}
+  .radio-row button{padding:11px 18px;border-radius:14px;border:0;background:#fff;color:#111;font:inherit;font-weight:600;cursor:pointer}
+  .radio-row button:active{transform:scale(.97)}
+  .radio-list{list-style:none;margin:0;padding:0}
+  .radio-list li{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid rgba(255,255,255,.09)}
+  .radio-list li small{opacity:.6;font-size:12px;word-break:break-all}
+  .radio-list button{padding:7px 13px;border-radius:11px;border:1px solid rgba(255,255,255,.22);background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer}
+  .radio-live{padding:4px 11px;border-radius:999px;background:#18c37d;color:#04231a;font-size:11px;font-weight:700;letter-spacing:.08em}
+  .radio-msg{min-height:20px;font-size:13px;opacity:.85}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<header class="header">
+  <a class="home" href="index.html"><span>←</span> SİTEYE DÖN</a>
+  <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+</header>
+<main class="admin-main">
+  <p class="eyebrow">KURUMSAL YAYIN</p>
+  <h1>RADYO<br><span>KONTROLÜ.</span></h1>
+  <p id="radio-status">Hesap kontrol ediliyor…</p>
+  <section id="radio-app" hidden></section>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+<script src="auth.js?v=20260914"></script>
+<script src="radyo-yonetim.js?v=20260916"></script>
+</body>
+</html>
