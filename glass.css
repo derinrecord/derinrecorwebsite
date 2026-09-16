@@ -280,3 +280,28 @@ input:focus,textarea:focus,select:focus{
 @media(max-width:999px){
   .site-header nav a{padding:12px 16px; border-radius:16px}
 }
+/* Menü hapları — kesin boyut */
+.site-header nav a{
+  display:inline-flex !important;
+  align-items:center !important;
+  padding:15px 22px !important;
+  border-radius:18px !important;
+  line-height:1 !important;
+  font-size:11px !important;
+}
+.site-header .account-actions a,
+.site-header .account-actions button{
+  display:inline-flex !important;
+  align-items:center !important;
+  padding:15px 22px !important;
+  border-radius:18px !important;
+  line-height:1 !important;
+}
+@media(max-width:999px){
+  .site-header nav a,
+  .site-header .account-actions a,
+  .site-header .account-actions button{
+    padding:12px 16px !important;
+    border-radius:15px !important;
+  }
+}
