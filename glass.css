@@ -259,3 +259,24 @@ input:focus,textarea:focus,select:focus{
   .season-copy{padding:28px 24px; border-radius:24px}
   .panel,.card,.box{padding:22px 20px; border-radius:22px}
 }
+/* Menü hapları — çerçeve büyüsün, yazı aynı kalsın */
+@media(min-width:1000px){
+  .site-header{padding:16px 24px; gap:14px}
+  .site-header nav{gap:8px}
+  .site-header nav a{
+    padding:14px 20px;
+    font-size:10.5px;
+    border-radius:18px;
+  }
+  .site-header .account-actions{gap:10px}
+  .site-header .account-actions a,
+  .site-header .account-actions button{
+    padding:14px 22px;
+    font-size:10.5px;
+    border-radius:18px;
+  }
+}
+
+@media(max-width:999px){
+  .site-header nav a{padding:12px 16px; border-radius:16px}
+}
