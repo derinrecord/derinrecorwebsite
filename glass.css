@@ -208,3 +208,8 @@ input:focus,textarea:focus,select:focus{
   .site-header nav{order:4; flex:1 1 100%; justify-content:flex-start; gap:6px}
   .site-header nav a{padding:8px 12px; font-size:11px}
 }
+@media(min-width:1100px){
+  .site-header{flex-wrap:nowrap; padding:12px 22px}
+  .site-header nav{gap:6px}
+  .site-header nav a{padding:8px 12px; font-size:11px}
+}
