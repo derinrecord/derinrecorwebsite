@@ -1,16 +1,18 @@
 (() => {
   const byId = id => document.getElementById(id);
-  const safe = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  const slugify = value => String(value || '').toLowerCase()
+  const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const slugify = v => String(v || '').toLowerCase()
     .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
     .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  const clean = name => { try { return decodeURIComponent(name); } catch { return name; } };
+  const hhmm = t => t ? String(t).slice(0, 5) : '';
 
   let client = null;
   let state = { brands: [], folders: [], tracks: [], players: [], broadcast: [], announcements: [] };
   let recorder = null, chunks = [], recStream = null;
 
-  const coverUrl = path => client.storage.from('radio-covers').getPublicUrl(path).data.publicUrl;
-  const hhmm = t => t ? String(t).slice(0, 5) : '';
+  const coverUrl = p => client.storage.from('radio-covers').getPublicUrl(p).data.publicUrl;
+  const playerBase = () => location.href.split('#')[0].replace(/[^/]*$/, '') + 'radyo.html?key=';
 
   async function load() {
     await window.DerinAuth.ready;
@@ -28,6 +30,7 @@
 
     status.textContent = `Yönetici: ${auth.profile.full_name || auth.user.email}`;
     app.hidden = false;
+    window.addEventListener('hashchange', route);
     await refresh();
   }
 
@@ -38,186 +41,156 @@
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order').order('sort_order'),
       client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at,open_time,close_time').order('label'),
       client.from('brand_broadcast').select('brand_id,folder_id,updated_at'),
-      client.from('radio_announcements').select('id,brand_id,storage_path,label,created_at').order('created_at', { ascending: false }).limit(10)
+      client.from('radio_announcements').select('id,brand_id,storage_path,label,created_at').order('created_at', { ascending: false }).limit(20)
     ]);
     state = {
       brands: brands.data || [], folders: folders.data || [], tracks: tracks.data || [],
       players: players.data || [], broadcast: broadcast.data || [], announcements: announcements.data || []
     };
-    render();
+    route();
   }
 
-  function render() {
-    const { brands, folders, tracks, players, broadcast, announcements } = state;
-    const folderOptions = folders.map(f => `<option value="${f.id}">${safe(f.name)}</option>`).join('');
-    const brandOptions = brands.map(b => `<option value="${b.id}">${safe(b.name)}</option>`).join('');
-    const playerBase = location.href.replace(/[^/]*$/, '') + 'radyo.html?key=';
+  const go = hash => { location.hash = hash; };
 
+  function route() {
+    const parts = (location.hash || '#/').replace(/^#\/?/, '').split('/');
+    const [page, id] = parts;
+    if (page === 'klasorler') return id ? folderDetail(id) : folderList();
+    if (page === 'markalar')  return id ? brandDetail(id) : brandList();
+    if (page === 'subeler')   return playerList();
+    if (page === 'anons')     return anonsPage();
+    home();
+  }
+
+  const crumb = (...items) => `<nav class="crumb">
+    <a href="#/">← PANEL</a>${items.map(t => `<span>${safe(t)}</span>`).join('<span>›</span>')}</nav>`;
+
+  // ---------- ANA EKRAN ----------
+  function home() {
+    const { brands, folders, tracks, players, broadcast } = state;
+    const live = broadcast.filter(b => b.folder_id).length;
     byId('radio-app').innerHTML = `
-      <section class="radio-panel">
-        <h2>1 — MARKALAR</h2>
-        <div class="radio-row">
-          <input id="brand-name" placeholder="Marka adı (örn. Chemex)">
-          <input id="brand-contact" placeholder="İletişim (isteğe bağlı)">
-          <button id="brand-add">EKLE</button>
-        </div>
-        <p class="radio-msg" id="brand-msg"></p>
-        <ul class="radio-list">
-          ${brands.length ? brands.map(b => `<li><span><strong>${safe(b.name)}</strong> <small>${safe(b.slug)}</small></span>
-            <button data-del-brand="${b.id}">SİL</button></li>`).join('') : '<li>Henüz marka yok.</li>'}
-        </ul>
-      </section>
+      <div class="grid">
+        <a class="card" href="#/markalar"><div class="ico">🏷</div>
+          <h3>MARKALAR</h3><p>${brands.length} marka · ${live} yayında</p></a>
+        <a class="card" href="#/klasorler"><div class="ico">🎵</div>
+          <h3>YAYIN KLASÖRLERİ</h3><p>${folders.length} klasör · ${tracks.length} parça</p></a>
+        <a class="card" href="#/subeler"><div class="ico">📻</div>
+          <h3>ŞUBE CİHAZLARI</h3><p>${players.length} şube</p></a>
+        <a class="card" href="#/anons"><div class="ico">🎙</div>
+          <h3>ANLIK ANONS</h3><p>Mikrofondan canlı duyuru</p></a>
+      </div>`;
+  }
 
+  // ---------- KLASÖRLER ----------
+  function folderList() {
+    const { folders, tracks } = state;
+    byId('radio-app').innerHTML = `${crumb('Yayın Klasörleri')}
       <section class="radio-panel">
-        <h2>2 — YAYIN KLASÖRLERİ</h2>
+        <h2>YENİ KLASÖR</h2>
         <div class="radio-row">
           <input id="folder-name" placeholder="Klasör adı (örn. Sabah Açılış — Ambient)">
           <input id="folder-desc" placeholder="Açıklama (isteğe bağlı)">
           <button id="folder-add">EKLE</button>
         </div>
         <p class="radio-msg" id="folder-msg"></p>
+      </section>
+      <section class="radio-panel">
+        <h2>KLASÖRLER</h2>
         <ul class="radio-list">
-          ${folders.length ? folders.map(f => `<li>
+          ${folders.length ? folders.map(f => `<li class="open-row" data-open="#/klasorler/${f.id}">
             <span style="display:flex;align-items:center;gap:12px">
               ${f.cover_path
-                ? `<img src="${coverUrl(f.cover_path)}" alt="" style="width:48px;height:48px;border-radius:14px;object-fit:cover;box-shadow:0 6px 16px rgba(0,0,0,.4)">`
+                ? `<img src="${coverUrl(f.cover_path)}" alt="" style="width:48px;height:48px;border-radius:14px;object-fit:cover">`
                 : '<span style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.07);display:inline-block"></span>'}
               <span><strong>${safe(f.name)}</strong>
-                <small>${tracks.filter(t => t.folder_id === f.id).length} parça</small></span>
+                <small>${tracks.filter(t => t.folder_id === f.id).length} parça${f.description ? ' · ' + safe(f.description) : ''}</small></span>
             </span>
-            <span>
-              <button data-cover="${f.id}">KAPAK</button>
-              <button data-del-folder="${f.id}">SİL</button>
-            </span></li>`).join('') : '<li>Henüz klasör yok.</li>'}
-        </ul>
-        <input type="file" id="cover-file" accept="image/*" hidden>
-      </section>
-
-      <section class="radio-panel">
-        <h2>3 — PARÇA YÜKLE</h2>
-        <div class="radio-row">
-          <select id="track-folder"><option value="">Klasör seçin</option>${folderOptions}</select>
-          <label class="drop" id="track-drop"><input id="track-file" type="file" accept="audio/*" multiple></label>
-          <button id="track-upload">YÜKLE</button>
-        </div>
-        <p class="radio-msg" id="track-msg"></p>
-        ${folders.map(f => {
-          const list = tracks.filter(t => t.folder_id === f.id);
-          if (!list.length) return '';
-          return `<h3 style="font-size:12px;letter-spacing:.12em;opacity:.6;margin:18px 0 4px">${safe(f.name).toUpperCase()}</h3>
-          <ul class="radio-list">${list.map((t, i) => `<li>
-            <span><strong>${i + 1}. ${safe(t.title)}</strong></span>
-            <span>
-              <button data-move="up" data-track="${t.id}" data-folder="${f.id}"${i === 0 ? ' disabled' : ''}>▲</button>
-              <button data-move="down" data-track="${t.id}" data-folder="${f.id}"${i === list.length - 1 ? ' disabled' : ''}>▼</button>
-              <button data-del-track="${t.id}" data-path="${safe(t.storage_path)}">SİL</button>
-            </span></li>`).join('')}</ul>`;
-        }).join('') || '<p class="radio-msg">Henüz parça yok.</p>'}
-      </section>
-
-      <section class="radio-panel">
-        <h2>4 — ŞUBE CİHAZLARI</h2>
-        <div class="radio-row">
-          <select id="player-brand"><option value="">Marka seçin</option>${brandOptions}</select>
-          <input id="player-label" placeholder="Şube adı (örn. Chemex Alsancak)">
-          <input id="player-open" type="time" title="Açılış">
-          <input id="player-close" type="time" title="Kapanış">
-          <button id="player-add">EKLE</button>
-        </div>
-        <p class="radio-msg" id="player-msg">Saat boş bırakılırsa yayın kesintisiz sürer.</p>
-        <ul class="radio-list">
-          ${players.length ? players.map(p => `<li>
-            <span><strong>${safe(p.label)}</strong>
-              <small>${safe(brands.find(b => b.id === p.brand_id)?.name || '—')} · ${playerBase}${safe(p.player_key)}</small>
-              <small>${p.last_seen_at ? 'son bağlantı: ' + new Date(p.last_seen_at).toLocaleString('tr-TR') : 'hiç bağlanmadı'}</small></span>
-            <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <input type="time" value="${hhmm(p.open_time)}" data-hours="open" data-player="${p.id}"
-                style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
-              <input type="time" value="${hhmm(p.close_time)}" data-hours="close" data-player="${p.id}"
-                style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
-              <button data-copy="${playerBase}${safe(p.player_key)}">LİNKİ KOPYALA</button>
-              <button data-del-player="${p.id}">SİL</button>
-            </span></li>`).join('') : '<li>Henüz şube yok.</li>'}
-        </ul>
-      </section>
-
-      <section class="radio-panel">
-        <h2>5 — CANLI YAYIN</h2>
-        <p class="radio-msg" id="live-msg">Bir markaya klasör atadığınızda tüm şubelerde anında değişir.</p>
-        <ul class="radio-list">
-          ${brands.length ? brands.map(b => {
-            const current = broadcast.find(x => x.brand_id === b.id);
-            return `<li><span><strong>${safe(b.name)}</strong>
-              ${current?.folder_id ? '<span class="radio-live">YAYINDA</span>' : '<small>yayın yok</small>'}
-              <small>${players.filter(p => p.brand_id === b.id).length} şube</small></span>
-              <span><select data-live-brand="${b.id}"><option value="">— durdur —</option>${
-                folders.map(f => `<option value="${f.id}"${current?.folder_id === f.id ? ' selected' : ''}>${safe(f.name)}</option>`).join('')
-              }</select></span></li>`;
-          }).join('') : '<li>Önce marka ekleyin.</li>'}
-        </ul>
-      </section>
-
-      <section class="radio-panel">
-        <h2>6 — ANLIK ANONS</h2>
-        <div class="radio-row">
-          <select id="anons-brand"><option value="">Marka seçin</option>${brandOptions}</select>
-          <input id="anons-label" placeholder="Not (örn. Kampanya duyurusu)">
-          <button id="anons-rec">🎙 KAYDA BAŞLA</button>
-        </div>
-        <p class="radio-msg" id="anons-msg">Marka seçip kayda başlayın. Bitirdiğinizde anons tüm şubelere gönderilir.</p>
-        <ul class="radio-list">
-          ${announcements.length ? announcements.map(a => `<li>
-            <span><strong>${safe(a.label || 'Anons')}</strong>
-              <small>${safe(brands.find(b => b.id === a.brand_id)?.name || '—')} · ${new Date(a.created_at).toLocaleString('tr-TR')}</small></span>
-            <button data-del-anons="${a.id}" data-path="${safe(a.storage_path)}">SİL</button></li>`).join('') : '<li>Henüz anons yok.</li>'}
+            <button data-open="#/klasorler/${f.id}">AÇ ›</button></li>`).join('') : '<li>Henüz klasör yok.</li>'}
         </ul>
       </section>`;
-
-    wire();
-  }
-
-  function wire() {
-    const app = byId('radio-app');
-
-    byId('brand-add').onclick = async () => {
-      const name = byId('brand-name').value.trim();
-      const msg = byId('brand-msg');
-      if (!name) { msg.textContent = 'Marka adı gerekli.'; return; }
-      const { error } = await client.from('brands').insert({
-        name, slug: slugify(name), contact: byId('brand-contact').value.trim() || null
-      });
-      msg.textContent = error ? error.message : 'Marka eklendi.';
-      if (!error) await refresh();
-    };
 
     byId('folder-add').onclick = async () => {
       const name = byId('folder-name').value.trim();
       const msg = byId('folder-msg');
       if (!name) { msg.textContent = 'Klasör adı gerekli.'; return; }
       const { error } = await client.from('radio_folders').insert({
-        name, description: byId('folder-desc').value.trim() || null
-      });
+        name, description: byId('folder-desc').value.trim() || null });
       msg.textContent = error ? error.message : 'Klasör eklendi.';
       if (!error) await refresh();
     };
+    wireOpen();
+  }
 
-    const coverInput = byId('cover-file');
-    app.querySelectorAll('[data-cover]').forEach(button => {
-      button.onclick = () => { coverInput.dataset.folder = button.dataset.cover; coverInput.click(); };
-    });
-    coverInput.onchange = async () => {
-      const file = coverInput.files?.[0];
-      const folderId = coverInput.dataset.folder;
-      const msg = byId('folder-msg');
-      if (!file || !folderId) return;
-      msg.textContent = 'Kapak yükleniyor…';
+  function folderDetail(id) {
+    const folder = state.folders.find(f => f.id === id);
+    if (!folder) return go('#/klasorler');
+    const list = state.tracks.filter(t => t.folder_id === id);
+
+    byId('radio-app').innerHTML = `${crumb('Klasörler', folder.name)}
+      <section class="radio-panel">
+        <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+          ${folder.cover_path
+            ? `<img class="cover-big" src="${coverUrl(folder.cover_path)}" alt="">`
+            : '<div class="cover-big" style="background:rgba(255,255,255,.07)"></div>'}
+          <div style="flex:1 1 240px">
+            <div class="radio-row">
+              <input id="f-name" value="${safe(folder.name)}" placeholder="Klasör adı">
+              <button id="f-rename">ADI KAYDET</button>
+            </div>
+            <div class="radio-row">
+              <label class="drop" id="cover-drop"><input id="cover-file" type="file" accept="image/*"></label>
+              <button id="f-delete">KLASÖRÜ SİL</button>
+            </div>
+            <p class="radio-msg" id="f-msg">${list.length} parça</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="radio-panel">
+        <h2>PARÇA YÜKLE</h2>
+        <div class="radio-row">
+          <label class="drop" id="track-drop"><input id="track-file" type="file" accept="audio/*" multiple></label>
+          <button id="track-upload">YÜKLE</button>
+        </div>
+        <p class="radio-msg" id="track-msg"></p>
+        <ul class="radio-list">
+          ${list.length ? list.map((t, i) => `<li>
+            <span><strong>${i + 1}. ${safe(clean(t.title))}</strong></span>
+            <span>
+              <button data-move="up" data-track="${t.id}"${i === 0 ? ' disabled' : ''}>▲</button>
+              <button data-move="down" data-track="${t.id}"${i === list.length - 1 ? ' disabled' : ''}>▼</button>
+              <button data-rename-track="${t.id}">AD</button>
+              <button data-del-track="${t.id}" data-path="${safe(t.storage_path)}">SİL</button>
+            </span></li>`).join('') : '<li>Henüz parça yok.</li>'}
+        </ul>
+      </section>`;
+
+    byId('f-rename').onclick = async () => {
+      const name = byId('f-name').value.trim();
+      if (!name) return;
+      const { error } = await client.from('radio_folders').update({ name }).eq('id', id);
+      byId('f-msg').textContent = error ? error.message : 'Ad güncellendi.';
+      if (!error) await refresh();
+    };
+
+    byId('f-delete').onclick = async () => {
+      if (!confirm('Klasör ve içindeki parça kayıtları silinecek. Emin misiniz?')) return;
+      await client.from('radio_folders').delete().eq('id', id);
+      go('#/klasorler'); await refresh();
+    };
+
+    const coverFile = byId('cover-file');
+    coverFile.onchange = async () => {
+      const file = coverFile.files?.[0];
+      if (!file) return;
+      byId('f-msg').textContent = 'Kapak yükleniyor…';
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = `${folderId}/${Date.now()}.${ext}`;
+      const path = `${id}/${Date.now()}.${ext}`;
       const up = await client.storage.from('radio-covers').upload(path, file, { contentType: file.type || 'image/jpeg' });
-      if (up.error) { msg.textContent = 'Yükleme hatası: ' + up.error.message; return; }
-      const { error } = await client.from('radio_folders').update({ cover_path: path }).eq('id', folderId);
-      msg.textContent = error ? error.message : 'Kapak güncellendi.';
-      coverInput.value = '';
+      if (up.error) { byId('f-msg').textContent = 'Yükleme hatası: ' + up.error.message; return; }
+      const { error } = await client.from('radio_folders').update({ cover_path: path }).eq('id', id);
+      byId('f-msg').textContent = error ? error.message : 'Kapak güncellendi.';
       if (!error) await refresh();
     };
 
@@ -229,86 +202,219 @@
     };
 
     byId('track-upload').onclick = async () => {
-      const folderId = byId('track-folder').value;
       const files = Array.from(trackFile.files || []);
       const msg = byId('track-msg');
-      if (!folderId) { msg.textContent = 'Önce klasör seçin.'; return; }
       if (!files.length) { msg.textContent = 'Dosya seçin.'; return; }
-      const existing = state.tracks.filter(t => t.folder_id === folderId).length;
       let done = 0;
       for (const file of files) {
-        msg.textContent = `Yükleniyor… (${done + 1}/${files.length}) ${file.name}`;
-        const path = `${folderId}/${Date.now()}-${slugify(file.name.replace(/\.[^.]+$/, ''))}.${(file.name.split('.').pop() || 'mp3')}`;
+        msg.textContent = `Yükleniyor… (${done + 1}/${files.length})`;
+        const base = clean(file.name).replace(/\.[^.]+$/, '');
+        const ext = (file.name.split('.').pop() || 'mp3');
+        const path = `${id}/${Date.now()}-${slugify(base)}.${ext}`;
         const up = await client.storage.from('radio-audio').upload(path, file, { contentType: file.type || 'audio/mpeg' });
         if (up.error) { msg.textContent = 'Yükleme hatası: ' + up.error.message; return; }
         const { error } = await client.from('radio_tracks').insert({
-          folder_id: folderId, title: file.name.replace(/\.[^.]+$/, ''), storage_path: path, sort_order: existing + done
-        });
+          folder_id: id, title: base, storage_path: path, sort_order: list.length + done });
         if (error) { msg.textContent = 'Kayıt hatası: ' + error.message; return; }
         done++;
       }
       msg.textContent = `${done} parça yüklendi.`;
-      trackFile.value = '';
       await refresh();
     };
 
-    app.querySelectorAll('[data-move]').forEach(button => {
-      button.onclick = async () => {
-        const list = state.tracks.filter(t => t.folder_id === button.dataset.folder);
-        const at = list.findIndex(t => t.id === button.dataset.track);
-        const to = button.dataset.move === 'up' ? at - 1 : at + 1;
-        if (to < 0 || to >= list.length) return;
-        const a = list[at], b = list[to];
-        await Promise.all([
-          client.from('radio_tracks').update({ sort_order: to }).eq('id', a.id),
-          client.from('radio_tracks').update({ sort_order: at }).eq('id', b.id)
-        ]);
-        await refresh();
-      };
+    document.querySelectorAll('[data-move]').forEach(b => b.onclick = async () => {
+      const at = list.findIndex(t => t.id === b.dataset.track);
+      const to = b.dataset.move === 'up' ? at - 1 : at + 1;
+      if (to < 0 || to >= list.length) return;
+      await Promise.all([
+        client.from('radio_tracks').update({ sort_order: to }).eq('id', list[at].id),
+        client.from('radio_tracks').update({ sort_order: at }).eq('id', list[to].id)
+      ]);
+      await refresh();
     });
 
-    byId('player-add').onclick = async () => {
-      const brandId = byId('player-brand').value;
-      const label = byId('player-label').value.trim();
-      const msg = byId('player-msg');
-      if (!brandId || !label) { msg.textContent = 'Marka ve şube adı gerekli.'; return; }
+    document.querySelectorAll('[data-rename-track]').forEach(b => b.onclick = async () => {
+      const track = list.find(t => t.id === b.dataset.renameTrack);
+      const name = prompt('Parça adı:', clean(track.title));
+      if (!name) return;
+      await client.from('radio_tracks').update({ title: name.trim() }).eq('id', track.id);
+      await refresh();
+    });
+
+    document.querySelectorAll('[data-del-track]').forEach(b => b.onclick = async () => {
+      if (!confirm('Parça silinecek. Emin misiniz?')) return;
+      await client.storage.from('radio-audio').remove([b.dataset.path]);
+      await client.from('radio_tracks').delete().eq('id', b.dataset.delTrack);
+      await refresh();
+    });
+  }
+
+  // ---------- MARKALAR ----------
+  function brandList() {
+    const { brands, players, broadcast } = state;
+    byId('radio-app').innerHTML = `${crumb('Markalar')}
+      <section class="radio-panel">
+        <h2>YENİ MARKA</h2>
+        <div class="radio-row">
+          <input id="brand-name" placeholder="Marka adı (örn. Chemex)">
+          <input id="brand-contact" placeholder="İletişim (isteğe bağlı)">
+          <button id="brand-add">EKLE</button>
+        </div>
+        <p class="radio-msg" id="brand-msg"></p>
+      </section>
+      <section class="radio-panel">
+        <h2>MARKALAR</h2>
+        <ul class="radio-list">
+          ${brands.length ? brands.map(b => {
+            const cur = broadcast.find(x => x.brand_id === b.id);
+            return `<li class="open-row" data-open="#/markalar/${b.id}">
+              <span><strong>${safe(b.name)}</strong>
+                ${cur?.folder_id ? '<span class="radio-live">YAYINDA</span>' : ''}
+                <small>${players.filter(p => p.brand_id === b.id).length} şube</small></span>
+              <button data-open="#/markalar/${b.id}">AÇ ›</button></li>`;
+          }).join('') : '<li>Henüz marka yok.</li>'}
+        </ul>
+      </section>`;
+
+    byId('brand-add').onclick = async () => {
+      const name = byId('brand-name').value.trim();
+      const msg = byId('brand-msg');
+      if (!name) { msg.textContent = 'Marka adı gerekli.'; return; }
+      const { error } = await client.from('brands').insert({
+        name, slug: slugify(name), contact: byId('brand-contact').value.trim() || null });
+      msg.textContent = error ? error.message : 'Marka eklendi.';
+      if (!error) await refresh();
+    };
+    wireOpen();
+  }
+
+  function brandDetail(id) {
+    const brand = state.brands.find(b => b.id === id);
+    if (!brand) return go('#/markalar');
+    const subs = state.players.filter(p => p.brand_id === id);
+    const cur = state.broadcast.find(x => x.brand_id === id);
+    const anons = state.announcements.filter(a => a.brand_id === id);
+
+    byId('radio-app').innerHTML = `${crumb('Markalar', brand.name)}
+      <section class="radio-panel">
+        <h2>CANLI YAYIN</h2>
+        <div class="radio-row">
+          <select id="live-folder"><option value="">— yayını durdur —</option>${
+            state.folders.map(f => `<option value="${f.id}"${cur?.folder_id === f.id ? ' selected' : ''}>${safe(f.name)}</option>`).join('')}</select>
+        </div>
+        <p class="radio-msg" id="live-msg">${cur?.folder_id ? 'Şu an yayında.' : 'Yayın kapalı.'}</p>
+      </section>
+
+      <section class="radio-panel">
+        <h2>ŞUBELER</h2>
+        <div class="radio-row">
+          <input id="p-label" placeholder="Şube adı (örn. Chemex Alsancak)">
+          <input id="p-open" type="time" title="Açılış">
+          <input id="p-close" type="time" title="Kapanış">
+          <button id="p-add">EKLE</button>
+        </div>
+        <p class="radio-msg" id="p-msg">Saat boş bırakılırsa yayın kesintisiz sürer.</p>
+        <ul class="radio-list">
+          ${subs.length ? subs.map(p => `<li>
+            <span><strong>${safe(p.label)}</strong>
+              <small>${playerBase()}${safe(p.player_key)}</small>
+              <small>${p.last_seen_at ? 'son bağlantı: ' + new Date(p.last_seen_at).toLocaleString('tr-TR') : 'hiç bağlanmadı'}</small></span>
+            <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="time" value="${hhmm(p.open_time)}" data-hours="open" data-player="${p.id}"
+                style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
+              <input type="time" value="${hhmm(p.close_time)}" data-hours="close" data-player="${p.id}"
+                style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
+              <button data-copy="${playerBase()}${safe(p.player_key)}">LİNKİ KOPYALA</button>
+              <button data-del-player="${p.id}">SİL</button>
+            </span></li>`).join('') : '<li>Henüz şube yok.</li>'}
+        </ul>
+      </section>
+
+      <section class="radio-panel">
+        <h2>ANONS GEÇMİŞİ</h2>
+        <ul class="radio-list">
+          ${anons.length ? anons.map(a => `<li>
+            <span><strong>${safe(a.label || 'Anons')}</strong>
+              <small>${new Date(a.created_at).toLocaleString('tr-TR')}</small></span>
+            <button data-del-anons="${a.id}" data-path="${safe(a.storage_path)}">SİL</button></li>`).join('') : '<li>Henüz anons yok.</li>'}
+        </ul>
+      </section>`;
+
+    byId('live-folder').onchange = async e => {
+      const { error } = await client.from('brand_broadcast').upsert({
+        brand_id: id, folder_id: e.target.value || null, updated_at: new Date().toISOString() });
+      byId('live-msg').textContent = error ? error.message
+        : (e.target.value ? 'Yayın güncellendi — şubelere gönderildi.' : 'Yayın durduruldu.');
+      await refresh();
+    };
+
+    byId('p-add').onclick = async () => {
+      const label = byId('p-label').value.trim();
+      if (!label) { byId('p-msg').textContent = 'Şube adı gerekli.'; return; }
       const { error } = await client.from('brand_players').insert({
-        brand_id: brandId, label,
-        open_time: byId('player-open').value || null,
-        close_time: byId('player-close').value || null
-      });
-      msg.textContent = error ? error.message : 'Şube eklendi.';
+        brand_id: id, label,
+        open_time: byId('p-open').value || null,
+        close_time: byId('p-close').value || null });
+      byId('p-msg').textContent = error ? error.message : 'Şube eklendi.';
       if (!error) await refresh();
     };
 
-    app.querySelectorAll('[data-hours]').forEach(input => {
-      input.onchange = async () => {
-        const field = input.dataset.hours === 'open' ? 'open_time' : 'close_time';
-        const { error } = await client.from('brand_players')
-          .update({ [field]: input.value || null }).eq('id', input.dataset.player);
-        byId('player-msg').textContent = error ? error.message : 'Saat güncellendi.';
-      };
-    });
+    wireCommon();
+  }
 
-    app.querySelectorAll('[data-live-brand]').forEach(select => {
-      select.onchange = async () => {
-        const brandId = select.dataset.liveBrand;
-        const folderId = select.value || null;
-        const { error } = await client.from('brand_broadcast').upsert({
-          brand_id: brandId, folder_id: folderId, updated_at: new Date().toISOString()
-        });
-        byId('live-msg').textContent = error ? error.message
-          : (folderId ? 'Yayın güncellendi — şubelere gönderildi.' : 'Yayın durduruldu.');
-        await refresh();
-      };
-    });
+  // ---------- ŞUBELER ----------
+  function playerList() {
+    const { players, brands } = state;
+    byId('radio-app').innerHTML = `${crumb('Şube Cihazları')}
+      <section class="radio-panel">
+        <h2>TÜM ŞUBELER</h2>
+        <p class="radio-msg" id="p-msg">Yeni şube eklemek için marka sayfasını açın.</p>
+        <ul class="radio-list">
+          ${players.length ? players.map(p => `<li>
+            <span><strong>${safe(p.label)}</strong>
+              <small>${safe(brands.find(b => b.id === p.brand_id)?.name || '—')}</small>
+              <small>${playerBase()}${safe(p.player_key)}</small>
+              <small>${p.last_seen_at ? 'son bağlantı: ' + new Date(p.last_seen_at).toLocaleString('tr-TR') : 'hiç bağlanmadı'}</small></span>
+            <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="time" value="${hhmm(p.open_time)}" data-hours="open" data-player="${p.id}"
+                style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
+              <input type="time" value="${hhmm(p.close_time)}" data-hours="close" data-player="${p.id}"
+                style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
+              <button data-copy="${playerBase()}${safe(p.player_key)}">LİNKİ KOPYALA</button>
+              <button data-del-player="${p.id}">SİL</button>
+            </span></li>`).join('') : '<li>Henüz şube yok.</li>'}
+        </ul>
+      </section>`;
+    wireCommon();
+  }
+
+  // ---------- ANONS ----------
+  function anonsPage() {
+    const { brands, announcements } = state;
+    byId('radio-app').innerHTML = `${crumb('Anlık Anons')}
+      <section class="radio-panel">
+        <h2>YENİ ANONS</h2>
+        <div class="radio-row">
+          <select id="anons-brand"><option value="">Marka seçin</option>${
+            brands.map(b => `<option value="${b.id}">${safe(b.name)}</option>`).join('')}</select>
+          <input id="anons-label" placeholder="Not (örn. Kampanya duyurusu)">
+          <button id="anons-rec">🎙 KAYDA BAŞLA</button>
+        </div>
+        <p class="radio-msg" id="anons-msg">Marka seçip kayda başlayın. Bitirdiğinizde anons tüm şubelere gönderilir.</p>
+      </section>
+      <section class="radio-panel">
+        <h2>GEÇMİŞ</h2>
+        <ul class="radio-list">
+          ${announcements.length ? announcements.map(a => `<li>
+            <span><strong>${safe(a.label || 'Anons')}</strong>
+              <small>${safe(brands.find(b => b.id === a.brand_id)?.name || '—')} · ${new Date(a.created_at).toLocaleString('tr-TR')}</small></span>
+            <button data-del-anons="${a.id}" data-path="${safe(a.storage_path)}">SİL</button></li>`).join('') : '<li>Henüz anons yok.</li>'}
+        </ul>
+      </section>`;
 
     byId('anons-rec').onclick = async () => {
-      const msg = byId('anons-msg');
-      const button = byId('anons-rec');
-
+      const msg = byId('anons-msg'), button = byId('anons-rec');
       if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
-
       const brandId = byId('anons-brand').value;
       if (!brandId) { msg.textContent = 'Önce marka seçin.'; return; }
       const label = byId('anons-label').value.trim();
@@ -319,7 +425,6 @@
       chunks = [];
       recorder = new MediaRecorder(recStream);
       recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-
       recorder.onstop = async () => {
         recStream.getTracks().forEach(t => t.stop());
         button.textContent = '🎙 KAYDA BAŞLA';
@@ -331,49 +436,56 @@
         const up = await client.storage.from('radio-announcements').upload(path, blob, { contentType: blob.type });
         if (up.error) { msg.textContent = 'Yükleme hatası: ' + up.error.message; return; }
         const { error } = await client.from('radio_announcements').insert({
-          brand_id: brandId, storage_path: path, label: label || null
-        });
+          brand_id: brandId, storage_path: path, label: label || null });
         msg.textContent = error ? error.message : 'Anons tüm şubelere gönderildi.';
         byId('anons-label').value = '';
         if (!error) await refresh();
       };
-
       recorder.start();
       button.textContent = '⏹ DURDUR VE GÖNDER';
       button.classList.add('rec-on');
       msg.textContent = 'Kayıt sürüyor… Konuşun, bitince durdurun.';
     };
 
-    app.querySelectorAll('[data-copy]').forEach(button => {
-      button.onclick = async () => {
-        try { await navigator.clipboard.writeText(button.dataset.copy); button.textContent = 'KOPYALANDI'; }
-        catch { button.textContent = 'KOPYALANAMADI'; }
-        setTimeout(() => { button.textContent = 'LİNKİ KOPYALA'; }, 1600);
+    wireCommon();
+  }
+
+  // ---------- ORTAK ----------
+  function wireOpen() {
+    document.querySelectorAll('[data-open]').forEach(el => {
+      el.onclick = e => { e.stopPropagation(); go(el.dataset.open); };
+    });
+  }
+
+  function wireCommon() {
+    document.querySelectorAll('[data-hours]').forEach(input => {
+      input.onchange = async () => {
+        const field = input.dataset.hours === 'open' ? 'open_time' : 'close_time';
+        const { error } = await client.from('brand_players')
+          .update({ [field]: input.value || null }).eq('id', input.dataset.player);
+        const msg = byId('p-msg');
+        if (msg) msg.textContent = error ? error.message : 'Saat güncellendi.';
       };
     });
 
-    app.querySelectorAll('[data-del-brand]').forEach(b => b.onclick = async () => {
-      if (!confirm('Marka ve bağlı şubeleri silinecek. Emin misiniz?')) return;
-      await client.from('brands').delete().eq('id', b.dataset.delBrand); await refresh();
+    document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {
+      try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'KOPYALANDI'; }
+      catch { b.textContent = 'KOPYALANAMADI'; }
+      setTimeout(() => { b.textContent = 'LİNKİ KOPYALA'; }, 1600);
     });
-    app.querySelectorAll('[data-del-folder]').forEach(b => b.onclick = async () => {
-      if (!confirm('Klasör ve içindeki parça kayıtları silinecek. Emin misiniz?')) return;
-      await client.from('radio_folders').delete().eq('id', b.dataset.delFolder); await refresh();
-    });
-    app.querySelectorAll('[data-del-track]').forEach(b => b.onclick = async () => {
-      if (!confirm('Parça silinecek. Emin misiniz?')) return;
-      await client.storage.from('radio-audio').remove([b.dataset.path]);
-      await client.from('radio_tracks').delete().eq('id', b.dataset.delTrack); await refresh();
-    });
-    app.querySelectorAll('[data-del-player]').forEach(b => b.onclick = async () => {
+
+    document.querySelectorAll('[data-del-player]').forEach(b => b.onclick = async () => {
       if (!confirm('Şube silinecek. Emin misiniz?')) return;
       await client.from('brand_players').delete().eq('id', b.dataset.delPlayer); await refresh();
     });
-    app.querySelectorAll('[data-del-anons]').forEach(b => b.onclick = async () => {
+
+    document.querySelectorAll('[data-del-anons]').forEach(b => b.onclick = async () => {
       if (!confirm('Anons silinecek. Emin misiniz?')) return;
       await client.storage.from('radio-announcements').remove([b.dataset.path]);
       await client.from('radio_announcements').delete().eq('id', b.dataset.delAnons); await refresh();
     });
+
+    wireOpen();
   }
 
   load();
