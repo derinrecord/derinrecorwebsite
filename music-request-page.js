@@ -32,7 +32,7 @@
       <div class="music-actions">
         <button type="button" data-create>PARÇANIN LİNKİNİ OLUŞTUR ↗</button>
         <div class="music-drop-zone" data-drop>
-          <div class="empty-cassette-slot"><img src="assets/cassette-derin-record.jpg" alt="Boş kaset yuvası"></div>
+          <div class="empty-cassette-slot"><img src="assets/cassette-derin-record.png" alt="Boş kaset yuvası"></div>
           <span>KASETİ BU BÖLÜME SÜRÜKLE</span>
         </div>
       </div>
