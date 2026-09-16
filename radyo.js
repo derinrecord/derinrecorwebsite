@@ -5,6 +5,7 @@
 
   let client = null, brandId = null, queue = [], index = 0, started = false, lastStamp = null;
   let bootTime = Date.now(), announcing = false;
+  let openTime = null, closeTime = null, wasOpen = null;
 
   const setState = text => { byId('state').textContent = text; };
   const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -12,6 +13,29 @@
   const audioUrl = path => client.storage.from('radio-audio').getPublicUrl(path).data.publicUrl;
   const coverUrl = path => client.storage.from('radio-covers').getPublicUrl(path).data.publicUrl;
   const anonsUrl = path => client.storage.from('radio-announcements').getPublicUrl(path).data.publicUrl;
+
+  const toMinutes = t => {
+    if (!t) return null;
+    const [h, m] = String(t).split(':');
+    return Number(h) * 60 + Number(m);
+  };
+
+  function nowMinutes() {
+    const parts = new Intl.DateTimeFormat('tr-TR', {
+      timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(new Date());
+    const h = Number(parts.find(p => p.type === 'hour').value);
+    const m = Number(parts.find(p => p.type === 'minute').value);
+    return h * 60 + m;
+  }
+
+  function isOpen() {
+    if (openTime === null || closeTime === null) return true;
+    const now = nowMinutes();
+    if (openTime === closeTime) return true;
+    if (openTime < closeTime) return now >= openTime && now < closeTime;
+    return now >= openTime || now < closeTime;   // gece yarısını aşan mesai
+  }
 
   function shuffled(list) {
     const copy = list.slice();
@@ -38,6 +62,13 @@
     const head = data[0];
     brandId = head.brand_id;
     byId('brand').textContent = head.brand_name;
+    byId('branch').textContent = head.player_label || '';
+
+    openTime = toMinutes(head.open_time);
+    closeTime = toMinutes(head.close_time);
+    byId('hours').textContent = (head.open_time && head.close_time)
+      ? `Yayın saatleri ${String(head.open_time).slice(0,5)} – ${String(head.close_time).slice(0,5)}`
+      : 'Yayın saati sınırı yok';
 
     const cover = byId('cover');
     if (head.cover_path) { cover.src = coverUrl(head.cover_path); cover.style.display = 'block'; }
@@ -60,13 +91,28 @@
     if (changed) {
       queue = head.shuffle ? shuffled(tracks) : tracks;
       index = 0;
-      if (started && !announcing) play();
-      setState('Yayın güncellendi.');
+      if (started && !announcing && isOpen()) play();
+    }
+    checkHours();
+  }
+
+  function checkHours() {
+    if (!started) return;
+    const open = isOpen();
+    if (open === wasOpen) return;
+    wasOpen = open;
+    if (open) {
+      setState('Mesai başladı — yayın açıldı.');
+      if (!announcing) play();
+    } else {
+      audio.pause();
+      byId('now').textContent = 'Yayın dışı';
+      setState('Mesai saati dışında. Açılışta otomatik başlar.');
     }
   }
 
   function play() {
-    if (!queue.length || announcing) return;
+    if (!queue.length || announcing || !isOpen()) return;
     const track = queue[index % queue.length];
     audio.src = audioUrl(track.storage_path);
     audio.volume = 1;
@@ -95,12 +141,12 @@
     if (announcing || !started) return;
     announcing = true;
     const prevNow = byId('now').innerHTML;
+    const playing = !audio.paused;
 
-    await fade(audio.volume, 0.12, 600);
+    if (playing) await fade(audio.volume, 0.12, 600);
     byId('now').innerHTML = '<span class="dot"></span>ANONS' + (label ? ' — ' + safe(label) : '');
 
     const voice = new Audio(anonsUrl(path));
-    voice.volume = 1;
     await new Promise(done => {
       voice.onended = done;
       voice.onerror = done;
@@ -108,7 +154,7 @@
       setTimeout(done, 180000);
     });
 
-    await fade(audio.volume, 1, 800);
+    if (playing) await fade(audio.volume, 1, 800);
     byId('now').innerHTML = prevNow;
     announcing = false;
   }
@@ -119,7 +165,9 @@
   byId('start').onclick = () => {
     started = true;
     byId('start').hidden = true;
-    play();
+    wasOpen = null;
+    checkHours();
+    if (isOpen()) play();
   };
 
   function subscribe() {
@@ -156,6 +204,7 @@
     ping();
     setInterval(ping, 60000);
     setInterval(() => fetchBroadcast(), 120000);
+    setInterval(checkHours, 30000);
   }
 
   boot();
