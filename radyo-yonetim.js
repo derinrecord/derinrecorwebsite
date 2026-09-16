@@ -10,6 +10,7 @@
   let recorder = null, chunks = [], recStream = null;
 
   const coverUrl = path => client.storage.from('radio-covers').getPublicUrl(path).data.publicUrl;
+  const hhmm = t => t ? String(t).slice(0, 5) : '';
 
   async function load() {
     await window.DerinAuth.ready;
@@ -35,7 +36,7 @@
       client.from('brands').select('id,name,slug,is_active').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order').order('sort_order'),
-      client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at').order('label'),
+      client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at,open_time,close_time').order('label'),
       client.from('brand_broadcast').select('brand_id,folder_id,updated_at'),
       client.from('radio_announcements').select('id,brand_id,storage_path,label,created_at').order('created_at', { ascending: false }).limit(10)
     ]);
@@ -79,8 +80,8 @@
           ${folders.length ? folders.map(f => `<li>
             <span style="display:flex;align-items:center;gap:12px">
               ${f.cover_path
-                ? `<img src="${coverUrl(f.cover_path)}" alt="" style="width:46px;height:46px;border-radius:12px;object-fit:cover">`
-                : '<span style="width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.07);display:inline-block"></span>'}
+                ? `<img src="${coverUrl(f.cover_path)}" alt="" style="width:48px;height:48px;border-radius:14px;object-fit:cover;box-shadow:0 6px 16px rgba(0,0,0,.4)">`
+                : '<span style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.07);display:inline-block"></span>'}
               <span><strong>${safe(f.name)}</strong>
                 <small>${tracks.filter(t => t.folder_id === f.id).length} parça</small></span>
             </span>
@@ -96,7 +97,7 @@
         <h2>3 — PARÇA YÜKLE</h2>
         <div class="radio-row">
           <select id="track-folder"><option value="">Klasör seçin</option>${folderOptions}</select>
-          <input id="track-file" type="file" accept="audio/*" multiple>
+          <label class="drop" id="track-drop"><input id="track-file" type="file" accept="audio/*" multiple></label>
           <button id="track-upload">YÜKLE</button>
         </div>
         <p class="radio-msg" id="track-msg"></p>
@@ -119,16 +120,24 @@
         <div class="radio-row">
           <select id="player-brand"><option value="">Marka seçin</option>${brandOptions}</select>
           <input id="player-label" placeholder="Şube adı (örn. Chemex Alsancak)">
+          <input id="player-open" type="time" title="Açılış">
+          <input id="player-close" type="time" title="Kapanış">
           <button id="player-add">EKLE</button>
         </div>
-        <p class="radio-msg" id="player-msg"></p>
+        <p class="radio-msg" id="player-msg">Saat boş bırakılırsa yayın kesintisiz sürer.</p>
         <ul class="radio-list">
           ${players.length ? players.map(p => `<li>
             <span><strong>${safe(p.label)}</strong>
               <small>${safe(brands.find(b => b.id === p.brand_id)?.name || '—')} · ${playerBase}${safe(p.player_key)}</small>
               <small>${p.last_seen_at ? 'son bağlantı: ' + new Date(p.last_seen_at).toLocaleString('tr-TR') : 'hiç bağlanmadı'}</small></span>
-            <span><button data-copy="${playerBase}${safe(p.player_key)}">LİNKİ KOPYALA</button>
-            <button data-del-player="${p.id}">SİL</button></span></li>`).join('') : '<li>Henüz şube yok.</li>'}
+            <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="time" value="${hhmm(p.open_time)}" data-hours="open" data-player="${p.id}"
+                style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
+              <input type="time" value="${hhmm(p.close_time)}" data-hours="close" data-player="${p.id}"
+                style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
+              <button data-copy="${playerBase}${safe(p.player_key)}">LİNKİ KOPYALA</button>
+              <button data-del-player="${p.id}">SİL</button>
+            </span></li>`).join('') : '<li>Henüz şube yok.</li>'}
         </ul>
       </section>
 
@@ -212,9 +221,16 @@
       if (!error) await refresh();
     };
 
+    const trackFile = byId('track-file'), trackDrop = byId('track-drop');
+    trackFile.onchange = () => {
+      const n = trackFile.files?.length || 0;
+      trackDrop.classList.toggle('has-file', n > 0);
+      byId('track-msg').textContent = n ? `${n} dosya seçildi.` : '';
+    };
+
     byId('track-upload').onclick = async () => {
       const folderId = byId('track-folder').value;
-      const files = Array.from(byId('track-file').files || []);
+      const files = Array.from(trackFile.files || []);
       const msg = byId('track-msg');
       if (!folderId) { msg.textContent = 'Önce klasör seçin.'; return; }
       if (!files.length) { msg.textContent = 'Dosya seçin.'; return; }
@@ -232,7 +248,7 @@
         done++;
       }
       msg.textContent = `${done} parça yüklendi.`;
-      byId('track-file').value = '';
+      trackFile.value = '';
       await refresh();
     };
 
@@ -256,10 +272,23 @@
       const label = byId('player-label').value.trim();
       const msg = byId('player-msg');
       if (!brandId || !label) { msg.textContent = 'Marka ve şube adı gerekli.'; return; }
-      const { error } = await client.from('brand_players').insert({ brand_id: brandId, label });
+      const { error } = await client.from('brand_players').insert({
+        brand_id: brandId, label,
+        open_time: byId('player-open').value || null,
+        close_time: byId('player-close').value || null
+      });
       msg.textContent = error ? error.message : 'Şube eklendi.';
       if (!error) await refresh();
     };
+
+    app.querySelectorAll('[data-hours]').forEach(input => {
+      input.onchange = async () => {
+        const field = input.dataset.hours === 'open' ? 'open_time' : 'close_time';
+        const { error } = await client.from('brand_players')
+          .update({ [field]: input.value || null }).eq('id', input.dataset.player);
+        byId('player-msg').textContent = error ? error.message : 'Saat güncellendi.';
+      };
+    });
 
     app.querySelectorAll('[data-live-brand]').forEach(select => {
       select.onchange = async () => {
@@ -278,21 +307,14 @@
       const msg = byId('anons-msg');
       const button = byId('anons-rec');
 
-      if (recorder && recorder.state === 'recording') {
-        recorder.stop();
-        return;
-      }
+      if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
 
       const brandId = byId('anons-brand').value;
       if (!brandId) { msg.textContent = 'Önce marka seçin.'; return; }
       const label = byId('anons-label').value.trim();
 
-      try {
-        recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (err) {
-        msg.textContent = 'Mikrofona erişilemedi: ' + err.name;
-        return;
-      }
+      try { recStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+      catch (err) { msg.textContent = 'Mikrofona erişilemedi: ' + err.name; return; }
 
       chunks = [];
       recorder = new MediaRecorder(recStream);
@@ -301,6 +323,7 @@
       recorder.onstop = async () => {
         recStream.getTracks().forEach(t => t.stop());
         button.textContent = '🎙 KAYDA BAŞLA';
+        button.classList.remove('rec-on');
         msg.textContent = 'Gönderiliyor…';
         const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
         const ext = (recorder.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
@@ -317,6 +340,7 @@
 
       recorder.start();
       button.textContent = '⏹ DURDUR VE GÖNDER';
+      button.classList.add('rec-on');
       msg.textContent = 'Kayıt sürüyor… Konuşun, bitince durdurun.';
     };
 
