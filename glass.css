@@ -239,3 +239,23 @@ input:focus,textarea:focus,select:focus{
 /* Hiçbir öğe cam çerçeveden taşmasın */
 .site-header{overflow:hidden}
 .site-header nav a{max-width:100%}
+/* Cam kartlar — daha geniş ve ferah */
+.service-list article{
+  padding:34px 38px;
+  margin-bottom:20px;
+  border-radius:28px;
+}
+.season-copy{
+  padding:42px 44px;
+  border-radius:32px;
+}
+.panel,.card,.box,.branch-card,.project-card,.news-card,.license-card,.demo-card{
+  padding:30px 32px;
+  border-radius:28px;
+}
+
+@media(max-width:760px){
+  .service-list article{padding:24px 22px; border-radius:22px}
+  .season-copy{padding:28px 24px; border-radius:24px}
+  .panel,.card,.box{padding:22px 20px; border-radius:22px}
+}
