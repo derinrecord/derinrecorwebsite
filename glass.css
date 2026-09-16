@@ -89,3 +89,8 @@
 @supports not (backdrop-filter:blur(1px)){
   .site-header,.service-list article,.season-copy{background:rgba(20,20,24,.9)}
 }
+/* Sabit menü için üstten pay */
+.manifesto,.services,.demos,.season{scroll-margin-top:100px}
+h2{padding-top:6px}
+.services{padding-top:150px}
+.manifesto{padding-top:150px}
