@@ -4,12 +4,14 @@
   const key = new URLSearchParams(location.search).get('key');
 
   let client = null, brandId = null, queue = [], index = 0, started = false, lastStamp = null;
+  let bootTime = Date.now(), announcing = false;
 
   const setState = text => { byId('state').textContent = text; };
   const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
   const audioUrl = path => client.storage.from('radio-audio').getPublicUrl(path).data.publicUrl;
   const coverUrl = path => client.storage.from('radio-covers').getPublicUrl(path).data.publicUrl;
+  const anonsUrl = path => client.storage.from('radio-announcements').getPublicUrl(path).data.publicUrl;
 
   function shuffled(list) {
     const copy = list.slice();
@@ -58,15 +60,16 @@
     if (changed) {
       queue = head.shuffle ? shuffled(tracks) : tracks;
       index = 0;
-      if (started) play();
+      if (started && !announcing) play();
       setState('Yayın güncellendi.');
     }
   }
 
   function play() {
-    if (!queue.length) return;
+    if (!queue.length || announcing) return;
     const track = queue[index % queue.length];
     audio.src = audioUrl(track.storage_path);
+    audio.volume = 1;
     audio.play().then(() => {
       byId('now').innerHTML = '<span class="dot"></span>' + safe(track.title);
       setState('');
@@ -74,6 +77,40 @@
       byId('start').hidden = false;
       setState('Tarayıcı otomatik çalmayı engelledi. Başlatmak için butona dokunun.');
     });
+  }
+
+  function fade(from, to, ms) {
+    return new Promise(done => {
+      const steps = 12, step = (to - from) / steps;
+      let i = 0;
+      const timer = setInterval(() => {
+        i++;
+        audio.volume = Math.min(1, Math.max(0, from + step * i));
+        if (i >= steps) { clearInterval(timer); done(); }
+      }, ms / steps);
+    });
+  }
+
+  async function playAnnouncement(path, label) {
+    if (announcing || !started) return;
+    announcing = true;
+    const prevNow = byId('now').innerHTML;
+
+    await fade(audio.volume, 0.12, 600);
+    byId('now').innerHTML = '<span class="dot"></span>ANONS' + (label ? ' — ' + safe(label) : '');
+
+    const voice = new Audio(anonsUrl(path));
+    voice.volume = 1;
+    await new Promise(done => {
+      voice.onended = done;
+      voice.onerror = done;
+      voice.play().catch(done);
+      setTimeout(done, 180000);
+    });
+
+    await fade(audio.volume, 1, 800);
+    byId('now').innerHTML = prevNow;
+    announcing = false;
   }
 
   audio.addEventListener('ended', () => { index++; play(); });
@@ -90,6 +127,13 @@
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'brand_broadcast', filter: 'brand_id=eq.' + brandId },
         () => fetchBroadcast())
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'radio_announcements', filter: 'brand_id=eq.' + brandId },
+        payload => {
+          const row = payload.new;
+          if (new Date(row.created_at).getTime() < bootTime - 60000) return;
+          playAnnouncement(row.storage_path, row.label);
+        })
       .subscribe();
   }
 
