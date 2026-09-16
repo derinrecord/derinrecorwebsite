@@ -305,3 +305,41 @@ input:focus,textarea:focus,select:focus{
     border-radius:15px !important;
   }
 }
+/* Menü iki sıra: üstte 3, altta 4 */
+@media(min-width:1000px){
+  .site-header{flex-wrap:wrap !important; padding:14px 22px}
+
+  .site-header nav{
+    order:2 !important;
+    flex:1 1 auto !important;
+    flex-wrap:wrap !important;
+    justify-content:flex-end !important;
+    align-content:flex-start;
+    gap:8px !important;
+    overflow:visible !important;
+  }
+
+  /* 4. bağlantıdan önce satır kır */
+  .site-header nav a:nth-child(4){
+    margin-left:auto;
+  }
+  .site-header nav::after{
+    content:"";
+    flex-basis:100%;
+    order:0;
+  }
+  .site-header nav a:nth-child(-n+3){order:-1}
+  .site-header nav a:nth-child(n+4){order:1}
+
+  .site-header .account-actions{order:3 !important; align-self:flex-start}
+
+  .site-header nav a,
+  .site-header .account-actions a,
+  .site-header .account-actions button{
+    padding:13px 18px !important;
+    font-size:10.5px !important;
+    border-radius:16px !important;
+  }
+}
+
+.site-header{overflow:visible !important}
