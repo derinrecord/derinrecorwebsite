@@ -2,6 +2,7 @@
     // --- Şifreleme devre dışı: mesajlar düz metin olarak saklanır ---
   const looksEncrypted = v => {
     if (typeof v !== 'string') return false;
+        if (v.startsWith('E2EE')) return true;
     if (v.startsWith('{') && v.includes('"iv"')) return true;
     return /^[A-Za-z0-9+/=]{120,}$/.test(v.replace(/\s/g, ''));
   };
