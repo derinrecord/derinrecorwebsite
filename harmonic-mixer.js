@@ -131,7 +131,8 @@
             ${tracks.map(t => `
               <div class="hm-track ${selected?.id === t.id ? 'sel' : ''}" data-pick="${t.id}">
                 <span><strong>${safe(t.title)}</strong><small>${meta(t)}</small></span>
-                <span style="display:flex;gap:7px;align-items:center">${keyChip(t)}
+                               <span style="display:flex;gap:7px;align-items:center">${keyChip(t)}
+                  <button data-push="${t.id}" style="padding:4px 9px;border-radius:9px;font-size:10px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;cursor:pointer">SETE EKLE</button>
                   <button data-del="${t.id}" style="padding:4px 9px;border-radius:9px;font-size:10px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer">SİL</button></span>
               </div>`).join('') || '<p style="opacity:.5;font-size:13px">Katalog boş. Yukarıdan parça ekle.</p>'}
 
@@ -263,12 +264,17 @@
     byId('hm-clear').onclick = () => { set = []; selected = null; render(); };
 
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = e => {
-      if (e.target.dataset.del) return;
+            if (e.target.dataset.del || e.target.dataset.push) return;
       selected = tracks.find(t => t.id === el.dataset.pick);
       if (!set.length) set = [selected];
       render();
     });
-
+    document.querySelectorAll('[data-push]').forEach(el => el.onclick = ev => {
+      ev.stopPropagation();
+      const t = tracks.find(x => x.id === el.dataset.push);
+      if (set.some(s => s.id === t.id)) { byId('hm-status').textContent = 'Bu parça sette zaten var.'; return; }
+      set.push(t); render();
+    });
     document.querySelectorAll('[data-add]').forEach(el => el.onclick = () => {
       set.push(tracks.find(t => t.id === el.dataset.add)); render();
     });
