@@ -309,11 +309,11 @@
       if (!file) { status.textContent = 'Önce bir ses dosyası seç.'; return; }
       status.textContent = 'Müzik gönderiliyor…';
 
-      let projectId = fileRow.querySelector('#chat-proj').value;
+      
       const label = file.name.replace(/\.[^.]+$/, '');
 
            const projectId = fileRow.querySelector('#chat-proj').value;
-      const label = file.name.replace(/\.[^.]+$/, '');
+     
       if (!projectId) { status.textContent = 'Önce bir proje seç. Proje yoksa antrenör Müziğini Araştır sayfasından göndermeli.'; return; }
 
       const path = `${contactId}/${projectId}-${Date.now()}.${file.name.split('.').pop() || 'mp3'}`;
