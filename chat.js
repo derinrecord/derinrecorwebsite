@@ -283,9 +283,10 @@
       if (!targetCoach) { fileRow.remove(); return; }
       const { data } = await client.from('music_projects')
         .select('id,title').eq('coach_id', targetCoach).order('created_at', { ascending:false });
-      const sel = fileRow.querySelector('#chat-proj');
-      sel.innerHTML = `<option value="">— yeni proje aç —</option>` +
-        (data || []).map(p => `<option value="${p.id}">${safe(p.title || 'Proje')}</option>`).join('');
+            const sel = fileRow.querySelector('#chat-proj');
+      sel.innerHTML = (data && data.length)
+        ? data.map(p => `<option value="${p.id}">${safe(p.title || 'Proje')}</option>`).join('')
+        : `<option value="">Bu antrenörün projesi yok</option>`;
     })();
 
     fileRow.querySelector('#chat-audio-send').onclick = async () => {
@@ -297,13 +298,9 @@
       let projectId = fileRow.querySelector('#chat-proj').value;
       const label = file.name.replace(/\.[^.]+$/, '');
 
-      if (!projectId) {
-        const created = await client.from('music_projects')
-          .insert({ coach_id: contactId, title: label, status: 'approved' })
-          .select('id').single();
-        if (created.error) { status.textContent = created.error.message; return; }
-        projectId = created.data.id;
-      }
+           const projectId = fileRow.querySelector('#chat-proj').value;
+      const label = file.name.replace(/\.[^.]+$/, '');
+      if (!projectId) { status.textContent = 'Önce bir proje seç. Proje yoksa antrenör Müziğini Araştır sayfasından göndermeli.'; return; }
 
       const path = `${contactId}/${projectId}-${Date.now()}.${file.name.split('.').pop() || 'mp3'}`;
       const up = await client.storage.from('project-audio')
@@ -322,10 +319,11 @@
           .insert({ project_id: projectId, label, audio_path: path, sort_order: 0 });
       }
 
-      await client.from('project_feedback').insert({
-        project_id: projectId, author_id: (await client.auth.getUser()).data.user.id,
+           const meRes = await client.auth.getUser();
+      const fbRes = await client.from('project_feedback').insert({
+        project_id: projectId, author_id: meRes.data.user.id,
         kind: 'system', body: `Parçanız gönderildi (${label}). Projelerim sayfasından dinleyebilirsiniz.` });
-
+      if (fbRes.error) { status.textContent = 'Bildirim yazılamadı: ' + fbRes.error.message; return; }
       try {
         const note = await window.DerinChatCrypto.seal(
           `Müzik gönderildi: ${label} — Projelerim sayfandan dinleyebilirsin.`, contactId);
