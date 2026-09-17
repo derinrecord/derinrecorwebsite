@@ -1,4 +1,18 @@
 (() => {
+    // --- Şifreleme devre dışı: mesajlar düz metin olarak saklanır ---
+  const looksEncrypted = v => {
+    if (typeof v !== 'string') return false;
+    if (v.startsWith('{') && v.includes('"iv"')) return true;
+    return /^[A-Za-z0-9+/=]{120,}$/.test(v.replace(/\s/g, ''));
+  };
+  window.DerinChatCrypto = {
+    ready: async () => true,
+    seal: async body => body,
+    open: async body => looksEncrypted(body) ? '[eski şifreli mesaj — okunamıyor]' : body,
+    createBackup: async () => { throw new Error('Yedek kodu artık gerekli değil.'); },
+    restoreBackup: async () => true,
+    startFreshKey: async () => true
+  };
   const addStyle = href => { const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = href; document.head.append(style); };
   addStyle('chat-room-ui.css?v=2');
   addStyle('music-request.css?v=1');
