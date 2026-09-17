@@ -449,3 +449,57 @@ input:focus,textarea:focus,select:focus{
   background:rgba(255,255,255,.16) !important;
   transform:translateY(-2px); 
 }
+/* Sohbet gönder butonu — dairesel oynat ikonu */
+.derin-send-button{
+  position:relative !important;
+  width:64px !important;
+  height:64px !important;
+  min-width:64px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:50% !important;
+  background:radial-gradient(circle at 34% 28%, #2a2a2a 0%, #0b0b0b 62%) !important;
+  box-shadow:
+    0 0 0 4px rgba(224,195,65,.95),
+    0 10px 26px rgba(0,0,0,.55),
+    inset 0 2px 6px rgba(255,255,255,.12) !important;
+  font-size:0 !important;
+  color:transparent !important;
+  cursor:pointer;
+  overflow:hidden;
+  transition:transform .22s cubic-bezier(.2,.8,.3,1), box-shadow .22s;
+}
+
+/* içindeki yazılar gizlensin */
+.derin-send-button span,
+.derin-send-button b{ display:none !important; }
+
+/* sarı üçgen */
+.derin-send-button::before{
+  content:"";
+  position:absolute;
+  top:50%; left:54%;
+  transform:translate(-50%,-50%);
+  width:0; height:0;
+  border-left:22px solid #e8d15a;
+  border-top:14px solid transparent;
+  border-bottom:14px solid transparent;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));
+}
+
+/* hafif grenli doku */
+.derin-send-button::after{
+  content:"";
+  position:absolute; inset:0; border-radius:50%;
+  background:radial-gradient(circle at 70% 22%, rgba(255,255,255,.14), transparent 46%);
+  pointer-events:none;
+}
+
+.derin-send-button:hover{
+  transform:scale(1.06);
+  box-shadow:
+    0 0 0 4px rgba(224,195,65,1),
+    0 14px 32px rgba(0,0,0,.6),
+    inset 0 2px 6px rgba(255,255,255,.18) !important;
+}
+.derin-send-button:active{ transform:scale(.95); }
