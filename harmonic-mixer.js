@@ -160,3 +160,54 @@
     grad.addColorStop(0, '#5ea4ff'); grad.addColorStop(1, '#e0c341');
     ctx.strokeStyle = grad; ctx.lineWidth = 5; ctx.lineJoin = 'round';
     ctx.beginPath();
+    pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.stroke();
+
+    pts.forEach(p => {
+      ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#e8d15a'; ctx.fill();
+      ctx.strokeStyle = '#141416'; ctx.lineWidth = 3; ctx.stroke();
+    });
+  }
+
+  function wire() {
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => {
+      selected = tracks.find(t => t.id === el.dataset.pick);
+      if (!set.length) set = [selected];
+      render();
+    });
+
+    document.querySelectorAll('[data-add]').forEach(el => el.onclick = () => {
+      const t = tracks.find(x => x.id === el.dataset.add);
+      set.push(t); render();
+    });
+
+    document.querySelectorAll('[data-rm]').forEach(el => el.onclick = () => {
+      set = set.filter(t => t.id !== el.dataset.rm);
+      if (!set.length) selected = null;
+      render();
+    });
+
+    const save = byId('hm-save');
+    if (save) save.onclick = async () => {
+      const body = {
+        camelot: byId('hm-cam').value.trim() || null,
+        key_name: byId('hm-key').value.trim() || null,
+        makam: byId('hm-makam').value.trim() || null,
+        bpm: byId('hm-bpm').value ? Number(byId('hm-bpm').value) : null,
+        energy: byId('hm-en').value ? Number(byId('hm-en').value) : null,
+        duration_sec: byId('hm-dur').value ? Number(byId('hm-dur').value) : null
+      };
+      const { error } = await client.from('radio_tracks').update(body).eq('id', selected.id);
+      byId('hm-status').textContent = error ? error.message : 'Meta veri kaydedildi.';
+      if (!error) {
+        Object.assign(selected, body);
+        set = set.map(t => t.id === selected.id ? { ...t, ...body } : t);
+        await load();
+      }
+    };
+  }
+
+  window.addEventListener('resize', drawCurve);
+  boot();
+})();
