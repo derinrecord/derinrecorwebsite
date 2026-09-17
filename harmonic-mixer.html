@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Harmonik Set — Derin Record</title>
+<link rel="stylesheet" href="branch.css">
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="glass.css?v=2">
+<style>
+  .hm-grid{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:20px;margin-top:24px}
+  @media(max-width:900px){.hm-grid{grid-template-columns:1fr}}
+
+  .hm-panel{padding:22px;border-radius:26px;
+    background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.18);
+    -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+    box-shadow:0 16px 44px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.26)}
+  .hm-panel h2{margin:0 0 14px;font-size:12px;letter-spacing:.18em;opacity:.7}
+
+  .hm-track{display:flex;gap:12px;align-items:center;justify-content:space-between;
+    padding:11px 13px;margin-bottom:8px;border-radius:15px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);transition:.2s}
+  .hm-track:hover{background:rgba(255,255,255,.1);transform:translateX(3px)}
+  .hm-track.sel{border-color:#e0c341;box-shadow:0 0 0 3px rgba(224,195,65,.16)}
+  .hm-track strong{font-size:13px;font-weight:600}
+  .hm-track small{display:block;opacity:.55;font-size:11px;margin-top:2px}
+
+  .hm-key{flex:0 0 auto;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;
+    letter-spacing:.04em;background:rgba(224,195,65,.16);color:#e8d15a;border:1px solid rgba(224,195,65,.35)}
+  .hm-key.b{background:rgba(94,164,255,.16);color:#8fc0ff;border-color:rgba(94,164,255,.35)}
+
+  .hm-rel{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .hm-chip{padding:4px 10px;border-radius:999px;font-size:10px;letter-spacing:.06em;
+    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);opacity:.8}
+  .hm-chip.ok{border-color:rgba(24,195,125,.5);color:#6ee7b0;background:rgba(24,195,125,.12)}
+  .hm-chip.up{border-color:rgba(224,195,65,.5);color:#e8d15a;background:rgba(224,195,65,.12)}
+
+  .hm-set{list-style:none;margin:0;padding:0;counter-reset:s}
+  .hm-set li{counter-increment:s;display:flex;gap:12px;align-items:center;justify-content:space-between;
+    padding:12px 14px;margin-bottom:8px;border-radius:16px;
+    border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05)}
+  .hm-set li::before{content:counter(s);flex:0 0 26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18)}
+  .hm-set button{padding:6px 11px;border-radius:10px;font-size:11px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit}
+
+  .hm-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;opacity:.7;margin:6px 0 16px}
+  .hm-meta b{color:#e8d15a;font-weight:600}
+
+  .hm-curve{width:100%;height:150px;display:block;margin-top:10px}
+  .hm-warn{color:#ffb3b3;font-size:11px;margin-top:4px}
+
+  .hm-edit{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:14px;
+    border-top:1px solid rgba(255,255,255,.1)}
+  .hm-edit input,.hm-edit select{flex:1 1 92px;padding:9px 11px;border-radius:12px;font:inherit;font-size:12px;
+    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:inherit}
+  .hm-edit button{padding:9px 16px;border-radius:12px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;
+    border:0;background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(255,255,255,.65));color:#131313}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<header class="header">
+  <a class="home" href="index.html"><span>←</span> ANA SAYFA</a>
+  <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+</header>
+<main class="admin-main">
+  <p class="eyebrow">STÜDYO ARACI</p>
+  <h1>HARMONİK<br><span>SET SIRALAYICI.</span></h1>
+  <p id="hm-status">Hesap kontrol ediliyor…</p>
+  <section id="hm-app" hidden></section>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+<script src="auth.js?v=20260914"></script>
+<script src="harmonic-mixer.js?v=1"></script>
+</body>
+</html>
