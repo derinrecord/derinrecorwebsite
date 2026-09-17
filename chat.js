@@ -270,6 +270,72 @@
       article.addEventListener('contextmenu', event => { event.preventDefault(); openMessageMenu(article); });
     });
     app.onclick = event => { if (!event.target.closest('.chat-message')) closeMenus(); };
+        const fileRow = document.createElement('div');
+    fileRow.className = 'chat-file-row';
+    fileRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 0';
+    fileRow.innerHTML = `<input type="file" accept="audio/*" id="chat-audio" style="flex:1 1 180px;font-size:12px">
+      <select id="chat-proj" style="flex:1 1 160px;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px"></select>
+      <button type="button" id="chat-audio-send" style="padding:9px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit;font:inherit;font-size:12px;cursor:pointer">MÜZİĞİ GÖNDER</button>`;
+    app.querySelector('.chat-form-wrap').prepend(fileRow);
+
+    (async () => {
+      const targetCoach = admin ? contactId : null;
+      if (!targetCoach) { fileRow.remove(); return; }
+      const { data } = await client.from('music_projects')
+        .select('id,title').eq('coach_id', targetCoach).order('created_at', { ascending:false });
+      const sel = fileRow.querySelector('#chat-proj');
+      sel.innerHTML = `<option value="">— yeni proje aç —</option>` +
+        (data || []).map(p => `<option value="${p.id}">${safe(p.title || 'Proje')}</option>`).join('');
+    })();
+
+    fileRow.querySelector('#chat-audio-send').onclick = async () => {
+      const input = fileRow.querySelector('#chat-audio');
+      const file = input.files?.[0];
+      if (!file) { status.textContent = 'Önce bir ses dosyası seç.'; return; }
+      status.textContent = 'Müzik gönderiliyor…';
+
+      let projectId = fileRow.querySelector('#chat-proj').value;
+      const label = file.name.replace(/\.[^.]+$/, '');
+
+      if (!projectId) {
+        const created = await client.from('music_projects')
+          .insert({ coach_id: contactId, title: label, status: 'approved' })
+          .select('id').single();
+        if (created.error) { status.textContent = created.error.message; return; }
+        projectId = created.data.id;
+      }
+
+      const path = `${contactId}/${projectId}-${Date.now()}.${file.name.split('.').pop() || 'mp3'}`;
+      const up = await client.storage.from('project-audio')
+        .upload(path, file, { contentType: file.type || 'audio/mpeg' });
+      if (up.error) { status.textContent = 'Yükleme hatası: ' + up.error.message; return; }
+
+      const existing = await client.from('project_tracks')
+        .select('id,version').eq('project_id', projectId).order('sort_order').limit(1);
+
+      if (existing.data && existing.data.length) {
+        await client.from('project_tracks')
+          .update({ audio_path: path, version: (existing.data[0].version || 1) + 1 })
+          .eq('id', existing.data[0].id);
+      } else {
+        await client.from('project_tracks')
+          .insert({ project_id: projectId, label, audio_path: path, sort_order: 0 });
+      }
+
+      await client.from('project_feedback').insert({
+        project_id: projectId, author_id: (await client.auth.getUser()).data.user.id,
+        kind: 'system', body: `Parçanız gönderildi (${label}). Projelerim sayfasından dinleyebilirsiniz.` });
+
+      try {
+        const note = await window.DerinChatCrypto.seal(
+          `Müzik gönderildi: ${label} — Projelerim sayfandan dinleyebilirsin.`, contactId);
+        await client.from('direct_messages').insert({ recipient_id: contactId, body: note });
+      } catch {}
+
+      input.value = '';
+      status.textContent = 'Müzik antrenörün Projelerim sayfasına düştü.';
+      load();
+    };
     app.querySelector('.chat-form').onsubmit = async event => {
       event.preventDefault();
       const field = event.currentTarget.elements.message;
