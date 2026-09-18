@@ -51,7 +51,7 @@
   const bar=st=>{const at=STAGES.findIndex(s=>s.k===st);
     return `<div class="track">${STAGES.map((s,i)=>`<div class="track-step ${at<0?'':i<at?'done':i===at?'now':''}"><div class="track-dot"></div>${s.l}</div>`).join('')}</div>`;};
 
-   function trackBlock(tr,i,p){
+    function trackBlock(tr,i,p){
     const has=!!tr.audio_path;
     return `<div class="proj-player" data-tb="${tr.id}" style="flex-direction:column;align-items:stretch">
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
@@ -68,13 +68,11 @@
           <input data-cut="${tr.id}" placeholder="Bu bölge için notun" style="flex:1 1 220px;padding:10px 13px;border-radius:13px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit">
           <button data-cutsend="${tr.id}">BÖLGEYİ BİLDİR</button>
         </div></div>`:''}
-           ${admin?`<div class="proj-actions" style="margin-top:10px">
+      ${admin?`<div class="proj-actions" style="margin-top:10px">
         <input type="file" accept="audio/*" data-newver="${tr.id}">
         <span style="font-size:11px;opacity:.6">yeni varyasyon yükle</span></div>`:''}
-      ${(!admin && p.download_allowed && tr.audio_path)
+      ${(!admin && p && p.download_allowed && has)
         ? `<div class="proj-actions" style="margin-top:10px"><button data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" style="border-color:rgba(24,195,125,.5);background:rgba(24,195,125,.14);color:#6ee7b0">⤓ İNDİR</button></div>` : ''}
-        <input type="file" accept="audio/*" data-newver="${tr.id}">
-        <span style="font-size:11px;opacity:.6">yeni varyasyon yükle</span></div>`:''}
     </div>`;
   }
 
