@@ -197,4 +197,4 @@
   document.addEventListener('DOMContentLoaded', gozle);
   gozle();
 })();
-<script src="sortable-touch.js?v=1"></script>
+
