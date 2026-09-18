@@ -361,7 +361,7 @@
         ? 'Yeni sürüm gönderildi — antrenörün dalga formu güncellendi.'
         : 'Yeni parça gönderildi — antrenörün Projelerim sayfasına düştü.';
       setTimeout(() => { msg.textContent = ''; }, 6000);
-      load();
+           setTimeout(load, 5000);
     };
     app.querySelector('.chat-form').onsubmit = async event => {
       event.preventDefault();
