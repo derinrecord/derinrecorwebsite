@@ -181,9 +181,11 @@
             </div>
             <ol class="hm-set">${set.map((t, i) => {
               const r = i ? relation(set[i-1].camelot, t.camelot) : null;
-              return `<li><span><strong>${safe(t.title)}</strong>
+                            return `<li draggable="true" data-idx="${i}" style="cursor:grab">
+                <span><strong>${safe(t.title)}</strong>
                 <small>${meta(t)}${r ? ' · ' + r.tip : (i ? ' · ⚠ uyumsuz geçiş' : '')}</small></span>
                 <span style="display:flex;gap:8px;align-items:center">${keyChip(t)}
+                ${t.audio_path ? `<button data-play="${t.id}" data-path="${safe(t.audio_path)}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;cursor:pointer">▶</button>` : ''}
                 <button data-rm="${t.id}">ÇIKAR</button></span></li>`;
             }).join('') || '<p style="opacity:.5;font-size:13px">Set boş.</p>'}</ol>
             <canvas class="hm-curve" id="hm-curve"></canvas>
@@ -293,7 +295,46 @@
       if (selected?.id === el.dataset.del) selected = null;
       await load();
     });
+    // Sürükle-bırak sıralama
+    let suruklenen = null;
+    document.querySelectorAll('.hm-set li[draggable]').forEach(li => {
+      li.addEventListener('dragstart', e => {
+        suruklenen = +li.dataset.idx;
+        li.style.opacity = '.4';
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      li.addEventListener('dragend', () => { li.style.opacity = ''; });
+      li.addEventListener('dragover', e => {
+        e.preventDefault();
+        li.style.borderColor = 'rgba(224,195,65,.7)';
+      });
+      li.addEventListener('dragleave', () => { li.style.borderColor = ''; });
+      li.addEventListener('drop', e => {
+        e.preventDefault();
+        const hedef = +li.dataset.idx;
+        if (suruklenen === null || suruklenen === hedef) return;
+        const [tasinan] = set.splice(suruklenen, 1);
+        set.splice(hedef, 0, tasinan);
+        suruklenen = null;
+        render();
+      });
+    });
 
+    // Parça dinleme
+    document.querySelectorAll('[data-play]').forEach(btn => btn.onclick = async () => {
+      if (window.__hmAudio && !window.__hmAudio.paused) {
+        window.__hmAudio.pause();
+        document.querySelectorAll('[data-play]').forEach(b => b.textContent = '▶');
+        if (window.__hmPlaying === btn.dataset.play) { window.__hmPlaying = null; return; }
+      }
+      const { data, error } = await client.storage.from('dj-audio').createSignedUrl(btn.dataset.path, 3600);
+      if (error) { byId('hm-status').textContent = 'Ses açılamadı: ' + error.message; return; }
+      window.__hmAudio = new Audio(data.signedUrl);
+      window.__hmPlaying = btn.dataset.play;
+      window.__hmAudio.onended = () => { btn.textContent = '▶'; window.__hmPlaying = null; };
+      await window.__hmAudio.play();
+      btn.textContent = '⏸';
+    });
     const save = byId('hm-save');
     if (save) save.onclick = async () => {
       const body = {
