@@ -68,7 +68,11 @@
           <input data-cut="${tr.id}" placeholder="Bu bölge için notun" style="flex:1 1 220px;padding:10px 13px;border-radius:13px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit">
           <button data-cutsend="${tr.id}">BÖLGEYİ BİLDİR</button>
         </div></div>`:''}
-      ${admin?`<div class="proj-actions" style="margin-top:10px">
+           ${admin?`<div class="proj-actions" style="margin-top:10px">
+        <input type="file" accept="audio/*" data-newver="${tr.id}">
+        <span style="font-size:11px;opacity:.6">yeni varyasyon yükle</span></div>`:''}
+      ${(!admin && p.download_allowed && tr.audio_path)
+        ? `<div class="proj-actions" style="margin-top:10px"><button data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" style="border-color:rgba(24,195,125,.5);background:rgba(24,195,125,.14);color:#6ee7b0">⤓ İNDİR</button></div>` : ''}
         <input type="file" accept="audio/*" data-newver="${tr.id}">
         <span style="font-size:11px;opacity:.6">yeni varyasyon yükle</span></div>`:''}
     </div>`;
@@ -216,3 +220,4 @@
   window.addEventListener('derin:authchange',()=>load());
   boot();
 })();
+      let q=client.from('music_projects').select('id,coach_id,title,song,branch,status,note,download_allowed,created_at,updated_at').order('created_at',{ascending:false});
