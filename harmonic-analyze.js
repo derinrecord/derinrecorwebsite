@@ -107,14 +107,29 @@
   const parseKey = k => { const m=/^(\d{1,2})([AB])$/i.exec(String(k||'').trim()); return m?{n:+m[1],L:m[2].toUpperCase()}:null; };
   const wrap = n => ((n-1+12)%12)+1;
 
+    const uyumluTonlar = k => {
+    const K = parseKey(k);
+    if (!K) return [];
+    return [`${K.n}${K.L}`, `${K.n}${K.L==='A'?'B':'A'}`,
+            `${wrap(K.n+1)}${K.L}`, `${wrap(K.n-1)}${K.L}`, `${wrap(K.n+7)}${K.L}`];
+  };
+
   function kopruTonlari(a, b) {
-    const A = parseKey(a), B = parseKey(b);
-    if (!A || !B) return [];
-    const aUyum = new Set([`${A.n}${A.L}`, `${A.n}${A.L==='A'?'B':'A'}`, `${wrap(A.n+1)}${A.L}`, `${wrap(A.n-1)}${A.L}`]);
-    const bUyum = new Set([`${B.n}${B.L}`, `${B.n}${B.L==='A'?'B':'A'}`, `${wrap(B.n+1)}${B.L}`, `${wrap(B.n-1)}${B.L}`]);
-    return [...aUyum].filter(k => bUyum.has(k));
+    const aU = uyumluTonlar(a), bU = new Set(uyumluTonlar(b));
+    return aU.filter(k => bU.has(k));
   }
 
+  // Ortak ton yoksa: iki adımlı köprü zinciri bul
+  function ikiAdimliKopru(a, b) {
+    const aU = uyumluTonlar(a), bU = uyumluTonlar(b);
+    const yollar = [];
+    for (const x of aU) {
+      for (const y of uyumluTonlar(x)) {
+        if (bU.includes(y) && x !== y) yollar.push([x, y]);
+      }
+    }
+    return yollar.slice(0, 3);
+  }
   function baglaAnaliz() {
     const dosya = document.getElementById('nt-file');
     if (!dosya || dosya.dataset.hazir) return;
@@ -161,17 +176,25 @@
       const aralik = bpm ? `${bpm-4}-${bpm+4} BPM` : 'benzer tempo';
       const tarz = (kucuk.textContent.split('·')[0] || '').trim();
 
-      const sorgu = `${ortak[0] || oncekiKey || ''} ${bpm ? bpm + ' bpm' : ''} ${tarz} track`.trim();
+      const sorgu = `${sorguTon} ${bpm ? bpm + ' bpm' : ''} track`.replace(/\s+/g, ' ').trim();
       const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(sorgu);
       const sp = 'https://open.spotify.com/search/' + encodeURIComponent(sorgu);
 
       const kutu = document.createElement('div');
       kutu.style.cssText = 'flex:1 1 100%;margin-top:10px;padding:12px 14px;border-radius:14px;border:1px dashed rgba(255,179,179,.4);background:rgba(255,120,120,.07);font-size:11.5px;line-height:1.7';
-      kutu.innerHTML = `<strong style="color:#ffb3b3">Köprü parça gerekli.</strong><br>
+           const zincir = ortak.length ? [] : ikiAdimliKopru(oncekiKey, key);
+      const hedefTon = ortak.length ? ortak[0] : (zincir[0] ? zincir[0][0] : oncekiKey);
+      const sorguTon = hedefTon;
+
+      kutu.innerHTML = `<strong style="color:#ffb3b3">${oncekiKey} → ${key} geçişi uyumsuz.</strong><br>
         ${ortak.length
-          ? `Her iki tarafa da uyan ton${ortak.length>1?'lar':''}: <b style="color:#e8d15a">${ortak.join(', ')}</b>`
-          : 'Ortak uyumlu ton bulunamadı — araya iki parça girmesi gerekebilir.'}
-        · Tempo: <b style="color:#e8d15a">${aralik}</b>
+          ? `Araya girecek parçanın tonu şunlardan biri olmalı:
+             <b style="color:#e8d15a">${ortak.join(' · ')}</b>`
+          : (zincir.length
+              ? `Tek parça yetmiyor, iki köprü gerekiyor. Önerilen zincir${zincir.length>1?'ler':''}:<br>` +
+                zincir.map(z => `&nbsp;&nbsp;<b style="color:#e8d15a">${oncekiKey} → ${z[0]} → ${z[1]} → ${key}</b>`).join('<br>')
+              : 'Bu iki ton arasında köprü bulunamadı — parçalardan birini değiştirmen gerekebilir.')}
+        <br>Tempo: <b style="color:#e8d15a">${aralik}</b>
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
           <a href="${yt}" target="_blank" rel="noreferrer" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);color:inherit;text-decoration:none">YouTube'da ara ↗</a>
           <a href="${sp}" target="_blank" rel="noreferrer" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);color:inherit;text-decoration:none">Spotify'da ara ↗</a>
