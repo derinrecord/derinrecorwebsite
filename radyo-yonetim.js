@@ -337,11 +337,18 @@
       const t = sira[i];
       const url = client.storage.from('radio-audio').getPublicUrl(t.storage_path).data.publicUrl;
       audio.src = url;
-      try { await audio.play(); } catch { byId('f-msg').textContent = 'Tarayıcı otomatik çalmayı engelledi, tekrar dene.'; return; }
-      byId('sp-player').classList.add('on');
+           byId('sp-player').classList.add('on');
       document.body.classList.add('sp-open');
       byId('sp-title').textContent = clean(t.title);
-      byId('sp-toggle').textContent = '⏸';
+      document.querySelectorAll('.sp-row').forEach(r => r.classList.toggle('playing', r.dataset.track === t.id));
+      try {
+        await audio.play();
+        byId('sp-toggle').textContent = '⏸';
+        byId('f-msg').textContent = '';
+      } catch {
+        byId('sp-toggle').textContent = '▶';
+        byId('f-msg').textContent = 'Çalmak için oynatıcıdaki ▶ düğmesine bas.';
+      }
       document.querySelectorAll('.sp-row').forEach(r => r.classList.toggle('playing', r.dataset.track === t.id));
     }
 
