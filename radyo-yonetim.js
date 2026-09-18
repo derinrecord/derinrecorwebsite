@@ -250,42 +250,230 @@
   }
 
   // ---------- MARKALAR ----------
-  function brandList() {
-    const { brands, players, broadcast } = state;
-    byId('radio-app').innerHTML = `${crumb('Markalar')}
-      <section class="radio-panel">
-        <h2>YENİ MARKA</h2>
-        <div class="radio-row">
-          <input id="brand-name" placeholder="Marka adı (örn. Chemex)">
-          <input id="brand-contact" placeholder="İletişim (isteğe bağlı)">
-          <button id="brand-add">EKLE</button>
-        </div>
-        <p class="radio-msg" id="brand-msg"></p>
-      </section>
-      <section class="radio-panel">
-        <h2>MARKALAR</h2>
-        <ul class="radio-list">
-          ${brands.length ? brands.map(b => {
-            const cur = broadcast.find(x => x.brand_id === b.id);
-            return `<li class="open-row" data-open="#/markalar/${b.id}">
-              <span><strong>${safe(b.name)}</strong>
-                ${cur?.folder_id ? '<span class="radio-live">YAYINDA</span>' : ''}
-                <small>${players.filter(p => p.brand_id === b.id).length} şube</small></span>
-              <button data-open="#/markalar/${b.id}">AÇ ›</button></li>`;
-          }).join('') : '<li>Henüz marka yok.</li>'}
-        </ul>
-      </section>`;
+    function folderDetail(id) {
+    const folder = state.folders.find(f => f.id === id);
+    if (!folder) return go('#/klasorler');
+    const list = state.tracks.filter(t => t.folder_id === id);
+    const mmss = s => { if (!s || !isFinite(s)) return '—'; const m = Math.floor(s/60); return m + ':' + String(Math.floor(s%60)).padStart(2,'0'); };
+    const cover = folder.cover_path ? coverUrl(folder.cover_path) : null;
+    const toplam = list.reduce((s,t) => s + (Number(t.duration_sec)||0), 0);
 
-    byId('brand-add').onclick = async () => {
-      const name = byId('brand-name').value.trim();
-      const msg = byId('brand-msg');
-      if (!name) { msg.textContent = 'Marka adı gerekli.'; return; }
-      const { error } = await client.from('brands').insert({
-        name, slug: slugify(name), contact: byId('brand-contact').value.trim() || null });
-      msg.textContent = error ? error.message : 'Marka eklendi.';
+    byId('radio-app').innerHTML = `${crumb('Klasörler', folder.name)}
+
+      <section class="sp-head">
+        ${cover ? `<img class="sp-cover" src="${cover}" alt="">`
+                : '<div class="sp-cover empty">♪</div>'}
+        <div class="sp-info">
+          <p class="lbl">YAYIN KLASÖRÜ</p>
+          <h2>${safe(folder.name)}</h2>
+          <p class="sub">${list.length} parça${toplam ? ' · ' + Math.round(toplam/60) + ' dk' : ''}${folder.description ? ' · ' + safe(folder.description) : ''}</p>
+        </div>
+      </section>
+
+      <div class="sp-bar">
+        <button class="sp-play" id="sp-all" title="Tümünü çal">▶</button>
+        <label class="drop" id="cover-drop" style="flex:0 1 150px;min-height:44px">
+          <input id="cover-file" type="file" accept="image/*"></label>
+        <span style="font-size:11px;opacity:.55">kapak</span>
+        <input id="f-name" value="${safe(folder.name)}"
+          style="flex:1 1 180px;padding:10px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:13px">
+        <button id="f-rename">ADI KAYDET</button>
+        <button id="f-delete">KLASÖRÜ SİL</button>
+      </div>
+      <p class="radio-msg" id="f-msg"></p>
+
+      <section class="radio-panel">
+        <h2>PARÇA YÜKLE</h2>
+        <div class="radio-row">
+          <label class="drop" id="track-drop"><input id="track-file" type="file" accept="audio/*" multiple></label>
+          <button id="track-upload">YÜKLE</button>
+        </div>
+        <p class="radio-msg" id="track-msg"></p>
+
+        <div class="sp-th"><span>#</span><span>BAŞLIK</span><span>SÜRE</span><span></span></div>
+        <ul class="sp-rows" id="sp-list">
+          ${list.length ? list.map((t,i) => `
+            <li class="sp-row" draggable="true" data-idx="${i}" data-track="${t.id}">
+              <span class="no">${i+1}</span>
+              <span class="ttl">${safe(clean(t.title))}</span>
+              <span class="dur">${mmss(t.duration_sec)}</span>
+              <span class="act">
+                <button data-rename-track="${t.id}">AD</button>
+                <button data-del-track="${t.id}" data-path="${safe(t.storage_path)}">SİL</button>
+              </span>
+            </li>`).join('') : '<li style="opacity:.5;padding:16px">Henüz parça yok.</li>'}
+        </ul>
+      </section>
+
+      <div class="sp-player" id="sp-player">
+        <div class="sp-now">
+          ${cover ? `<img src="${cover}" alt="">` : '<div style="width:48px;height:48px;border-radius:9px;background:rgba(255,255,255,.08)"></div>'}
+          <div class="t"><b id="sp-title">—</b><small>${safe(folder.name)}</small></div>
+        </div>
+        <div class="sp-ctr">
+          <div class="sp-btns">
+            <button id="sp-prev">⏮</button>
+            <button class="main" id="sp-toggle">▶</button>
+            <button id="sp-next">⏭</button>
+          </div>
+          <div class="sp-seek">
+            <span id="sp-cur">0:00</span>
+            <input type="range" id="sp-seek" value="0" min="0" max="1000">
+            <span id="sp-dur">0:00</span>
+          </div>
+        </div>
+        <div class="sp-vol">🔊<input type="range" id="sp-vol" min="0" max="100" value="100"></div>
+      </div>`;
+
+    // ---- oynatıcı ----
+    const audio = window.__spAudio || (window.__spAudio = new Audio());
+    let sira = list.slice(), aktif = -1;
+
+    const fmt = s => isFinite(s) ? Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0') : '0:00';
+
+    async function cal(i) {
+      if (i < 0 || i >= sira.length) return;
+      aktif = i;
+      const t = sira[i];
+      const url = client.storage.from('radio-audio').getPublicUrl(t.storage_path).data.publicUrl;
+      audio.src = url;
+      try { await audio.play(); } catch { byId('f-msg').textContent = 'Tarayıcı otomatik çalmayı engelledi, tekrar dene.'; return; }
+      byId('sp-player').classList.add('on');
+      document.body.classList.add('sp-open');
+      byId('sp-title').textContent = clean(t.title);
+      byId('sp-toggle').textContent = '⏸';
+      document.querySelectorAll('.sp-row').forEach(r => r.classList.toggle('playing', r.dataset.track === t.id));
+    }
+
+    byId('sp-all').onclick = () => cal(0);
+    byId('sp-toggle').onclick = () => {
+      if (audio.paused) { audio.play(); byId('sp-toggle').textContent = '⏸'; }
+      else { audio.pause(); byId('sp-toggle').textContent = '▶'; }
+    };
+    byId('sp-next').onclick = () => cal((aktif + 1) % sira.length);
+    byId('sp-prev').onclick = () => cal((aktif - 1 + sira.length) % sira.length);
+    byId('sp-vol').oninput = e => { audio.volume = e.target.value / 100; };
+
+    audio.ontimeupdate = () => {
+      if (!audio.duration) return;
+      byId('sp-cur').textContent = fmt(audio.currentTime);
+      byId('sp-dur').textContent = fmt(audio.duration);
+      byId('sp-seek').value = Math.round((audio.currentTime / audio.duration) * 1000);
+    };
+    audio.onended = () => cal((aktif + 1) % sira.length);
+    byId('sp-seek').oninput = e => {
+      if (audio.duration) audio.currentTime = (e.target.value / 1000) * audio.duration;
+    };
+
+    document.querySelectorAll('.sp-row').forEach(row => {
+      row.addEventListener('click', e => {
+        if (e.target.tagName === 'BUTTON') return;
+        cal(sira.findIndex(t => t.id === row.dataset.track));
+      });
+    });
+
+    // ---- sürükleyerek sıralama ----
+    let tasinan = null;
+    document.querySelectorAll('.sp-row[draggable]').forEach(row => {
+      row.addEventListener('dragstart', () => { tasinan = +row.dataset.idx; row.style.opacity = '.4'; });
+      row.addEventListener('dragend', () => { row.style.opacity = ''; });
+      row.addEventListener('dragover', e => { e.preventDefault(); row.style.background = 'rgba(224,195,65,.14)'; });
+      row.addEventListener('dragleave', () => { row.style.background = ''; });
+      row.addEventListener('drop', async e => {
+        e.preventDefault();
+        const hedef = +row.dataset.idx;
+        if (tasinan === null || tasinan === hedef) return;
+        const yeni = list.slice();
+        const [x] = yeni.splice(tasinan, 1);
+        yeni.splice(hedef, 0, x);
+        tasinan = null;
+        byId('f-msg').textContent = 'Sıra kaydediliyor…';
+        await Promise.all(yeni.map((t, i) => client.from('radio_tracks').update({ sort_order: i }).eq('id', t.id)));
+        byId('f-msg').textContent = 'Sıra güncellendi.';
+        await refresh();
+      });
+    });
+
+    // ---- klasör işlemleri ----
+    byId('f-rename').onclick = async () => {
+      const name = byId('f-name').value.trim();
+      if (!name) return;
+      const { error } = await client.from('radio_folders').update({ name }).eq('id', id);
+      byId('f-msg').textContent = error ? error.message : 'Ad güncellendi.';
       if (!error) await refresh();
     };
-    wireOpen();
+
+    byId('f-delete').onclick = async () => {
+      if (!confirm('Klasör ve içindeki parça kayıtları silinecek. Emin misiniz?')) return;
+      await client.from('radio_folders').delete().eq('id', id);
+      go('#/klasorler'); await refresh();
+    };
+
+    const coverFile = byId('cover-file');
+    coverFile.onchange = async () => {
+      const file = coverFile.files?.[0];
+      if (!file) return;
+      byId('f-msg').textContent = 'Kapak yükleniyor…';
+      const path = `${id}/${Date.now()}.${(file.name.split('.').pop()||'jpg').toLowerCase()}`;
+      const up = await client.storage.from('radio-covers').upload(path, file, { contentType: file.type || 'image/jpeg' });
+      if (up.error) { byId('f-msg').textContent = 'Yükleme hatası: ' + up.error.message; return; }
+      const { error } = await client.from('radio_folders').update({ cover_path: path }).eq('id', id);
+      byId('f-msg').textContent = error ? error.message : 'Kapak güncellendi.';
+      if (!error) await refresh();
+    };
+
+    const trackFile = byId('track-file'), trackDrop = byId('track-drop');
+    trackFile.onchange = () => {
+      const n = trackFile.files?.length || 0;
+      trackDrop.classList.toggle('has-file', n > 0);
+      byId('track-msg').textContent = n ? `${n} dosya seçildi.` : '';
+    };
+
+    byId('track-upload').onclick = async () => {
+      const files = Array.from(trackFile.files || []);
+      const msg = byId('track-msg');
+      if (!files.length) { msg.textContent = 'Dosya seçin.'; return; }
+      let done = 0;
+      for (const file of files) {
+        msg.textContent = `Yükleniyor… (${done+1}/${files.length})`;
+        const base = clean(file.name).replace(/\.[^.]+$/, '');
+        const path = `${id}/${Date.now()}-${slugify(base)}.${file.name.split('.').pop() || 'mp3'}`;
+        const up = await client.storage.from('radio-audio').upload(path, file, { contentType: file.type || 'audio/mpeg' });
+        if (up.error) { msg.textContent = 'Yükleme hatası: ' + up.error.message; return; }
+        let sure = null;
+        try {
+          sure = await new Promise(res => {
+            const a = new Audio(URL.createObjectURL(file));
+            a.onloadedmetadata = () => res(Math.round(a.duration));
+            a.onerror = () => res(null);
+          });
+        } catch {}
+        const { error } = await client.from('radio_tracks').insert({
+          folder_id: id, title: base, storage_path: path,
+          sort_order: list.length + done, duration_sec: sure });
+        if (error) { msg.textContent = 'Kayıt hatası: ' + error.message; return; }
+        done++;
+      }
+      msg.textContent = `${done} parça yüklendi.`;
+      await refresh();
+    };
+
+    document.querySelectorAll('[data-rename-track]').forEach(b => b.onclick = async ev => {
+      ev.stopPropagation();
+      const track = list.find(t => t.id === b.dataset.renameTrack);
+      const name = prompt('Parça adı:', clean(track.title));
+      if (!name) return;
+      await client.from('radio_tracks').update({ title: name.trim() }).eq('id', track.id);
+      await refresh();
+    });
+
+    document.querySelectorAll('[data-del-track]').forEach(b => b.onclick = async ev => {
+      ev.stopPropagation();
+      if (!confirm('Parça silinecek. Emin misiniz?')) return;
+      await client.storage.from('radio-audio').remove([b.dataset.path]);
+      await client.from('radio_tracks').delete().eq('id', b.dataset.delTrack);
+      await refresh();
+    });
   }
 
   function brandDetail(id) {
