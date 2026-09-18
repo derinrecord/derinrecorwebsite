@@ -51,7 +51,7 @@
   const bar=st=>{const at=STAGES.findIndex(s=>s.k===st);
     return `<div class="track">${STAGES.map((s,i)=>`<div class="track-step ${at<0?'':i<at?'done':i===at?'now':''}"><div class="track-dot"></div>${s.l}</div>`).join('')}</div>`;};
 
-  function trackBlock(tr,i){
+   function trackBlock(tr,i,p){
     const has=!!tr.audio_path;
     return `<div class="proj-player" data-tb="${tr.id}" style="flex-direction:column;align-items:stretch">
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
@@ -84,12 +84,13 @@
       <h3>${safe(p.title||'Proje')}</h3>
       <p class="meta">${safe(admin?(names[p.coach_id]||'Antrenör'):'Sana ait proje')}${p.branch?' · '+safe(p.branch):''} · ${new Date(p.updated_at||p.created_at).toLocaleString('tr-TR')}</p>
       ${p.status==='pending'?'<p class="meta">Onay bekliyor.</p>':bar(p.status)}
-      ${trs.map(trackBlock).join('')||'<p class="meta">Parça yok.</p>'}
+           ${trs.map((tr,i)=>trackBlock(tr,i,p)).join('')||'<p class="meta">Parça yok.</p>'}
       ${admin?`<div class="proj-actions">
         <select data-stage="${p.id}">
           <option value="pending"${p.status==='pending'?' selected':''}>Bekliyor</option>
           ${STAGES.map(s=>`<option value="${s.k}"${p.status===s.k?' selected':''}>${s.l}</option>`).join('')}
         </select>
+                <button data-dlallow="${p.id}" data-on="${p.download_allowed?1:0}" style="${p.download_allowed?'border-color:rgba(24,195,125,.5);background:rgba(24,195,125,.14);color:#6ee7b0':''}">${p.download_allowed?'İNDİRME AÇIK':'İNDİRMEYE İZİN VER'}</button>
         <button data-del="${p.id}">SİL</button></div>`:''}
       <div class="fb-box"><ul class="fb-list">${fbs.length?fbs.map(f=>{
         const t=trs.find(x=>x.id===f.track_id);
