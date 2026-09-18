@@ -75,6 +75,8 @@
           <h3>ŞUBE CİHAZLARI</h3><p>${players.length} şube</p></a>
         <a class="card" href="#/anons"><div class="ico">🎙</div>
           <h3>ANLIK ANONS</h3><p>Mikrofondan canlı duyuru</p></a>
+                  <a class="card" href="harmonic-mixer.html"><div class="ico">🎚</div>
+          <h3>HARMONİK SET</h3><p>Ton uyumlu sıralama · canlı set</p></a>
       </div>`;
   }
 
