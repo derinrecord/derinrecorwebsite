@@ -185,7 +185,7 @@
            const zincir = ortak.length ? [] : ikiAdimliKopru(oncekiKey, key);
       const hedefTon = ortak.length ? ortak[0] : (zincir[0] ? zincir[0][0] : oncekiKey);
       const sorguTon = hedefTon;
-
+      const sorgu = `${sorguTon} ${bpm ? bpm + ' bpm' : ''} track`.replace(/\s+/g, ' ').trim();
       kutu.innerHTML = `<strong style="color:#ffb3b3">${oncekiKey} → ${key} geçişi uyumsuz.</strong><br>
         ${ortak.length
           ? `Araya girecek parçanın tonu şunlardan biri olmalı:
