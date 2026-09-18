@@ -290,7 +290,7 @@
     fileRow.className = 'chat-file-row';
     fileRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 0';
     fileRow.innerHTML = `<input type="file" accept="audio/*" id="chat-audio" style="flex:1 1 180px;font-size:12px">
-      <select id="chat-proj" style="flex:1 1 160px;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px"></select>
+      <select id="chat-proj" style="flex:1 1 160px;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px"></select><select id="chat-mode" style="flex:0 1 130px;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px"><option value="new">Yeni parça</option><option value="ver">Yeni sürüm</option></select>
       <button type="button" id="chat-audio-send" style="padding:9px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit;font:inherit;font-size:12px;cursor:pointer">MÜZİĞİ GÖNDER</button>`;
     app.querySelector('.chat-form-wrap').prepend(fileRow);
       <select id="chat-mode" style="flex:0 1 150px;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px"><option value="new">Yeni parça olarak</option><option value="ver">Yeni sürüm olarak</option></select>
