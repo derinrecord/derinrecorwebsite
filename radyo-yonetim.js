@@ -150,13 +150,10 @@
       <section class="radio-panel">
         <h2>PARÇA YÜKLE</h2>
         <div class="radio-row">
-          <label class="drop" id="track-drop"><input id="track-file" type="file" accept="audio/*" multiple></label>
-          <button id="track-upload">YÜKLE</button>
-        </div>
-        <p class="radio-msg" id="track-msg"></p>
-        <ul class="radio-list">
-          ${list.length ? list.map((t, i) => `<li>
-            <span><strong>${i + 1}. ${safe(clean(t.title))}</strong></span>
+                 <label class="drop" id="cover-drop" style="flex:0 1 130px;min-height:44px" title="${cover ? 'Kapağı değiştir' : 'Kapak yükle'}">
+          <input id="cover-file" type="file" accept="image/*"></label>
+        <span style="font-size:11px;opacity:.55">${cover ? 'kapağı değiştir' : 'kapak yükle'}</span>
+        ${cover ? '<button id="cover-del">KAPAĞI SİL</button>' : ''}
             <span>
               <button data-move="up" data-track="${t.id}"${i === 0 ? ' disabled' : ''}>▲</button>
               <button data-move="down" data-track="${t.id}"${i === list.length - 1 ? ' disabled' : ''}>▼</button>
@@ -188,10 +185,15 @@
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
       const path = `${id}/${Date.now()}.${ext}`;
       const up = await client.storage.from('radio-covers').upload(path, file, { contentType: file.type || 'image/jpeg' });
-      if (up.error) { byId('f-msg').textContent = 'Yükleme hatası: ' + up.error.message; return; }
-      const { error } = await client.from('radio_folders').update({ cover_path: path }).eq('id', id);
-      byId('f-msg').textContent = error ? error.message : 'Kapak güncellendi.';
-      if (!error) await refresh();
+                    if (error) { hatali++; done++; continue; }
+        done++;
+      }
+      const sn = Math.round((Date.now() - basla) / 1000);
+      msg.textContent = `${done - hatali} parça yüklendi (${sn} sn)` + (hatali ? ` · ${hatali} dosya atlandı.` : '.');
+      trackFile.value = '';
+      trackDrop.classList.remove('has-file');
+      btn.disabled = false;
+      await refresh();
     };
 
     const trackFile = byId('track-file'), trackDrop = byId('track-drop');
@@ -201,13 +203,29 @@
       byId('track-msg').textContent = n ? `${n} dosya seçildi.` : '';
     };
 
+       const coverDel = byId('cover-del');
+    if (coverDel) coverDel.onclick = async () => {
+      if (!confirm('Kapak görseli silinecek. Emin misiniz?')) return;
+      byId('f-msg').textContent = 'Kapak siliniyor…';
+      if (folder.cover_path) await client.storage.from('radio-covers').remove([folder.cover_path]);
+      const { error } = await client.from('radio_folders').update({ cover_path: null }).eq('id', id);
+      byId('f-msg').textContent = error ? error.message : 'Kapak silindi.';
+      if (!error) await refresh();
+    };
+
     byId('track-upload').onclick = async () => {
       const files = Array.from(trackFile.files || []);
       const msg = byId('track-msg');
       if (!files.length) { msg.textContent = 'Dosya seçin.'; return; }
-      let done = 0;
+      const btn = byId('track-upload');
+      btn.disabled = true;
+      const basla = Date.now();
+      let done = 0, hatali = 0;
       for (const file of files) {
-        msg.textContent = `Yükleniyor… (${done + 1}/${files.length})`;
+                const yuzde = Math.round((done / files.length) * 100);
+        msg.innerHTML = `Yükleniyor… <b>${done+1}/${files.length}</b> · %${yuzde}
+          <span style="display:block;height:4px;border-radius:99px;background:rgba(255,255,255,.14);margin-top:6px;overflow:hidden">
+            <span style="display:block;height:100%;width:${yuzde}%;background:#e0c341;transition:width .3s"></span></span>`;
         const base = clean(file.name).replace(/\.[^.]+$/, '');
         const ext = (file.name.split('.').pop() || 'mp3');
         const path = `${id}/${Date.now()}-${slugify(base)}.${ext}`;
