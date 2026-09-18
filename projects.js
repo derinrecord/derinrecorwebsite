@@ -27,7 +27,7 @@
   async function load(){
     if(busy)return; busy=true;
     try{
-      let q=client.from('music_projects').select('id,coach_id,title,song,branch,status,note,created_at,updated_at').order('created_at',{ascending:false});
+            let q=client.from('music_projects').select('id,coach_id,title,song,branch,status,note,download_allowed,created_at,updated_at').order('created_at',{ascending:false});
       if(!admin)q=q.eq('coach_id',me);
       const {data,error}=await q; if(error)throw error;
       projects=data||[];
@@ -148,7 +148,18 @@
       status.textContent=error?'Kaydedilemedi: '+error.message:'Aşama güncellendi.';
       s.disabled=false;load();
     });
+    list.querySelectorAll('[data-dlallow]').forEach(b=>b.onclick=async()=>{
+      const yeni = b.dataset.on!=='1';
+      const {error}=await client.from('music_projects').update({download_allowed:yeni}).eq('id',b.dataset.dlallow);
+      status.textContent = error ? error.message : (yeni?'İndirme izni verildi.':'İndirme izni kaldırıldı.');
+      load();
+    });
 
+    list.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
+      const {data,error}=await client.storage.from('project-audio').createSignedUrl(b.dataset.path,600,{download:b.dataset.name+'.mp3'});
+      if(error){status.textContent='İndirilemedi: '+error.message;return;}
+      const a=document.createElement('a'); a.href=data.signedUrl; a.download=b.dataset.name; a.click();
+    });
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Proje silinecek. Emin misiniz?'))return;
       await client.from('music_projects').delete().eq('id',b.dataset.del);load();
@@ -219,4 +230,4 @@
   window.addEventListener('derin:authchange',()=>load());
   boot();
 })();
-      let q=client.from('music_projects').select('id,coach_id,title,song,branch,status,note,download_allowed,created_at,updated_at').order('created_at',{ascending:false});
+     
