@@ -316,9 +316,17 @@
 
            const projectId = fileRow.querySelector('#chat-proj').value;
      
-      if (!projectId) { status.textContent = 'Önce bir proje seç. Proje yoksa antrenör Müziğini Araştır sayfasından göndermeli.'; return; }
+            let hedefProje = projectId;
+      if (!hedefProje) {
+        status.textContent = 'Bu antrenör için yeni proje açılıyor…';
+        const yeni = await client.from('music_projects')
+                    .insert({ project_id: hedefProje, label, audio_path: path, sort_order: 0 });
+                  .select('id,version').eq('project_id', hedefProje).order('sort_order').limit(1);
+        if (yeni.error) { status.textContent = 'Proje açılamadı: ' + yeni.error.message; return; }
+        hedefProje = yeni.data.id;
+      }
 
-      const path = `${contactId}/${projectId}-${Date.now()}.${file.name.split('.').pop() || 'mp3'}`;
+           const path = `${contactId}/${hedefProje}-${Date.now()}.${file.name.split('.').pop() || 'mp3'}`;
       const up = await client.storage.from('project-audio')
         .upload(path, file, { contentType: file.type || 'audio/mpeg' });
       if (up.error) { status.textContent = 'Yükleme hatası: ' + up.error.message; return; }
