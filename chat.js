@@ -380,3 +380,17 @@
   }
   load();
 })();
+/* Sohbet yenilenirken sayfa konumunu koru */
+(() => {
+  let y = 0, bekle = null;
+  const kaydet = () => { if (!bekle) y = window.scrollY; };
+  window.addEventListener('scroll', kaydet, { passive: true });
+
+  const hedef = document.querySelector('#chat-app') || document.body;
+  new MutationObserver(() => {
+    if (Math.abs(window.scrollY - y) < 4) return;
+    clearTimeout(bekle);
+    window.scrollTo(0, y);
+    bekle = setTimeout(() => { bekle = null; }, 400);
+  }).observe(hedef, { childList: true, subtree: true });
+})();
