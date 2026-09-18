@@ -685,4 +685,4 @@
 
   load();
 })();
-<script src="sortable-touch.js?v=1"></script>
+
