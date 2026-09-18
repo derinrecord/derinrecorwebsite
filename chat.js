@@ -355,7 +355,12 @@
       } catch {}
 
       input.value = '';
-      status.textContent = 'Müzik antrenörün Projelerim sayfasına düştü.';
+                 let msg = fileRow.querySelector('.chat-file-msg');
+      if (!msg) { msg = document.createElement('div'); msg.className = 'chat-file-msg'; msg.style.cssText = 'flex:1 1 100%;font-size:12px;color:#6ee7b0;padding-top:6px'; fileRow.appendChild(msg); }
+      msg.textContent = fileRow.querySelector('#chat-mode').value === 'ver'
+        ? 'Yeni sürüm gönderildi — antrenörün dalga formu güncellendi.'
+        : 'Yeni parça gönderildi — antrenörün Projelerim sayfasına düştü.';
+      setTimeout(() => { msg.textContent = ''; }, 6000);
       load();
     };
     app.querySelector('.chat-form').onsubmit = async event => {
