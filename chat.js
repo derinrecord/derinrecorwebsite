@@ -317,7 +317,7 @@
            const projectId = fileRow.querySelector('#chat-proj').value;
      
             let hedefProje = projectId;
-      if (!hedefProje) {
+           if (!hedefProje) {
         status.textContent = 'Bu antrenör için yeni proje açılıyor…';
         const yeni = await client.from('music_projects')
                     .insert({ project_id: hedefProje, label, audio_path: path, sort_order: 0 });
@@ -332,7 +332,7 @@
       if (up.error) { status.textContent = 'Yükleme hatası: ' + up.error.message; return; }
 
       const existing = await client.from('project_tracks')
-        .select('id,version').eq('project_id', projectId).order('sort_order').limit(1);
+                .select('id,version').eq('project_id', hedefProje).order('sort_order').limit(1);
 
       if (existing.data && existing.data.length) {
         await client.from('project_tracks')
@@ -340,12 +340,11 @@
           .eq('id', existing.data[0].id);
       } else {
         await client.from('project_tracks')
-          .insert({ project_id: projectId, label, audio_path: path, sort_order: 0 });
-      }
+                   .insert({ project_id: hedefProje, label, audio_path: path, sort_order: 0 });
 
            const meRes = await client.auth.getUser();
       const fbRes = await client.from('project_feedback').insert({
-        project_id: projectId, author_id: meRes.data.user.id,
+               project_id: hedefProje, author_id: meRes.data.user.id,
         kind: 'system', body: `Parçanız gönderildi (${label}). Projelerim sayfasından dinleyebilirsiniz.` });
       if (fbRes.error) { status.textContent = 'Bildirim yazılamadı: ' + fbRes.error.message; return; }
       try {
