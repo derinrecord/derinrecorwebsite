@@ -341,6 +341,7 @@
       } else {
         await client.from('project_tracks')
                    .insert({ project_id: hedefProje, label, audio_path: path, sort_order: 0 });
+                }
 
            const meRes = await client.auth.getUser();
       const fbRes = await client.from('project_feedback').insert({
