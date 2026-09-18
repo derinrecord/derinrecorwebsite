@@ -500,7 +500,43 @@
       await refresh();
     });
   }
+  function brandList() {
+    const { brands, players, broadcast } = state;
+    byId('radio-app').innerHTML = `${crumb('Markalar')}
+      <section class="radio-panel">
+        <h2>YENİ MARKA</h2>
+        <div class="radio-row">
+          <input id="brand-name" placeholder="Marka adı (örn. Chemex)">
+          <input id="brand-contact" placeholder="İletişim (isteğe bağlı)">
+          <button id="brand-add">EKLE</button>
+        </div>
+        <p class="radio-msg" id="brand-msg"></p>
+      </section>
+      <section class="radio-panel">
+        <h2>MARKALAR</h2>
+        <ul class="radio-list">
+          ${brands.length ? brands.map(b => {
+            const cur = broadcast.find(x => x.brand_id === b.id);
+            return `<li class="open-row" data-open="#/markalar/${b.id}">
+              <span><strong>${safe(b.name)}</strong>
+                ${cur?.folder_id ? '<span class="radio-live">YAYINDA</span>' : ''}
+                <small>${players.filter(p => p.brand_id === b.id).length} şube</small></span>
+              <button data-open="#/markalar/${b.id}">AÇ ›</button></li>`;
+          }).join('') : '<li>Henüz marka yok.</li>'}
+        </ul>
+      </section>`;
 
+    byId('brand-add').onclick = async () => {
+      const name = byId('brand-name').value.trim();
+      const msg = byId('brand-msg');
+      if (!name) { msg.textContent = 'Marka adı gerekli.'; return; }
+      const { error } = await client.from('brands').insert({
+        name, slug: slugify(name), contact: byId('brand-contact').value.trim() || null });
+      msg.textContent = error ? error.message : 'Marka eklendi.';
+      if (!error) await refresh();
+    };
+    wireOpen();
+  }
   function brandDetail(id) {
     const brand = state.brands.find(b => b.id === id);
     if (!brand) return go('#/markalar');
