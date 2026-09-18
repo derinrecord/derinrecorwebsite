@@ -319,11 +319,11 @@
             let hedefProje = projectId;
            if (!hedefProje) {
         status.textContent = 'Bu antrenör için yeni proje açılıyor…';
-        const yeni = await client.from('music_projects')
-                    .insert({ project_id: hedefProje, label, audio_path: path, sort_order: 0 });
-                  .select('id,version').eq('project_id', hedefProje).order('sort_order').limit(1);
-        if (yeni.error) { status.textContent = 'Proje açılamadı: ' + yeni.error.message; return; }
-        hedefProje = yeni.data.id;
+        322        const yeni = await client.from('music_projects')
+323          .insert({ coach_id: contactId, title: label, status: 'approved' })
+324          .select('id').single();
+325        if (yeni.error) { status.textContent = 'Proje açılamadı: ' + yeni.error.message; return; }
+326        hedefProje = yeni.data.id;
       }
 
            const path = `${contactId}/${hedefProje}-${Date.now()}.${file.name.split('.').pop() || 'mp3'}`;
