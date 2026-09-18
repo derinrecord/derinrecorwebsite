@@ -508,3 +508,48 @@ input:focus,textarea:focus,select:focus{
   flex:0 0 64px !important;
   min-height:64px !important;
   max-height:64px !important;
+/* Spotify tarzı çalma listesi */
+.sp-head{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap;
+  padding:30px 28px;border-radius:28px;margin-bottom:22px;
+  background:linear-gradient(150deg,rgba(201,138,75,.42),rgba(20,20,24,.9) 62%);
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 20px 54px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.22)}
+.sp-cover{width:190px;height:190px;border-radius:12px;object-fit:cover;flex:0 0 auto;
+  box-shadow:0 22px 48px rgba(0,0,0,.6)}
+.sp-cover.empty{background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;
+  font-size:44px;opacity:.35}
+.sp-info{flex:1 1 240px;min-width:0}
+.sp-info .lbl{font-size:11px;letter-spacing:.2em;opacity:.7}
+.sp-info h2{margin:8px 0 10px;font-size:clamp(28px,4.5vw,50px);line-height:1.02;letter-spacing:-.02em}
+.sp-info .sub{font-size:13px;opacity:.72}
+
+.sp-bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:0 0 18px;padding:0 6px}
+.sp-play{width:58px;height:58px;border-radius:50%;border:0;cursor:pointer;
+  background:linear-gradient(145deg,#e6cf55,#c1a52f);color:#131313;font-size:20px;
+  box-shadow:0 12px 28px rgba(0,0,0,.45);transition:transform .2s}
+.sp-play:hover{transform:scale(1.07)}
+.sp-bar button:not(.sp-play){padding:10px 16px;border-radius:14px;font-size:12px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:inherit}
+
+.sp-rows{list-style:none;margin:0;padding:0}
+.sp-th{display:grid;grid-template-columns:36px 1fr 74px 120px;gap:14px;padding:0 16px 10px;
+  font-size:10.5px;letter-spacing:.16em;opacity:.5;border-bottom:1px solid rgba(255,255,255,.1)}
+.sp-row{display:grid;grid-template-columns:36px 1fr 74px 120px;gap:14px;align-items:center;
+  padding:11px 16px;border-radius:12px;cursor:grab;transition:background .18s}
+.sp-row:hover{background:rgba(255,255,255,.07)}
+.sp-row .no{opacity:.5;font-size:13px;font-variant-numeric:tabular-nums}
+.sp-row:hover .no{opacity:0}
+.sp-row .no::after{content:"▶";position:absolute;opacity:0;font-size:12px;color:#e8d15a;transition:.18s}
+.sp-row:hover .no::after{opacity:1}
+.sp-row .ttl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.sp-row .dur{opacity:.55;font-size:12px;font-variant-numeric:tabular-nums}
+.sp-row .act{display:flex;gap:6px;justify-content:flex-end}
+.sp-row .act button{padding:5px 9px;border-radius:9px;font-size:11px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:inherit}
+.sp-row.playing{background:rgba(224,195,65,.12)}
+.sp-row.playing .ttl{color:#e8d15a;font-weight:600}
+@media(max-width:700px){
+  .sp-th{display:none}
+  .sp-row{grid-template-columns:28px 1fr auto;gap:10px}
+  .sp-row .dur{display:none}
+}
