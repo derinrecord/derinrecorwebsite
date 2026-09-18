@@ -12,7 +12,6 @@
     return n / Math.sqrt(da*db || 1);
   };
 
-  // Goertzel ile tek frekans gücü
   function goertzel(buf, sr, freq) {
     const k = 2 * Math.cos(2 * Math.PI * freq / sr);
     let s0=0, s1=0, s2=0;
@@ -22,12 +21,11 @@
 
   function detectKey(ch, sr) {
     const chroma = new Array(12).fill(0);
-    const pencere = Math.min(ch.length, sr * 30);          // ilk 30 sn
+    const pencere = Math.min(ch.length, sr * 30);
     const basla = Math.floor((ch.length - pencere) / 2);
     const parca = ch.subarray(basla, basla + pencere);
     const adim = Math.floor(sr * 0.5);
     const blok = 4096;
-
     for (let oct = 2; oct <= 5; oct++) {
       for (let p = 0; p < 12; p++) {
         const f = 440 * Math.pow(2, (p - 9) / 12 + (oct - 4));
@@ -38,7 +36,6 @@
         if (n) chroma[p] += toplam / n;
       }
     }
-
     let best = null;
     for (let r = 0; r < 12; r++) {
       const don = chroma.slice(r).concat(chroma.slice(0, r));
@@ -61,11 +58,9 @@
       for (let j = 0; j < boy; j += 4) s += ch[i+j] * ch[i+j];
       enerji.push(s);
     }
-    // türev: sadece artışlar
     const fark = enerji.map((v, i) => i ? Math.max(0, v - enerji[i-1]) : 0);
     const fps = sr / boy;
     const enAz = Math.floor(fps * 60 / 180), enCok = Math.ceil(fps * 60 / 70);
-
     let iyi = null;
     for (let lag = enAz; lag <= enCok; lag++) {
       let s = 0;
@@ -82,8 +77,7 @@
   function detectEnergy(ch) {
     let s = 0, n = 0;
     for (let i = 0; i < ch.length; i += 64) { s += ch[i] * ch[i]; n++; }
-    const rms = Math.sqrt(s / n);
-    return Math.min(10, Math.max(1, Math.round(rms * 34)));
+    return Math.min(10, Math.max(1, Math.round(Math.sqrt(s / n) * 34)));
   }
 
   async function analiz(file, bildir) {
@@ -103,44 +97,40 @@
     return { bpm, ...key, energy, duration_sec: Math.round(ab.duration) };
   }
 
-  // ---- Arayüze bağlan ----
   const parseKey = k => { const m=/^(\d{1,2})([AB])$/i.exec(String(k||'').trim()); return m?{n:+m[1],L:m[2].toUpperCase()}:null; };
   const wrap = n => ((n-1+12)%12)+1;
 
-    const uyumluTonlar = k => {
+  const uyumluTonlar = k => {
     const K = parseKey(k);
     if (!K) return [];
     return [`${K.n}${K.L}`, `${K.n}${K.L==='A'?'B':'A'}`,
             `${wrap(K.n+1)}${K.L}`, `${wrap(K.n-1)}${K.L}`, `${wrap(K.n+7)}${K.L}`];
   };
 
-  function kopruTonlari(a, b) {
-    const aU = uyumluTonlar(a), bU = new Set(uyumluTonlar(b));
-    return aU.filter(k => bU.has(k));
-  }
+  const kopruTonlari = (a, b) => {
+    const bU = new Set(uyumluTonlar(b));
+    return uyumluTonlar(a).filter(k => bU.has(k));
+  };
 
-  // Ortak ton yoksa: iki adımlı köprü zinciri bul
   function ikiAdimliKopru(a, b) {
-    const aU = uyumluTonlar(a), bU = uyumluTonlar(b);
-    const yollar = [];
-    for (const x of aU) {
+    const bU = uyumluTonlar(b), yollar = [];
+    for (const x of uyumluTonlar(a)) {
       for (const y of uyumluTonlar(x)) {
         if (bU.includes(y) && x !== y) yollar.push([x, y]);
       }
     }
     return yollar.slice(0, 3);
   }
+
   function baglaAnaliz() {
     const dosya = document.getElementById('nt-file');
     if (!dosya || dosya.dataset.hazir) return;
     dosya.dataset.hazir = '1';
-
     const btn = document.createElement('button');
     btn.textContent = '🎧 DOSYAYI ANALİZ ET';
     btn.type = 'button';
     btn.style.cssText = 'flex:1 1 100%;padding:11px 16px;border-radius:12px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;font:inherit;font-size:12px;font-weight:600;cursor:pointer';
     dosya.insertAdjacentElement('afterend', btn);
-
     btn.onclick = async () => {
       const f = dosya.files?.[0];
       const msg = document.getElementById('nt-msg');
@@ -164,34 +154,32 @@
       if (li.dataset.kopru) return;
       const kucuk = li.querySelector('small');
       if (!kucuk || !kucuk.textContent.includes('uyumsuz geçiş')) return;
-      li.dataset.kopru = '1';
 
       const oncekiLi = li.previousElementSibling;
       const key = li.querySelector('.hm-key')?.textContent.trim();
       const oncekiKey = oncekiLi?.querySelector('.hm-key')?.textContent.trim();
+      if (!key || !oncekiKey) return;
+      li.dataset.kopru = '1';
+
       const ortak = kopruTonlari(oncekiKey, key);
+      const zincir = ortak.length ? [] : ikiAdimliKopru(oncekiKey, key);
+      const hedefTon = ortak.length ? ortak[0] : (zincir[0] ? zincir[0][0] : oncekiKey);
 
       const bpmEsle = /(\d+(?:\.\d+)?) BPM/.exec(kucuk.textContent);
       const bpm = bpmEsle ? Math.round(+bpmEsle[1]) : null;
       const aralik = bpm ? `${bpm-4}-${bpm+4} BPM` : 'benzer tempo';
-      const tarz = (kucuk.textContent.split('·')[0] || '').trim();
 
-      const sorgu = `${sorguTon} ${bpm ? bpm + ' bpm' : ''} track`.replace(/\s+/g, ' ').trim();
+      const sorgu = `${hedefTon} ${bpm ? bpm + ' bpm' : ''} track`.replace(/\s+/g, ' ').trim();
       const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(sorgu);
       const sp = 'https://open.spotify.com/search/' + encodeURIComponent(sorgu);
 
       const kutu = document.createElement('div');
       kutu.style.cssText = 'flex:1 1 100%;margin-top:10px;padding:12px 14px;border-radius:14px;border:1px dashed rgba(255,179,179,.4);background:rgba(255,120,120,.07);font-size:11.5px;line-height:1.7';
-           const zincir = ortak.length ? [] : ikiAdimliKopru(oncekiKey, key);
-      const hedefTon = ortak.length ? ortak[0] : (zincir[0] ? zincir[0][0] : oncekiKey);
-      const sorguTon = hedefTon;
-      const sorgu = `${sorguTon} ${bpm ? bpm + ' bpm' : ''} track`.replace(/\s+/g, ' ').trim();
       kutu.innerHTML = `<strong style="color:#ffb3b3">${oncekiKey} → ${key} geçişi uyumsuz.</strong><br>
         ${ortak.length
-          ? `Araya girecek parçanın tonu şunlardan biri olmalı:
-             <b style="color:#e8d15a">${ortak.join(' · ')}</b>`
+          ? `Araya girecek parçanın tonu şunlardan biri olmalı: <b style="color:#e8d15a">${ortak.join(' · ')}</b>`
           : (zincir.length
-              ? `Tek parça yetmiyor, iki köprü gerekiyor. Önerilen zincir${zincir.length>1?'ler':''}:<br>` +
+              ? `Tek parça yetmiyor, iki köprü gerekiyor. Önerilen zincir:<br>` +
                 zincir.map(z => `&nbsp;&nbsp;<b style="color:#e8d15a">${oncekiKey} → ${z[0]} → ${z[1]} → ${key}</b>`).join('<br>')
               : 'Bu iki ton arasında köprü bulunamadı — parçalardan birini değiştirmen gerekebilir.')}
         <br>Tempo: <b style="color:#e8d15a">${aralik}</b>
