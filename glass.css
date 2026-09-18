@@ -600,3 +600,18 @@ input:focus,textarea:focus,select:focus{
 
 /* Bar açıkken sayfa sonu boşluğu */
 body.sp-open .admin-main{padding-bottom:110px}
+.sp-cover{
+  width:190px !important;
+  height:190px !important;
+  max-width:190px !important;
+  min-width:190px !important;
+  flex:0 0 190px !important;
+  object-fit:cover !important;
+  border-radius:12px !important;
+}
+.sp-head{align-items:center !important}
+.sp-now img{width:48px !important;height:48px !important;flex:0 0 48px !important}
+@media(max-width:600px){
+  .sp-cover{width:140px !important;height:140px !important;min-width:140px !important;flex:0 0 140px !important}
+}
+
