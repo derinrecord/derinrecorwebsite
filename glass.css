@@ -714,3 +714,9 @@ body.sp-open .admin-main{padding-bottom:110px}
   box-shadow:0 10px 24px rgba(0,0,0,.4);transition:transform .2s}
 .cf-plan button:hover{transform:translateY(-2px)}
 @media(max-width:700px){.cf-plans{margin:40px 0 0}}
+.cf-toggle{display:inline-flex;gap:6px;padding:5px;border-radius:999px;margin:0 0 24px;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05)}
+.cf-toggle button{padding:10px 20px;border-radius:999px;border:0;cursor:pointer;
+  background:transparent;color:inherit;font:inherit;font-size:11px;font-weight:700;letter-spacing:.1em;
+  transition:.2s}
+.cf-toggle button.on{background:linear-gradient(145deg,#e6cf55,#c1a52f);color:#131313}
