@@ -138,7 +138,12 @@
 
       <div class="sp-bar">
                <button class="sp-play" id="sp-all" title="Tümünü çal">▶</button>
-        <button id="sp-shuffle" title="Karışık çalma" style="width:44px;height:44px;border-radius:50%;cursor:pointer;font-size:16px;border:1px solid ${folder.shuffle!==false?'rgba(24,195,125,.6)':'rgba(255,255,255,.22)'};background:${folder.shuffle!==false?'rgba(24,195,125,.16)':'rgba(255,255,255,.06)'};color:${folder.shuffle!==false?'#6ee7b0':'inherit'}">🔀</button>
+              <button id="sp-shuffle" class="sp-mode${folder.shuffle!==false?' on':''}" title="${folder.shuffle!==false?'Karışık çalıyor':'Sırayla çalıyor'}">
+          ${folder.shuffle!==false
+            ? `<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>`
+            : `<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h11"/><path d="M4 12h11"/><path d="M4 18h11"/><path d="M18 9l3 3-3 3"/></svg>`}
+          <span>${folder.shuffle!==false?'KARIŞIK':'SIRAYLA'}</span>
+        </button>
         <label class="drop" id="cover-drop" style="flex:0 1 130px;min-height:44px">
           <input id="cover-file" type="file" accept="image/*"></label>
         <span style="font-size:11px;opacity:.55">${cover ? 'kapağı değiştir' : 'kapak yükle'}</span>
