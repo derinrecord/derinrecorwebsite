@@ -38,7 +38,7 @@
       client.from('radio_folders').select('id,name,description,cover_path').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec').order('sort_order'),
       client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at,open_time,close_time').order('label'),
-      client.from('brand_broadcast').select('brand_id,folder_id,updated_at'),
+      client.from('brand_broadcast').select('brand_id,folder_id,shuffle,updated_at'),
       client.from('radio_announcements').select('id,brand_id,storage_path,label,created_at').order('created_at',{ascending:false}).limit(20)
     ]);
     state = {
@@ -405,6 +405,9 @@
           <select id="live-folder"><option value="">— yayını durdur —</option>${
             state.folders.map(f => `<option value="${f.id}"${cur?.folder_id === f.id ? ' selected' : ''}>${safe(f.name)}</option>`).join('')}</select>
         </div>
+                  <button id="live-shuffle" style="${cur?.shuffle !== false
+            ? 'border-color:rgba(24,195,125,.5);background:rgba(24,195,125,.14);color:#6ee7b0'
+            : ''}">${cur?.shuffle !== false ? '🔀 KARIŞIK ÇALIYOR' : '➜ SIRAYLA ÇALIYOR'}</button>
         <p class="radio-msg" id="live-msg">${cur?.folder_id ? 'Şu an yayında.' : 'Yayın kapalı.'}</p>
       </section>
       <section class="radio-panel">
@@ -442,6 +445,18 @@
       </section>`;
 
     byId('live-folder').onchange = async e => {
+          byId('live-shuffle').onclick = async () => {
+      const yeni = !(cur?.shuffle !== false);
+      const { error } = await client.from('brand_broadcast').upsert({
+        brand_id: id,
+        folder_id: cur?.folder_id || null,
+        shuffle: yeni,
+        updated_at: new Date().toISOString()
+      });
+      byId('live-msg').textContent = error ? error.message
+        : (yeni ? 'Karışık çalma açıldı — her tur yeniden karışır.' : 'Sırayla çalma açıldı.');
+      await refresh();
+    };
       const { error } = await client.from('brand_broadcast').upsert({
         brand_id:id, folder_id:e.target.value || null, updated_at:new Date().toISOString() });
       byId('live-msg').textContent = error ? error.message
