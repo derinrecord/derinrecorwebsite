@@ -137,7 +137,8 @@
       </section>
 
       <div class="sp-bar">
-        <button class="sp-play" id="sp-all" title="Tümünü çal">▶</button>
+               <button class="sp-play" id="sp-all" title="Tümünü çal">▶</button>
+        <button id="sp-shuffle" title="Karışık çalma" style="width:44px;height:44px;border-radius:50%;cursor:pointer;font-size:16px;border:1px solid ${folder.shuffle!==false?'rgba(24,195,125,.6)':'rgba(255,255,255,.22)'};background:${folder.shuffle!==false?'rgba(24,195,125,.16)':'rgba(255,255,255,.06)'};color:${folder.shuffle!==false?'#6ee7b0':'inherit'}">🔀</button>
         <label class="drop" id="cover-drop" style="flex:0 1 130px;min-height:44px">
           <input id="cover-file" type="file" accept="image/*"></label>
         <span style="font-size:11px;opacity:.55">${cover ? 'kapağı değiştir' : 'kapak yükle'}</span>
@@ -405,7 +406,7 @@
           <select id="live-folder"><option value="">— yayını durdur —</option>${
             state.folders.map(f => `<option value="${f.id}"${cur?.folder_id === f.id ? ' selected' : ''}>${safe(f.name)}</option>`).join('')}</select>
         </div>
-                  <button id="live-shuffle" style="${cur?.shuffle !== false
+                 
             ? 'border-color:rgba(24,195,125,.5);background:rgba(24,195,125,.14);color:#6ee7b0'
             : ''}">${cur?.shuffle !== false ? '🔀 KARIŞIK ÇALIYOR' : '➜ SIRAYLA ÇALIYOR'}</button>
         <p class="radio-msg" id="live-msg">${cur?.folder_id ? 'Şu an yayında.' : 'Yayın kapalı.'}</p>
@@ -445,14 +446,7 @@
       </section>`;
 
     byId('live-folder').onchange = async e => {
-          byId('live-shuffle').onclick = async () => {
-      const yeni = !(cur?.shuffle !== false);
-      const { error } = await client.from('brand_broadcast').upsert({
-        brand_id: id,
-        folder_id: cur?.folder_id || null,
-        shuffle: yeni,
-        updated_at: new Date().toISOString()
-      });
+        
       byId('live-msg').textContent = error ? error.message
         : (yeni ? 'Karışık çalma açıldı — her tur yeniden karışır.' : 'Sırayla çalma açıldı.');
       await refresh();
@@ -632,7 +626,7 @@
 })();
 /* Karışık çalma düğmesi — güvenli bağlama */
 document.addEventListener('click', async e => {
-  const b = e.target.closest('#live-shuffle');
+ 
   if (!b) return;
   e.preventDefault();
 
