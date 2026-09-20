@@ -650,7 +650,7 @@ body.sp-open .admin-main{padding-bottom:110px}
 .sp-mode.on:hover{background:rgba(24,195,125,.22)}
 @media(max-width:600px){.sp-mode span{display:none}.sp-mode{padding:11px 13px}}
 /* Sol altta sabit butonlar */
-.float-actions{position:fixed;left:22px;bottom:22px;z-index:90;
+.float-actions{position:fixed;right:22px;bottom:22px;z-index:90;display:flex;flex-direction:column;gap:12px;align-items:flex-end}
   display:flex;flex-direction:column;gap:12px;align-items:flex-start}
 
 .float-teklif{display:inline-flex;align-items:center;gap:9px;padding:14px 20px;border-radius:999px;
@@ -668,7 +668,14 @@ body.sp-open .admin-main{padding-bottom:110px}
 .float-wa:hover{transform:translateY(-3px) scale(1.04)}
 
 @media(max-width:700px){
-  .float-actions{left:14px;bottom:14px;gap:10px}
-  .float-teklif{padding:12px 16px;font-size:10.5px}
-  .float-wa{width:48px;height:48px}
+  .float-actions{right:14px;bottom:14px;gap:10px}
+  .float-teklif,.float-wa{padding:12px 16px;font-size:10.5px}
 }
+.float-wa{display:inline-flex !important;align-items:center;gap:9px;
+  width:auto !important;height:auto !important;border-radius:999px !important;
+  padding:14px 20px;text-decoration:none;color:#fff;
+  font-size:11.5px;font-weight:700;letter-spacing:.12em;
+  background:linear-gradient(145deg,#37d15a,#1da851);
+  box-shadow:0 12px 30px rgba(0,0,0,.5);transition:transform .22s}
+.float-wa:hover{transform:translateY(-3px)}
+.float-wa svg{width:18px;height:18px;flex:0 0 auto}
