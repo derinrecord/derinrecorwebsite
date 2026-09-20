@@ -628,4 +628,14 @@ body.sp-open .admin-main{padding-bottom:110px}
   display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
 .corporate-list li{padding:22px;border-radius:22px;
   background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,25
-                                                              
+      /* Ana sayfa kurumsal bolumu */
+.corporate{padding:150px 7vw 90px}
+.corporate h2 span{color:#e8d15a}
+.corporate-lead{max-width:600px;font-size:15.5px;line-height:1.75;opacity:.78;margin:0 0 34px}
+.corporate-list{list-style:none;padding:0;margin:0 0 36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
+.corporate-list li{padding:22px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);box-shadow:0 14px 38px rgba(0,0,0,.4)}
+.corporate-list strong{display:block;font-size:14px;margin-bottom:7px;color:#e8d15a}
+.corporate-list span{display:block;font-size:13px;line-height:1.65;opacity:.72}
+.corporate-cta{display:inline-block;padding:16px 32px;border-radius:20px;text-decoration:none;color:#131313;font-weight:600;background:#e6cf55;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.corporate-cta:hover{transform:translateY(-3px)}
+@media(max-width:700px){.corporate{padding:120px 6vw 70px}}                                                        
