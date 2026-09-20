@@ -62,9 +62,11 @@
         setState(d.durum === 'yok'
           ? 'Bu şube için abonelik tanımlı değil. Derin Record ile iletişime geçin.'
           : 'Abonelik süresi doldu. Yenilendiğinde yayın kendiliğinden devam eder.');
-      } else {
-       
+          } else {
+        setState('Bu link tanınmadı. Lütfen Derin Record ile iletişime geçin.');
       }
+      return;
+    }
 
     const head = data[0];
     brandId = head.brand_id;
