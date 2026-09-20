@@ -457,18 +457,13 @@
         : (yeni ? 'Karışık çalma açıldı — her tur yeniden karışır.' : 'Sırayla çalma açıldı.');
       await refresh();
     };
-      const { error } = await client.from('brand_broadcast').upsert({
-        brand_id:id, folder_id:e.target.value || null, updated_at:new Date().toISOString() });
-      byId('live-msg').textContent = error ? error.message
-        : (e.target.value ? 'Yayın güncellendi — şubelere gönderildi.' : 'Yayın durduruldu.');
-      await refresh();
-    };
-
-    byId('p-add').onclick = async () => {
+         byId('p-add').onclick = async () => {
       const label = byId('p-label').value.trim();
       if (!label) { byId('p-msg').textContent = 'Şube adı gerekli.'; return; }
       const { error } = await client.from('brand_players').insert({
-        brand_id:id, label, open_time:byId('p-open').value || null, close_time:byId('p-close').value || null });
+        brand_id:id, label,
+        open_time:byId('p-open').value || null,
+        close_time:byId('p-close').value || null });
       byId('p-msg').textContent = error ? error.message : 'Şube eklendi.';
       if (!error) await refresh();
     };
