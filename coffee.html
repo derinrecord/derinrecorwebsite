@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mekanınızın Sesi — Derin Record</title>
+<link rel="stylesheet" href="branch.css">
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="glass.css?v=3">
+<style>
+  .cf-hero{padding:70px 0 40px}
+  .cf-hero h1{font-size:clamp(38px,7vw,82px);line-height:.98;letter-spacing:-.03em;margin:10px 0 18px}
+  .cf-hero p{max-width:620px;font-size:16px;line-height:1.75;opacity:.8}
+  .cf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin:44px 0}
+  .cf-card{padding:26px 24px;border-radius:24px;
+    background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.18);
+    -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+    box-shadow:0 16px 42px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.26)}
+  .cf-card h3{margin:0 0 8px;font-size:15px;letter-spacing:.1em}
+  .cf-card p{margin:0;font-size:13.5px;line-height:1.7;opacity:.72}
+  .cf-num{font-size:34px;font-weight:700;color:#e8d15a;display:block;margin-bottom:6px}
+  .cf-form{max-width:560px;margin:50px 0 80px;padding:30px 28px;border-radius:26px;
+    background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.18);
+    -webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px)}
+  .cf-form label{display:block;font-size:11px;letter-spacing:.14em;opacity:.65;margin:16px 0 6px}
+  .cf-form input,.cf-form textarea{width:100%;padding:13px 15px;border-radius:14px;font:inherit;
+    border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit}
+  .cf-form textarea{min-height:90px;resize:vertical}
+  .cf-form button{margin-top:22px;padding:15px 30px;border-radius:18px;border:0;cursor:pointer;
+    background:linear-gradient(145deg,#e6cf55,#c1a52f);color:#131313;font:inherit;font-weight:600;
+    box-shadow:0 10px 26px rgba(0,0,0,.4)}
+  .cf-msg{margin-top:14px;font-size:13px;min-height:20px;color:#6ee7b0}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<header class="header">
+  <a class="home" href="index.html"><span>←</span> ANA SAYFA</a>
+  <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+</header>
+<main class="admin-main">
+  <section class="cf-hero">
+    <p class="eyebrow">KURUMSAL MÜZİK LİSANSI</p>
+    <h1>MEKANINIZIN<br><span>KENDİ SESİ.</span></h1>
+    <p>Ticari mekanlarda kişisel müzik hesaplarını çalmak lisans ihlalidir.
+       Derin Record, tamamı kendi stüdyomuzda üretilmiş özgün elektronik müzik arşivini
+       yıllık lisansla sunar — telif sorunu olmadan, markanızın karakterine göre kurgulanmış olarak.</p>
+  </section>
+
+  <div class="cf-grid">
+    <div class="cf-card"><span class="cf-num">%100</span>
+      <h3>ÖZGÜN ÜRETİM</h3>
+      <p>Tüm eserler bize ait. Üçüncü taraf telif riski yok, sözleşmeniz tek imzayla tamamlanır.</p></div>
+    <div class="cf-card"><span class="cf-num">7/24</span>
+      <h3>UZAKTAN YÖNETİM</h3>
+      <p>Şubelerinizin müziği merkezden anlık değişir. Tek tuşla tüm mağazalar güncellenir.</p></div>
+    <div class="cf-card"><span class="cf-num">0</span>
+      <h3>DONANIM DEĞİŞİKLİĞİ</h3>
+      <p>Mevcut ses sisteminiz kalır. Küçük bir cihaz yeterlidir, kurulum bir saat sürmez.</p></div>
+    <div class="cf-card"><span class="cf-num">∞</span>
+      <h3>GÜN İÇİ AKIŞ</h3>
+      <p>Sabah, öğle ve akşam için ayrı kurgular. Mekânın ritmi saate göre kendiliğinden değişir.</p></div>
+  </div>
+
+  <section class="cf-form">
+    <p class="eyebrow">TEKLİF İSTEYİN</p>
+    <h2 style="margin:8px 0 4px;font-size:22px">Mekanınıza özel kurgu hazırlayalım.</h2>
+    <p style="font-size:13px;opacity:.7;margin:0">Kısa bir demo seti hazırlayıp size özel sunarız.</p>
+    <label>ŞİRKET / MARKA</label><input id="cf-company" maxlength="120">
+    <label>YETKİLİ KİŞİ</label><input id="cf-name" maxlength="120">
+    <label>E-POSTA</label><input id="cf-email" type="email" maxlength="160">
+    <label>TELEFON</label><input id="cf-phone" maxlength="40">
+    <label>ŞUBE SAYISI</label><input id="cf-branch" type="number" min="1">
+    <label>NOTUNUZ</label><textarea id="cf-note" maxlength="1000" placeholder="Mekanınızın tarzı, çalışma saatleri, beklentileriniz…"></textarea>
+    <button id="cf-send">TEKLİF İSTE →</button>
+    <p class="cf-msg" id="cf-msg"></p>
+  </section>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+<script src="coffee.js?v=1"></script>
+</body>
+</html>
