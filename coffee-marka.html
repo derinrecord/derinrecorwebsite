@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marka Sunumu — Derin Record</title>
+<link rel="stylesheet" href="branch.css">
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="glass.css?v=3">
+<style>
+  .br-hero{padding:56px 0 30px}
+  .br-eyebrow{font-size:11px;letter-spacing:.24em;opacity:.6}
+  .br-hero h1{font-size:clamp(34px,6.5vw,72px);line-height:1;letter-spacing:-.03em;margin:12px 0 16px}
+  .br-tag{font-size:16px;line-height:1.75;opacity:.82;max-width:600px}
+  .br-notes{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+  .br-note{padding:6px 14px;border-radius:999px;font-size:11.5px;letter-spacing:.06em;
+    border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06)}
+  .br-sec{margin:34px 0;padding:26px 26px;border-radius:26px;
+    background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.18);
+    -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+    box-shadow:0 16px 42px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.26)}
+  .br-sec h2{margin:0 0 16px;font-size:12px;letter-spacing:.18em;opacity:.7}
+  .br-day{display:flex;gap:14px;align-items:center;padding:13px 0;border-top:1px solid rgba(255,255,255,.1)}
+  .br-day:first-of-type{border-top:0}
+  .br-time{flex:0 0 96px;font-size:12px;color:#e8d15a;font-variant-numeric:tabular-nums}
+  .br-day strong{font-size:14px}
+  .br-day small{display:block;opacity:.6;font-size:12px;margin-top:2px}
+  .br-play{margin-left:auto;padding:8px 14px;border-radius:12px;font-size:12px;cursor:pointer;
+    border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a}
+  .br-lock{text-align:center;padding:60px 20px}
+  .br-lock input{margin-top:16px;padding:14px 16px;border-radius:16px;width:min(300px,90vw);font:inherit;
+    border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;text-align:center;letter-spacing:.2em}
+  .br-lock button{margin-top:12px;display:block;margin-inline:auto;padding:13px 28px;border-radius:16px;border:0;
+    cursor:pointer;background:linear-gradient(145deg,#e6cf55,#c1a52f);color:#131313;font:inherit;font-weight:600}
+  .br-cta{margin:40px 0 80px;text-align:center}
+  .br-cta a{display:inline-block;padding:16px 34px;border-radius:20px;text-decoration:none;color:#131313;
+    background:linear-gradient(145deg,#e6cf55,#c1a52f);font-weight:600;
+    box-shadow:0 12px 30px rgba(0,0,0,.45)}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<header class="header">
+  <a class="home" href="/coffee"><span>←</span> KURUMSAL</a>
+  <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+</header>
+<main class="admin-main">
+  <div id="br-lock" class="br-lock">
+    <p class="br-eyebrow">ÖZEL SUNUM</p>
+    <h2 style="margin:12px 0 6px;font-size:24px">Bu sayfa markaya özeldir.</h2>
+    <p style="opacity:.65;font-size:13.5px">Size iletilen erişim kodunu girin.</p>
+    <input id="br-code" placeholder="ERİŞİM KODU" autocomplete="off">
+    <button id="br-enter">AÇ</button>
+    <p id="br-err" style="color:#ffb3b3;font-size:12.5px;min-height:18px;margin-top:12px"></p>
+  </div>
+  <div id="br-app" hidden></div>
+</main>
+<audio id="br-audio"></audio>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+<script src="coffee-marka.js?v=1"></script>
+</body>
+</html>
