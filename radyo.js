@@ -55,9 +55,25 @@
       byId('folder').textContent = '';
       byId('cover').style.display = 'none';
       audio.pause();
-      setState('Bu link tanınmadı. Lütfen Derin Record ile iletişime geçin.');
-      return;
-    }
+           const ab = await client.rpc('abonelik_durumu', { p_player_key: key });
+      const d = ab.data && ab.data[0];
+      if (d && !d.gecerli) {
+        byId('brand').textContent = 'Yayın duraklatıldı';
+        setState(d.durum === 'yok'
+          ? 'Bu şube için abonelik tanımlı değil. Derin Record ile iletişime geçin.'
+          : 'Abonelik süresi doldu. Yenilendiğinde yayın kendiliğinden devam eder.');
+      } else {
+        setState(      const ab = await client.rpc('abonelik_durumu', { p_player_key: key });
+      const d = ab.data && ab.data[0];
+      if (d && !d.gecerli) {
+        byId('brand').textContent = 'Yayın duraklatıldı';
+        setState(d.durum === 'yok'
+          ? 'Bu şube için abonelik tanımlı değil. Derin Record ile iletişime geçin.'
+          : 'Abonelik süresi doldu. Yenilendiğinde yayın kendiliğinden devam eder.');
+      } else {
+        setState('Bu link tanınmadı. Lütfen Derin Record ile iletişime geçin.');
+      });
+      }
 
     const head = data[0];
     brandId = head.brand_id;
