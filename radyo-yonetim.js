@@ -542,7 +542,42 @@
     };
     wireCommon();
   }
+  async function talepList() {
+    byId('radio-app').innerHTML = `${crumb('Teklif Talepleri')}
+      <section class="radio-panel"><h2>GELEN TALEPLER</h2>
+        <p class="radio-msg" id="tl-msg">Yükleniyor…</p>
+        <ul class="radio-list" id="tl-list"></ul></section>`;
 
+    const { data, error } = await client.from('coffee_requests')
+      .select('id,company,contact_name,email,phone,branch_count,message,status,created_at')
+      .order('created_at', { ascending:false });
+
+    if (error) { byId('tl-msg').textContent = 'Okunamadı: ' + error.message; return; }
+    const list = data || [];
+    byId('tl-msg').textContent = list.length ? `${list.length} talep` : 'Henüz talep yok.';
+    byId('tl-list').innerHTML = list.map(t => `<li>
+      <span><strong>${safe(t.company)}</strong>
+        <small>${safe(t.contact_name)} · ${safe(t.email)}${t.phone ? ' · ' + safe(t.phone) : ''}</small>
+        <small>${t.branch_count ? t.branch_count + ' şube · ' : ''}${new Date(t.created_at).toLocaleString('tr-TR')}</small>
+        ${t.message ? `<small style="opacity:.8">"${safe(t.message)}"</small>` : ''}</span>
+      <span style="display:flex;gap:8px;align-items:center">
+        <select data-tl="${t.id}">
+          ${['new','contacted','closed'].map(s => `<option value="${s}"${t.status===s?' selected':''}>${
+            {new:'Yeni', contacted:'İletişime geçildi', closed:'Kapandı'}[s]}</option>`).join('')}
+        </select>
+        <button data-tl-del="${t.id}">SİL</button></span></li>`).join('');
+
+    document.querySelectorAll('[data-tl]').forEach(s => s.onchange = async () => {
+      const { error } = await client.from('coffee_requests').update({ status:s.value }).eq('id', s.dataset.tl);
+      byId('tl-msg').textContent = error ? error.message : 'Durum güncellendi.';
+    });
+    document.querySelectorAll('[data-tl-del]').forEach(b => b.onclick = async () => {
+      if (!confirm('Talep silinecek. Emin misiniz?')) return;
+      await client.from('coffee_requests').delete().eq('id', b.dataset.tlDel);
+      talepList();
+    });
+    wireOpen();
+  }
   function wireOpen() {
     document.querySelectorAll('[data-open]').forEach(el => {
       el.onclick = e => { e.stopPropagation(); go(el.dataset.open); };
