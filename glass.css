@@ -615,3 +615,5 @@ body.sp-open .admin-main{padding-bottom:110px}
   .sp-cover{width:140px !important;height:140px !important;min-width:140px !important;flex:0 0 140px !important}
 }
 
+.corporate{padding-top:150px}
+@media(max-width:700px){.corporate{padding-top:120px}}
