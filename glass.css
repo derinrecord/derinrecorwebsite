@@ -626,7 +626,7 @@ body.sp-open .admin-main{padding-bottom:110px}
 
 .corporate-list{list-style:none;padding:0;margin:0 0 36px;
   display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
-.corporate-list li{padding:22px;border-radius:22px;
+.corporate-list li{padding:22px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);box-shadow:0 14px 38px rgba(0,0,0,.4)}
   background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,25
       /* Ana sayfa kurumsal bolumu */
 .corporate{padding:150px 7vw 90px}
