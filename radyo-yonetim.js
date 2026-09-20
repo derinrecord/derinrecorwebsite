@@ -630,3 +630,37 @@
 
   load();
 })();
+/* Karışık çalma düğmesi — güvenli bağlama */
+document.addEventListener('click', async e => {
+  const b = e.target.closest('#live-shuffle');
+  if (!b) return;
+  e.preventDefault();
+
+  const id = (location.hash.split('/')[2] || '').trim();
+  if (!id) return;
+
+  const c = window.DerinAuth?.client;
+  if (!c) return;
+
+  const msg = document.getElementById('live-msg');
+  b.disabled = true;
+  if (msg) msg.textContent = 'Güncelleniyor…';
+
+  const mevcut = await c.from('brand_broadcast').select('folder_id,shuffle').eq('brand_id', id).maybeSingle();
+  if (mevcut.error) { if (msg) msg.textContent = 'Okunamadı: ' + mevcut.error.message; b.disabled = false; return; }
+
+  const yeni = !(mevcut.data?.shuffle !== false);
+  const { error } = await c.from('brand_broadcast').upsert({
+    brand_id: id,
+    folder_id: mevcut.data?.folder_id || null,
+    shuffle: yeni,
+    updated_at: new Date().toISOString()
+  });
+
+  if (msg) msg.textContent = error ? ('Kaydedilemedi: ' + error.message)
+    : (yeni ? 'Karışık çalma açıldı — her tur yeniden karışır.' : 'Sırayla çalma açıldı.');
+
+  b.textContent = yeni ? '🔀 KARIŞIK ÇALIYOR' : '➜ SIRAYLA ÇALIYOR';
+  b.style.cssText = yeni ? 'border-color:rgba(24,195,125,.5);background:rgba(24,195,125,.14);color:#6ee7b0' : '';
+  b.disabled = false;
+});
