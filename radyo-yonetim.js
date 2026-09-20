@@ -55,6 +55,7 @@
     if (page === 'klasorler') return id ? folderDetail(id) : folderList();
     if (page === 'markalar')  return id ? brandDetail(id) : brandList();
     if (page === 'subeler')   return playerList();
+        if (page === 'abonelikler') return abonelikList();
        if (page === 'talepler') return talepList();
     if (page === 'anons')     return anonsPage();
     home();
@@ -77,6 +78,8 @@
         <a class="card" href="#/anons"><div class="ico">🎙</div>
           <h3>ANLIK ANONS</h3><p>Mikrofondan canlı duyuru</p></a>
                    <a class="card" href="#/talepler"><div class="ico">📩</div>
+                           <a class="card" href="#/abonelikler"><div class="ico">💳</div>
+          <h3>ABONELİKLER</h3><p>Marka paketleri, deneme ve lisans süreleri</p></a>
           <h3>TEKLİF TALEPLERİ</h3><p>Kahve markalarından gelen başvurular</p></a>     
       </div>`;
   }
@@ -591,6 +594,85 @@
       await client.from('coffee_requests').delete().eq('id', b.dataset.tlDel);
       talepList();
     });
+    wireOpen();
+  }
+    async function abonelikList() {
+    byId('radio-app').innerHTML = `${crumb('Abonelikler')}
+      <section class="radio-panel"><h2>MARKA ABONELİKLERİ</h2>
+        <p class="radio-msg" id="ab-msg">Yükleniyor…</p>
+        <ul class="radio-list" id="ab-list"></ul></section>`;
+
+    const [ab, pl, br] = await Promise.all([
+      client.from('subscriptions').select('*'),
+      client.from('plans').select('*').order('sort_order'),
+      client.from('brands').select('id,name').order('name')
+    ]);
+    if (ab.error) { byId('ab-msg').textContent = 'Okunamadı: ' + ab.error.message; return; }
+
+    const planlar = pl.data || [];
+    const abone = ab.data || [];
+    const gun = d => d ? Math.ceil((new Date(d) - new Date()) / 86400000) : null;
+    const etiket = { trial:'Deneme', active:'Aktif', past_due:'Ödeme gecikti', canceled:'İptal', expired:'Süresi doldu' };
+
+    byId('ab-msg').textContent = `${abone.length} abonelik · ${(br.data||[]).length} marka`;
+    byId('ab-list').innerHTML = (br.data || []).map(b => {
+      const s = abone.find(x => x.brand_id === b.id);
+      const p = s ? planlar.find(x => x.id === s.plan_id) : null;
+      const kalan = s ? gun(s.status === 'trial' ? s.trial_ends_at : s.current_end) : null;
+      const tutar = p ? (p.per_branch ? p.monthly_price * (s.branch_count||1) : p.monthly_price) : 0;
+      const renk = kalan === null ? '' : (kalan < 0 ? '#ffb3b3' : kalan <= 3 ? '#e8d15a' : '#6ee7b0');
+
+      return `<li>
+        <span><strong>${safe(b.name)}</strong>
+          <small>${s ? `${safe(p?.name || s.plan_id)} · ${s.branch_count} şube · ${tutar.toLocaleString('tr-TR')} TL/ay` : 'Abonelik yok'}</small>
+          ${s ? `<small style="color:${renk}">${etiket[s.status]||s.status}${kalan!==null ? (kalan<0 ? ` · ${-kalan} gün geçti` : ` · ${kalan} gün kaldı`) : ''}</small>` : ''}</span>
+        <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select data-ab-plan="${b.id}">
+            <option value="">— paket seç —</option>
+            ${planlar.map(x => `<option value="${x.id}"${s?.plan_id===x.id?' selected':''}>${safe(x.name)}</option>`).join('')}
+          </select>
+          <input type="number" min="1" value="${s?.branch_count || 1}" data-ab-sube="${b.id}"
+            style="width:70px;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px" title="Şube sayısı">
+          <button data-ab-trial="${b.id}">7 GÜN DENEME</button>
+          <button data-ab-ay="${b.id}">+1 AY</button>
+          ${s ? `<button data-ab-iptal="${b.id}">İPTAL</button>` : ''}
+        </span></li>`;
+    }).join('') || '<li>Marka yok.</li>';
+
+    const kaydet = async (brandId, alanlar) => {
+      const planId = document.querySelector(`[data-ab-plan="${brandId}"]`).value;
+      if (!planId) { byId('ab-msg').textContent = 'Önce paket seçin.'; return; }
+      const sube = Number(document.querySelector(`[data-ab-sube="${brandId}"]`).value) || 1;
+      const { error } = await client.from('subscriptions').upsert({
+        brand_id: brandId, plan_id: planId, branch_count: sube,
+        updated_at: new Date().toISOString(), ...alanlar
+      }, { onConflict: 'brand_id' });
+      byId('ab-msg').textContent = error ? 'Kaydedilemedi: ' + error.message : 'Güncellendi.';
+      if (!error) abonelikList();
+    };
+
+    document.querySelectorAll('[data-ab-trial]').forEach(b => b.onclick = () => {
+      const bitis = new Date(Date.now() + 7*86400000).toISOString();
+      kaydet(b.dataset.abTrial, { status:'trial', trial_ends_at:bitis, current_start:new Date().toISOString(), current_end:null });
+    });
+
+    document.querySelectorAll('[data-ab-ay]').forEach(b => b.onclick = async () => {
+      const id = b.dataset.abAy;
+      const s = abone.find(x => x.brand_id === id);
+      const baz = (s?.current_end && new Date(s.current_end) > new Date()) ? new Date(s.current_end) : new Date();
+      baz.setMonth(baz.getMonth() + 1);
+      kaydet(id, { status:'active', current_end: baz.toISOString() });
+    });
+
+    document.querySelectorAll('[data-ab-iptal]').forEach(b => b.onclick = async () => {
+      if (!confirm('Abonelik iptal edilecek. Şubeler yayından düşer. Emin misiniz?')) return;
+      const { error } = await client.from('subscriptions')
+        .update({ status:'canceled', canceled_at:new Date().toISOString() })
+        .eq('brand_id', b.dataset.abIptal);
+      byId('ab-msg').textContent = error ? error.message : 'Abonelik iptal edildi.';
+      if (!error) abonelikList();
+    });
+
     wireOpen();
   }
   function wireOpen() {
