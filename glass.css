@@ -617,3 +617,15 @@ body.sp-open .admin-main{padding-bottom:110px}
 
 .corporate{padding-top:150px}
 @media(max-width:700px){.corporate{padding-top:120px}}
+/* Ana sayfa kurumsal bölümü */
+.corporate{padding:150px 7vw 90px;position:relative}
+.corporate .eyebrow{font-size:11px;letter-spacing:.24em;opacity:.6}
+.corporate h2{font-size:clamp(34px,6vw,72px);line-height:.98;letter-spacing:-.03em;margin:12px 0 18px}
+.corporate h2 span{color:#e8d15a}
+.corporate-lead{max-width:600px;font-size:15.5px;line-height:1.75;opacity:.78;margin:0 0 34px}
+
+.corporate-list{list-style:none;padding:0;margin:0 0 36px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
+.corporate-list li{padding:22px;border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,25
+                                                              
