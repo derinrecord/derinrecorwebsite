@@ -55,6 +55,7 @@
     if (page === 'klasorler') return id ? folderDetail(id) : folderList();
     if (page === 'markalar')  return id ? brandDetail(id) : brandList();
     if (page === 'subeler')   return playerList();
+       if (page === 'talepler') return talepList();
     if (page === 'anons')     return anonsPage();
     home();
   }
@@ -75,7 +76,8 @@
           <h3>ŞUBE CİHAZLARI</h3><p>${players.length} şube</p></a>
         <a class="card" href="#/anons"><div class="ico">🎙</div>
           <h3>ANLIK ANONS</h3><p>Mikrofondan canlı duyuru</p></a>
-                
+                   <a class="card" href="#/talepler"><div class="ico">📩</div>
+          <h3>TEKLİF TALEPLERİ</h3><p>Kahve markalarından gelen başvurular</p></a>     
       </div>`;
   }
 
