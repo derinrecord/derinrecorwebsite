@@ -35,7 +35,7 @@
   async function refresh() {
     const [brands, folders, tracks, players, broadcast, announcements] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active').order('name'),
-      client.from('radio_folders').select('id,name,description,cover_path').order('name'),
+      client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec').order('sort_order'),
       client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at,open_time,close_time').order('label'),
       client.from('brand_broadcast').select('brand_id,folder_id,shuffle,updated_at'),
@@ -208,7 +208,13 @@
       try { await audio.play(); byId('sp-toggle').textContent = '⏸'; byId('f-msg').textContent = ''; }
       catch { byId('sp-toggle').textContent = '▶'; byId('f-msg').textContent = 'Çalmak için oynatıcıdaki ▶ düğmesine bas.'; }
     }
-
+    byId('sp-shuffle').onclick = async () => {
+      const yeni = !(folder.shuffle !== false);
+      const { error } = await client.from('radio_folders').update({ shuffle: yeni }).eq('id', id);
+      byId('f-msg').textContent = error ? error.message
+        : (yeni ? 'Karışık çalma açık — her tur yeniden karışır.' : 'Sırayla çalma açık.');
+      if (!error) await refresh();
+    };
     byId('sp-all').onclick = () => cal(0);
     byId('sp-toggle').onclick = () => {
       if (audio.paused) { audio.play(); byId('sp-toggle').textContent = '⏸'; }
