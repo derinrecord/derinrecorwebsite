@@ -3,7 +3,7 @@
   const audio = byId('audio');
   const key = new URLSearchParams(location.search).get('key');
 
-  let client = null, brandId = null, queue = [], index = 0, started = false, lastStamp = null;
+  let client = null, brandId = null, queue = [], index = 0, started = false, lastStamp = null, karistir = true;
   let bootTime = Date.now(), announcing = false;
   let openTime = null, closeTime = null, wasOpen = null;
 
@@ -88,8 +88,8 @@
       return;
     }
 
-    if (changed) {
-      queue = head.shuffle ? shuffled(tracks) : tracks;
+         karistir = head.shuffle;
+      queue = karistir ? shuffled(tracks) : tracks;
       index = 0;
       if (started && !announcing && isOpen()) play();
     }
@@ -159,7 +159,21 @@
     announcing = false;
   }
 
-  audio.addEventListener('ended', () => { index++; play(); });
+   audio.addEventListener('ended', () => {
+    index++;
+    if (index >= queue.length) {
+      index = 0;
+      if (karistir && queue.length > 2) {
+        const sonParca = queue[queue.length - 1];
+        let yeni = shuffled(queue);
+        if (yeni[0].track_id === sonParca.track_id) {
+          [yeni[0], yeni[yeni.length - 1]] = [yeni[yeni.length - 1], yeni[0]];
+        }
+        queue = yeni;
+      }
+    }
+    play();
+  });
   audio.addEventListener('error', () => { index++; setTimeout(play, 1200); });
 
   byId('start').onclick = () => {
