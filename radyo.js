@@ -88,7 +88,8 @@
       return;
     }
 
-         karistir = head.shuffle;
+            if (changed) {
+      karistir = head.shuffle;
       queue = karistir ? shuffled(tracks) : tracks;
       index = 0;
       if (started && !announcing && isOpen()) play();
