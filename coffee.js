@@ -33,23 +33,20 @@
   const c = window.supabase.createClient(
     window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
 
-  const { data, error } = await c.from('plans').select('*').order('sort_order');
-  if (error || !data?.length) { kutu.innerHTML = '<p style="opacity:.6;font-size:13px">Paket bilgisi yüklenemedi.</p>'; return; }
-
-  const tl = n => Number(n).toLocaleString('tr-TR');
-  const aralik = p => p.max_branch ? (p.min_branch === p.max_branch ? `${p.min_branch} şube` : `${p.min_branch}-${p.max_branch} şube`) : `${p.min_branch}+ şube`;
-  let yillik = false;
+   const { data, error } = await c.from('plans').select('id,name,min_branch,max_branch,per_branch,features,sort_order').order('sort_order');
+  const fy = await c.rpc('plan_fiyatlari');
+  const fiyatlar = (fy.data && fy.data.length) ? fy.data : null;
+  if (!fiyatlar) { const t = document.querySelector('.cf-toggle'); if (t) t.style.display = 'none'; }
 
   const ciz = () => {
     kutu.innerHTML = data.map(p => {
-      const fiyat = yillik ? (p.yearly_price || p.monthly_price * 12) : p.monthly_price;
-      const birim = yillik ? (p.per_branch ? ' / şube / yıl' : ' / yıl') : (p.per_branch ? ' / şube / ay' : ' / ay');
-      return `
+           const f = fiyatlar && fiyatlar.find(x => x.id === p.id);
+      const fiyat = f ? (yillik ? (f.yearly_price || f.monthly_price * 12) : f.monthly_price) : 0;
       <article class="cf-plan${p.id === 'zincir' ? ' one' : ''}">
         ${p.id === 'zincir' ? '<span class="cf-rozet">EN ÇOK TERCİH EDİLEN</span>' : ''}
         <h3>${p.name}</h3>
         <p class="cf-branch">${aralik(p)}</p>
-        <p class="cf-price"><b>${tl(fiyat)}</b> TL<span>${birim}</span></p>
+         ${fiyatlar ? `<p class="cf-price"><b>${tl(fiyat)}</b> TL<span>${birim}</span></p>` : `<p class="cf-price"><b style="font-size:20px">Teklif alın</b></p>`}
         <ul>${(p.features || []).map(f => `<li>${f}</li>`).join('')}</ul>
         <button data-plan="${p.id}">7 GÜN ÜCRETSİZ DENE</button>
       </article>`;
