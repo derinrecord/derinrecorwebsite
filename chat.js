@@ -289,11 +289,56 @@
         const fileRow = document.createElement('div');
     fileRow.className = 'chat-file-row';
     fileRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 0';
-       fileRow.innerHTML = `<input type="file" accept="audio/*" id="chat-audio" style="flex:1 1 150px;font-size:12px">
-      <select id="chat-proj" style="flex:1 1 150px;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px"></select>
-      <select id="chat-mode" style="flex:0 1 130px;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px"><option value="new">Yeni parça</option><option value="ver">Yeni sürüm</option></select>
-      <button type="button" id="chat-audio-send" style="padding:9px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit;font:inherit;font-size:12px;cursor:pointer">MÜZİĞİ GÖNDER</button>`;
+        fileRow.innerHTML = `
+      <label class="dz" id="dz">
+        <input type="file" accept="audio/*" id="chat-audio" hidden>
+        <span class="dz-ok dz-ok-l"><svg viewBox="0 0 40 40" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 6c0 14 6 22 22 24"/><path d="M24 24l6 6-7 4"/></svg></span>
+        <span class="dz-kartlar">
+          <span class="dz-kart k1"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg></span>
+          <span class="dz-kart k2"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+          <span class="dz-kart k3"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h2l2-6 4 12 3-9 2 3h5"/></svg></span>
+        </span>
+        <span class="dz-ok dz-ok-r"><svg viewBox="0 0 40 40" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M32 6c0 14-6 22-22 24"/><path d="M16 24l-6 6 7 4"/></svg></span>
+        <span class="dz-yazi"><b>Müziği sürükle bırak</b><small>veya <u>dosya seç</u> · MP3, WAV</small></span>
+        <span class="dz-dosya" id="dz-dosya" hidden></span>
+      </label>
+      <div class="dz-alt">
+        <select id="chat-proj"></select>
+        <select id="chat-mode"><option value="new">Yeni parça</option><option value="ver">Yeni sürüm</option></select>
+        <button type="button" id="chat-audio-send" disabled><span>MÜZİĞİ GÖNDER</span><i class="dz-bar"></i></button>
+      </div>`;
     app.querySelector('.chat-form-wrap').prepend(fileRow);
+
+    (() => {
+      const dz = fileRow.querySelector('#dz');
+      const inp = fileRow.querySelector('#chat-audio');
+      const etiket = fileRow.querySelector('#dz-dosya');
+      const gonder = fileRow.querySelector('#chat-audio-send');
+      const boyut = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
+      const goster = () => {
+        const f = inp.files?.[0];
+        dz.classList.toggle('dolu', !!f);
+        gonder.disabled = !f;
+        etiket.hidden = !f;
+        if (f) etiket.innerHTML = `<b>${f.name.replace(/[<>&]/g,'')}</b><small>${boyut(f.size)}</small>`;
+      };
+      inp.addEventListener('change', goster);
+      ['dragenter','dragover'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('ustunde'); }));
+      ['dragleave','drop'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove('ustunde'); }));
+      dz.addEventListener('drop', e => {
+        const f = e.dataTransfer.files?.[0];
+        if (!f || !f.type.startsWith('audio/')) return;
+        const dt = new DataTransfer(); dt.items.add(f); inp.files = dt.files; goster();
+      });
+      gonder.addEventListener('click', () => {
+        if (!inp.files?.[0]) return;
+        gonder.classList.add('yukleniyor');
+        const bitir = () => { gonder.classList.remove('yukleniyor'); gonder.classList.add('bitti'); setTimeout(() => gonder.classList.remove('bitti'), 1600); };
+        const gozle = new MutationObserver(() => { if (fileRow.querySelector('.chat-file-msg')?.textContent) { bitir(); gozle.disconnect(); } });
+        gozle.observe(fileRow, { childList:true, subtree:true, characterData:true });
+        setTimeout(() => { gonder.classList.remove('yukleniyor'); gozle.disconnect(); }, 60000);
+      });
+    })();
     (async () => {
       const targetCoach = admin ? contactId : null;
       if (!targetCoach) { fileRow.remove(); return; }
