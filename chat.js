@@ -322,13 +322,11 @@
         etiket.hidden = !f;
         if (f) etiket.innerHTML = `<b>${f.name.replace(/[<>&]/g,'')}</b><small>${boyut(f.size)}</small>`;
       };
-      inp.addEventListener('change', goster);
-      ['dragenter','dragover'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('ustunde'); }));
-      ['dragleave','drop'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove('ustunde'); }));
-      dz.addEventListener('drop', e => {
-        const f = e.dataTransfer.files?.[0];
-        if (!f || !f.type.startsWith('audio/')) return;
-               const dt = new DataTransfer(); dt.items.add(f); inp.files = dt.files; window.__secilenMuzik = f; goster();
+           if (window.__secilenMuzik && !inp.files?.length) {
+        const dt = new DataTransfer(); dt.items.add(window.__secilenMuzik); inp.files = dt.files;
+      }
+      inp.addEventListener('change', () => { window.__secilenMuzik = inp.files?.[0] || null; goster(); });
+      goster();
       });
       gonder.addEventListener('click', () => {
         if (!inp.files?.[0]) return;
