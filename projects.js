@@ -257,7 +257,7 @@
     });
   }
 
-  window.addEventListener('derin:authchange',()=>load());
+  window.addEventListener('derin:authchange',()=>{if(client)load();});
   boot();
 })();
      
