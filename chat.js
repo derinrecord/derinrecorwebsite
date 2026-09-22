@@ -333,7 +333,7 @@
       gonder.addEventListener('click', () => {
         if (!inp.files?.[0]) return;
         gonder.classList.add('yukleniyor');
-        const bitir = () => { gonder.classList.remove('yukleniyor'); gonder.classList.add('bitti'); setTimeout(() => gonder.classList.remove('bitti'), 1600); };
+               const bitir = () => { window.__secilenMuzik = null; gonder.classList.remove('yukleniyor'); gonder.classList.add('bitti'); setTimeout(() => gonder.classList.remove('bitti'), 1600); };
         const gozle = new MutationObserver(() => { if (fileRow.querySelector('.chat-file-msg')?.textContent) { bitir(); gozle.disconnect(); } });
         gozle.observe(fileRow, { childList:true, subtree:true, characterData:true });
         setTimeout(() => { gonder.classList.remove('yukleniyor'); gozle.disconnect(); }, 60000);
