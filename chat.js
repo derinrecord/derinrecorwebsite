@@ -337,7 +337,7 @@
       inp.addEventListener('change', () => {
         window.__secilenMuzik = (inp.files && inp.files[0]) || null;
         goster();
-      });
+      
 
       ['dragenter', 'dragover'].forEach(tip => dz.addEventListener(tip, e => {
         e.preventDefault();
