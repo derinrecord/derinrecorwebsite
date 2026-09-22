@@ -46,7 +46,7 @@
         ${p.id === 'zincir' ? '<span class="cf-rozet">EN ÇOK TERCİH EDİLEN</span>' : ''}
         <h3>${p.name}</h3>
         <p class="cf-branch">${aralik(p)}</p>
-         ${fiyatlar ? `<p class="cf-price"><b>${tl(fiyat)}</b> TL<span>${birim}</span></p>` : `<p class="cf-price"><b style="font-size:20px">Teklif alın</b></p>`}
+         ${fiyatlar ? `<p class="cf-price">TL<span>${birim}</span></p>` : `<p class="cf-price"><b style="font-size:20px">Teklif alın</b></p>`}
         <ul>${(p.features || []).map(f => `<li>${f}</li>`).join('')}</ul>
         <button data-plan="${p.id}">7 GÜN ÜCRETSİZ DENE</button>
       </article>`;
