@@ -55,7 +55,7 @@
     const has=!!tr.audio_path;
     return `<div class="proj-player" data-tb="${tr.id}" style="flex-direction:column;align-items:stretch">
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-        <img class="cassette" src="assets/demo-cassette-derin-record.png" alt="">
+        <img class="cassette" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti">
         <div style="flex:1 1 180px"><strong>${i+1}. ${safe(tr.label||'Parça')}</strong>
           <small style="display:block;opacity:.6">${has?('v'+tr.version+' · düzenlenmiş'):'ham kaynak'}</small>
           ${tr.source_url?`<a href="${safe(tr.source_url)}" target="_blank" rel="noreferrer" style="font-size:11px;opacity:.7">kaynağı aç ↗</a>`:''}</div>
