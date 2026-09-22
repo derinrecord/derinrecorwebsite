@@ -328,7 +328,7 @@
       dz.addEventListener('drop', e => {
         const f = e.dataTransfer.files?.[0];
         if (!f || !f.type.startsWith('audio/')) return;
-        const dt = new DataTransfer(); dt.items.add(f); inp.files = dt.files; goster();
+               const dt = new DataTransfer(); dt.items.add(f); inp.files = dt.files; window.__secilenMuzik = f; goster();
       });
       gonder.addEventListener('click', () => {
         if (!inp.files?.[0]) return;
