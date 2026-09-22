@@ -116,7 +116,7 @@
       status.textContent = cryptoError.message || 'Uçtan uca şifreleme hazırlanamadı.';
       return;
     }
-    const admin = profile.role === 'admin';
+    const admin = profile?.role === 'admin';
     await checkNotifications(client, user);
     const people = admin ? (await client.from('profiles').select('id,full_name').eq('role','coach').order('full_name')).data || [] : [];
     let contactId = admin ? (chosenCoachId || people[0]?.id || user.id) : null;
@@ -337,7 +337,7 @@
       inp.addEventListener('change', () => {
         window.__secilenMuzik = (inp.files && inp.files[0]) || null;
         goster();
-      
+      });
 
       ['dragenter', 'dragover'].forEach(tip => dz.addEventListener(tip, e => {
         e.preventDefault();
