@@ -42,6 +42,8 @@
     kutu.innerHTML = data.map(p => {
            const f = fiyatlar && fiyatlar.find(x => x.id === p.id);
       const fiyat = f ? (yillik ? (f.yearly_price || f.monthly_price * 12) : f.monthly_price) : 0;
+            const birim = yillik ? (p.per_branch ? ' / şube / yıl' : ' / yıl') : (p.per_branch ? ' / şube / ay' : ' / ay');
+      return `
       <article class="cf-plan${p.id === 'zincir' ? ' one' : ''}">
         ${p.id === 'zincir' ? '<span class="cf-rozet">EN ÇOK TERCİH EDİLEN</span>' : ''}
         <h3>${p.name}</h3>
