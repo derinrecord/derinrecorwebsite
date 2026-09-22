@@ -82,4 +82,3 @@
 - Spec'teki marka izolasyonu, ortak dosya kullanımı, geçiş güvenliği ve kart hizası Task 1–3 tarafından kapsandı.
 - Boş liste, silinmiş aktif liste, eski yayın ve paralel marka listesi doğrulamaları Review Focus altında yer aldı.
 - Plan içindeki tüm yol ve arayüz adları mevcut dosya yapısıyla uyumlu.
-
