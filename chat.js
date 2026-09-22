@@ -309,33 +309,69 @@
       </div>`;
     app.querySelector('.chat-form-wrap').prepend(fileRow);
 
-    (() => {
+       (() => {
       const dz = fileRow.querySelector('#dz');
       const inp = fileRow.querySelector('#chat-audio');
       const etiket = fileRow.querySelector('#dz-dosya');
       const gonder = fileRow.querySelector('#chat-audio-send');
       const boyut = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
+
       const goster = () => {
-        const f = inp.files?.[0];
+        const f = inp.files && inp.files[0];
         dz.classList.toggle('dolu', !!f);
         gonder.disabled = !f;
         etiket.hidden = !f;
-        if (f) etiket.innerHTML = `<b>${f.name.replace(/[<>&]/g,'')}</b><small>${boyut(f.size)}</small>`;
+        if (f) etiket.innerHTML = '<b>' + f.name.replace(/[<>&]/g, '') + '</b><small>' + boyut(f.size) + '</small>';
       };
-           if (window.__secilenMuzik && !inp.files?.length) {
-        const dt = new DataTransfer(); dt.items.add(window.__secilenMuzik); inp.files = dt.files;
-      }
-      inp.addEventListener('change', () => { window.__secilenMuzik = inp.files?.[0] || null; goster(); });
-      goster();
+
+      const ata = f => {
+        const dt = new DataTransfer();
+        dt.items.add(f);
+        inp.files = dt.files;
+        window.__secilenMuzik = f;
+        goster();
+      };
+
+      if (window.__secilenMuzik && !(inp.files && inp.files.length)) ata(window.__secilenMuzik);
+
+      inp.addEventListener('change', () => {
+        window.__secilenMuzik = (inp.files && inp.files[0]) || null;
+        goster();
       });
+
+      ['dragenter', 'dragover'].forEach(tip => dz.addEventListener(tip, e => {
+        e.preventDefault();
+        dz.classList.add('ustunde');
+      }));
+
+      ['dragleave', 'drop'].forEach(tip => dz.addEventListener(tip, e => {
+        e.preventDefault();
+        dz.classList.remove('ustunde');
+      }));
+
+      dz.addEventListener('drop', e => {
+        const f = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f && f.type.startsWith('audio/')) ata(f);
+      });
+
       gonder.addEventListener('click', () => {
-        if (!inp.files?.[0]) return;
+        if (!(inp.files && inp.files[0])) return;
         gonder.classList.add('yukleniyor');
-               const bitir = () => { window.__secilenMuzik = null; gonder.classList.remove('yukleniyor'); gonder.classList.add('bitti'); setTimeout(() => gonder.classList.remove('bitti'), 1600); };
-        const gozle = new MutationObserver(() => { if (fileRow.querySelector('.chat-file-msg')?.textContent) { bitir(); gozle.disconnect(); } });
-        gozle.observe(fileRow, { childList:true, subtree:true, characterData:true });
+        const bitir = () => {
+          window.__secilenMuzik = null;
+          gonder.classList.remove('yukleniyor');
+          gonder.classList.add('bitti');
+          setTimeout(() => gonder.classList.remove('bitti'), 1600);
+        };
+        const gozle = new MutationObserver(() => {
+          const m = fileRow.querySelector('.chat-file-msg');
+          if (m && m.textContent) { bitir(); gozle.disconnect(); }
+        });
+        gozle.observe(fileRow, { childList: true, subtree: true, characterData: true });
         setTimeout(() => { gonder.classList.remove('yukleniyor'); gozle.disconnect(); }, 60000);
       });
+
+      goster();
     })();
     (async () => {
       const targetCoach = admin ? contactId : null;
