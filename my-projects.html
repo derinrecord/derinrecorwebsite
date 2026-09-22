@@ -47,12 +47,16 @@
   .proj-play{padding:12px 20px;border-radius:15px;border:1px solid rgba(255,255,255,.4);
     background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(255,255,255,.65));
     color:#131313;font:inherit;font-weight:600;cursor:pointer}
+  .proj-delete-track{width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.24);
+    background:rgba(255,255,255,.06);color:inherit;font-size:22px;cursor:pointer}
 
   .proj-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
   .proj-actions select,.proj-actions input[type=file]{padding:11px 14px;border-radius:14px;
     border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit}
   .proj-actions button{padding:11px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.22);
     background:rgba(255,255,255,.07);color:inherit;font:inherit;font-size:12px;cursor:pointer}
+  .proj-actions .proj-add-track{padding:11px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.07);font-size:12px;cursor:pointer}
   .proj-actions button:hover{background:rgba(255,255,255,.15)}
 
   .fb-box{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1)}
@@ -79,6 +83,7 @@
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="auth.js?v=20260914"></script>
+<script src="project-track-controls.js?v=1"></script>
 <script src="projects.js?v=20260917"></script>
 </body>
 </html>

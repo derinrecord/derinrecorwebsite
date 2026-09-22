@@ -59,7 +59,7 @@
         <div style="flex:1 1 180px"><strong>${i+1}. ${safe(tr.label||'Parça')}</strong>
           <small style="display:block;opacity:.6">${has?('v'+tr.version+' · düzenlenmiş'):'ham kaynak'}</small>
           ${tr.source_url?`<a href="${safe(tr.source_url)}" target="_blank" rel="noreferrer" style="font-size:11px;opacity:.7">kaynağı aç ↗</a>`:''}</div>
-        ${has?`<button class="proj-play" data-play="${tr.id}" data-path="${safe(tr.audio_path)}">▶ DİNLE</button>`:''}
+        ${has?window.DerinProjectTrackControls.renderTrackControls({id:safe(tr.id),audio_path:safe(tr.audio_path)},admin):''}
       </div>
       ${has?`<div class="proj-wave" style="margin-top:12px;position:relative">
         <canvas data-wave="${tr.id}" style="height:72px;cursor:crosshair"></canvas>
@@ -84,6 +84,7 @@
       ${p.status==='pending'?'<p class="meta">Onay bekliyor.</p>':bar(p.status)}
            ${trs.map((tr,i)=>trackBlock(tr,i,p)).join('')||'<p class="meta">Parça yok.</p>'}
       ${admin?`<div class="proj-actions">
+        <label class="proj-add-track">YENİ PARÇA EKLE <input type="file" accept="audio/*" data-addtrack="${p.id}" hidden></label>
         <select data-stage="${p.id}">
           <option value="pending"${p.status==='pending'?' selected':''}>Bekliyor</option>
           ${STAGES.map(s=>`<option value="${s.k}"${p.status===s.k?' selected':''}>${s.l}</option>`).join('')}
@@ -165,6 +166,35 @@
       await client.from('music_projects').delete().eq('id',b.dataset.del);load();
     });
 
+    list.querySelectorAll('[data-addtrack]').forEach(inp=>inp.onchange=async()=>{
+      const file=inp.files?.[0]; if(!file)return;
+      const project=projects.find(p=>p.id===inp.dataset.addtrack); if(!project)return;
+      const ext=file.name.split('.').pop()||'mp3';
+      const path=`${project.coach_id}/${project.id}-${Date.now()}.${ext}`;
+      inp.disabled=true; status.textContent='Parça yükleniyor…';
+      try{
+        const uploaded=await client.storage.from('project-audio').upload(path,file,{contentType:file.type||'audio/mpeg'});
+        if(uploaded.error)throw uploaded.error;
+        const label=file.name.replace(/\.[^.]+$/,'');
+        const result=await client.from('project_tracks').insert({project_id:project.id,label,audio_path:path,version:1,sort_order:(tracks[project.id]||[]).length});
+        if(result.error)throw result.error;
+        status.textContent='Yeni parça projeye eklendi.'; load();
+      }catch(error){status.textContent='Parça eklenemedi: '+error.message;}
+      finally{inp.disabled=false;inp.value='';}
+    });
+
+    list.querySelectorAll('[data-trackdel]').forEach(button=>button.onclick=async()=>{
+      if(!confirm('Bu parça ve ses dosyası silinsin mi?'))return;
+      button.disabled=true;
+      try{
+        const removed=await client.from('project_tracks').delete().eq('id',button.dataset.trackdel);
+        if(removed.error)throw removed.error;
+        await client.storage.from('project-audio').remove([button.dataset.path]);
+        status.textContent='Parça silindi.'; load();
+      }catch(error){status.textContent='Parça silinemedi: '+error.message;}
+      finally{button.disabled=false;}
+    });
+
     list.querySelectorAll('[data-newver]').forEach(inp=>inp.onchange=async()=>{
       const file=inp.files?.[0]; if(!file)return;
       const tid=inp.dataset.newver;
@@ -217,13 +247,13 @@
 
     list.querySelectorAll('[data-play]').forEach(b=>b.onclick=async()=>{
       const id=b.dataset.play;
-      if(cur&&cur.id===id){ if(cur.audio.paused){cur.audio.play();b.textContent='⏸ DURDUR';}else{cur.audio.pause();b.textContent='▶ DİNLE';} return; }
-      if(cur){cur.audio.pause();cur.btn.textContent='▶ DİNLE';}
+      if(cur&&cur.id===id){ if(cur.audio.paused){cur.audio.play();b.textContent='⏸';b.setAttribute('aria-label','Parçayı duraklat');}else{cur.audio.pause();b.textContent='▶';b.setAttribute('aria-label','Parçayı oynat');} return; }
+      if(cur){cur.audio.pause();cur.btn.textContent='▶';cur.btn.setAttribute('aria-label','Parçayı oynat');}
       const url=await signed(b.dataset.path); if(!url){status.textContent='Ses açılamadı.';return;}
       const audio=new Audio(url);
       audio.ontimeupdate=()=>{ if(audio.duration) drawWave(id,audio.currentTime/audio.duration); };
-      audio.onended=()=>{b.textContent='▶ DİNLE';drawWave(id);cur=null;};
-      await audio.play(); b.textContent='⏸ DURDUR'; cur={id,audio,btn:b};
+      audio.onended=()=>{b.textContent='▶';b.setAttribute('aria-label','Parçayı oynat');drawWave(id);cur=null;};
+      await audio.play(); b.textContent='⏸'; b.setAttribute('aria-label','Parçayı duraklat'); cur={id,audio,btn:b};
     });
   }
 
