@@ -495,7 +495,13 @@
       const source = byId('playlist-source').value;
       const msg = byId('playlist-msg');
       if (!name) { msg.textContent = 'Liste adı gerekli.'; return; }
-      const { data: playlist, error } = await client.from('brand_playlists').insert({ brand_id:id, name }).select('id').single();
+      let folderId = source;
+      if (!folderId) {
+        const { data: folder, error: folderErr } = await client.from('radio_folders').insert({ name }).select('id').single();
+        if (folderErr) { msg.textContent = folderErr.message; return; }
+        folderId = folder.id;
+      }
+      const { data: playlist, error } = await client.from('brand_playlists').insert({ brand_id:id, name, folder_id:folderId }).select('id').single();
       if (error) { msg.textContent = error.message; return; }
       if (source) {
         const tracks = state.tracks.filter(t => t.folder_id === source);
