@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Derin Record — Şube Takip Paneli</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #0e0e12; color: #f2f2f2;
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  #sub { opacity: 0.6; font-size: 13px; margin-bottom: 24px; }
+
+  #loginBox { max-width: 320px; margin: 60px auto; text-align: center; }
+  #loginBox input {
+    width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px;
+    border: 1px solid #333; background: #1a1a20; color: #fff;
+  }
+  #loginBox button, .actionBtn {
+    background: #e8d15a; color: #111; border: none; border-radius: 6px;
+    padding: 10px 18px; font-weight: 600; cursor: pointer;
+  }
+  #loginErr { color: #ff8080; font-size: 13px; margin-top: 8px; min-height: 16px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #232329; }
+  th { opacity: 0.6; font-weight: 500; font-size: 12px; text-transform: uppercase; }
+  .ok { color: #7ee787; }
+  .stale { color: #f0b429; }
+  .offline { color: #ff8080; }
+  .ipwarn { color: #f0b429; font-weight: 600; }
+  .resetBtn {
+    background: transparent; border: 1px solid #444; color: #ccc;
+    border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+  }
+  .resetBtn:hover { border-color: #e8d15a; color: #e8d15a; }
+  #topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div id="loginBox">
+  <h1>Derin Record — Şube Takip Paneli</h1>
+  <div id="sub">Yönetici girişi gerekli</div>
+  <input id="email" type="email" placeholder="E-posta">
+  <input id="password" type="password" placeholder="Şifre">
+  <button onclick="login()">Giriş Yap</button>
+  <div id="loginErr"></div>
+</div>
+
+<div id="dashboard" class="hidden">
+  <div id="topbar">
+    <div>
+      <h1>Şube Takip Paneli</h1>
+      <div id="sub">Otomatik olarak 30 saniyede bir yenilenir</div>
+    </div>
+    <div>
+      <button class="actionBtn" onclick="loadRows()">Yenile</button>
+      <button class="resetBtn" onclick="logout()">Çıkış</button>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Marka</th>
+        <th>Şube</th>
+        <th>Durum</th>
+        <th>Son görülme</th>
+        <th>İlk bağlanma IP</th>
+        <th>Son görülen IP</th>
+        <th>Kilit tarihi</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+
+<script>
+const SUPABASE_URL = "https://abqhakgoluntpzgfyjye.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_FrRGXIb3-x8-Lzx1Ijg75w_teFbP2oa";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let refreshTimer = null;
+
+async function login() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const errEl = document.getElementById("loginErr");
+  errEl.textContent = "";
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    errEl.textContent = "Giriş başarısız: " + error.message;
+    return;
+  }
+
+  // admin rolü kontrolü (RLS zaten korur ama kullanıcıya net bir mesaj verelim)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .single();
+
+  if (!profile || profile.role !== "admin") {
+    errEl.textContent = "Bu hesabın yönetici yetkisi yok.";
+    await supabase.auth.signOut();
+    return;
+  }
+
+  showDashboard();
+}
+
+async function logout() {
+  clearInterval(refreshTimer);
+  await supabase.auth.signOut();
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("loginBox").classList.remove("hidden");
+}
+
+function showDashboard() {
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  loadRows();
+  refreshTimer = setInterval(loadRows, 30000);
+}
+
+function timeAgo(iso) {
+  if (!iso) return "hiç bağlanmadı";
+  const diffSec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diffSec < 60) return diffSec + " sn önce";
+  if (diffSec < 3600) return Math.floor(diffSec / 60) + " dk önce";
+  if (diffSec < 86400) return Math.floor(diffSec / 3600) + " sa önce";
+  return Math.floor(diffSec / 86400) + " gün önce";
+}
+
+function statusFor(row) {
+  if (!row.bound_device_id) return { text: "Hiç bağlanmadı", cls: "offline" };
+  if (!row.last_seen_at) return { text: "Bağlı (henüz veri yok)", cls: "stale" };
+  const diffMin = (Date.now() - new Date(row.last_seen_at).getTime()) / 60000;
+  if (diffMin < 3) return { text: "Çevrimiçi", cls: "ok" };
+  if (diffMin < 30) return { text: "Yakın zamanda aktif", cls: "stale" };
+  return { text: "Çevrimdışı görünüyor", cls: "offline" };
+}
+
+async function loadRows() {
+  const { data, error } = await supabase
+    .from("brand_players")
+    .select("id, label, bound_device_id, bound_at, last_seen_at, first_ip, last_ip, brands ( name )")
+    .order("label", { ascending: true });
+
+  const tbody = document.getElementById("rows");
+  tbody.innerHTML = "";
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="8">Veri alınamadı: ${error.message}</td></tr>`;
+    return;
+  }
+
+  (data || []).forEach(row => {
+    const st = statusFor(row);
+    const ipMismatch = row.first_ip && row.last_ip && row.first_ip !== row.last_ip;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.brands ? row.brands.name : "-"}</td>
+      <td>${row.label}</td>
+      <td class="${st.cls}">${st.text}</td>
+      <td>${timeAgo(row.last_seen_at)}</td>
+      <td>${row.first_ip || "-"}</td>
+      <td class="${ipMismatch ? "ipwarn" : ""}">${row.last_ip || "-"}${ipMismatch ? " ⚠" : ""}</td>
+      <td>${row.bound_at ? new Date(row.bound_at).toLocaleString("tr-TR") : "-"}</td>
+      <td>${row.bound_device_id ? `<button class="resetBtn" onclick="resetLock('${row.id}')">Kilidi Sıfırla</button>` : ""}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function resetLock(id) {
+  if (!confirm("Bu şubenin cihaz kilidini sıfırlamak istediğine emin misin? Bir sonraki açılan cihaz anahtarı devralacak.")) return;
+  await supabase
+    .from("brand_players")
+    .update({ bound_device_id: null, bound_at: null, first_ip: null, last_ip: null })
+    .eq("id", id);
+  loadRows();
+}
+
+// Sayfa açılışında zaten giriş yapılmış bir oturum var mı kontrol et
+supabase.auth.getSession().then(({ data }) => {
+  if (data.session) showDashboard();
+});
+</script>
+</body>
+</html>
