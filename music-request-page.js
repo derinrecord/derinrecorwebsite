@@ -92,17 +92,22 @@
     zone.addEventListener('drop',e=>{e.preventDefault();drop();});
     zone.addEventListener('click',drop);   // dokunmatik cihazlar için
 
+    // Not: artık projeyi doğrudan oluşturmuyoruz — istek önce Derin'e SOHBET
+    // mesajı olarak gider; Derin sohbette "ONAYLA" dedikten sonra proje
+    // Projelerim sayfasına düşer (hem antrenörde hem Derin'de).
     sendBtn.onclick=async()=>{
       sendBtn.disabled=true; status.textContent='Gönderiliyor…';
       const title=pending.length>1?`${f.branch.value} · ${pending.length} parça birleşimi`:`${f.branch.value} · ${pending[0].label}`;
-      const proj=await client.from('music_projects').insert({coach_id:me,title,
-        song:pending.map(t=>t.label).join(' + '),branch:f.branch.value,status:'pending'}).select('id').single();
-      if(proj.error){status.textContent='Gönderilemedi: '+proj.error.message;sendBtn.disabled=false;return;}
-      const tr=await client.from('project_tracks').insert(pending.map((t,i)=>({project_id:proj.data.id,label:t.label,source_url:t.source_url,sort_order:i})));
-      if(tr.error){status.textContent='Parçalar eklenemedi: '+tr.error.message;sendBtn.disabled=false;return;}
       const note=f.message.value.trim();
-      if(note)await client.from('project_feedback').insert({project_id:proj.data.id,author_id:me,body:note,kind:'note'});
-      status.textContent='Gönderildi. Projelerim sayfasından takip edebilirsin.';
+      const adminRes=await client.rpc('admin_contact_id');
+      if(adminRes.error||!adminRes.data){status.textContent='Yönetici hesabı bulunamadı.';sendBtn.disabled=false;return;}
+      const listText=pending.map((t,i)=>`${i+1}. ${t.label} — ${t.source_url}`).join('\n');
+      const payload={title,branch:f.branch.value,song:pending.map(t=>t.label).join(' + '),
+        tracks:pending.map(t=>({label:t.label,source_url:t.source_url})),note};
+      const body=`[Müzik araştırma isteği] ${title}\n${listText}${note?`\nNot: ${note}`:''}\n\n__DATA__:${JSON.stringify(payload)}`;
+      const { error }=await client.from('direct_messages').insert({recipient_id:adminRes.data,body});
+      if(error){status.textContent='Gönderilemedi: '+error.message;sendBtn.disabled=false;return;}
+      status.textContent='Gönderildi. Derin sohbette onaylayınca Projelerim sayfasından takip edebilirsin.';
       render();
     };
   }
