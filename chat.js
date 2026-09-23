@@ -129,7 +129,7 @@
     if (!admin) contactId = (await client.rpc('admin_contact_id')).data;
     if (!contactId) { status.textContent = 'Yönetici hesabı bulunamadı.'; return; }
 
-    const { data: loadedMessages, error } = await client.from('direct_messages').select('id,sender_id,recipient_id,body,created_at').or(`and(sender_id.eq.${user.id},recipient_id.eq.${contactId}),and(sender_id.eq.${contactId},recipient_id.eq.${user.id})`).order('created_at');
+    const { data: loadedMessages, error } = await client.from('direct_messages').select('id,sender_id,recipient_id,body,created_at,research_project_id').or(`and(sender_id.eq.${user.id},recipient_id.eq.${contactId}),and(sender_id.eq.${contactId},recipient_id.eq.${user.id})`).order('created_at');
     if (error && !admin) { status.textContent = 'Sohbet henüz kurulmadı. Yönetici sohbet SQL dosyasını çalıştırmalı.'; return; }
     const messages = await Promise.all((loadedMessages || []).map(async message => ({
       ...message,
@@ -139,7 +139,18 @@
     status.textContent = incomingNotice || (admin ? (error ? 'Sohbet arayüzü önizlemesi açık. Mesajlaşma için sohbet SQL kurulumu gerekir.' : people.length ? 'Antrenör seçip özel konuşmayı yönet.' : 'Sohbet arayüzü önizlemesi açık.') : 'Yöneticiyle özel olarak mesajlaş.');
     app.hidden = false;
     const pinnedIds = new Set(JSON.parse(localStorage.getItem('derin-pinned-messages') || '[]'));
-    const messageHtml = messages.length ? messages.map(message => `<article class="chat-message ${message.sender_id === user.id ? 'own' : ''} ${message.body.includes('[Müzik araştırma isteği') ? 'music-link-message' : ''} ${pinnedIds.has(message.id) ? 'pinned-message' : ''} ${selectedMessageIds.has(message.id) ? 'selected-message' : ''}" data-message-id="${message.id}" data-message-body="${encodeURIComponent(message.body)}" data-own="${message.sender_id === user.id}">${pinnedIds.has(message.id) ? '<i class="msg-pin">📌</i>' : ''}<p>${renderBody(message.body)}</p><time>${date(message.created_at)}</time></article>`).join('') : '<div class="chat-empty"><b>💬</b><strong>Henüz mesaj yok.</strong><span>İlk mesajını gönder.</span></div>';
+    const messageHtml = messages.length ? messages.map(message => {
+      const musicMatch = message.body.match(/__DATA__:(\{[\s\S]*\})\s*$/);
+      const displayBody = musicMatch ? message.body.slice(0, musicMatch.index).trim() : message.body;
+      const isMusicRequest = displayBody.includes('[Müzik araştırma isteği');
+      const isOwn = message.sender_id === user.id;
+      const approveHtml = (admin && isMusicRequest && !isOwn)
+        ? (message.research_project_id
+            ? '<span class="music-approved-badge">✅ Onaylandı — Projelerim\'e eklendi</span>'
+            : `<button type="button" class="music-approve-button" data-approve-msg="${message.id}">ONAYLA — PROJELERİM'E EKLE</button>`)
+        : '';
+      return `<article class="chat-message ${isOwn ? 'own' : ''} ${isMusicRequest ? 'music-link-message' : ''} ${pinnedIds.has(message.id) ? 'pinned-message' : ''} ${selectedMessageIds.has(message.id) ? 'selected-message' : ''}" data-message-id="${message.id}" data-message-body="${encodeURIComponent(message.body)}" data-own="${isOwn}">${pinnedIds.has(message.id) ? '<i class="msg-pin">📌</i>' : ''}<p>${renderBody(displayBody)}</p>${approveHtml}<time>${date(message.created_at)}</time></article>`;
+    }).join('') : '<div class="chat-empty"><b>💬</b><strong>Henüz mesaj yok.</strong><span>İlk mesajını gönder.</span></div>';
     const contactListHtml = admin ? `<aside class="chat-contacts"><h2>ÖZEL SOHBETLER</h2><p>🔒 Uçtan uca şifreli</p>${people.length ? people.map(person => `<button type="button" class="${person.id === contactId ? 'active' : ''}" data-contact="${person.id}"><b>${safe((person.full_name || 'A').slice(0,1)).toUpperCase()}</b><span>${safe(person.full_name || 'İsimsiz antrenör')}</span><i>ÖZEL</i></button>`).join('') : '<small>Henüz kayıtlı antrenör yok.</small>'}</aside>` : '';
     app.innerHTML = `<div class="chat-shell"><div class="chat-head"><strong>${admin ? 'ANTRENÖR MESAJLARI' : 'YÖNETİCİYLE ÖZEL SOHBET'}</strong>${admin && people.length ? `<select class="chat-contact">${people.map(person => `<option value="${person.id}" ${person.id === contactId ? 'selected' : ''}>${safe(person.full_name || 'İsimsiz')}</option>`).join('')}</select>` : `<span>${admin ? 'ÖZEL SOHBET' : contactName}</span>`}</div><div class="chat-layout ${admin ? 'has-contacts' : ''}">${contactListHtml}<section class="chat-conversation"><div class="chat-list">${messageHtml}</div><div class="chat-form-wrap"><form class="chat-form"><textarea name="message" maxlength="2000" placeholder="Mesajını yaz…" required>${safe(composeDraft)}</textarea><button class="derin-send-button" type="submit" aria-label="Gönder"></button></form></div></section></div></div>`;
     const transferButton = document.createElement('button');
@@ -198,6 +209,32 @@
       if (!window.confirm('Bu mesaj silinsin mi?')) return;
       const { error: deleteError } = await client.from('direct_messages').delete().eq('id', button.dataset.delete).eq('sender_id', user.id);
       if (deleteError) { status.textContent = deleteError.message; return; }
+      load();
+    });
+    app.querySelectorAll('[data-approve-msg]').forEach(button => button.onclick = async () => {
+      if (!window.confirm('Bu parça(lar) onaylanıp Projelerim sayfasına eklensin mi?')) return;
+      button.disabled = true;
+      const originalLabel = button.textContent;
+      button.textContent = 'EKLENİYOR…';
+      const article = button.closest('.chat-message');
+      const rawBody = decodeURIComponent(article.dataset.messageBody);
+      const dataMatch = rawBody.match(/__DATA__:(\{[\s\S]*\})\s*$/);
+      if (!dataMatch) { status.textContent = 'Bu mesajdan parça bilgisi okunamadı.'; button.disabled = false; button.textContent = originalLabel; return; }
+      let payload;
+      try { payload = JSON.parse(dataMatch[1]); }
+      catch { status.textContent = 'Parça bilgisi bozuk.'; button.disabled = false; button.textContent = originalLabel; return; }
+      const proj = await client.from('music_projects').insert({
+        coach_id: contactId, title: payload.title, song: payload.song, branch: payload.branch, status: 'approved'
+      }).select('id').single();
+      if (proj.error) { status.textContent = 'Proje oluşturulamadı: ' + proj.error.message; button.disabled = false; button.textContent = originalLabel; return; }
+      if (payload.tracks && payload.tracks.length) {
+        const trackInsert = await client.from('project_tracks').insert(payload.tracks.map((track, index) => ({
+          project_id: proj.data.id, label: track.label, source_url: track.source_url, sort_order: index
+        })));
+        if (trackInsert.error) status.textContent = 'Proje oluştu ama parçalar eklenemedi: ' + trackInsert.error.message;
+      }
+      if (payload.note) await client.from('project_feedback').insert({ project_id: proj.data.id, author_id: user.id, body: 'Antrenörün notu: ' + payload.note, kind: 'note' });
+      await client.from('direct_messages').update({ research_project_id: proj.data.id }).eq('id', button.dataset.approveMsg);
       load();
     });
     app.querySelectorAll('[data-edit]').forEach(button => button.onclick = () => {
