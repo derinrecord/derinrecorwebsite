@@ -874,9 +874,11 @@
       catch { b.textContent = 'KOPYALANAMADI'; }
       setTimeout(() => { b.textContent = 'LİNKİ KOPYALA'; }, 1600);
     });
-    document.querySelectorAll('[data-del-player]').forEach(b => b.onclick = async () => {
+       document.querySelectorAll('[data-del-player]').forEach(b => b.onclick = async () => {
       if (!confirm('Şube silinecek. Emin misiniz?')) return;
-      await client.from('brand_players').delete().eq('id', b.dataset.delPlayer);
+      b.disabled = true; b.textContent = 'SİLİNİYOR…';
+      const { error } = await client.from('brand_players').delete().eq('id', b.dataset.delPlayer);
+      if (error) { alert('Şube silinemedi: ' + error.message); b.disabled = false; b.textContent = 'SİL'; return; }
       await refresh();
     });
     document.querySelectorAll('[data-reset-lock]').forEach(b => b.onclick = async () => {
