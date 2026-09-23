@@ -9,7 +9,7 @@
   const mmss = s => (!s || !isFinite(s)) ? '—' : Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
 
   let client = null;
-  let state = { brands:[], folders:[], tracks:[], players:[], broadcast:[], announcements:[], playlists:[], playlistTracks:[] };
+  let state = { brands:[], folders:[], tracks:[], players:[], broadcast:[], announcements:[], playlists:[], playlistTracks:[], coffeeAttempts:[] };
   let recorder = null, chunks = [], recStream = null;
 
   const coverUrl = p => client.storage.from('radio-covers').getPublicUrl(p).data.publicUrl;
@@ -76,7 +76,7 @@
   }
 
   async function refresh() {
-    const [brands, folders, tracks, players, broadcast, announcements, playlists, playlistTracks] = await Promise.all([
+    const [brands, folders, tracks, players, broadcast, announcements, playlists, playlistTracks, coffeeAttempts] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec').order('sort_order'),
@@ -84,12 +84,14 @@
       client.from('brand_broadcast').select('brand_id,folder_id,shuffle,updated_at'),
       client.from('radio_announcements').select('id,brand_id,storage_path,label,created_at').order('created_at',{ascending:false}).limit(20),
       client.from('brand_playlists').select('id,brand_id,name,description,cover_path,shuffle,created_at').order('created_at'),
-      client.from('brand_playlist_tracks').select('id,playlist_id,track_id,sort_order').order('sort_order')
+      client.from('brand_playlist_tracks').select('id,playlist_id,track_id,sort_order').order('sort_order'),
+      client.from('coffee_access_attempts').select('id,brand_id,slug,success,ip,created_at').order('created_at',{ascending:false}).limit(200)
     ]);
     state = {
       brands:brands.data||[], folders:folders.data||[], tracks:tracks.data||[],
       players:players.data||[], broadcast:broadcast.data||[], announcements:announcements.data||[],
-      playlists:playlists.data||[], playlistTracks:playlistTracks.data||[]
+      playlists:playlists.data||[], playlistTracks:playlistTracks.data||[],
+      coffeeAttempts:coffeeAttempts.data||[]
     };
     route();
   }
@@ -468,6 +470,9 @@
     const cur = state.broadcast.find(x => x.brand_id === id);
     const anons = state.announcements.filter(a => a.brand_id === id);
     const lists = state.playlists.filter(p => p.brand_id === id);
+    const attempts = state.coffeeAttempts.filter(a => a.brand_id === id).slice(0, 15);
+    const failedRecent = state.coffeeAttempts.filter(a => a.brand_id === id && !a.success
+      && (Date.now() - new Date(a.created_at).getTime()) < 86400000).length;
     const activeValue = cur?.playlist_id ? `playlist:${cur.playlist_id}` : (cur?.folder_id ? `folder:${cur.folder_id}` : '');
 
     byId('radio-app').innerHTML = `${crumb('Markalar', brand.name)}${brandLiveBadge(id) ? `<div style="margin:10px 0 -4px">${brandLiveBadge(id)}</div>` : ''}
@@ -486,6 +491,13 @@
           <button id="brand-code-set">KODU KAYDET</button>
         </div>
         <p class="radio-msg" id="brand-code-msg">Bu markanın henüz sunum sayfası için bir erişim kodu yok.</p>`}
+      </section>
+      <section class="radio-panel">
+        <h2>SUNUM SAYFASINA GİRİŞ DENEMELERİ${failedRecent ? ` <span style="color:#ffb3b3;font-size:11px;font-weight:700">· son 24 saatte ${failedRecent} başarısız deneme</span>` : ''}</h2>
+        <ul class="radio-list">${attempts.length ? attempts.map(a => `<li>
+          <span><strong>${a.success ? '✅ Doğru kod' : '❌ Yanlış kod'}</strong>
+            <small>${new Date(a.created_at).toLocaleString('tr-TR')}${a.ip ? ' · IP: ' + safe(a.ip) : ''}</small></span></li>`).join('')
+          : '<li>Henüz giriş denemesi olmadı.</li>'}</ul>
       </section>
       <section class="radio-panel">
         <h2>CANLI YAYIN</h2>
