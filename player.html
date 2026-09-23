@@ -41,7 +41,7 @@ const SUPABASE_URL = "https://abqhakgoluntpzgfyjye.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_FrRGXIb3-x8-Lzx1Ijg75w_teFbP2oa";
 const STORAGE_BUCKET = "radio-audio";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // URL'den ?key=... oku (şubeye özel player_key)
 const params = new URLSearchParams(window.location.search);
@@ -87,7 +87,7 @@ async function loadPlayer() {
     return false;
   }
 
-  const { data, error } = await supabase.rpc("player_handshake", {
+  const { data, error } = await sb.rpc("player_handshake", {
     p_key: playerKey,
     p_device_id: deviceId,
   });
@@ -109,7 +109,7 @@ async function loadPlayer() {
 
   // heartbeat: her 60 saniyede bir aynı el sıkışmayı tekrar çağır (cihaz eşleşiyorsa sadece last_seen_at güncellenir)
   setInterval(() => {
-    supabase.rpc("player_handshake", { p_key: playerKey, p_device_id: deviceId });
+    sb.rpc("player_handshake", { p_key: playerKey, p_device_id: deviceId });
   }, 60000);
 
   return true;
@@ -119,14 +119,14 @@ async function fetchQueueForBroadcast(broadcast) {
   let tracks = [];
 
   if (broadcast.playlist_id) {
-    const { data: rows } = await supabase
+    const { data: rows } = await sb
       .from("brand_playlist_tracks")
       .select("sort_order, radio_tracks ( id, title, storage_path )")
       .eq("playlist_id", broadcast.playlist_id)
       .order("sort_order", { ascending: true });
     tracks = (rows || []).map(r => r.radio_tracks).filter(Boolean);
   } else if (broadcast.folder_id) {
-    const { data: rows } = await supabase
+    const { data: rows } = await sb
       .from("radio_tracks")
       .select("id, title, storage_path")
       .eq("folder_id", broadcast.folder_id)
@@ -144,7 +144,7 @@ async function fetchQueueForBroadcast(broadcast) {
 }
 
 async function loadBroadcastAndQueue({ keepPlaying } = {}) {
-  const { data: broadcast, error } = await supabase
+  const { data: broadcast, error } = await sb
     .from("brand_broadcast")
     .select("brand_id, folder_id, playlist_id, shuffle")
     .eq("brand_id", player.brand_id)
@@ -193,7 +193,7 @@ el.startBtn.addEventListener("click", async () => {
 });
 
 function subscribeRealtime() {
-  supabase
+  sb
     .channel("brand-broadcast-" + player.brand_id)
     .on(
       "postgres_changes",
