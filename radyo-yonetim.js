@@ -14,6 +14,13 @@
 
   const coverUrl = p => client.storage.from('radio-covers').getPublicUrl(p).data.publicUrl;
   const playerBase = () => location.href.split('#')[0].split('?')[0].replace(/[^/]*$/, '') + 'radyo.html?key=';
+  const lockInfo = p => {
+    const parts = [p.bound_device_id
+      ? 'cihaza kilitli' + (p.bound_at ? ' · ' + new Date(p.bound_at).toLocaleString('tr-TR') : '')
+      : 'kilit yok'];
+    if (p.last_ip) parts.push('IP: ' + safe(p.last_ip));
+    return parts.join(' · ');
+  };
 
   async function load() {
     await window.DerinAuth.ready;
@@ -37,7 +44,7 @@
       client.from('brands').select('id,name,slug,is_active').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec').order('sort_order'),
-      client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at,open_time,close_time').order('label'),
+      client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at,open_time,close_time,bound_device_id,bound_at,first_ip,last_ip,last_ip_at').order('label'),
       client.from('brand_broadcast').select('brand_id,folder_id,shuffle,updated_at'),
       client.from('radio_announcements').select('id,brand_id,storage_path,label,created_at').order('created_at',{ascending:false}).limit(20),
       client.from('brand_playlists').select('id,brand_id,name,description,cover_path,shuffle,created_at').order('created_at'),
@@ -453,13 +460,15 @@
           ${subs.length ? subs.map(p => `<li>
             <span><strong>${safe(p.label)}</strong>
               <small>${playerBase()}${safe(p.player_key)}</small>
-              <small>${p.last_seen_at ? 'son bağlantı: ' + new Date(p.last_seen_at).toLocaleString('tr-TR') : 'hiç bağlanmadı'}</small></span>
+              <small>${p.last_seen_at ? 'son bağlantı: ' + new Date(p.last_seen_at).toLocaleString('tr-TR') : 'hiç bağlanmadı'}</small>
+              <small>${lockInfo(p)}</small></span>
             <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input type="time" value="${hhmm(p.open_time)}" data-hours="open" data-player="${p.id}"
                 style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
               <input type="time" value="${hhmm(p.close_time)}" data-hours="close" data-player="${p.id}"
                 style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
               <button data-copy="${playerBase()}${safe(p.player_key)}">LİNKİ KOPYALA</button>
+              ${p.bound_device_id ? `<button data-reset-lock="${p.id}">KİLİDİ SIFIRLA</button>` : ''}
               <button data-del-player="${p.id}">SİL</button>
             </span></li>`).join('') : '<li>Henüz şube yok.</li>'}
         </ul>
@@ -565,13 +574,15 @@
             <span><strong>${safe(p.label)}</strong>
               <small>${safe(brands.find(b => b.id === p.brand_id)?.name || '—')}</small>
               <small>${playerBase()}${safe(p.player_key)}</small>
-              <small>${p.last_seen_at ? 'son bağlantı: ' + new Date(p.last_seen_at).toLocaleString('tr-TR') : 'hiç bağlanmadı'}</small></span>
+              <small>${p.last_seen_at ? 'son bağlantı: ' + new Date(p.last_seen_at).toLocaleString('tr-TR') : 'hiç bağlanmadı'}</small>
+              <small>${lockInfo(p)}</small></span>
             <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input type="time" value="${hhmm(p.open_time)}" data-hours="open" data-player="${p.id}"
                 style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
               <input type="time" value="${hhmm(p.close_time)}" data-hours="close" data-player="${p.id}"
                 style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
               <button data-copy="${playerBase()}${safe(p.player_key)}">LİNKİ KOPYALA</button>
+              ${p.bound_device_id ? `<button data-reset-lock="${p.id}">KİLİDİ SIFIRLA</button>` : ''}
               <button data-del-player="${p.id}">SİL</button>
             </span></li>`).join('') : '<li>Henüz şube yok.</li>'}
         </ul>
@@ -775,6 +786,13 @@
     document.querySelectorAll('[data-del-player]').forEach(b => b.onclick = async () => {
       if (!confirm('Şube silinecek. Emin misiniz?')) return;
       await client.from('brand_players').delete().eq('id', b.dataset.delPlayer);
+      await refresh();
+    });
+    document.querySelectorAll('[data-reset-lock]').forEach(b => b.onclick = async () => {
+      if (!confirm('Cihaz kilidi sıfırlanacak; bu şubenin linki bir sonraki açılan cihaza yeniden kilitlenecek. Emin misiniz?')) return;
+      await client.from('brand_players').update({
+        bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null
+      }).eq('id', b.dataset.resetLock);
       await refresh();
     });
     document.querySelectorAll('[data-del-anons]').forEach(b => b.onclick = async () => {
