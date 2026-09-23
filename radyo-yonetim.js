@@ -13,11 +13,27 @@
   let recorder = null, chunks = [], recStream = null;
 
   const coverUrl = p => client.storage.from('radio-covers').getPublicUrl(p).data.publicUrl;
-  const playerBase = () => location.href.split('#')[0].split('?')[0].replace(/[^/]*$/, '') + 'radyo.html?key=';
+  const siteRoot = () => location.href.split('#')[0].split('?')[0].replace(/[^/]*$/, '');
+  const playerBase = () => siteRoot() + 'radyo.html?key=';
+  const brandPreviewUrl = b => siteRoot() + 'coffee/' + encodeURIComponent(b.slug || '');
+  const badge = (on, textOn, textOff) => `<span style="display:inline-block;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;white-space:nowrap;
+    background:${on ? 'rgba(24,195,125,.16)' : 'rgba(255,255,255,.07)'};color:${on ? '#6ee7b0' : 'rgba(255,255,255,.55)'};
+    border:1px solid ${on ? 'rgba(24,195,125,.4)' : 'rgba(255,255,255,.16)'}">${on ? textOn : textOff}</span>`;
+  const isFresh = p => p.last_seen_at && (Date.now() - new Date(p.last_seen_at).getTime()) < 150000;
+  const trackBadge = p => badge(isFresh(p), '● BAĞLI', '○ BAĞLI DEĞİL');
+  const playingBadge = p => (p.is_playing && isFresh(p))
+    ? `<span class="derin-live-dot" style="display:inline-block;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;white-space:nowrap;
+        background:rgba(24,195,125,.22);color:#6ee7b0;border:1px solid rgba(24,195,125,.55)">▶ ÇALIYOR</span>`
+    : '';
+  const lockBadge = p => {
+    const html = `<span style="display:inline-block;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;white-space:nowrap;
+      background:${p.bound_device_id ? 'rgba(232,209,90,.16)' : 'rgba(255,255,255,.07)'};color:${p.bound_device_id ? '#e8d15a' : 'rgba(255,255,255,.55)'};
+      border:1px solid ${p.bound_device_id ? 'rgba(232,209,90,.4)' : 'rgba(255,255,255,.16)'}">${p.bound_device_id ? '🔒 KİLİTLİ' : '🔓 KİLİT YOK'}</span>`;
+    return html;
+  };
   const lockInfo = p => {
-    const parts = [p.bound_device_id
-      ? 'cihaza kilitli' + (p.bound_at ? ' · ' + new Date(p.bound_at).toLocaleString('tr-TR') : '')
-      : 'kilit yok'];
+    const parts = [];
+    if (p.bound_device_id && p.bound_at) parts.push('kilitlenme: ' + new Date(p.bound_at).toLocaleString('tr-TR'));
     if (p.last_ip) parts.push('IP: ' + safe(p.last_ip));
     return parts.join(' · ');
   };
@@ -36,12 +52,32 @@
     status.textContent = `Yönetici: ${auth.profile.full_name || auth.user.email}`;
     app.hidden = false;
     window.addEventListener('hashchange', route);
+    injectLiveStyle();
+    watchPlayers();
     await refresh();
+  }
+
+  function injectLiveStyle() {
+    if (byId('derin-live-style')) return;
+    const style = document.createElement('style');
+    style.id = 'derin-live-style';
+    style.textContent = '@keyframes derinPulse{0%,100%{opacity:1}50%{opacity:.3}} .derin-live-dot{animation:derinPulse 1.1s ease-in-out infinite}';
+    document.head.appendChild(style);
+  }
+
+  let refreshTimer = null;
+  function watchPlayers() {
+    client.channel('admin-brand-players')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'brand_players' }, () => {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(refresh, 800);
+      })
+      .subscribe();
   }
 
   async function refresh() {
     const [brands, folders, tracks, players, broadcast, announcements, playlists, playlistTracks] = await Promise.all([
-      client.from('brands').select('id,name,slug,is_active').order('name'),
+      client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec').order('sort_order'),
       client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at,open_time,close_time,bound_device_id,bound_at,first_ip,last_ip,last_ip_at').order('label'),
@@ -77,14 +113,17 @@
   function home() {
     const { brands, folders, tracks, players, broadcast } = state;
     const live = broadcast.filter(b => b.folder_id).length;
+    const onlineCount = players.filter(p => isFresh(p)).length;
+    const lockedCount = players.filter(p => p.bound_device_id).length;
+    const playingCount = players.filter(p => p.is_playing && isFresh(p)).length;
     byId('radio-app').innerHTML = `
       <div class="grid">
         <a class="card" href="#/markalar"><div class="ico">🏷</div>
-          <h3>MARKALAR</h3><p>${brands.length} marka · ${live} yayında</p></a>
+          <h3>MARKALAR</h3><p>${brands.length} marka · ${live} yayında · ${playingCount} canlı çalıyor</p></a>
         <a class="card" href="#/klasorler"><div class="ico">🎵</div>
           <h3>YAYIN KLASÖRLERİ</h3><p>${folders.length} klasör · ${tracks.length} parça</p></a>
         <a class="card" href="#/subeler"><div class="ico">📻</div>
-          <h3>ŞUBE CİHAZLARI</h3><p>${players.length} şube</p></a>
+          <h3>ŞUBE TAKİP PANELİ</h3><p>${players.length} şube · ${onlineCount} bağlı · ${lockedCount} kilitli</p></a>
         <a class="card" href="#/anons"><div class="ico">🎙</div>
           <h3>ANLIK ANONS</h3><p>Mikrofondan canlı duyuru</p></a>
         <a class="card" href="#/abonelikler"><div class="ico">💳</div>
@@ -379,6 +418,11 @@
     });
   }
 
+  const brandLiveBadge = bId => state.players.some(p => p.brand_id === bId && p.is_playing && isFresh(p))
+    ? `<span class="derin-live-dot" style="display:inline-block;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;white-space:nowrap;
+        background:rgba(24,195,125,.22);color:#6ee7b0;border:1px solid rgba(24,195,125,.55)">▶ CANLI ÇALIYOR</span>`
+    : '';
+
   function brandList() {
     const { brands, players, broadcast } = state;
     byId('radio-app').innerHTML = `${crumb('Markalar')}
@@ -399,6 +443,7 @@
             return `<li class="open-row" data-open="#/markalar/${b.id}">
               <span><strong>${safe(b.name)}</strong>
                 ${cur?.folder_id ? '<span class="radio-live">YAYINDA</span>' : ''}
+                ${brandLiveBadge(b.id)}
                 <small>${players.filter(p => p.brand_id === b.id).length} şube</small></span>
               <button data-open="#/markalar/${b.id}">AÇ ›</button></li>`;
           }).join('') : '<li>Henüz marka yok.</li>'}
@@ -425,7 +470,23 @@
     const lists = state.playlists.filter(p => p.brand_id === id);
     const activeValue = cur?.playlist_id ? `playlist:${cur.playlist_id}` : (cur?.folder_id ? `folder:${cur.folder_id}` : '');
 
-    byId('radio-app').innerHTML = `${crumb('Markalar', brand.name)}
+    byId('radio-app').innerHTML = `${crumb('Markalar', brand.name)}${brandLiveBadge(id) ? `<div style="margin:10px 0 -4px">${brandLiveBadge(id)}</div>` : ''}
+      <section class="radio-panel">
+        <h2>MARKA SUNUMU — MÜŞTERİYE GÖNDERİLECEK LİNK</h2>
+        ${brand.access_code ? `
+        <div class="radio-row">
+          <input readonly value="${safe(brandPreviewUrl(brand))}" style="flex:2 1 260px;padding:12px 15px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit">
+          <button data-copy="${safe(brandPreviewUrl(brand))}">LİNKİ KOPYALA</button>
+          <input readonly value="${safe(brand.access_code)}" style="flex:0 0 140px;padding:12px 15px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;letter-spacing:.1em">
+          <button data-copy="${safe(brand.access_code)}">KODU KOPYALA</button>
+        </div>
+        <p class="radio-msg">Bu link ile kodu markaya iletin — sadece bu kodu bilenler sunumu görebilir.</p>` : `
+        <div class="radio-row">
+          <input id="brand-code" placeholder="Erişim kodu belirleyin (örn. ${slugify(brand.name).toUpperCase()}2026)">
+          <button id="brand-code-set">KODU KAYDET</button>
+        </div>
+        <p class="radio-msg" id="brand-code-msg">Bu markanın henüz sunum sayfası için bir erişim kodu yok.</p>`}
+      </section>
       <section class="radio-panel">
         <h2>CANLI YAYIN</h2>
         <div class="radio-row">
@@ -461,7 +522,8 @@
             <span><strong>${safe(p.label)}</strong>
               <small>${playerBase()}${safe(p.player_key)}</small>
               <small>${p.last_seen_at ? 'son bağlantı: ' + new Date(p.last_seen_at).toLocaleString('tr-TR') : 'hiç bağlanmadı'}</small>
-              <small>${lockInfo(p)}</small></span>
+              <span style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${trackBadge(p)}${playingBadge(p)}${lockBadge(p)}</span>
+              ${lockInfo(p) ? `<small>${lockInfo(p)}</small>` : ''}</span>
             <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input type="time" value="${hhmm(p.open_time)}" data-hours="open" data-player="${p.id}"
                 style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
@@ -483,6 +545,16 @@
         </ul>
       </section>`;
 
+    if (byId('brand-code-set')) {
+      byId('brand-code-set').onclick = async () => {
+        const code = byId('brand-code').value.trim();
+        const msg = byId('brand-code-msg');
+        if (!code) { msg.textContent = 'Kod girin.'; return; }
+        const { error } = await client.from('brands').update({ access_code: code }).eq('id', id);
+        msg.textContent = error ? error.message : 'Kod kaydedildi.';
+        if (!error) await refresh();
+      };
+    }
     byId('live-source').onchange = async e => {
       const [kind, value] = (e.target.value || ':').split(':');
       const payload = { brand_id:id, folder_id:kind === 'folder' ? value : null, playlist_id:kind === 'playlist' ? value : null, updated_at:new Date().toISOString() };
@@ -571,9 +643,9 @@
 
   function playerList() {
     const { players, brands } = state;
-    byId('radio-app').innerHTML = `${crumb('Şube Cihazları')}
+    byId('radio-app').innerHTML = `${crumb('Şube Takip Paneli')}
       <section class="radio-panel">
-        <h2>TÜM ŞUBELER</h2>
+        <h2>TÜM ŞUBELER — BAĞLANTI VE KİLİT DURUMU</h2>
         <p class="radio-msg" id="p-msg">Yeni şube eklemek için marka sayfasını açın.</p>
         <ul class="radio-list">
           ${players.length ? players.map(p => `<li>
@@ -581,7 +653,8 @@
               <small>${safe(brands.find(b => b.id === p.brand_id)?.name || '—')}</small>
               <small>${playerBase()}${safe(p.player_key)}</small>
               <small>${p.last_seen_at ? 'son bağlantı: ' + new Date(p.last_seen_at).toLocaleString('tr-TR') : 'hiç bağlanmadı'}</small>
-              <small>${lockInfo(p)}</small></span>
+              <span style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${trackBadge(p)}${playingBadge(p)}${lockBadge(p)}</span>
+              ${lockInfo(p) ? `<small>${lockInfo(p)}</small>` : ''}</span>
             <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input type="time" value="${hhmm(p.open_time)}" data-hours="open" data-player="${p.id}"
                 style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
