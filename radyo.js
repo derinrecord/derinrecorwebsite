@@ -194,6 +194,14 @@
   });
   audio.addEventListener('error', () => { index++; setTimeout(play, 1200); });
 
+  audio.addEventListener('play', () => reportPlaying(true));
+  audio.addEventListener('pause', () => reportPlaying(false));
+
+  function reportPlaying(playing) {
+    if (!client || !key) return;
+    client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: playing }).catch(() => {});
+  }
+
   byId('start').onclick = () => {
     started = true;
     byId('start').hidden = true;
@@ -230,7 +238,7 @@
   }
 
   async function ping() {
-    const { data, error } = await client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId });
+    const { data, error } = await client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: !audio.paused });
     if (error) return false;
     const row = data && data[0];
     if (row && row.ok === false && row.reason === 'locked_to_other_device') {
