@@ -15,23 +15,9 @@
     restoreBackup: async () => true,
     startFreshKey: async () => true
   };
-  const addStyle = href => { const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = href; document.head.append(style); };
-  addStyle('chat-room-ui.css?v=2');
-  addStyle('music-request.css?v=1');
-  addStyle('chat-expression.css?v=1');
-  addStyle('chat-sticker-drawer.css?v=1');
-  addStyle('chat-music-link.css?v=1');
-  addStyle('chat-wallpaper.css?v=1');
-  addStyle('chat-message-menu.css?v=1');
-  addStyle('chat-layout-simple.css?v=1');
-  addStyle('chat-send-button.css?v=2');
-  addStyle('chat-send-button-cassette.css?v=1');
-  addStyle('chat-send-button-demo-cassette.css?v=1');
-  addStyle('chat-send-button-demo-label.css?v=1');
-  addStyle('chat-notifications.css?v=1');
-  addStyle('chat-contacts.css?v=1');
-  addStyle('chat-key-transfer.css?v=1');
-  addStyle('chat-key-transfer-form.css?v=1');
+  // Not: sohbetin tüm görünümü artık tek dosyada — chat.css. Eskiden burada
+  // 16 ayrı küçük CSS dosyası tek tek ekleniyordu (chat-room-ui, chat-expression,
+  // chat-send-button + 3 varyasyonu vb.); hepsi chat.css içine taşındı.
 
   // --- "SENKRONİZE EDİLİYOR" yükleme kartı: müzik yüklenirken görünen kart ---
   (() => {
@@ -68,7 +54,6 @@
   let composeFocused = false;
   let composeCaretStart = 0;
   let composeCaretEnd = 0;
-  let emojiOpen = false;
   let selectedMessageIds = new Set();
   let chatScrollTop = 0;
   let chatAtBottom = true;
@@ -90,7 +75,6 @@
     incomingNotice = `${fresh.length} yeni mesaj geldi.`;
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Derin Record', { body: `${fresh.length} yeni mesajın var.`, tag: `derin-record-chat-${user.id}` });
   }
-  const emojis = ['👏','🎵','✨','💪','🔥','✅','💬','🎯'];
 
   async function load() {
     if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; }
@@ -107,8 +91,6 @@
       chatScrollTop = previousList.scrollTop;
       chatAtBottom = previousList.scrollHeight - previousList.scrollTop - previousList.clientHeight < 32;
     }
-    const previousEmojiPanel = app.querySelector('.chat-emoji');
-    if (previousEmojiPanel) emojiOpen = !previousEmojiPanel.hidden;
     selectedMessageIds = new Set([...app.querySelectorAll('.chat-message.selected-message')].map(message => message.dataset.messageId));
     await window.DerinAuth.ready;
     const { configured, user, profile, client } = window.DerinAuth;
@@ -157,10 +139,9 @@
     status.textContent = incomingNotice || (admin ? (error ? 'Sohbet arayüzü önizlemesi açık. Mesajlaşma için sohbet SQL kurulumu gerekir.' : people.length ? 'Antrenör seçip özel konuşmayı yönet.' : 'Sohbet arayüzü önizlemesi açık.') : 'Yöneticiyle özel olarak mesajlaş.');
     app.hidden = false;
     const pinnedIds = new Set(JSON.parse(localStorage.getItem('derin-pinned-messages') || '[]'));
-    const messageHtml = messages.length ? messages.map(message => `<article class="chat-message ${message.sender_id === user.id ? 'own' : ''} ${message.body.includes('[Müzik araştırma isteği') ? 'music-link-message' : ''} ${pinnedIds.has(message.id) ? 'pinned-message' : ''} ${selectedMessageIds.has(message.id) ? 'selected-message' : ''}" data-message-id="${message.id}" data-message-body="${encodeURIComponent(message.body)}" data-own="${message.sender_id === user.id}"><small>${pinnedIds.has(message.id) ? '📌 ' : ''}${message.sender_id === user.id ? 'Sen' : safe(contactName)} · ${date(message.created_at)}</small><p>${renderBody(message.body)}</p></article>`).join('') : '<div class="chat-empty"><b>💬</b><strong>Henüz mesaj yok.</strong><span>Bir emoji ekleyip ilk mesajını gönder.</span></div>';
+    const messageHtml = messages.length ? messages.map(message => `<article class="chat-message ${message.sender_id === user.id ? 'own' : ''} ${message.body.includes('[Müzik araştırma isteği') ? 'music-link-message' : ''} ${pinnedIds.has(message.id) ? 'pinned-message' : ''} ${selectedMessageIds.has(message.id) ? 'selected-message' : ''}" data-message-id="${message.id}" data-message-body="${encodeURIComponent(message.body)}" data-own="${message.sender_id === user.id}">${pinnedIds.has(message.id) ? '<i class="msg-pin">📌</i>' : ''}<p>${renderBody(message.body)}</p><time>${date(message.created_at)}</time></article>`).join('') : '<div class="chat-empty"><b>💬</b><strong>Henüz mesaj yok.</strong><span>İlk mesajını gönder.</span></div>';
     const contactListHtml = admin ? `<aside class="chat-contacts"><h2>ÖZEL SOHBETLER</h2><p>🔒 Uçtan uca şifreli</p>${people.length ? people.map(person => `<button type="button" class="${person.id === contactId ? 'active' : ''}" data-contact="${person.id}"><b>${safe((person.full_name || 'A').slice(0,1)).toUpperCase()}</b><span>${safe(person.full_name || 'İsimsiz antrenör')}</span><i>ÖZEL</i></button>`).join('') : '<small>Henüz kayıtlı antrenör yok.</small>'}</aside>` : '';
-    const emojiHtml = emojis.map(emoji => `<button type="button" data-emoji="${emoji}" aria-label="${emoji} ekle">${emoji}</button>`).join('');
-    app.innerHTML = `<div class="chat-shell"><div class="chat-head"><strong>${admin ? 'ANTRENÖR MESAJLARI' : 'YÖNETİCİYLE ÖZEL SOHBET'}</strong>${admin && people.length ? `<select class="chat-contact">${people.map(person => `<option value="${person.id}" ${person.id === contactId ? 'selected' : ''}>${safe(person.full_name || 'İsimsiz')}</option>`).join('')}</select>` : `<span>${admin ? 'ÖZEL SOHBET' : contactName}</span>`}</div><div class="chat-layout ${admin ? 'has-contacts' : ''}">${contactListHtml}<section class="chat-conversation"><div class="chat-list">${messageHtml}</div><div class="chat-form-wrap"><div class="chat-emoji" aria-label="Emoji seç"><span>EMOJİ</span>${emojiHtml}</div><form class="chat-form"><textarea name="message" maxlength="2000" placeholder="Mesajını yaz…" required>${safe(composeDraft)}</textarea><button class="derin-send-button" type="submit"><span>MESAJI</span> GÖNDER <b>↗</b></button></form></div></section></div></div>`;
+    app.innerHTML = `<div class="chat-shell"><div class="chat-head"><strong>${admin ? 'ANTRENÖR MESAJLARI' : 'YÖNETİCİYLE ÖZEL SOHBET'}</strong>${admin && people.length ? `<select class="chat-contact">${people.map(person => `<option value="${person.id}" ${person.id === contactId ? 'selected' : ''}>${safe(person.full_name || 'İsimsiz')}</option>`).join('')}</select>` : `<span>${admin ? 'ÖZEL SOHBET' : contactName}</span>`}</div><div class="chat-layout ${admin ? 'has-contacts' : ''}">${contactListHtml}<section class="chat-conversation"><div class="chat-list">${messageHtml}</div><div class="chat-form-wrap"><form class="chat-form"><textarea name="message" maxlength="2000" placeholder="Mesajını yaz…" required>${safe(composeDraft)}</textarea><button class="derin-send-button" type="submit" aria-label="Gönder"></button></form></div></section></div></div>`;
     const transferButton = document.createElement('button');
     transferButton.type = 'button';
     transferButton.className = 'chat-key-transfer-button';
@@ -204,33 +185,12 @@
       notificationButton.onclick = async () => { const permission = await Notification.requestPermission(); status.textContent = permission === 'granted' ? 'Bildirimler açıldı.' : 'Bildirim izni verilmedi.'; notificationButton.remove(); };
       app.querySelector('.chat-head').append(notificationButton);
     }
-    const emojiPanel = app.querySelector('.chat-emoji');
-    emojiPanel.hidden = !emojiOpen;
-    const emojiToggle = document.createElement('button');
-    emojiToggle.type = 'button';
-    emojiToggle.className = 'chat-emoji-toggle';
-    emojiToggle.setAttribute('aria-expanded', String(emojiOpen));
-    emojiToggle.innerHTML = `☺ EMOJİLER VE STICKERLAR <span>${emojiOpen ? '−' : '+'}</span>`;
-    emojiPanel.before(emojiToggle);
-    const stickerSheet = document.createElement('img');
-    stickerSheet.className = 'chat-sticker-sheet';
-    stickerSheet.src = 'assets/chat-cimnastik-fitness-stickers.png';
-    stickerSheet.alt = 'Cimnastik ve fitness sticker seti';
-    emojiPanel.prepend(stickerSheet);
-    emojiToggle.onclick = () => {
-      const open = emojiPanel.hidden;
-      emojiPanel.hidden = !open;
-      emojiOpen = open;
-      emojiToggle.setAttribute('aria-expanded', String(open));
-      emojiToggle.querySelector('span').textContent = open ? '−' : '+';
-    };
     const list = app.querySelector('.chat-list');
     list.scrollTop = chatAtBottom ? list.scrollHeight : chatScrollTop;
 
     if (!error && !transferOpen) refreshTimer = window.setTimeout(load, 3000);
     app.querySelector('.chat-contact')?.addEventListener('change', event => { chosenCoachId = event.target.value; load(); });
     app.querySelectorAll('[data-contact]').forEach(button => button.onclick = () => { chosenCoachId = button.dataset.contact; composeDraft = ''; load(); });
-    app.querySelectorAll('[data-emoji]').forEach(button => button.onclick = () => { const field = app.querySelector('textarea'); const start = field.selectionStart; const end = field.selectionEnd; field.setRangeText(button.dataset.emoji, start, end, 'end'); composeDraft = field.value; field.focus(); });
     const composeField = app.querySelector('textarea');
     composeField.addEventListener('input', event => { composeDraft = event.target.value; });
     if (composeFocused) window.requestAnimationFrame(() => { composeField.focus(); composeField.setSelectionRange(composeCaretStart, composeCaretEnd); });
@@ -328,7 +288,6 @@
       </label>
       <div class="dz-alt">
         <select id="chat-proj"></select>
-        <select id="chat-mode"><option value="new">Yeni parça</option><option value="ver">Yeni sürüm</option></select>
         <button type="button" id="chat-audio-send" disabled><span>MÜZİĞİ GÖNDER</span><i class="dz-bar"></i></button>
       </div>
       <div class="us-sync" id="us-sync" hidden>
@@ -478,6 +437,7 @@
 
       const existing = await client.from('project_tracks')
                 .select('id,version').eq('project_id', hedefProje).order('sort_order').limit(1);
+      const versionGuncellendi = !!(existing.data && existing.data.length);
 
       if (existing.data && existing.data.length) {
         await client.from('project_tracks')
@@ -502,7 +462,7 @@
       input.value = '';
                  let msg = fileRow.querySelector('.chat-file-msg');
       if (!msg) { msg = document.createElement('div'); msg.className = 'chat-file-msg'; msg.style.cssText = 'flex:1 1 100%;font-size:12px;color:#6ee7b0;padding-top:6px'; fileRow.appendChild(msg); }
-      msg.textContent = fileRow.querySelector('#chat-mode').value === 'ver'
+      msg.textContent = versionGuncellendi
         ? 'Yeni sürüm gönderildi — antrenörün dalga formu güncellendi.'
         : 'Yeni parça gönderildi — antrenörün Projelerim sayfasına düştü.';
       setTimeout(() => { msg.textContent = ''; }, 6000);
