@@ -1,3 +1,12 @@
+/* ============================================================
+   SOHBET — tek dosyada toplanmış tüm görünüm.
+   Önceden 15 küçük dosyaya (chat-room-ui, chat-expression,
+   chat-send-button + 3 varyasyonu, chat-sticker-drawer, vb.)
+   bölünmüştü ve bazıları birbirinin üstüne yazıp çakışıyordu
+   (örn. gönder butonu 4 ayrı dosyadan geliyordu). Artık hepsi
+   burada, tek ve tutarlı bir sistemde.
+   ============================================================ */
+
 .chat-main{max-width:58rem;margin:0 auto;padding:4rem 1.25rem}
 .chat-main h1{font-size:clamp(3.5rem,9vw,7rem);line-height:.78;margin:.5rem 0 1.2rem}
 .chat-main h1 span{color:var(--pink,#cb2468)}
@@ -6,96 +15,171 @@
   border:1px solid rgba(255,255,255,.08);
   background:#17151a;
   color:#f4f1e9;
-  border-radius:28px;
+  border-radius:24px;
   box-shadow:0 24px 60px -20px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.25);
   overflow:hidden;
 }
 
+/* ---------- Üst bar ---------- */
 .chat-head{
-  padding:1.25rem 1.5rem;
+  padding:1.1rem 1.35rem;
   border-bottom:1px solid rgba(255,255,255,.08);
-  display:flex;justify-content:space-between;gap:1rem;align-items:center;
+  display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap;align-items:center;
   backdrop-filter:blur(20px);
 }
-.chat-head strong{color:var(--yellow,#d8bb2c);font-size:.75rem;letter-spacing:.1em}
+.chat-head strong{color:var(--yellow,#d8bb2c);font-size:.72rem;letter-spacing:.09em}
 .chat-head span{font-size:.78rem;color:#c7c1ca}
+.chat-head select.chat-contact{
+  padding:.5rem .7rem;border-radius:10px;border:1px solid rgba(255,255,255,.16);
+  background:#211d24;color:#fff;font:inherit;font-size:.78rem;
+}
+.chat-key-transfer-button,.chat-notification-button{
+  margin-left:auto;
+  border:1px solid rgba(216,187,44,.55);background:rgba(216,187,44,.08);
+  color:var(--yellow,#d8bb2c);padding:.45rem .65rem;border-radius:20px;
+  font-size:.6rem;font-weight:900;letter-spacing:.06em;cursor:pointer;
+  transition:background .15s ease,transform .15s ease;
+}
+.chat-key-transfer-button:hover,.chat-notification-button:hover{background:var(--yellow,#d8bb2c);color:#1b171b}
 
+/* ---------- Yerleşim (tek kolon / antrenör listesiyle iki kolon) ---------- */
+.chat-layout{display:grid;grid-template-columns:1fr;min-height:30rem}
+.chat-layout.has-contacts{grid-template-columns:12.5rem 1fr}
+.chat-conversation{display:flex;flex-direction:column;min-width:0}
+
+/* ---------- Antrenör listesi ---------- */
+.chat-contacts{padding:.75rem;border-right:1px solid rgba(255,255,255,.08);background:rgba(24,18,26,.85)}
+.chat-contacts h2{margin:.2rem 0 .3rem;color:var(--yellow,#d8bb2c);font-size:.64rem;letter-spacing:.1em}
+.chat-contacts>p{margin:0 0 .75rem;color:#aca3ae;font-size:.6rem}
+.chat-contacts>small{display:block;color:#bdb4bf;font-size:.7rem;line-height:1.4}
+.chat-contacts button{
+  display:grid;grid-template-columns:1.9rem 1fr;gap:.55rem;align-items:center;width:100%;
+  padding:.55rem .35rem;border:0;border-radius:12px;background:transparent;color:#fff;
+  text-align:left;cursor:pointer;transition:background .15s ease;
+}
+.chat-contacts button:hover,.chat-contacts button.active{background:rgba(216,187,44,.14)}
+.chat-contacts button b{
+  display:grid;place-items:center;width:1.9rem;height:1.9rem;border-radius:50%;
+  background:var(--pink,#cb2468);font-size:.7rem;color:#fff;
+}
+.chat-contacts button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.74rem;font-weight:700}
+.chat-contacts button i{grid-column:2;font-size:.5rem;font-style:normal;color:var(--yellow,#d8bb2c);letter-spacing:.08em}
+
+/* ---------- Mesaj akışı (duvar kağıdı + baloncuklar) ---------- */
 .chat-list{
   min-height:22rem;max-height:55vh;overflow:auto;
-  padding:1.25rem;
-  display:flex;flex-direction:column;gap:.6rem;
+  padding:1.1rem;display:flex;flex-direction:column;gap:.45rem;
   scroll-behavior:smooth;
+  background-image:linear-gradient(rgba(20,8,15,.72),rgba(20,8,15,.8)),url('assets/chat-derin-record-wallpaper.png');
+  background-size:auto,auto 760px;background-position:center;background-attachment:local;
 }
-.chat-empty{color:#c7c1ca;text-align:center;margin:auto}
+.chat-empty{
+  margin:auto;display:grid;place-items:center;gap:.4rem;padding:2.4rem 1.5rem;text-align:center;
+  color:#c7c1ca;background:rgba(23,21,26,.78);border:1px solid rgba(255,255,255,.1);border-radius:16px;
+}
+.chat-empty b{font-size:2.2rem}
+.chat-empty strong{color:#f4f1e9;font-size:1rem}
+.chat-empty span{max-width:17rem;font-size:.8rem;line-height:1.45}
 
 .chat-message{
-  max-width:min(85%,38rem);
-  padding:.7rem 1rem;
-  border:none;
+  position:relative;
+  max-width:min(78%,34rem);
+  padding:.6rem .95rem 1.15rem;
   background:#27232c;
-  border-radius:20px 20px 20px 6px;
-  box-shadow:0 1px 2px rgba(0,0,0,.15);
-  transition:transform .2s ease, opacity .2s ease;
-  animation:chat-pop .25s cubic-bezier(.2,.8,.2,1);
+  border-radius:18px 18px 18px 5px;
+  box-shadow:0 1px 2px rgba(0,0,0,.2);
+  backdrop-filter:blur(3px);
+  animation:chat-pop .2s cubic-bezier(.2,.8,.2,1);
 }
 .chat-message.own{
   align-self:flex-end;
   background:var(--yellow,#d8bb2c);
   color:#17151a;
-  border-radius:20px 20px 6px 20px;
+  border-radius:18px 18px 5px 18px;
 }
-.chat-message small{display:block;margin-bottom:.3rem;font-size:.65rem;font-weight:800;letter-spacing:.05em;opacity:.75}
-.chat-message p{margin:0;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.chat-message p{margin:0;line-height:1.42;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.87rem}
+.chat-message time{
+  position:absolute;right:.7rem;bottom:.4rem;font-size:.6rem;font-weight:700;
+  letter-spacing:.02em;opacity:.55;
+}
+.chat-message .msg-pin{position:absolute;left:-.3rem;top:-.5rem;font-size:.8rem;font-style:normal}
+.chat-message.selected-message{outline:2px solid var(--yellow,#d8bb2c);outline-offset:2px}
+.chat-message.pinned-message{box-shadow:inset 3px 0 0 var(--yellow,#d8bb2c)}
+.chat-message.music-link-message{background:#30202b;box-shadow:inset 3px 0 0 var(--pink,#cb2468)}
+.chat-message.music-link-message.own{box-shadow:inset 3px 0 0 #17151a}
+.chat-message.music-link-message p a{
+  display:inline-block;margin-top:.5rem;padding:.4rem .6rem;border-radius:8px;
+  background:var(--pink,#cb2468);color:#fff;font-size:.72rem;font-weight:900;text-decoration:none;
+}
+.chat-message.music-link-message.own p a{background:#17151a;color:#fff}
 
-@keyframes chat-pop{
-  from{opacity:0;transform:translateY(6px) scale(.98)}
-  to{opacity:1;transform:translateY(0) scale(1)}
-}
+@keyframes chat-pop{from{opacity:0;transform:translateY(5px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 
-.chat-form{
-  display:flex;gap:.7rem;
-  padding:1.1rem 1.25rem;
-  border-top:1px solid rgba(255,255,255,.08);
+/* ---------- Mesaj bağlam menüsü (basılı tut / sağ tık) ---------- */
+.message-context-menu{
+  position:absolute;z-index:20;right:0;top:calc(100% + .35rem);display:grid;min-width:11rem;
+  padding:.35rem;border-radius:12px;background:#211c25;border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 .9rem 2rem rgba(0,0,0,.45);
 }
+.message-context-menu button{border:0;background:transparent;color:#fff;padding:.6rem .7rem;border-radius:8px;text-align:left;font-size:.68rem;font-weight:800;letter-spacing:.05em;cursor:pointer}
+.message-context-menu button:hover{background:rgba(255,255,255,.11)}
+.message-context-menu .danger{color:#ff99a7}
+.select-circle{display:inline-grid;place-items:center;width:1rem;height:1rem;margin-right:.34rem;border:1px solid currentColor;border-radius:50%;font-size:.58rem;vertical-align:middle}
+.message-edit-field{box-sizing:border-box;width:100%;min-height:4rem;padding:.55rem;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:#101014;color:#fff;font:inherit;resize:vertical}
+.message-edit-controls{display:flex;gap:.5rem;margin-top:.45rem}
+.message-edit-controls button{border:0;padding:.4rem .6rem;border-radius:8px;background:var(--yellow,#d8bb2c);color:#17151a;font-size:.65rem;font-weight:900;cursor:pointer}
+.message-edit-controls button:last-child{background:rgba(255,255,255,.16);color:#fff}
+@media(max-width:620px){.message-context-menu{left:0;right:auto;min-width:12rem}}
+
+/* ---------- Yazma alanı ve gönder butonu ---------- */
+.chat-form-wrap{border-top:1px solid rgba(255,255,255,.08)}
+.chat-form{display:flex;gap:.6rem;padding:1rem 1.15rem;align-items:flex-end}
 .chat-form textarea{
-  flex:1;min-height:3rem;max-height:8rem;resize:vertical;
-  padding:.8rem 1rem;
-  background:#101014;
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:18px;
-  color:#fff;font:inherit;
+  flex:1;min-height:2.9rem;max-height:8rem;resize:vertical;
+  padding:.75rem .95rem;background:#101014;border:1px solid rgba(255,255,255,.14);
+  border-radius:16px;color:#fff;font:inherit;font-size:.85rem;
   transition:border-color .2s ease, box-shadow .2s ease;
 }
-.chat-form textarea:focus{
-  outline:none;
-  border-color:var(--yellow,#d8bb2c);
-  box-shadow:0 0 0 3px rgba(216,187,44,.18);
+.chat-form textarea:focus{outline:none;border-color:var(--yellow,#d8bb2c);box-shadow:0 0 0 3px rgba(216,187,44,.18)}
+.chat-form .derin-send-button{
+  border:0;padding:0 1.35rem;height:2.9rem;border-radius:16px;cursor:pointer;
+  background:linear-gradient(140deg,var(--yellow,#e6cf55) 0%,#c1a52f 100%);
+  color:#17151a;font-weight:900;font-size:.72rem;letter-spacing:.06em;
+  display:flex;align-items:center;gap:.35rem;transition:filter .15s ease, transform .15s ease;
 }
-.chat-form button{
-  align-self:flex-end;
-  border:0;
-  padding:.85rem 1.3rem;
-  background:var(--yellow,#d8bb2c);
-  color:#17151a;
-  font-weight:900;
-  border-radius:16px;
-  cursor:pointer;
-  transition:transform .15s ease, filter .15s ease;
-}
-.chat-form button:hover{filter:brightness(1.06)}
-.chat-form button:active{transform:scale(.96)}
+.chat-form .derin-send-button::after{content:'↗';font-size:.95rem}
+.chat-form .derin-send-button:hover{filter:brightness(1.07)}
+.chat-form .derin-send-button:active{transform:scale(.96)}
 
-.chat-gate{
-  padding:2rem;
-  border:1px solid rgba(255,255,255,.1);
-  background:#17151a;
-  color:#fff;
-  border-radius:24px;
+/* ---------- Cihaz aktarım paneli ---------- */
+.chat-transfer-panel{margin:1rem 1.15rem;padding:1rem;border:1px solid rgba(216,187,44,.5);border-radius:14px;background:#211d22;color:#fff;display:grid;gap:.6rem;max-width:34rem}
+.chat-transfer-panel[hidden]{display:none}
+.chat-transfer-panel strong{color:var(--yellow,#d8bb2c);font-size:.72rem;letter-spacing:.08em}
+.chat-transfer-panel p{margin:0;color:#d6cfd7;font-size:.82rem}
+.chat-transfer-panel label{display:grid;gap:.3rem;font-size:.63rem;font-weight:900;letter-spacing:.07em}
+.chat-transfer-panel input{border:1px solid rgba(255,255,255,.2);border-radius:8px;background:#151216;color:#fff;padding:.65rem;font:inherit}
+.chat-transfer-panel div{display:flex;gap:.55rem;flex-wrap:wrap}
+.chat-transfer-panel button{border:1px solid var(--yellow,#d8bb2c);border-radius:8px;background:var(--yellow,#d8bb2c);color:#1b171b;padding:.55rem .7rem;font-weight:900;font-size:.63rem;letter-spacing:.06em;cursor:pointer}
+.chat-transfer-panel button[data-cancel-transfer]{background:transparent;color:#fff;border-color:rgba(255,255,255,.3)}
+.chat-transfer-panel .chat-transfer-error{min-height:1.05rem;color:#ff9ea6;font-weight:800}
+
+/* ---------- Müzik yükleme satırı (dropzone #dz + #us-sync kartı ayrı bir stil dosyasına değil, chat.js kendi <style> etiketinden geliyor) ---------- */
+.chat-file-row{padding:.8rem 1.15rem 0}
+.dz-alt select{
+  flex:1 1 150px;padding:.6rem .7rem;border-radius:12px;font:inherit;font-size:.72rem;
+  border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;
 }
 
 @media(max-width:700px){
   .chat-main{padding:3rem 7vw}
-  .chat-shell{border-radius:22px}
-  .chat-form{flex-direction:column}
-  .chat-form button{align-self:stretch}
+  .chat-shell{border-radius:20px}
+  .chat-layout.has-contacts{grid-template-columns:1fr}
+  .chat-contacts{display:flex;gap:.4rem;overflow-x:auto;border-right:0;border-bottom:1px solid rgba(255,255,255,.08)}
+  .chat-contacts h2,.chat-contacts>p{display:none}
+  .chat-contacts button{display:flex;flex:0 0 auto;width:auto;padding:.35rem .5rem}
+  .chat-contacts button i{display:none}
+  .chat-list{max-height:45vh}
+  .chat-form{flex-wrap:wrap}
+  .chat-form .derin-send-button{flex:1}
+  .chat-head{flex-wrap:wrap}
 }
