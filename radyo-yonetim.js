@@ -451,14 +451,14 @@
           }).join('') : '<li>Henüz marka yok.</li>'}
         </ul>
       </section>`;
-    byId('brand-add').onclick = async () => {
+       byId('brand-add').onclick = async () => {
       const name = byId('brand-name').value.trim();
       const msg = byId('brand-msg');
       if (!name) { msg.textContent = 'Marka adı gerekli.'; return; }
-      const { error } = await client.from('brands').insert({
-        name, slug: slugify(name), contact: byId('brand-contact').value.trim() || null });
+      const { data, error } = await client.from('brands').insert({
+        name, slug: slugify(name), contact: byId('brand-contact').value.trim() || null }).select('id').single();
       msg.textContent = error ? error.message : 'Marka eklendi.';
-      if (!error) await refresh();
+      if (!error) go('#/markalar/' + data.id);
     };
     wireOpen();
   }
