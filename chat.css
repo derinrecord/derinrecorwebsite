@@ -112,6 +112,14 @@
   background:var(--pink,#cb2468);color:#fff;font-size:.72rem;font-weight:900;text-decoration:none;
 }
 .chat-message.music-link-message.own p a{background:#17151a;color:#fff}
+.music-approve-button{
+  display:inline-block;margin-top:.5rem;padding:.5rem .75rem;border-radius:8px;border:0;
+  background:var(--yellow,#d8bb2c);color:#17151a;font-size:.66rem;font-weight:900;
+  letter-spacing:.04em;cursor:pointer;
+}
+.music-approve-button:hover{filter:brightness(1.08)}
+.music-approve-button:disabled{opacity:.6;cursor:default}
+.music-approved-badge{display:inline-block;margin-top:.5rem;font-size:.68rem;font-weight:800;color:#6ee7b0}
 
 @keyframes chat-pop{from{opacity:0;transform:translateY(5px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 
