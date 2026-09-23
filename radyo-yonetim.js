@@ -430,10 +430,10 @@
     byId('radio-app').innerHTML = `${crumb('Markalar')}
       <section class="radio-panel">
         <h2>YENİ MARKA</h2>
-        <div class="radio-row">
-          <input id="brand-name" placeholder="Marka adı (örn. Chemex)">
+               <div class="radio-row">
+          <input id="brand-name" placeholder="Yeni marka/kafe adı (örn. Starbucks, Kahve Dünyası)">
           <input id="brand-contact" placeholder="İletişim (isteğe bağlı)">
-          <button id="brand-add">EKLE</button>
+          <button id="brand-add">+ YENİ MARKA EKLE</button>
         </div>
         <p class="radio-msg" id="brand-msg"></p>
       </section>
