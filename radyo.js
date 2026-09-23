@@ -10,6 +10,14 @@
   const setState = text => { byId('state').textContent = text; };
   const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
+  const deviceId = (() => {
+    try {
+      let id = localStorage.getItem('derin_record_device_id');
+      if (!id) { id = crypto.randomUUID(); localStorage.setItem('derin_record_device_id', id); }
+      return id;
+    } catch { return null; }
+  })();
+
   const audioUrl = path => client.storage.from('radio-audio').getPublicUrl(path).data.publicUrl;
   const coverUrl = path => client.storage.from('radio-covers').getPublicUrl(path).data.publicUrl;
   const anonsUrl = path => client.storage.from('radio-announcements').getPublicUrl(path).data.publicUrl;
@@ -209,6 +217,29 @@
       .subscribe();
   }
 
+  function lockedOut() {
+    queue = [];
+    started = false;
+    audio.pause();
+    byId('start').hidden = true;
+    byId('brand').textContent = 'Bu cihaz yetkili değil';
+    byId('now').textContent = '';
+    byId('folder').textContent = '';
+    byId('cover').style.display = 'none';
+    setState('Bu yayın linki başka bir cihaza kayıtlı. Derin Record ile iletişime geçin.');
+  }
+
+  async function ping() {
+    const { data, error } = await client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId });
+    if (error) return false;
+    const row = data && data[0];
+    if (row && row.ok === false && row.reason === 'locked_to_other_device') {
+      lockedOut();
+      return true;
+    }
+    return false;
+  }
+
   async function boot() {
     if (!window.DERIN_CONFIG?.supabaseUrl) { setState('Yapılandırma eksik.'); return; }
     if (!key) {
@@ -218,14 +249,14 @@
     }
     client = window.supabase.createClient(window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
 
+    if (await ping()) return;
+
     await fetchBroadcast({ restart: true });
     if (!brandId) return;
 
     byId('start').hidden = false;
     subscribe();
 
-    const ping = () => client.rpc('radio_ping', { p_player_key: key });
-    ping();
     setInterval(ping, 60000);
     setInterval(() => fetchBroadcast(), 120000);
     setInterval(checkHours, 30000);
