@@ -33,6 +33,30 @@
   addStyle('chat-key-transfer.css?v=1');
   addStyle('chat-key-transfer-form.css?v=1');
 
+  // --- "SENKRONİZE EDİLİYOR" yükleme kartı: müzik yüklenirken görünen kart ---
+  (() => {
+    const heights = [14,24,36,48,58,44,30,20,32,46,56,40,26,18,34,50,60,42,28,16];
+    const rects = heights.map((h,i) => `<rect x='${i*8}' y='${64-h}' width='4' height='${h}'/>`).join('');
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='160' height='64'>${rects}</svg>`;
+    const mask = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    const style = document.createElement('style');
+    style.textContent = `
+.us-sync{position:relative;flex:1 1 100%;height:108px;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:16px 20px;background:linear-gradient(100deg,#0c0609 0%,#1a0a12 55%,#200c16 100%);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.us-sync[hidden]{display:none}
+.us-sync::before{content:'';position:absolute;top:0;left:0;right:0;height:60%;background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,0));z-index:1;pointer-events:none}
+.us-sync-top{position:relative;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.us-sync-text b{display:block;font-size:15px;font-weight:900;letter-spacing:.04em;color:#fff}
+.us-sync-text small{display:block;margin-top:3px;font-size:10.5px;font-weight:700;letter-spacing:.14em;color:rgba(255,255,255,.45)}
+.us-sync-pct{position:relative;z-index:2;font-size:26px;font-weight:900;color:#fff;line-height:1}
+.us-wave{position:absolute;inset:0}
+.us-wave-bars{position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.02));-webkit-mask-image:${mask};mask-image:${mask};-webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;-webkit-mask-size:160px 100%;mask-size:160px 100%;-webkit-mask-position:bottom left;mask-position:bottom left}
+.us-fill{position:absolute;inset:0;width:0%;overflow:hidden;transition:width .3s ease}
+.us-fill-inner{position:absolute;top:0;bottom:0;left:0;width:900px;background:linear-gradient(90deg,#fff 0%,#ffd3ea 22%,#ff7fc0 55%,#ef2f8f 100%);-webkit-mask-image:${mask};mask-image:${mask};-webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;-webkit-mask-size:160px 100%;mask-size:160px 100%;-webkit-mask-position:bottom left;mask-position:bottom left}
+@media(max-width:600px){.us-sync{padding:14px 16px}.us-sync-pct{font-size:20px}}
+`;
+    document.head.append(style);
+  })();
+
   const status = document.querySelector('#chat-status');
   const app = document.querySelector('#chat-app');
   const safe = value => String(value || '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
@@ -306,15 +330,55 @@
         <select id="chat-proj"></select>
         <select id="chat-mode"><option value="new">Yeni parça</option><option value="ver">Yeni sürüm</option></select>
         <button type="button" id="chat-audio-send" disabled><span>MÜZİĞİ GÖNDER</span><i class="dz-bar"></i></button>
+      </div>
+      <div class="us-sync" id="us-sync" hidden>
+        <div class="us-sync-top">
+          <div class="us-sync-text"><b>SENKRONİZE EDİLİYOR</b><small>DOSYAN HAZIRLANIYOR</small></div>
+          <div class="us-sync-pct" id="us-sync-pct">0%</div>
+        </div>
+        <div class="us-wave"><div class="us-wave-bars"></div><div class="us-fill" id="us-fill"><div class="us-fill-inner"></div></div></div>
       </div>`;
     app.querySelector('.chat-form-wrap').prepend(fileRow);
 
        (() => {
       const dz = fileRow.querySelector('#dz');
+      const dzAlt = fileRow.querySelector('.dz-alt');
+      const sync = fileRow.querySelector('#us-sync');
+      const syncPct = fileRow.querySelector('#us-sync-pct');
+      const syncFill = fileRow.querySelector('#us-fill');
       const inp = fileRow.querySelector('#chat-audio');
       const etiket = fileRow.querySelector('#dz-dosya');
       const gonder = fileRow.querySelector('#chat-audio-send');
       const boyut = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
+
+      let syncTimer = null;
+      const syncBaslat = fileSize => {
+        dz.hidden = true;
+        dzAlt.hidden = true;
+        sync.hidden = false;
+        const t0 = Date.now();
+        const tau = Math.max(1200, Math.min(9000, (fileSize || 3000000) / 1800));
+        syncFill.style.width = '0%';
+        syncPct.textContent = '0%';
+        clearInterval(syncTimer);
+        syncTimer = setInterval(() => {
+          const pct = Math.min(92, Math.round(92 * (1 - Math.exp(-(Date.now() - t0) / tau))));
+          syncFill.style.width = pct + '%';
+          syncPct.textContent = pct + '%';
+        }, 90);
+      };
+      const syncBitir = () => {
+        clearInterval(syncTimer);
+        syncFill.style.width = '100%';
+        syncPct.textContent = '100%';
+        setTimeout(() => {
+          sync.hidden = true;
+          dz.hidden = false;
+          dzAlt.hidden = false;
+          syncFill.style.width = '0%';
+          syncPct.textContent = '0%';
+        }, 700);
+      };
 
       const goster = () => {
         const f = inp.files && inp.files[0];
@@ -357,10 +421,12 @@
       gonder.addEventListener('click', () => {
         if (!(inp.files && inp.files[0])) return;
         gonder.classList.add('yukleniyor');
+        syncBaslat(inp.files[0].size);
         const bitir = () => {
           window.__secilenMuzik = null;
           gonder.classList.remove('yukleniyor');
           gonder.classList.add('bitti');
+          syncBitir();
           setTimeout(() => gonder.classList.remove('bitti'), 1600);
         };
         const gozle = new MutationObserver(() => {
@@ -368,7 +434,7 @@
           if (m && m.textContent) { bitir(); gozle.disconnect(); }
         });
         gozle.observe(fileRow, { childList: true, subtree: true, characterData: true });
-        setTimeout(() => { gonder.classList.remove('yukleniyor'); gozle.disconnect(); }, 60000);
+        setTimeout(() => { gonder.classList.remove('yukleniyor'); syncBitir(); gozle.disconnect(); }, 60000);
       });
 
       goster();
@@ -390,11 +456,11 @@
       if (!file) { status.textContent = 'Önce bir ses dosyası seç.'; return; }
       status.textContent = 'Müzik gönderiliyor…';
 
-      
+
       const label = file.name.replace(/\.[^.]+$/, '');
 
            const projectId = fileRow.querySelector('#chat-proj').value;
-     
+
             let hedefProje = projectId;
            if (!hedefProje) {
                status.textContent = 'Bu antrenör için yeni proje açılıyor…';
