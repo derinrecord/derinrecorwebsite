@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Derin Record — Şube Player</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #0e0e12; color: #f2f2f2;
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #wrap { text-align: center; max-width: 560px; padding: 32px; }
+  #label { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
+  #slot { font-size: 15px; opacity: 0.6; margin-bottom: 28px; }
+  #track { font-size: 18px; margin-bottom: 24px; min-height: 24px; }
+  #startBtn {
+    background: #e8d15a; color: #111; border: none; border-radius: 8px;
+    padding: 14px 28px; font-size: 16px; cursor: pointer; font-weight: 600;
+  }
+  #status { margin-top: 20px; font-size: 13px; opacity: 0.5; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="label">Bağlanıyor…</div>
+  <div id="slot"></div>
+  <div id="track"></div>
+  <button id="startBtn">Yayını Başlat</button>
+  <div id="status"></div>
+</div>
+
+<audio id="audioEl" preload="auto"></audio>
+
+<script>
+// --- Sabit ayarlar (Supabase publishable anon key ile) ---
+const SUPABASE_URL = "https://abqhakgoluntpzgfyjye.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_FrRGXIb3-x8-Lzx1Ijg75w_teFbP2oa";
+const STORAGE_BUCKET = "radio-audio";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// URL'den ?key=... oku (şubeye özel player_key)
+const params = new URLSearchParams(window.location.search);
+const playerKey = params.get("key");
+
+// Bu cihaza özel, kalıcı bir kimlik oluştur/oku (anahtarı ilk açan cihaza kilitlemek için)
+function getDeviceId() {
+  let id = localStorage.getItem("derin_record_device_id");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("derin_record_device_id", id);
+  }
+  return id;
+}
+const deviceId = getDeviceId();
+
+const el = {
+  label: document.getElementById("label"),
+  slot: document.getElementById("slot"),
+  track: document.getElementById("track"),
+  status: document.getElementById("status"),
+  startBtn: document.getElementById("startBtn"),
+  audio: document.getElementById("audioEl"),
+};
+
+let player = null;        // brand_players satırı
+let queue = [];           // çalma sırası (radio_tracks satırları)
+let queueIndex = 0;
+let started = false;
+
+function trackUrl(storagePath) {
+  return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${storagePath}`;
+}
+
+function setStatus(msg) {
+  el.status.textContent = msg;
+}
+
+async function loadPlayer() {
+  if (!playerKey) {
+    el.label.textContent = "Hata: player key eksik";
+    setStatus("Bu sayfayı ?key=... parametresi olmadan açamazsınız.");
+    return false;
+  }
+
+  const { data, error } = await supabase.rpc("player_handshake", {
+    p_key: playerKey,
+    p_device_id: deviceId,
+  });
+
+  if (error || !data || !data.ok) {
+    const reason = data && data.reason;
+    if (reason === "locked_to_other_device") {
+      el.label.textContent = "Bu anahtar başka bir cihazda kullanımda";
+      setStatus("Bu link zaten başka bir şube/cihaza kilitlenmiş. Yardım için Derin Record ile iletişime geçin.");
+    } else {
+      el.label.textContent = "Hata: geçersiz key";
+      setStatus("Bu player_key ile eşleşen bir şube bulunamadı.");
+    }
+    return false;
+  }
+
+  player = { id: null, brand_id: data.brand_id, label: data.label, open_time: data.open_time, close_time: data.close_time, timezone: data.timezone };
+  el.label.textContent = player.label;
+
+  // heartbeat: her 60 saniyede bir aynı el sıkışmayı tekrar çağır (cihaz eşleşiyorsa sadece last_seen_at güncellenir)
+  setInterval(() => {
+    supabase.rpc("player_handshake", { p_key: playerKey, p_device_id: deviceId });
+  }, 60000);
+
+  return true;
+}
+
+async function fetchQueueForBroadcast(broadcast) {
+  let tracks = [];
+
+  if (broadcast.playlist_id) {
+    const { data: rows } = await supabase
+      .from("brand_playlist_tracks")
+      .select("sort_order, radio_tracks ( id, title, storage_path )")
+      .eq("playlist_id", broadcast.playlist_id)
+      .order("sort_order", { ascending: true });
+    tracks = (rows || []).map(r => r.radio_tracks).filter(Boolean);
+  } else if (broadcast.folder_id) {
+    const { data: rows } = await supabase
+      .from("radio_tracks")
+      .select("id, title, storage_path")
+      .eq("folder_id", broadcast.folder_id)
+      .order("sort_order", { ascending: true });
+    tracks = rows || [];
+  }
+
+  if (broadcast.shuffle) {
+    for (let i = tracks.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
+    }
+  }
+  return tracks;
+}
+
+async function loadBroadcastAndQueue({ keepPlaying } = {}) {
+  const { data: broadcast, error } = await supabase
+    .from("brand_broadcast")
+    .select("brand_id, folder_id, playlist_id, shuffle")
+    .eq("brand_id", player.brand_id)
+    .single();
+
+  if (error || !broadcast) {
+    setStatus("Bu marka için aktif bir yayın bulunamadı.");
+    return;
+  }
+
+  queue = await fetchQueueForBroadcast(broadcast);
+  queueIndex = 0;
+
+  if (queue.length === 0) {
+    el.track.textContent = "Bu dilimde şarkı yok";
+    setStatus("Playlist boş görünüyor.");
+    return;
+  }
+
+  setStatus(`${queue.length} şarkı yüklendi — canlı yayın aktif.`);
+  if (started || keepPlaying) {
+    playCurrent();
+  }
+}
+
+function playCurrent() {
+  const t = queue[queueIndex];
+  if (!t) return;
+  el.track.textContent = "▶ " + decodeURIComponent(t.title || "").replace(/%20/g, " ");
+  el.audio.src = trackUrl(t.storage_path);
+  el.audio.play().catch(() => setStatus("Oynatma engellendi, 'Yayını Başlat' butonuna basın."));
+}
+
+el.audio.addEventListener("ended", () => {
+  queueIndex = (queueIndex + 1) % queue.length;
+  playCurrent();
+});
+
+el.startBtn.addEventListener("click", async () => {
+  started = true;
+  el.startBtn.classList.add("hidden");
+  const ok = await loadPlayer();
+  if (!ok) return;
+  await loadBroadcastAndQueue({ keepPlaying: true });
+  subscribeRealtime();
+});
+
+function subscribeRealtime() {
+  supabase
+    .channel("brand-broadcast-" + player.brand_id)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "brand_broadcast", filter: `brand_id=eq.${player.brand_id}` },
+      () => {
+        setStatus("Yayın değişti, yeni playlist yükleniyor…");
+        loadBroadcastAndQueue({ keepPlaying: true });
+      }
+    )
+    .subscribe();
+}
+</script>
+</body>
+</html>
