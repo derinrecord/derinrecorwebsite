@@ -84,7 +84,7 @@
 <script>
 const SUPABASE_URL = "https://abqhakgoluntpzgfyjye.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_FrRGXIb3-x8-Lzx1Ijg75w_teFbP2oa";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let refreshTimer = null;
 
@@ -94,14 +94,14 @@ async function login() {
   const errEl = document.getElementById("loginErr");
   errEl.textContent = "";
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
     errEl.textContent = "Giriş başarısız: " + error.message;
     return;
   }
 
   // admin rolü kontrolü (RLS zaten korur ama kullanıcıya net bir mesaj verelim)
-  const { data: profile } = await supabase
+  const { data: profile } = await sb
     .from("profiles")
     .select("role")
     .eq("id", data.user.id)
@@ -109,7 +109,7 @@ async function login() {
 
   if (!profile || profile.role !== "admin") {
     errEl.textContent = "Bu hesabın yönetici yetkisi yok.";
-    await supabase.auth.signOut();
+    await sb.auth.signOut();
     return;
   }
 
@@ -118,7 +118,7 @@ async function login() {
 
 async function logout() {
   clearInterval(refreshTimer);
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
   document.getElementById("dashboard").classList.add("hidden");
   document.getElementById("loginBox").classList.remove("hidden");
 }
@@ -149,7 +149,7 @@ function statusFor(row) {
 }
 
 async function loadRows() {
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from("brand_players")
     .select("id, label, bound_device_id, bound_at, last_seen_at, first_ip, last_ip, brands ( name )")
     .order("label", { ascending: true });
@@ -182,7 +182,7 @@ async function loadRows() {
 
 async function resetLock(id) {
   if (!confirm("Bu şubenin cihaz kilidini sıfırlamak istediğine emin misin? Bir sonraki açılan cihaz anahtarı devralacak.")) return;
-  await supabase
+  await sb
     .from("brand_players")
     .update({ bound_device_id: null, bound_at: null, first_ip: null, last_ip: null })
     .eq("id", id);
@@ -190,7 +190,7 @@ async function resetLock(id) {
 }
 
 // Sayfa açılışında zaten giriş yapılmış bir oturum var mı kontrol et
-supabase.auth.getSession().then(({ data }) => {
+sb.auth.getSession().then(({ data }) => {
   if (data.session) showDashboard();
 });
 </script>
