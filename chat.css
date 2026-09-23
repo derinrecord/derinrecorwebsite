@@ -141,15 +141,8 @@
   transition:border-color .2s ease, box-shadow .2s ease;
 }
 .chat-form textarea:focus{outline:none;border-color:var(--yellow,#d8bb2c);box-shadow:0 0 0 3px rgba(216,187,44,.18)}
-.chat-form .derin-send-button{
-  border:0;padding:0 1.35rem;height:2.9rem;border-radius:16px;cursor:pointer;
-  background:linear-gradient(140deg,var(--yellow,#e6cf55) 0%,#c1a52f 100%);
-  color:#17151a;font-weight:900;font-size:.72rem;letter-spacing:.06em;
-  display:flex;align-items:center;gap:.35rem;transition:filter .15s ease, transform .15s ease;
-}
-.chat-form .derin-send-button::after{content:'↗';font-size:.95rem}
-.chat-form .derin-send-button:hover{filter:brightness(1.07)}
-.chat-form .derin-send-button:active{transform:scale(.96)}
+/* .derin-send-button'ın kendisi glass.css'te tanımlı (dairesel sarı üçgen ikon) —
+   burada elle tekrar tanımlamıyoruz, o hâliyle zaten iyi ve tüm sitede tutarlı. */
 
 /* ---------- Cihaz aktarım paneli ---------- */
 .chat-transfer-panel{margin:1rem 1.15rem;padding:1rem;border:1px solid rgba(216,187,44,.5);border-radius:14px;background:#211d22;color:#fff;display:grid;gap:.6rem;max-width:34rem}
