@@ -199,7 +199,7 @@
 
   function reportPlaying(playing) {
     if (!client || !key) return;
-    client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: playing }).catch(() => {});
+    Promise.resolve(client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: playing })).catch(() => {});
   }
 
   byId('start').onclick = () => {
