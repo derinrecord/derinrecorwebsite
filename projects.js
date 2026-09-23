@@ -53,26 +53,31 @@
 
     function trackBlock(tr,i,p){
     const has=!!tr.audio_path;
-    return `<div class="proj-player" data-tb="${tr.id}" style="flex-direction:column;align-items:stretch">
-      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-        <img class="cassette" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti">
-        <div style="flex:1 1 180px"><strong>${i+1}. ${safe(tr.label||'Parça')}</strong>
-          <small style="display:block;opacity:.6">${has?('v'+tr.version+' · düzenlenmiş'):'ham kaynak'}</small>
-          ${tr.source_url?`<a href="${safe(tr.source_url)}" target="_blank" rel="noreferrer" style="font-size:11px;opacity:.7">kaynağı aç ↗</a>`:''}</div>
-        ${has?window.DerinProjectTrackControls.renderTrackControls({id:safe(tr.id),audio_path:safe(tr.audio_path)},admin):''}
+    const renkler=['aerobik','acrobatik','artistik','ritmik','trambolin'];
+    const renk=renkler[i%renkler.length];
+    return `<div class="proj-cassette-card ${renk}" data-tb="${tr.id}">
+      <span class="card-number">${String(i+1).padStart(2,'0')}</span>
+      <img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti">
+      <div class="card-meta">
+        <strong>${safe(tr.label||'Parça')}</strong>
+        <span>${has?('v'+tr.version+' · düzenlenmiş'):'ham kaynak'}</span>
+        ${tr.source_url?`<a href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">kaynağı aç ↗</a>`:''}
       </div>
-      ${has?`<div class="proj-wave" style="margin-top:12px;position:relative">
-        <canvas data-wave="${tr.id}" style="height:72px;cursor:crosshair"></canvas>
-        <div data-selinfo="${tr.id}" style="font-size:11px;opacity:.65;margin-top:6px">Dalga formunda sürükleyerek kesmek istediğin bölgeyi seç.</div>
-        <div class="proj-actions" style="margin-top:8px">
-          <input data-cut="${tr.id}" placeholder="Bu bölge için notun" style="flex:1 1 220px;padding:10px 13px;border-radius:13px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit">
-          <button data-cutsend="${tr.id}">BÖLGEYİ BİLDİR</button>
-        </div></div>`:''}
-      ${admin?`<div class="proj-actions" style="margin-top:10px">
-        <input type="file" accept="audio/*" data-newver="${tr.id}">
-        <span style="font-size:11px;opacity:.6">yeni varyasyon yükle</span></div>`:''}
-      ${(!admin && p && p.download_allowed && has)
-        ? `<div class="proj-actions" style="margin-top:10px"><button data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" style="border-color:rgba(24,195,125,.5);background:rgba(24,195,125,.14);color:#6ee7b0">⤓ İNDİR</button></div>` : ''}
+      <div class="proj-cassette-deck">
+        ${has?window.DerinProjectTrackControls.renderTrackControls({id:safe(tr.id),audio_path:safe(tr.audio_path)},admin):''}
+        ${has?`<div class="proj-wave" style="margin-top:12px;position:relative">
+          <canvas data-wave="${tr.id}" style="height:72px;cursor:crosshair"></canvas>
+          <div data-selinfo="${tr.id}" style="font-size:11px;opacity:.65;margin-top:6px">Dalga formunda sürükleyerek kesmek istediğin bölgeyi seç.</div>
+          <div class="proj-actions" style="margin-top:8px">
+            <input data-cut="${tr.id}" placeholder="Bu bölge için notun" style="flex:1 1 220px;padding:10px 13px;border-radius:13px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit">
+            <button data-cutsend="${tr.id}">BÖLGEYİ BİLDİR</button>
+          </div></div>`:''}
+        ${admin?`<div class="proj-actions" style="margin-top:10px">
+          <input type="file" accept="audio/*" data-newver="${tr.id}">
+          <span style="font-size:11px;opacity:.6">yeni varyasyon yükle</span></div>`:''}
+        ${(!admin && p && p.download_allowed && has)
+          ? `<div class="proj-actions" style="margin-top:10px"><button data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" style="border-color:rgba(24,195,125,.5);background:rgba(24,195,125,.14);color:#6ee7b0">⤓ İNDİR</button></div>` : ''}
+      </div>
     </div>`;
   }
 
@@ -82,7 +87,7 @@
       <h3>${safe(p.title||'Proje')}</h3>
       <p class="meta">${safe(admin?(names[p.coach_id]||'Antrenör'):'Sana ait proje')}${p.branch?' · '+safe(p.branch):''} · ${new Date(p.updated_at||p.created_at).toLocaleString('tr-TR')}</p>
       ${p.status==='pending'?'<p class="meta">Onay bekliyor.</p>':bar(p.status)}
-      ${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<div class="proj-player proj-empty-track"><img class="cassette" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti"><p class="meta">Henüz parça eklenmedi.</p></div>`}
+      ${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<div class="proj-cassette-card proj-empty-track"><span class="card-number">—</span><img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti"><p class="meta">Henüz parça eklenmedi.</p></div>`}
       ${admin?`<div class="proj-actions">
         <label class="proj-add-track">YENİ PARÇA EKLE <input type="file" accept="audio/*" data-addtrack="${p.id}" hidden></label>
         <select data-stage="${p.id}">
@@ -260,4 +265,3 @@
   window.addEventListener('derin:authchange',()=>{if(client)load();});
   boot();
 })();
-     
