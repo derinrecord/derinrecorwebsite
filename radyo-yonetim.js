@@ -478,19 +478,16 @@
     byId('radio-app').innerHTML = `${crumb('Markalar', brand.name)}${brandLiveBadge(id) ? `<div style="margin:10px 0 -4px">${brandLiveBadge(id)}</div>` : ''}
       <section class="radio-panel">
         <h2>MARKA SUNUMU — MÜŞTERİYE GÖNDERİLECEK LİNK</h2>
-        ${brand.access_code ? `
         <div class="radio-row">
           <input readonly value="${safe(brandPreviewUrl(brand))}" style="flex:2 1 260px;padding:12px 15px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit">
           <button data-copy="${safe(brandPreviewUrl(brand))}">LİNKİ KOPYALA</button>
-          <input readonly value="${safe(brand.access_code)}" style="flex:0 0 140px;padding:12px 15px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;letter-spacing:.1em">
-          <button data-copy="${safe(brand.access_code)}">KODU KOPYALA</button>
         </div>
-        <p class="radio-msg">Bu link ile kodu markaya iletin — sadece bu kodu bilenler sunumu görebilir.</p>` : `
         <div class="radio-row">
-          <input id="brand-code" placeholder="Erişim kodu belirleyin (örn. ${slugify(brand.name).toUpperCase()}2026)">
-          <button id="brand-code-set">KODU KAYDET</button>
+          <input id="brand-code" value="${safe(brand.access_code || '')}" placeholder="Erişim kodu (örn. ${slugify(brand.name).toUpperCase()}2026)">
+          <button id="brand-code-set">${brand.access_code ? 'KODU GÜNCELLE' : 'KODU KAYDET'}</button>
+          ${brand.access_code ? `<button data-copy="${safe(brand.access_code)}">KODU KOPYALA</button>` : ''}
         </div>
-        <p class="radio-msg" id="brand-code-msg">Bu markanın henüz sunum sayfası için bir erişim kodu yok.</p>`}
+        <p class="radio-msg" id="brand-code-msg">${brand.access_code ? 'Bu link ile kodu markaya iletin — sadece bu kodu bilenler sunumu görebilir. Kodu istediğin zaman değiştirip güncelleyebilirsin.' : 'Bu markanın henüz sunum sayfası için bir erişim kodu yok.'}</p>
       </section>
       <section class="radio-panel">
         <h2>SUNUM SAYFASINA GİRİŞ DENEMELERİ${failedRecent ? ` <span style="color:#ffb3b3;font-size:11px;font-weight:700">· son 24 saatte ${failedRecent} başarısız deneme</span>` : ''}</h2>
@@ -562,6 +559,9 @@
         const code = byId('brand-code').value.trim();
         const msg = byId('brand-code-msg');
         if (!code) { msg.textContent = 'Kod girin.'; return; }
+        if (brand.access_code && code !== brand.access_code) {
+          if (!confirm('Kodu değiştirirsen markanın eski kodu/linki artık çalışmaz, yeni kodu müşteriye iletmen gerekir. Devam edilsin mi?')) return;
+        }
         const { error } = await client.from('brands').update({ access_code: code }).eq('id', id);
         msg.textContent = error ? error.message : 'Kod kaydedildi.';
         if (!error) await refresh();
