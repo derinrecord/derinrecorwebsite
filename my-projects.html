@@ -40,31 +40,43 @@
   .track-step:first-child::before{display:none}
   .track-step.done::before,.track-step.now::before{background:#106b44}
 
-  /* Kaset klasörü — ana sayfadaki "DEMOLAR" kartlarıyla aynı görsel dil */
-  .proj-cassette-card{position:relative;margin-bottom:18px;padding:20px 20px 4px;border-radius:22px;
-    color:#0b0b0d;background:#d4c24e;box-shadow:0 14px 30px rgba(0,0,0,.35)}
+  /* Kaset kartı — ana sayfadaki "DEMOLAR" bölümüyle birebir aynı görsel dil */
+  .proj-cassette-card{min-width:0;display:block;position:relative;padding:18px 12px 14px;
+    color:#0b0b0d;background:#d4c24e;box-shadow:7px 7px 0 rgba(8,8,8,.45);
+    transition:transform .3s ease,box-shadow .3s ease;margin-bottom:34px}
+  .proj-cassette-card:hover{z-index:2;transform:translateY(-26px) rotate(-2deg) scale(1.09);
+    box-shadow:15px 20px 0 rgba(8,8,8,.38)}
   .proj-cassette-card.acrobatik{background:#f1ece1}
   .proj-cassette-card.artistik{background:#fe4b45}
   .proj-cassette-card.ritmik{background:#ab6ee7}
   .proj-cassette-card.trambolin{background:#f4f126}
-  .proj-cassette-card .card-number{font-size:11px;font-weight:900;letter-spacing:1px}
-  .proj-cassette-card .demo-cassette-image{display:block;width:220px;max-width:60vw;margin:14px auto;
-    aspect-ratio:1.55;object-fit:contain;filter:drop-shadow(0 5px 4px rgba(0,0,0,.3))}
-  .proj-cassette-card .card-meta{border-top:2px solid #0b0b0d;padding-top:10px;margin-bottom:16px;
-    display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.4px}
-  .proj-cassette-card .card-meta strong{font-size:16px;letter-spacing:-.3px}
+  .proj-cassette-card .card-number{font-size:10px;font-weight:900;letter-spacing:1px}
+  .proj-cassette-card .demo-cassette-image{display:block;width:100%;aspect-ratio:1.55;
+    object-fit:contain;margin:16px 0;filter:drop-shadow(0 5px 4px rgba(0,0,0,.3));
+    transition:transform .3s ease}
+  .proj-cassette-card:hover .demo-cassette-image{transform:rotate(-2deg) scale(1.04)}
+  .proj-cassette-card .card-meta{border-top:2px solid #0b0b0d;padding-top:9px;margin-bottom:14px;
+    display:flex;flex-direction:column;gap:5px;font-size:10px;letter-spacing:.5px}
+  .proj-cassette-card .card-meta strong{font-size:14px;letter-spacing:-.5px;font-weight:800}
+  .proj-cassette-card .card-meta span{font-weight:800}
   .proj-cassette-card .card-meta a{color:#0b0b0d}
-  .proj-cassette-deck{padding:16px;border-radius:18px;background:rgba(0,0,0,.28);
-    border:1px solid rgba(255,255,255,.12);color:#f4f1e9;margin-bottom:16px}
   .proj-empty-track{opacity:.82}.proj-empty-track .meta{margin:0}
-  @media(max-width:600px){.proj-cassette-card .demo-cassette-image{width:70vw}}
-  .proj-wave{flex:1 1 200px;min-width:180px}
-  .proj-wave canvas{width:100%;height:56px;display:block}
-  .proj-play{padding:12px 20px;border-radius:15px;border:1px solid rgba(255,255,255,.4);
+  .proj-play{padding:12px 20px;border-radius:15px;border:1px solid rgba(11,11,13,.4);
     background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(255,255,255,.65));
     color:#131313;font:inherit;font-weight:600;cursor:pointer}
-  .proj-delete-track{width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.24);
-    background:rgba(255,255,255,.06);color:inherit;font-size:22px;cursor:pointer}
+  .proj-delete-track{width:42px;height:42px;border-radius:50%;border:1px solid rgba(11,11,13,.24);
+    background:rgba(11,11,13,.06);color:inherit;font-size:22px;cursor:pointer}
+
+  /* Kaset kartı açık zeminli olduğu için içindeki kontrolleri koyu tonda göster */
+  .proj-cassette-card .proj-actions select,.proj-cassette-card .proj-actions input[type=file],
+  .proj-cassette-card .proj-actions input:not([type=file]){
+    border-color:rgba(11,11,13,.3);background:rgba(11,11,13,.08);color:#0b0b0d}
+  .proj-cassette-card .proj-actions button{border-color:rgba(11,11,13,.3);background:rgba(11,11,13,.08);color:#0b0b0d}
+  .proj-cassette-card .proj-actions button:hover{background:rgba(11,11,13,.16)}
+  .proj-cassette-card .proj-actions span{color:#0b0b0d}
+  .proj-cassette-card .fb-box{border-top-color:rgba(11,11,13,.15)}
+  .proj-cassette-card .fb-list li{border-bottom-color:rgba(11,11,13,.1)}
+  .proj-cassette-card .fb-box textarea{border-color:rgba(11,11,13,.3);background:rgba(11,11,13,.08);color:#0b0b0d}
 
   .proj-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
   .proj-actions select,.proj-actions input[type=file]{padding:11px 14px;border-radius:14px;
@@ -100,7 +112,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="auth.js?v=20260914"></script>
 <script src="project-track-controls.js?v=1"></script>
-<script src="projects.js?v=20260917"></script>
+<script src="projects.js?v=20260924"></script>
 </body>
 </html>
 <script src="sortable-touch.js?v=1"></script>
