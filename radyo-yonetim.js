@@ -919,6 +919,7 @@ style="width:60px;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,
 style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
 <option value="gun">gün</option>
 <option value="ay">ay</option>
+<option value="yil">yıl</option>
 </select>
 <button data-ab-trial="${b.id}">DENEME BAŞLAT</button>
           <button data-ab-ay="${b.id}">AKTİF ET / UZAT</button>
@@ -934,7 +935,7 @@ return { miktar, birim };
 };
 const ekle = (tarih, miktar, birim) => {
 const d = new Date(tarih);
-if (birim === 'ay') d.setMonth(d.getMonth() + miktar); else d.setDate(d.getDate() + miktar);
+if (birim === 'yil') d.setFullYear(d.getFullYear() + miktar); else if (birim === 'ay') d.setMonth(d.getMonth() + miktar); else d.setDate(d.getDate() + miktar);
 return d;
 };
 
