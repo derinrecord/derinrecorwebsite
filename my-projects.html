@@ -41,11 +41,15 @@
   .track-step.done::before,.track-step.now::before{background:#106b44}
 
   /* Kaset kartı — ana sayfadaki "DEMOLAR" bölümüyle birebir aynı görsel dil */
+  .proj-tracks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+    gap:16px;align-items:start;margin-bottom:18px}
   .proj-cassette-card{min-width:0;display:block;position:relative;padding:18px 12px 14px;
     color:#0b0b0d;background:#d4c24e;box-shadow:7px 7px 0 rgba(8,8,8,.45);
     transition:transform .3s ease,box-shadow .3s ease;margin-bottom:34px}
+  .proj-tracks-grid .proj-cassette-card{margin-bottom:0}
   .proj-cassette-card:hover{z-index:2;transform:translateY(-26px) rotate(-2deg) scale(1.09);
     box-shadow:15px 20px 0 rgba(8,8,8,.38)}
+  .proj-tracks-grid .proj-cassette-card:hover{transform:translateY(-10px) scale(1.05)}
   .proj-cassette-card.acrobatik{background:#f1ece1}
   .proj-cassette-card.artistik{background:#fe4b45}
   .proj-cassette-card.ritmik{background:#ab6ee7}
@@ -125,17 +129,20 @@
     white-space:nowrap}
   .td-desc{margin:12px 0 20px;font-size:13px;line-height:1.6;opacity:.65;max-width:640px}
 
-  .td-wave-wrap{position:relative;padding:16px 10px 40px;border-radius:18px;background:rgba(0,0,0,.32);
+  .td-wave-wrap{position:relative;padding:16px 10px 46px;border-radius:18px;background:rgba(0,0,0,.32);
     border:1px solid rgba(255,255,255,.1)}
   .td-wave-canvas{width:100%;height:84px;display:block;cursor:pointer}
-  .td-marks{position:absolute;left:10px;right:10px;bottom:8px;height:32px}
+  .td-marks{position:absolute;left:10px;right:10px;bottom:8px;height:38px}
   .td-mark{position:absolute;bottom:0;transform:translateX(-50%);display:flex;flex-direction:column;
-    align-items:center;cursor:grab}
-  .td-mark-line{width:1.5px;height:14px;background:rgba(255,255,255,.35);display:block;margin:0 auto}
-  .td-mark.active .td-mark-line{background:#fff}
+    align-items:center;cursor:grab;z-index:1}
+  .td-mark.active{z-index:2}
+  .td-mark-line{width:2px;height:16px;background:#d4c24e;opacity:.95;display:block;margin:0 auto;
+    box-shadow:0 0 4px rgba(0,0,0,.6)}
+  .td-mark.saved .td-mark-line{background:#106b44}
+  .td-mark.active .td-mark-line{background:#fe4b6a;box-shadow:0 0 6px rgba(254,75,105,.7)}
   .td-mark-badge{margin-top:2px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
     justify-content:center;font-size:10px;font-weight:800;border:2px solid #d4c24e;background:#141416;
-    color:#e9dc94}
+    color:#e9dc94;box-shadow:0 1px 4px rgba(0,0,0,.5)}
   .td-mark.saved .td-mark-badge{background:#106b44;border-color:#106b44;color:#fff}
   .td-mark.active .td-mark-badge{transform:scale(1.25);background:#fe4b6a;border-color:#fe4b6a;color:#fff}
 
@@ -199,7 +206,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="auth.js?v=20260914"></script>
 <script src="project-track-controls.js?v=1"></script>
-<script src="projects.js?v=20260924b"></script>
+<script src="projects.js?v=20260924c"></script>
 </body>
 </html>
 <script src="sortable-touch.js?v=1"></script>
