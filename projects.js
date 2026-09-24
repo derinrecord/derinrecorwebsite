@@ -92,7 +92,7 @@
       <h3>${safe(p.title||'Proje')}</h3>
       <p class="meta">${safe(admin?(names[p.coach_id]||'Antrenör'):'Sana ait proje')}${p.branch?' · '+safe(p.branch):''} · ${new Date(p.updated_at||p.created_at).toLocaleString('tr-TR')}</p>
       ${p.status==='pending'?'<p class="meta">Onay bekliyor.</p>':bar(p.status)}
-      ${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<div class="proj-cassette-card proj-empty-track"><span class="card-number">—</span><img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti"><p class="meta">Henüz parça eklenmedi.</p></div>`}
+      <div class="proj-tracks-grid">${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<div class="proj-cassette-card proj-empty-track"><span class="card-number">—</span><img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti"><p class="meta">Henüz parça eklenmedi.</p></div>`}</div>
       ${admin?`<div class="proj-actions">
         <label class="proj-add-track">YENİ PARÇA EKLE <input type="file" accept="audio/*" data-addtrack="${p.id}" hidden></label>
         <select data-stage="${p.id}">
