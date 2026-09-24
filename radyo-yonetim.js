@@ -539,6 +539,12 @@
     byId('radio-app').innerHTML = `${crumb('Markalar', brand.name)}${brandLiveBadge(id) ? `<div style="margin:10px 0 -4px">${brandLiveBadge(id)}</div>` : ''}
       <section class="radio-panel">
         <h2>MARKA SUNUMU — MÜŞTERİYE GÖNDERİLECEK LİNK</h2>
+<div class="radio-row">
+<span style="flex:0 0 auto;align-self:center;opacity:.6;font-size:13px">${safe(siteRoot())}coffee/</span>
+<input id="brand-slug" value="${safe(brand.slug || '')}" placeholder="link-adi" style="flex:1 1 140px;padding:12px 15px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit">
+<button id="brand-slug-set">LİNK ADINI KAYDET</button>
+</div>
+<p class="radio-msg" id="brand-slug-msg">Her markanın kendine ait, istediğin an değiştirebileceğin bir link adı olur — link adını değiştirirsen eski link çalışmaz olur.</p>
         <div class="radio-row">
           <input readonly value="${safe(brandPreviewUrl(brand))}" style="flex:2 1 260px;padding:12px 15px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit">
           <button data-copy="${safe(brandPreviewUrl(brand))}">LİNKİ KOPYALA</button>
@@ -615,7 +621,23 @@
         </ul>
       </section>`;
 
-    if (byId('brand-code-set')) {
+    if (byId('brand-slug-set')) {
+byId('brand-slug-set').onclick = async () => {
+const raw = byId('brand-slug').value.trim();
+const msg = byId('brand-slug-msg');
+if (!raw) { msg.textContent = 'Link adı gerekli.'; return; }
+const newSlug = slugify(raw);
+if (!newSlug) { msg.textContent = 'Geçerli bir link adı girin.'; return; }
+if (newSlug === brand.slug) { msg.textContent = 'Link adı zaten bu.'; return; }
+if (brand.slug) {
+if (!await askConfirm('Link adını değiştirirsen eski link (' + brandPreviewUrl(brand) + ') artık çalışmaz, yeni linki markaya iletmen gerekir. Devam edilsin mi?')) return;
+}
+const { error } = await client.from('brands').update({ slug: newSlug }).eq('id', id);
+msg.textContent = error ? (error.code === '23505' ? 'Bu link adı başka bir markada kullanılıyor. Farklı bir ad seçin.' : error.message) : ('Link adı güncellendi: ' + siteRoot() + 'coffee/' + newSlug);
+if (!error) await refresh();
+};
+}
+if (byId('brand-code-set')) {
       byId('brand-code-set').onclick = async () => {
         const code = byId('brand-code').value.trim();
         const msg = byId('brand-code-msg');
@@ -837,11 +859,30 @@
   }
     async function abonelikList() {
     byId('radio-app').innerHTML = `${crumb('Abonelikler')}
-      <section class="radio-panel"><h2>MARKA ABONELİKLERİ</h2>
+      <section class="radio-panel">
+<h2>YENİ MARKA</h2>
+<div class="radio-row">
+<input id="ab-brand-name" placeholder="Yeni marka/kafe adı (örn. Starbucks, Kahve Dünyası)">
+<input id="ab-brand-contact" placeholder="İletişim (isteğe bağlı)">
+<button id="ab-brand-add">+ YENİ MARKA EKLE</button>
+</div>
+<p class="radio-msg" id="ab-brand-msg"></p>
+</section>
+<section class="radio-panel"><h2>MARKA ABONELİKLERİ</h2>
         <p class="radio-msg" id="ab-msg">Yükleniyor…</p>
         <ul class="radio-list" id="ab-list"></ul></section>`;
 
-    const [ab, pl, br] = await Promise.all([
+    byId('ab-brand-add').onclick = async () => {
+const name = byId('ab-brand-name').value.trim();
+const msg = byId('ab-brand-msg');
+if (!name) { msg.textContent = 'Marka adı gerekli.'; return; }
+const { error } = await client.from('brands').insert({
+name, slug: slugify(name), contact: byId('ab-brand-contact').value.trim() || null });
+msg.textContent = error ? error.message : 'Marka eklendi.';
+if (!error) { await refresh(); }
+};
+
+const [ab, pl, br] = await Promise.all([
       client.from('subscriptions').select('*'),
       client.from('plans').select('*').order('sort_order'),
       client.from('brands').select('id,name').order('name')
@@ -872,13 +913,32 @@
           </select>
           <input type="number" min="1" value="${s?.branch_count || 1}" data-ab-sube="${b.id}"
             style="width:70px;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px" title="Şube sayısı">
-          <button data-ab-trial="${b.id}">7 GÜN DENEME</button>
-          <button data-ab-ay="${b.id}">+1 AY</button>
+          <input type="number" min="1" value="7" data-ab-sure="${b.id}"
+style="width:60px;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px" title="Süre miktarı">
+<select data-ab-birim="${b.id}"
+style="padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px">
+<option value="gun">gün</option>
+<option value="ay">ay</option>
+</select>
+<button data-ab-trial="${b.id}">DENEME BAŞLAT</button>
+          <button data-ab-ay="${b.id}">AKTİF ET / UZAT</button>
           ${s ? `<button data-ab-iptal="${b.id}">İPTAL</button>` : ''}
+<button data-ab-sil="${b.id}" style="border-color:rgba(254,75,69,.4);background:rgba(254,75,69,.1);color:#ffb4b0">MARKAYI SİL</button>
         </span></li>`;
     }).join('') || '<li>Marka yok.</li>';
 
-    const kaydet = async (brandId, alanlar) => {
+    const suresi = (id) => {
+const miktar = Number(document.querySelector(`[data-ab-sure="${id}"]`)?.value) || 1;
+const birim = document.querySelector(`[data-ab-birim="${id}"]`)?.value || 'gun';
+return { miktar, birim };
+};
+const ekle = (tarih, miktar, birim) => {
+const d = new Date(tarih);
+if (birim === 'ay') d.setMonth(d.getMonth() + miktar); else d.setDate(d.getDate() + miktar);
+return d;
+};
+
+const kaydet = async (brandId, alanlar) => {
       const planId = document.querySelector(`[data-ab-plan="${brandId}"]`).value;
       if (!planId) { byId('ab-msg').textContent = 'Önce paket seçin.'; return; }
       const sube = Number(document.querySelector(`[data-ab-sube="${brandId}"]`).value) || 1;
@@ -890,8 +950,19 @@
       if (!error) abonelikList();
     };
 
-    document.querySelectorAll('[data-ab-trial]').forEach(b => b.onclick = () => {
-      const bitis = new Date(Date.now() + 7*86400000).toISOString();
+    document.querySelectorAll('[data-ab-sil]').forEach(b => b.onclick = async () => {
+const id = b.dataset.abSil;
+const brand = (br.data || []).find(x => x.id === id);
+if (!await askConfirm(`"${brand?.name || 'Bu marka'}" tamamen silinecek: şubeleri, yayın linkleri, çalma listeleri, anonsları ve aboneliği birlikte silinir. Bu işlem geri alınamaz. Emin misiniz?`)) return;
+b.disabled = true; b.textContent = 'SİLİNİYOR…';
+const { error } = await client.from('brands').delete().eq('id', id);
+if (error) { await askAlert('Marka silinemedi: ' + error.message); b.disabled = false; b.textContent = 'MARKAYI SİL'; return; }
+await refresh();
+});
+
+document.querySelectorAll('[data-ab-trial]').forEach(b => b.onclick = () => {
+      const { miktar, birim } = suresi(b.dataset.abTrial);
+const bitis = ekle(new Date(), miktar, birim).toISOString();
       kaydet(b.dataset.abTrial, { status:'trial', trial_ends_at:bitis, current_start:new Date().toISOString(), current_end:null });
     });
 
@@ -899,8 +970,9 @@
       const id = b.dataset.abAy;
       const s = abone.find(x => x.brand_id === id);
       const baz = (s?.current_end && new Date(s.current_end) > new Date()) ? new Date(s.current_end) : new Date();
-      baz.setMonth(baz.getMonth() + 1);
-      kaydet(id, { status:'active', current_end: baz.toISOString() });
+      const { miktar, birim } = suresi(id);
+const bitis = ekle(baz, miktar, birim).toISOString();
+      kaydet(id, { status:'active', current_end: bitis });
     });
 
     document.querySelectorAll('[data-ab-iptal]').forEach(b => b.onclick = async () => {
