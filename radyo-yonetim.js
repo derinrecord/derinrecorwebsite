@@ -61,7 +61,55 @@
     });
   }
 
-  const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function askMoveTarget(trackTitle){
+  return new Promise(resolve => {
+    const brandPlaylists = state.brands
+      .map(b => ({ brand: b, playlists: state.playlists.filter(p => p.brand_id === b.id) }))
+      .filter(x => x.playlists.length);
+    if (!brandPlaylists.length) { askAlert('Önce bir markaya çalma listesi eklemelisiniz.').then(() => resolve(null)); return; }
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
+    const box = document.createElement('div');
+    box.style.cssText = 'max-width:420px;width:100%;padding:24px;border-radius:20px;background:#1a1a1e;border:1px solid rgba(255,255,255,.15);box-shadow:0 20px 60px rgba(0,0,0,.5);color:#f4f1e9;font-size:14px;line-height:1.5';
+    const p = document.createElement('p');
+    p.style.cssText = 'margin:0 0 16px;white-space:pre-wrap';
+    p.textContent = `"${trackTitle}" hangi markanın hangi listesine eklensin?`;
+    const brandSel = document.createElement('select');
+    brandSel.style.cssText = 'width:100%;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:13px;margin-bottom:10px';
+    brandPlaylists.forEach(x => { const o = document.createElement('option'); o.value = x.brand.id; o.textContent = x.brand.name; brandSel.appendChild(o); });
+    const playlistSel = document.createElement('select');
+    playlistSel.style.cssText = brandSel.style.cssText;
+    function fillPlaylists(){
+      playlistSel.innerHTML = '';
+      const entry = brandPlaylists.find(x => x.brand.id === brandSel.value);
+      (entry ? entry.playlists : []).forEach(pl => { const o = document.createElement('option'); o.value = pl.id; o.textContent = pl.name; playlistSel.appendChild(o); });
+    }
+    brandSel.onchange = fillPlaylists;
+    fillPlaylists();
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;margin-top:6px';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.textContent = 'İPTAL';
+    cancelBtn.style.cssText = 'padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:inherit;font:inherit;font-size:12px;cursor:pointer';
+    const okBtn = document.createElement('button');
+    okBtn.type = 'button';
+    okBtn.textContent = 'EKLE';
+    okBtn.style.cssText = 'padding:10px 18px;border-radius:12px;border:1px solid rgba(24,195,125,.5);background:rgba(24,195,125,.18);color:#8ef0c4;font:inherit;font-size:12px;cursor:pointer;font-weight:700';
+    function close(result){ overlay.remove(); document.removeEventListener('keydown', onKey); resolve(result); }
+    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(null); } }
+    cancelBtn.onclick = () => close(null);
+    okBtn.onclick = () => close({ brandId: brandSel.value, playlistId: playlistSel.value });
+    overlay.onclick = (e) => { if(e.target === overlay) close(null); };
+    row.appendChild(cancelBtn); row.appendChild(okBtn);
+    box.appendChild(p); box.appendChild(brandSel); box.appendChild(playlistSel); box.appendChild(row);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const slugify = v => String(v || '').toLowerCase()
     .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
     .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
@@ -197,7 +245,7 @@
   }
 
   function folderList() {
-    const { folders, tracks } = state;
+    const { folders, tracks, brands, playlists, playlistTracks } = state;
     byId('radio-app').innerHTML = `${crumb('Yayın Klasörleri')}
       <section class="radio-panel">
         <h2>YENİ KLASÖR</h2>
@@ -220,6 +268,19 @@
                 <small>${tracks.filter(t => t.folder_id === f.id).length} parça${f.description ? ' · ' + safe(f.description) : ''}</small></span>
             </span>
             <button data-open="#/klasorler/${f.id}">AÇ ›</button></li>`).join('') : '<li>Henüz klasör yok.</li>'}
+        </ul>
+      </section>
+      <section class="radio-panel">
+        <h2>MARKA LİSTELERİ</h2>
+        <ul class="radio-list">
+          ${playlists.length ? playlists.map(p => {
+            const b = brands.find(x => x.id === p.brand_id);
+            const sayi = playlistTracks.filter(pt => pt.playlist_id === p.id).length;
+            return `<li class="open-row" data-open="#/markalar/${p.brand_id}/listeler/${p.id}">
+            <span><strong>${safe(b ? b.name : '—')}</strong>
+              <small>${safe(p.name)} · ${sayi} parça</small></span>
+            <button data-open="#/markalar/${p.brand_id}/listeler/${p.id}">AÇ ›</button></li>`;
+          }).join('') : '<li>Henüz marka listesi yok.</li>'}
         </ul>
       </section>`;
     byId('folder-add').onclick = async () => {
@@ -286,6 +347,7 @@
               <span class="dur">${mmss(t.duration_sec)}</span>
               <span class="act">
                 <button data-rename-track="${t.id}">AD</button>
+                <button data-move-track="${t.id}">TAŞI</button>
                 <button data-del-track="${t.id}" data-path="${safe(t.storage_path)}">SİL</button>
               </span></li>`).join('') : '<li style="opacity:.5;padding:16px">Henüz parça yok.</li>'}
         </ul>
@@ -477,6 +539,20 @@
       if (!await askConfirm('Parça silinecek. Emin misiniz?')) return;
       await client.storage.from('radio-audio').remove([b.dataset.path]);
       await client.from('radio_tracks').delete().eq('id', b.dataset.delTrack);
+      await refresh();
+    });
+
+    document.querySelectorAll('[data-move-track]').forEach(b => b.onclick = async ev => {
+      ev.stopPropagation();
+      const track = list.find(t => t.id === b.dataset.moveTrack);
+      if (!track) return;
+      const target = await askMoveTarget(clean(track.title));
+      if (!target) return;
+      const already = state.playlistTracks.filter(pt => pt.playlist_id === target.playlistId);
+      if (already.some(pt => pt.track_id === track.id)) { await askAlert('Bu şarkı zaten o listede var.'); return; }
+      const { error } = await client.from('brand_playlist_tracks').insert({ playlist_id: target.playlistId, track_id: track.id, sort_order: already.length });
+      if (error) { await askAlert(error.message); return; }
+      await askAlert('Şarkı markanın listesine eklendi. Genel klasördeki şarkı olduğu gibi kaldı.');
       await refresh();
     });
   }
