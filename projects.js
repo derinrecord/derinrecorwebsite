@@ -8,6 +8,7 @@
   let client=null,admin=false,me=null,projects=[],tracks={},feedback={},names={},busy=false;
   let openTrackId=null;
   let detail={};
+  let newFolderOpen=false, newFolderBusy=false;
   let localSeq=0;
   const newLocalId=()=>'local-'+(++localSeq);
 
@@ -64,25 +65,13 @@
     const has=!!tr.audio_path;
     const renkler=['aerobik','acrobatik','artistik','ritmik','trambolin'];
     const renk=renkler[i%renkler.length];
-    return `<div class="proj-cassette-card ${renk}" data-tb="${tr.id}">
+    return `<div class="proj-cassette-card ${renk}" data-tb="${tr.id}" data-tdopen="${tr.id}" style="cursor:pointer">
       <span class="card-number">${String(i+1).padStart(2,'0')}</span>
-      <img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti" ${has?`data-tdopen="${tr.id}" style="cursor:pointer"`:''}>
+      <img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti">
       <div class="card-meta">
-        <strong ${has?`data-tdopen="${tr.id}" style="cursor:pointer"`:''}>${safe(tr.label||'Parça')}</strong>
-        <span>${has?('v'+tr.version+' · düzenlenmiş'):'ham kaynak'}</span>
-        ${tr.source_url?`<a href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">kaynağı aç ↗</a>`:''}
+        <strong>${safe(tr.label||'Parça')}</strong>
+        <span>${has?('v'+tr.version+' · düzenlenmiş'):'ham kaynak'} →</span>
       </div>
-      <div class="proj-actions">
-        ${has?`<button type="button" data-tdopen="${tr.id}" class="proj-open-detail">İNCELE VE İŞARETLE</button>`:''}
-        ${has?window.DerinProjectTrackControls.renderTrackControls({id:safe(tr.id),audio_path:safe(tr.audio_path)},admin):''}
-        ${admin?`<input type="file" accept="audio/*" data-newver="${tr.id}"><span style="font-size:11px;opacity:.7">yeni varyasyon yükle</span>`:''}
-        ${(!admin && p && p.download_allowed && has)
-          ? `<button data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" style="border-color:rgba(11,11,13,.3);background:rgba(11,11,13,.08)">⤓ İNDİR</button>` : ''}
-      </div>
-      ${has?`<div class="proj-actions">
-        <input data-cut="${tr.id}" placeholder="Bu parça için notun (isteğe bağlı)">
-        <button data-notesend="${tr.id}">NOT GÖNDER</button>
-      </div>`:''}
     </div>`;
   }
 
@@ -117,10 +106,28 @@
       if(found){ list.innerHTML=trackDetailView(found,foundProject); wireDetail(found,foundProject); return; }
       openTrackId=null;
     }
-    list.innerHTML=GROUPS.map(g=>{const it=projects.filter(p=>g.has(p.status));
+    const groupsHtml=GROUPS.map(g=>{const it=projects.filter(p=>g.has(p.status));
       return `<section class="proj-group"><h2>${g.t} (${it.length})</h2>${it.length?it.map(card).join(''):'<p class="proj-empty">Bu grupta proje yok.</p>'}</section>`;}).join('');
+    list.innerHTML=`<button type="button" class="proj-fab" id="proj-fab-btn" aria-label="Yeni proje klasörü aç" title="Yeni proje klasörü aç">${newFolderOpen?'×':'+'}</button>
+      ${newFolderOpen?newFolderPanel():''}
+      ${groupsHtml}`;
     status.textContent=projects.length?`${projects.length} proje · anlık güncellenir.`:'Henüz proje yok.';
     wire();
+  }
+
+  function newFolderPanel(){
+    return `<div class="proj-newfolder-overlay" id="proj-newfolder-overlay">
+      <div class="proj-newfolder-panel">
+        <h3>Yeni proje klasörü</h3>
+        <p>Klasöre bir isim ver, istersen ilk ses dosyasını da hemen ekle.</p>
+        <input type="text" id="proj-newfolder-name" placeholder="Proje adı (ör. Unleashed v2)" autocomplete="off">
+        <input type="file" id="proj-newfolder-file" accept="audio/*">
+        <div class="proj-newfolder-actions">
+          <button type="button" class="proj-newfolder-cancel" id="proj-newfolder-cancel">VAZGEÇ</button>
+          <button type="button" class="proj-newfolder-confirm" id="proj-newfolder-confirm" aria-label="Klasörü oluştur" title="Klasörü oluştur" ${newFolderBusy?'disabled':''}>${newFolderBusy?'…':'✓'}</button>
+        </div>
+      </div>
+    </div>`;
   }
 
   async function signed(path){const r=await client.storage.from('project-audio').createSignedUrl(path,3600);return r.data?.signedUrl;}
@@ -214,6 +221,17 @@
           <span class="td-time">${mmss(cur)} / ${mmss(dur)}</span>
         </div>`:''}
       </div>
+
+      <div class="td-tools">
+        ${tr.source_url?`<a class="td-tool-link" href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">KAYNAĞI AÇ ↗</a>`:''}
+        ${(!admin && project.download_allowed && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}">⤓ İNDİR</button>` : ''}
+        ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON YÜKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="audio/*" data-newver="${tr.id}" hidden></label>`:''}
+        ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
+      </div>
+      ${has?`<div class="td-quicknote">
+        <input data-cut="${tr.id}" placeholder="Bu parça için genel notun (isteğe bağlı)">
+        <button type="button" data-notesend="${tr.id}">NOT GÖNDER</button>
+      </div>`:''}
 
       <hr class="td-divider">
 
@@ -352,7 +370,11 @@
         const rect=waveWrap.getBoundingClientRect();
         const frac=Math.min(1,Math.max(0,(e.clientX-rect.left)/rect.width));
         const p=(detail.points||[]).find(x=>x.localId===el.dataset.tdmark);
-        if(p&&!p.saved){ p.time=frac*detail.duration; el.style.left=(frac*100)+'%'; }
+        if(p&&!p.saved){
+          p.time=frac*detail.duration; el.style.left=(frac*100)+'%';
+          const timeEl=root.querySelector(`[data-tdpoint="${p.localId}"] .td-point-time`);
+          if(timeEl)timeEl.textContent=mmss(p.time);
+        }
       });
       el.addEventListener('pointerup',()=>{ if(dragging){dragging=false; renderDetail(tr,project);} });
     });
@@ -427,11 +449,108 @@
         b.disabled=false; b.textContent='KAYDET VE GÖNDER';
       }
     });
+
+    root.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
+      const {data,error}=await client.storage.from('project-audio').createSignedUrl(b.dataset.path,600,{download:b.dataset.name+'.mp3'});
+      if(error){status.textContent='İndirilemedi: '+error.message;return;}
+      const a=document.createElement('a'); a.href=data.signedUrl; a.download=b.dataset.name; a.click();
+    });
+
+    root.querySelectorAll('[data-trackdel]').forEach(button=>button.onclick=async()=>{
+      if(!confirm('Bu parça ve ses dosyası silinsin mi?'))return;
+      button.disabled=true;
+      try{
+        const removed=await client.from('project_tracks').delete().eq('id',button.dataset.trackdel);
+        if(removed.error)throw removed.error;
+        await client.storage.from('project-audio').remove([button.dataset.path]);
+        status.textContent='Parça silindi.';
+        openTrackId=null; detail={};
+        await load();
+      }catch(error){status.textContent='Parça silinemedi: '+error.message;}
+      finally{button.disabled=false;}
+    });
+
+    root.querySelectorAll('[data-newver]').forEach(inp=>inp.onchange=async()=>{
+      const file=inp.files?.[0]; if(!file)return;
+      const tid=inp.dataset.newver;
+      status.textContent='Varyasyon yükleniyor…';
+      inp.disabled=true;
+      const path=`${project.coach_id}/${tid}-${Date.now()}.${file.name.split('.').pop()||'mp3'}`;
+      try{
+        const up=await client.storage.from('project-audio').upload(path,file,{contentType:file.type||'audio/mpeg'});
+        if(up.error)throw up.error;
+        const newVersion=(tr.version||1)+1;
+        await client.from('project_tracks').update({audio_path:path,version:newVersion}).eq('id',tid);
+        await client.from('project_feedback').insert({project_id:project.id,author_id:me,kind:'system',
+          body:`Parçanız düzenlenmiş haliyle gönderildi (v${newVersion} · ${tr.label||'parça'}). Lütfen inceleyiniz.`});
+        status.textContent='Varyasyon gönderildi, antrenöre bildirildi.';
+        await load();
+        const freshTr=(tracks[project.id]||[]).find(t=>t.id===tid);
+        const freshProject=projects.find(p=>p.id===project.id);
+        if(freshTr&&freshProject)openTrackDetail(freshTr,freshProject);
+      }catch(e){
+        status.textContent='Yükleme hatası: '+e.message;
+        inp.disabled=false;
+      }
+    });
+
+    root.querySelectorAll('[data-notesend]').forEach(b=>b.onclick=async()=>{
+      const inp=root.querySelector(`[data-cut="${tr.id}"]`);
+      const body=(inp?.value||'').trim();
+      b.disabled=true;
+      const {error}=await client.from('project_feedback').insert({
+        project_id:project.id,author_id:me,track_id:tr.id,kind:'note',
+        body:body||'Bu parça hakkında not.'
+      });
+      status.textContent=error?('Gönderilemedi: '+error.message):'Not gönderildi.';
+      if(!error && inp)inp.value='';
+      b.disabled=false;
+    });
   }
 
   // ---------- Liste görünümü kablolama ----------
 
   function wire(){
+    const fabBtn=list.querySelector('#proj-fab-btn');
+    if(fabBtn)fabBtn.onclick=()=>{ newFolderOpen=!newFolderOpen; render(); };
+
+    const nfOverlay=list.querySelector('#proj-newfolder-overlay');
+    if(nfOverlay){
+      nfOverlay.onclick=(e)=>{ if(e.target===nfOverlay){ newFolderOpen=false; render(); } };
+      const nfCancel=list.querySelector('#proj-newfolder-cancel');
+      if(nfCancel)nfCancel.onclick=()=>{ newFolderOpen=false; render(); };
+      const nfConfirm=list.querySelector('#proj-newfolder-confirm');
+      if(nfConfirm)nfConfirm.onclick=async()=>{
+        if(newFolderBusy)return;
+        const nameInp=list.querySelector('#proj-newfolder-name');
+        const fileInp=list.querySelector('#proj-newfolder-file');
+        const title=(nameInp?.value||'').trim();
+        if(!title){ status.textContent='Klasöre önce bir isim ver.'; nameInp?.focus(); return; }
+        newFolderBusy=true; render();
+        try{
+          const {data:proj,error:projErr}=await client.from('music_projects')
+            .insert({coach_id:me,title,status:'pending'}).select().single();
+          if(projErr)throw projErr;
+          const file=fileInp?.files?.[0];
+          if(file){
+            const ext=file.name.split('.').pop()||'mp3';
+            const path=`${me}/${proj.id}-${Date.now()}.${ext}`;
+            const up=await client.storage.from('project-audio').upload(path,file,{contentType:file.type||'audio/mpeg'});
+            if(up.error)throw up.error;
+            const trackResult=await client.from('project_tracks').insert({project_id:proj.id,label:title,audio_path:path,version:1,sort_order:0});
+            if(trackResult.error)throw trackResult.error;
+          }
+          status.textContent='Yeni klasör oluşturuldu.';
+          newFolderOpen=false;
+          await load();
+        }catch(e){
+          status.textContent='Klasör oluşturulamadı: '+e.message;
+        }finally{
+          newFolderBusy=false; render();
+        }
+      };
+    }
+
     list.querySelectorAll('[data-tdopen]').forEach(el=>el.onclick=()=>{
       const trackId=el.dataset.tdopen;
       let tr=null,project=null;
