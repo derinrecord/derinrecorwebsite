@@ -132,17 +132,17 @@
   .td-wave-wrap{position:relative;padding:16px 10px 46px;border-radius:18px;background:rgba(0,0,0,.32);
     border:1px solid rgba(255,255,255,.1)}
   .td-wave-canvas{width:100%;height:84px;display:block;cursor:pointer}
-  .td-marks{position:absolute;left:10px;right:10px;bottom:8px;height:38px}
-  .td-mark{position:absolute;bottom:0;transform:translateX(-50%);display:flex;flex-direction:column;
-    align-items:center;cursor:grab;z-index:1}
+  .td-marks{position:absolute;left:10px;right:10px;top:16px;bottom:8px;pointer-events:none}
+  .td-mark{position:absolute;top:0;bottom:0;transform:translateX(-50%);display:flex;flex-direction:column;
+    align-items:center;justify-content:flex-end;cursor:grab;pointer-events:auto;z-index:1}
   .td-mark.active{z-index:2}
-  .td-mark-line{width:2px;height:16px;background:#d4c24e;opacity:.95;display:block;margin:0 auto;
+  .td-mark-line{width:2px;flex:1 1 auto;min-height:8px;background:#d4c24e;opacity:.9;display:block;
     box-shadow:0 0 4px rgba(0,0,0,.6)}
   .td-mark.saved .td-mark-line{background:#106b44}
-  .td-mark.active .td-mark-line{background:#fe4b6a;box-shadow:0 0 6px rgba(254,75,105,.7)}
+  .td-mark.active .td-mark-line{background:#fe4b6a;opacity:1;box-shadow:0 0 6px rgba(254,75,105,.8)}
   .td-mark-badge{margin-top:2px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
     justify-content:center;font-size:10px;font-weight:800;border:2px solid #d4c24e;background:#141416;
-    color:#e9dc94;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+    color:#e9dc94;box-shadow:0 1px 4px rgba(0,0,0,.5);flex:0 0 auto}
   .td-mark.saved .td-mark-badge{background:#106b44;border-color:#106b44;color:#fff}
   .td-mark.active .td-mark-badge{transform:scale(1.25);background:#fe4b6a;border-color:#fe4b6a;color:#fff}
 
@@ -187,6 +187,57 @@
     background:rgba(24,195,125,.16);color:#6ee7b0;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
   .td-point-save:disabled{opacity:.6;cursor:default}
   .td-empty{opacity:.5;font-size:13px;padding:10px 0}
+
+  /* Parça detayı — üst araçlar (indir / varyasyon yükle / sil) ve hızlı not */
+  .td-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px}
+  .td-tool-link,.td-tool-btn,.td-tool-upload,.td-tool-del{padding:9px 16px;border-radius:12px;font:inherit;
+    font-size:11px;font-weight:700;letter-spacing:.04em;cursor:pointer;border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.07);color:inherit;display:inline-flex;align-items:center;gap:6px;
+    text-decoration:none}
+  .td-tool-link:hover,.td-tool-btn:hover,.td-tool-upload:hover{background:rgba(255,255,255,.15)}
+  .td-tool-del{border-color:rgba(254,75,105,.4);background:rgba(254,75,105,.12);color:#ffb4c0}
+  .td-tool-del:hover{background:rgba(254,75,105,.2)}
+  .td-quicknote{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .td-quicknote input{flex:1 1 240px;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:13px}
+  .td-quicknote button{padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.07);color:inherit;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+  .td-quicknote button:hover{background:rgba(255,255,255,.15)}
+
+  /* Yeni proje klasörü — yuvarlak, parlayan artı butonu ve açılır panel */
+  .proj-fab{position:fixed;right:26px;bottom:26px;width:62px;height:62px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,rgba(34,84,84,.95),rgba(9,20,22,.97));
+    border:1px solid rgba(255,255,255,.1);color:#fff;font-size:28px;font-weight:300;line-height:1;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:40;
+    box-shadow:0 0 28px rgba(30,110,110,.55),0 10px 28px rgba(0,0,0,.5);
+    transition:transform .25s ease,box-shadow .25s ease}
+  .proj-fab:hover{transform:scale(1.08);box-shadow:0 0 38px rgba(30,130,130,.7),0 12px 32px rgba(0,0,0,.55)}
+  .proj-newfolder-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);-webkit-backdrop-filter:blur(6px);
+    backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .proj-newfolder-panel{width:100%;max-width:420px;padding:30px 28px;border-radius:26px;
+    background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+    border:1px solid rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 18px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.3)}
+  .proj-newfolder-panel h3{margin:0 0 6px;font-size:20px}
+  .proj-newfolder-panel p{margin:0 0 20px;font-size:12px;opacity:.6}
+  .proj-newfolder-panel input[type=text]{width:100%;box-sizing:border-box;padding:13px 16px;border-radius:14px;
+    margin-bottom:14px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;
+    font:inherit;font-size:14px}
+  .proj-newfolder-panel input[type=file]{width:100%;box-sizing:border-box;padding:11px 14px;border-radius:14px;
+    margin-bottom:20px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;
+    font:inherit;font-size:12px}
+  .proj-newfolder-actions{display:flex;justify-content:flex-end;gap:12px;align-items:center}
+  .proj-newfolder-cancel{padding:11px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px;cursor:pointer}
+  .proj-newfolder-cancel:hover{background:rgba(255,255,255,.14)}
+  .proj-newfolder-confirm{width:52px;height:52px;border-radius:50%;flex:0 0 auto;
+    background:radial-gradient(circle at 35% 30%,rgba(130,30,60,.92),rgba(60,10,30,.96));
+    box-shadow:0 0 24px rgba(254,75,105,.55),0 8px 20px rgba(0,0,0,.4);
+    border:1px solid rgba(255,255,255,.1);color:#fff;font-size:20px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:box-shadow .2s ease}
+  .proj-newfolder-confirm:hover{box-shadow:0 0 32px rgba(254,75,105,.75),0 10px 24px rgba(0,0,0,.45)}
+  .proj-newfolder-confirm:disabled{opacity:.55;cursor:default}
 </style>
 </head>
 <body>
