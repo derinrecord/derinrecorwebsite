@@ -93,6 +93,93 @@
   .fb-list li small{display:block;opacity:.5;font-size:11px;margin-top:3px}
   .fb-box textarea{width:100%;min-height:70px;padding:12px 14px;border-radius:14px;
     border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit}
+
+  /* Parça detayı — dalga formu üzerinde nokta işaretleme */
+  .track-detail{position:relative;margin-bottom:18px;padding:26px 28px 30px;border-radius:28px;
+    background:linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.035));
+    border:1px solid rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.3)}
+  .td-back{margin-bottom:18px;padding:9px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.07);color:inherit;font:inherit;font-size:12px;letter-spacing:.05em;
+    font-weight:700;cursor:pointer}
+  .td-back:hover{background:rgba(255,255,255,.15)}
+  .td-head{display:flex;flex-wrap:wrap;gap:20px;align-items:center}
+  .td-cassette{width:150px;max-width:34vw;aspect-ratio:1.55;object-fit:contain;flex:0 0 auto;
+    filter:drop-shadow(0 8px 14px rgba(0,0,0,.4))}
+  .td-head-info{flex:1 1 220px;min-width:180px}
+  .td-eyebrow{margin:0 0 6px;font-size:11px;letter-spacing:.16em;font-weight:800;color:#d4c24e}
+  .td-title{margin:0 0 8px;font-size:26px;letter-spacing:-.4px}
+  .td-sub{margin:0;font-size:13px;opacity:.62}
+  .td-player{display:flex;align-items:center;gap:12px;flex:1 1 240px;min-width:220px}
+  .td-play{width:46px;height:46px;flex:0 0 auto;border-radius:50%;border:none;background:#d4c24e;
+    color:#0b0b0d;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .td-seek{flex:1 1 auto;accent-color:#d4c24e}
+  .td-time{font-size:12px;opacity:.65;white-space:nowrap}
+  .td-divider{border:none;border-top:1px solid rgba(255,255,255,.14);margin:26px 0}
+
+  .td-shape-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+  .td-shape-title{margin:0;font-size:22px;letter-spacing:-.3px}
+  .td-badge{flex:0 0 auto;padding:7px 14px;border-radius:999px;border:1px solid rgba(212,194,78,.5);
+    background:rgba(212,194,78,.14);color:#e9dc94;font-size:10px;font-weight:800;letter-spacing:.08em;
+    white-space:nowrap}
+  .td-desc{margin:12px 0 20px;font-size:13px;line-height:1.6;opacity:.65;max-width:640px}
+
+  .td-wave-wrap{position:relative;padding:16px 10px 40px;border-radius:18px;background:rgba(0,0,0,.32);
+    border:1px solid rgba(255,255,255,.1)}
+  .td-wave-canvas{width:100%;height:84px;display:block;cursor:pointer}
+  .td-marks{position:absolute;left:10px;right:10px;bottom:8px;height:32px}
+  .td-mark{position:absolute;bottom:0;transform:translateX(-50%);display:flex;flex-direction:column;
+    align-items:center;cursor:grab}
+  .td-mark-line{width:1.5px;height:14px;background:rgba(255,255,255,.35);display:block;margin:0 auto}
+  .td-mark.active .td-mark-line{background:#fff}
+  .td-mark-badge{margin-top:2px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:10px;font-weight:800;border:2px solid #d4c24e;background:#141416;
+    color:#e9dc94}
+  .td-mark.saved .td-mark-badge{background:#106b44;border-color:#106b44;color:#fff}
+  .td-mark.active .td-mark-badge{transform:scale(1.25);background:#fe4b6a;border-color:#fe4b6a;color:#fff}
+
+  .td-legend{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:14px;
+    font-size:11px;opacity:.65}
+  .td-legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;border:2px solid #d4c24e;
+    background:transparent;vertical-align:middle}
+  .td-legend-dot.saved{background:#106b44;border-color:#106b44}
+
+  .td-addrow{margin-top:22px}
+  .td-addrow label{display:block;font-size:12px;opacity:.7;margin-bottom:8px}
+  .td-addrow label strong{color:#d4c24e;font-weight:800}
+  .td-addseek{width:100%;accent-color:#d4c24e}
+  .td-addbtn-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px}
+  .td-addbtn{padding:12px 20px;border-radius:14px;border:1px solid rgba(212,194,78,.5);
+    background:rgba(212,194,78,.16);color:#e9dc94;font:inherit;font-size:12px;font-weight:800;
+    letter-spacing:.04em;cursor:pointer}
+  .td-addbtn:hover{background:rgba(212,194,78,.26)}
+  .td-addhint{font-size:11px;opacity:.5}
+
+  .td-points-list{margin-top:22px;display:flex;flex-direction:column;gap:14px}
+  .td-point{padding:16px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.04)}
+  .td-point.saved{border-color:rgba(16,107,68,.4);background:rgba(16,107,68,.08)}
+  .td-point-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .td-point-badge{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:800;border:2px solid #d4c24e;color:#e9dc94}
+  .td-point.saved .td-point-badge{background:#106b44;border-color:#106b44;color:#fff}
+  .td-point-time{font-size:12px;font-weight:700;opacity:.75}
+  .td-point-del{margin-left:auto;padding:6px 12px;border-radius:10px;border:1px solid rgba(254,75,105,.4);
+    background:rgba(254,75,105,.12);color:#ffb4c0;font:inherit;font-size:11px;cursor:pointer}
+  .td-point-note{width:100%;min-height:56px;padding:10px 12px;border-radius:12px;
+    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:inherit;font:inherit;
+    font-size:13px;margin-bottom:10px}
+  .td-point-note:disabled{opacity:.75}
+  .td-point-voice{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .td-point-voice audio{height:32px;max-width:220px}
+  .td-point-rec,.td-point-voicedel{padding:8px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:11px;cursor:pointer}
+  .td-point-rec.is-rec{border-color:rgba(254,75,105,.5);background:rgba(254,75,105,.16);color:#ffb4c0}
+  .td-point-save{padding:10px 18px;border-radius:12px;border:1px solid rgba(24,195,125,.5);
+    background:rgba(24,195,125,.16);color:#6ee7b0;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+  .td-point-save:disabled{opacity:.6;cursor:default}
+  .td-empty{opacity:.5;font-size:13px;padding:10px 0}
 </style>
 </head>
 <body>
@@ -112,7 +199,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="auth.js?v=20260914"></script>
 <script src="project-track-controls.js?v=1"></script>
-<script src="projects.js?v=20260924"></script>
+<script src="projects.js?v=20260924b"></script>
 </body>
 </html>
 <script src="sortable-touch.js?v=1"></script>
