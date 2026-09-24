@@ -109,6 +109,23 @@
   });
 }
 
+function showTrackDetail(track, subtitle, cover){
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
+  overlay.innerHTML = `
+    <div style="max-width:360px;width:100%;padding:32px 28px;border-radius:24px;background:#1a1a1e;border:1px solid rgba(255,255,255,.15);box-shadow:0 20px 60px rgba(0,0,0,.5);color:#f4f1e9;text-align:center">
+      ${cover ? `<img src="${cover}" alt="" style="width:220px;height:220px;border-radius:18px;object-fit:cover;margin:0 auto 20px;display:block;box-shadow:0 12px 30px rgba(0,0,0,.5)">`
+        : `<div style="width:220px;height:220px;border-radius:18px;background:rgba(255,255,255,.08);margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:48px;opacity:.4">♪</div>`}
+      <h3 style="margin:0 0 6px;font-size:19px">${safe(clean(track.title))}</h3>
+      <p style="margin:0;opacity:.6;font-size:13px">${safe(subtitle || '')}</p>
+      <button id="derin-track-detail-close" style="margin-top:24px;padding:10px 24px;border-radius:14px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:inherit;font:inherit;font-size:12px;cursor:pointer">KAPAT</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('#derin-track-detail-close').onclick = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+}
+
 const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const slugify = v => String(v || '').toLowerCase()
     .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
@@ -343,10 +360,11 @@ const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
           ${list.length ? list.map((t,i) => `
             <li class="sp-row" draggable="true" data-idx="${i}" data-track="${t.id}">
               <span class="no">${i+1}</span>
-              <span class="ttl">${safe(clean(t.title))}</span>
+              <span class="ttl" style="display:flex;align-items:center;gap:8px">${t.cover_path ? `<img src="${coverUrl(t.cover_path)}" style="width:22px;height:22px;border-radius:5px;object-fit:cover;flex:0 0 auto">` : ''}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safe(clean(t.title))}</span></span>
               <span class="dur">${mmss(t.duration_sec)}</span>
               <span class="act">
                 <button data-rename-track="${t.id}">AD</button>
+                <button data-img-track="${t.id}">RESİM</button>
                 <button data-move-track="${t.id}">TAŞI</button>
                 <button data-del-track="${t.id}" data-path="${safe(t.storage_path)}">SİL</button>
               </span></li>`).join('') : '<li style="opacity:.5;padding:16px">Henüz parça yok.</li>'}
@@ -354,8 +372,8 @@ const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
       </section>
 
       <div class="sp-player" id="sp-player">
-        <div class="sp-now">
-          ${cover ? `<img src="${cover}" alt="">` : '<div style="width:48px;height:48px;border-radius:9px;background:rgba(255,255,255,.08)"></div>'}
+        <div class="sp-now" id="sp-now" style="cursor:pointer">
+          <img id="sp-now-img" src="${cover||''}" alt="" style="${cover?'':'display:none'}">
           <div class="t"><b id="sp-title">—</b><small>${safe(folder.name)}</small></div>
         </div>
         <div class="sp-ctr">
@@ -386,6 +404,9 @@ const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
       byId('sp-player').classList.add('on');
       document.body.classList.add('sp-open');
       byId('sp-title').textContent = clean(t.title);
+      const tCover = t.cover_path ? coverUrl(t.cover_path) : cover;
+      const spImg = byId('sp-now-img');
+      if (tCover) { spImg.src = tCover; spImg.style.display = ''; } else { spImg.style.display = 'none'; }
       document.querySelectorAll('.sp-row').forEach(r => r.classList.toggle('playing', r.dataset.track === t.id));
       try { await audio.play(); byId('sp-toggle').textContent = '⏸'; byId('f-msg').textContent = ''; }
       catch { byId('sp-toggle').textContent = '▶'; byId('f-msg').textContent = 'Çalmak için oynatıcıdaki ▶ düğmesine bas.'; }
@@ -405,6 +426,11 @@ const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
     byId('sp-next').onclick = () => cal((aktif + 1) % sira.length);
     byId('sp-prev').onclick = () => cal((aktif - 1 + sira.length) % sira.length);
     byId('sp-vol').oninput = e => { audio.volume = e.target.value / 100; };
+    byId('sp-now').onclick = () => {
+      if (aktif < 0) return;
+      const t = sira[aktif];
+      showTrackDetail(t, folder.name, t.cover_path ? coverUrl(t.cover_path) : cover);
+    };
     audio.ontimeupdate = () => {
       if (!audio.duration) return;
       byId('sp-cur').textContent = fmt(audio.currentTime);
@@ -417,7 +443,13 @@ const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
     document.querySelectorAll('.sp-row').forEach(row => {
       row.addEventListener('click', e => {
         if (e.target.tagName === 'BUTTON') return;
-        cal(sira.findIndex(t => t.id === row.dataset.track));
+        const idx = sira.findIndex(t => t.id === row.dataset.track);
+        if (idx === aktif) {
+          const t = sira[idx];
+          showTrackDetail(t, folder.name, t.cover_path ? coverUrl(t.cover_path) : cover);
+        } else {
+          cal(idx);
+        }
       });
     });
 
@@ -540,6 +572,25 @@ const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
       await client.storage.from('radio-audio').remove([b.dataset.path]);
       await client.from('radio_tracks').delete().eq('id', b.dataset.delTrack);
       await refresh();
+    });
+
+    document.querySelectorAll('[data-img-track]').forEach(b => b.onclick = () => {
+      const track = list.find(t => t.id === b.dataset.imgTrack);
+      if (!track) return;
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*';
+      inp.onchange = async () => {
+        const file = inp.files?.[0];
+        if (!file) return;
+        byId('track-msg').textContent = 'Resim yükleniyor…';
+        const path = `tracks/${track.id}-${Date.now()}.${(file.name.split('.').pop()||'jpg').toLowerCase()}`;
+        const up = await client.storage.from('radio-covers').upload(path, file, { contentType: file.type || 'image/jpeg' });
+        if (up.error) { byId('track-msg').textContent = 'Yükleme hatası: ' + up.error.message; return; }
+        const { error } = await client.from('radio_tracks').update({ cover_path: path }).eq('id', track.id);
+        byId('track-msg').textContent = error ? error.message : 'Şarkı resmi güncellendi.';
+        if (!error) await refresh();
+      };
+      inp.click();
     });
 
     document.querySelectorAll('[data-move-track]').forEach(b => b.onclick = async ev => {
