@@ -5,7 +5,7 @@
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
-  let client=null,admin=false,me=null,projects=[],tracks={},feedback={},names={},busy=false;
+  let client=null,admin=false,me=null,projects=[],tracks={},feedback={},names={},coachList=[],busy=false;
   let openTrackId=null;
   let detail={};
   let newFolderOpen=false, newFolderBusy=false;
@@ -43,9 +43,12 @@
         const f=await client.from('project_feedback').select('*').in('project_id',ids).order('created_at');
         if(!f.error)for(const x of f.data)(feedback[x.project_id]||=[]).push(x);
       }
-      if(admin&&projects.length){
-        const r=await client.from('profiles').select('id,full_name').in('id',[...new Set(projects.map(p=>p.coach_id))]);
-        if(!r.error)names=Object.fromEntries(r.data.map(p=>[p.id,p.full_name]));
+      if(admin){
+        const r=await client.from('profiles').select('id,full_name,role').order('full_name');
+        if(!r.error){
+          names=Object.fromEntries(r.data.map(p=>[p.id,p.full_name]));
+          coachList=r.data.filter(p=>p.role!=='admin');
+        }
       }
       if(openTrackId){
         let found=null,foundProject=null;
@@ -120,6 +123,10 @@
       <div class="proj-newfolder-panel">
         <h3>Yeni proje klasörü</h3>
         <p>Klasöre bir isim ver, istersen ilk ses dosyasını da hemen ekle.</p>
+        ${admin?`<select id="proj-newfolder-coach" autocomplete="off">
+          <option value="">Antrenör seçin</option>
+          ${coachList.map(c=>`<option value="${c.id}">${safe(c.full_name||c.id)}</option>`).join('')}
+        </select>`:''}
         <input type="text" id="proj-newfolder-name" placeholder="Proje adı (ör. Unleashed v2)" autocomplete="off">
         <input type="file" id="proj-newfolder-file" accept="audio/*">
         <div class="proj-newfolder-actions">
@@ -225,7 +232,7 @@
       <div class="td-tools">
         ${tr.source_url?`<a class="td-tool-link" href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">KAYNAĞI AÇ ↗</a>`:''}
         ${(!admin && project.download_allowed && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}">⤓ İNDİR</button>` : ''}
-        ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON YÜKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="audio/*" data-newver="${tr.id}" hidden></label>`:''}
+        ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="audio/*" data-newver="${tr.id}" hidden></label>`:''}
         ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
       </div>
       ${has?`<div class="td-quicknote">
@@ -472,22 +479,23 @@
 
     root.querySelectorAll('[data-newver]').forEach(inp=>inp.onchange=async()=>{
       const file=inp.files?.[0]; if(!file)return;
-      const tid=inp.dataset.newver;
-      status.textContent='Varyasyon yükleniyor…';
+      status.textContent='Yeni varyasyon ekleniyor…';
       inp.disabled=true;
-      const path=`${project.coach_id}/${tid}-${Date.now()}.${file.name.split('.').pop()||'mp3'}`;
+      const ext=file.name.split('.').pop()||'mp3';
+      const path=`${project.coach_id}/${project.id}-${Date.now()}.${ext}`;
       try{
         const up=await client.storage.from('project-audio').upload(path,file,{contentType:file.type||'audio/mpeg'});
         if(up.error)throw up.error;
-        const newVersion=(tr.version||1)+1;
-        await client.from('project_tracks').update({audio_path:path,version:newVersion}).eq('id',tid);
+        const sortOrder=(tracks[project.id]||[]).length;
+        const insertRes=await client.from('project_tracks').insert({
+          project_id:project.id,label:tr.label||'Parça',audio_path:path,version:1,sort_order:sortOrder
+        });
+        if(insertRes.error)throw insertRes.error;
         await client.from('project_feedback').insert({project_id:project.id,author_id:me,kind:'system',
-          body:`Parçanız düzenlenmiş haliyle gönderildi (v${newVersion} · ${tr.label||'parça'}). Lütfen inceleyiniz.`});
-        status.textContent='Varyasyon gönderildi, antrenöre bildirildi.';
+          body:`Yeni bir varyasyon eklendi (${tr.label||'parça'}). Lütfen inceleyiniz.`});
+        status.textContent='Yeni varyasyon eklendi, antrenöre bildirildi.';
+        openTrackId=null; detail={};
         await load();
-        const freshTr=(tracks[project.id]||[]).find(t=>t.id===tid);
-        const freshProject=projects.find(p=>p.id===project.id);
-        if(freshTr&&freshProject)openTrackDetail(freshTr,freshProject);
       }catch(e){
         status.textContent='Yükleme hatası: '+e.message;
         inp.disabled=false;
@@ -524,17 +532,23 @@
         if(newFolderBusy)return;
         const nameInp=list.querySelector('#proj-newfolder-name');
         const fileInp=list.querySelector('#proj-newfolder-file');
+        const coachSel=list.querySelector('#proj-newfolder-coach');
         const title=(nameInp?.value||'').trim();
         if(!title){ status.textContent='Klasöre önce bir isim ver.'; nameInp?.focus(); return; }
+        let targetCoach=me;
+        if(admin){
+          targetCoach=coachSel?.value||'';
+          if(!targetCoach){ status.textContent='Önce bir antrenör seç.'; coachSel?.focus(); return; }
+        }
         newFolderBusy=true; render();
         try{
           const {data:proj,error:projErr}=await client.from('music_projects')
-            .insert({coach_id:me,title,status:'pending'}).select().single();
+            .insert({coach_id:targetCoach,title,status:'pending'}).select().single();
           if(projErr)throw projErr;
           const file=fileInp?.files?.[0];
           if(file){
             const ext=file.name.split('.').pop()||'mp3';
-            const path=`${me}/${proj.id}-${Date.now()}.${ext}`;
+            const path=`${targetCoach}/${proj.id}-${Date.now()}.${ext}`;
             const up=await client.storage.from('project-audio').upload(path,file,{contentType:file.type||'audio/mpeg'});
             if(up.error)throw up.error;
             const trackResult=await client.from('project_tracks').insert({project_id:proj.id,label:title,audio_path:path,version:1,sort_order:0});
