@@ -6,7 +6,6 @@
   const mmss=s=>isFinite(s)?Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'):'0:00';
 
   let client=null,admin=false,me=null,projects=[],tracks={},feedback={},names={},busy=false;
-  const peaks={}, sel={}, marks={};
 
   async function boot(){
     await window.DerinAuth.ready;
@@ -51,7 +50,7 @@
   const bar=st=>{const at=STAGES.findIndex(s=>s.k===st);
     return `<div class="track-box"><div class="track">${STAGES.map((s,i)=>`<div class="track-step ${at<0?'':i<at?'done':i===at?'now':''}"><div class="track-dot"></div>${s.l}</div>`).join('')}</div></div>`;};
 
-    function trackBlock(tr,i,p){
+  function trackBlock(tr,i,p){
     const has=!!tr.audio_path;
     const renkler=['aerobik','acrobatik','artistik','ritmik','trambolin'];
     const renk=renkler[i%renkler.length];
@@ -63,25 +62,16 @@
         <span>${has?('v'+tr.version+' · düzenlenmiş'):'ham kaynak'}</span>
         ${tr.source_url?`<a href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">kaynağı aç ↗</a>`:''}
       </div>
-      <div class="proj-cassette-deck">
+      <div class="proj-actions">
         ${has?window.DerinProjectTrackControls.renderTrackControls({id:safe(tr.id),audio_path:safe(tr.audio_path)},admin):''}
-        ${has?`<div class="proj-wave" style="margin-top:12px;position:relative">
-          <canvas data-wave="${tr.id}" style="height:72px;cursor:crosshair"></canvas>
-          <div data-selinfo="${tr.id}" style="font-size:11px;opacity:.65;margin-top:6px">Dalga formunda sürükleyerek kesmek istediğin bölgeyi seç.</div>
-          <ul data-marklist="${tr.id}" style="list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:6px"></ul>
-          <div class="proj-actions" style="margin-top:8px">
-            <input data-cut="${tr.id}" placeholder="Bu bölge için notun" style="flex:1 1 220px;padding:10px 13px;border-radius:13px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit">
-            <button data-markadd="${tr.id}">BÖLGEYİ İŞARETLE</button>
-          </div>
-          <div class="proj-actions" style="margin-top:6px">
-            <button data-cutsend="${tr.id}" style="border-color:rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e0c341">İŞARETLENEN BÖLGELERİ GÖNDER</button>
-          </div></div>`:''}
-        ${admin?`<div class="proj-actions" style="margin-top:10px">
-          <input type="file" accept="audio/*" data-newver="${tr.id}">
-          <span style="font-size:11px;opacity:.6">yeni varyasyon yükle</span></div>`:''}
+        ${admin?`<input type="file" accept="audio/*" data-newver="${tr.id}"><span style="font-size:11px;opacity:.7">yeni varyasyon yükle</span>`:''}
         ${(!admin && p && p.download_allowed && has)
-          ? `<div class="proj-actions" style="margin-top:10px"><button data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" style="border-color:rgba(24,195,125,.5);background:rgba(24,195,125,.14);color:#6ee7b0">⤓ İNDİR</button></div>` : ''}
+          ? `<button data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" style="border-color:rgba(11,11,13,.3);background:rgba(11,11,13,.08)">⤓ İNDİR</button>` : ''}
       </div>
+      ${has?`<div class="proj-actions">
+        <input data-cut="${tr.id}" placeholder="Bu parça için notun (isteğe bağlı)">
+        <button data-notesend="${tr.id}">NOT GÖNDER</button>
+      </div>`:''}
     </div>`;
   }
 
@@ -102,7 +92,7 @@
         <button data-del="${p.id}">SİL</button></div>`:''}
       <div class="fb-box"><ul class="fb-list">${fbs.length?fbs.map(f=>{
         const t=trs.find(x=>x.id===f.track_id);
-        const rng=(f.start_sec!=null)?` [${mmss(f.start_sec)}–${mmss(f.end_sec)}${t?' · '+safe(t.label):''}]`:'';
+        const rng=(f.start_sec!=null)?` [${mmss(f.start_sec)}–${mmss(f.end_sec)}${t?' · '+safe(t.label):''}]`:(t?` [${safe(t.label)}]`:'');
         return `<li>${safe(f.body)}${rng}<small>${f.author_id===p.coach_id?'Antrenör':'Derin Record'} · ${new Date(f.created_at).toLocaleString('tr-TR')}</small></li>`;
       }).join(''):'<li style="opacity:.45">Henüz geri bildirim yok.</li>'}</ul>
       <textarea data-fb="${p.id}" placeholder="Geri bildirim yaz…"></textarea>
@@ -115,54 +105,9 @@
       return `<section class="proj-group"><h2>${g.t} (${it.length})</h2>${it.length?it.map(card).join(''):'<p class="proj-empty">Bu grupta proje yok.</p>'}</section>`;}).join('');
     status.textContent=projects.length?`${projects.length} proje · anlık güncellenir.`:'Henüz proje yok.';
     wire();
-    for(const id of Object.keys(peaks)) drawWave(id);
-    list.querySelectorAll('[data-wave]').forEach(c=>{ if(!peaks[c.dataset.wave]) loadPeaks(c.dataset.wave); });
-    list.querySelectorAll('[data-marklist]').forEach(ul=>renderMarks(ul.dataset.marklist));
   }
 
   async function signed(path){const r=await client.storage.from('project-audio').createSignedUrl(path,3600);return r.data?.signedUrl;}
-
-  async function loadPeaks(id){
-    const btn=list.querySelector(`[data-play="${id}"]`); if(!btn)return;
-    const url=await signed(btn.dataset.path); if(!url)return;
-    try{
-      const buf=await (await fetch(url)).arrayBuffer();
-      const ac=new (window.AudioContext||window.webkitAudioContext)();
-      const ab=await ac.decodeAudioData(buf);
-      const ch=ab.getChannelData(0), N=260, step=Math.floor(ch.length/N), out=[];
-      for(let i=0;i<N;i++){let m=0;for(let j=0;j<step;j+=16){const v=Math.abs(ch[i*step+j]||0);if(v>m)m=v;}out.push(m);}
-      peaks[id]={data:out,dur:ab.duration}; ac.close(); drawWave(id);
-    }catch{}
-  }
-
-  function renderMarks(id){
-    const ul=list.querySelector(`[data-marklist="${id}"]`); if(!ul)return;
-    const m=marks[id]||[];
-    ul.innerHTML=m.length?m.map((mk,i)=>`<li style="display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px;background:rgba(224,195,65,.1);border:1px solid rgba(224,195,65,.3);border-radius:10px;padding:6px 10px">
-      <span>${i+1}. ${mmss(Math.min(mk.a,mk.b))}–${mmss(Math.max(mk.a,mk.b))}${mk.note?' · '+safe(mk.note):''}</span>
-      <button data-markdel="${id}" data-idx="${i}" style="padding:3px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer;font-size:11px">KALDIR</button>
-    </li>`).join(''):'';
-  }
-
-  function drawWave(id,progress){
-    const c=list.querySelector(`[data-wave="${id}"]`); const p=peaks[id]; if(!c||!p)return;
-    c.width=c.offsetWidth*2; c.height=144;
-    const ctx=c.getContext('2d'), w=c.width/p.data.length;
-    ctx.clearRect(0,0,c.width,c.height);
-    (marks[id]||[]).forEach(mk=>{
-      const x1=(mk.a/p.dur)*c.width,x2=(mk.b/p.dur)*c.width;
-      ctx.fillStyle='rgba(224,195,65,.22)';ctx.fillRect(Math.min(x1,x2),0,Math.abs(x2-x1),c.height);
-    });
-    const s=sel[id];
-    if(s){const x1=(s.a/p.dur)*c.width,x2=(s.b/p.dur)*c.width;
-      ctx.fillStyle='rgba(224,195,65,.4)';ctx.fillRect(Math.min(x1,x2),0,Math.abs(x2-x1),c.height);}
-    p.data.forEach((v,i)=>{
-      const h=Math.max(3,v*c.height*0.92), y=(c.height-h)/2;
-      const played=progress!=null&&(i/p.data.length)<=progress;
-      ctx.fillStyle=played?'rgba(224,195,65,.95)':'rgba(255,255,255,.34)';
-      ctx.fillRect(i*w,y,w-2,h);
-    });
-  }
 
   let cur=null;
   function wire(){
@@ -230,7 +175,6 @@
       await client.from('project_tracks').update({audio_path:path,version:(tr.version||1)+1}).eq('id',tid);
       await client.from('project_feedback').insert({project_id:proj.id,author_id:me,kind:'system',
         body:`Parçanız düzenlenmiş haliyle gönderildi (v${(tr.version||1)+1} · ${tr.label||'parça'}). Lütfen inceleyiniz.`});
-      delete peaks[tid];
       status.textContent='Varyasyon gönderildi, antrenöre bildirildi.';
       load();
     });
@@ -244,59 +188,20 @@
       box.value='';b.disabled=false;load();
     });
 
-    list.querySelectorAll('[data-markadd]').forEach(b=>b.onclick=()=>{
-      const id=b.dataset.markadd, s=sel[id];
-      if(!s || s.a===s.b){status.textContent='Önce dalga formunda bir bölge seç (sürükleyerek).';return;}
+    list.querySelectorAll('[data-notesend]').forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.notesend;
       const inp=list.querySelector(`[data-cut="${id}"]`);
-      (marks[id]||=[]).push({a:s.a,b:s.b,note:(inp?.value||'').trim()});
-      if(inp)inp.value='';
-      sel[id]=null;
-      const info=list.querySelector(`[data-selinfo="${id}"]`);
-      if(info)info.textContent='Dalga formunda sürükleyerek kesmek istediğin bölgeyi seç.';
-      drawWave(id); renderMarks(id);
-      status.textContent='Bölge işaretlendi. İstersen başka bölge de işaretleyebilirsin.';
-    });
-
-    list.querySelectorAll('[data-marklist]').forEach(ul=>{
-      ul.onclick=e=>{
-        const b=e.target.closest('[data-markdel]'); if(!b)return;
-        const id=b.dataset.markdel, idx=+b.dataset.idx;
-        (marks[id]||[]).splice(idx,1);
-        drawWave(id); renderMarks(id);
-      };
-    });
-
-    list.querySelectorAll('[data-cutsend]').forEach(b=>b.onclick=async()=>{
-      const id=b.dataset.cutsend;
-      let pending=marks[id]||[];
-      if(!pending.length && sel[id] && sel[id].a!==sel[id].b){
-        const inp=list.querySelector(`[data-cut="${id}"]`);
-        pending=[{a:sel[id].a,b:sel[id].b,note:(inp?.value||'').trim()}];
-      }
-      if(!pending.length){status.textContent='Önce en az bir bölge işaretle.';return;}
+      const body=(inp?.value||'').trim();
       const tr=Object.values(tracks).flat().find(t=>t.id===id);
       b.disabled=true;
-      const rows=pending.map(mk=>({
-        project_id:tr.project_id,author_id:me,track_id:id,kind:'cut',
-        start_sec:Math.min(mk.a,mk.b),end_sec:Math.max(mk.a,mk.b),
-        body:mk.note||'Bu bölgenin kesilmesini istiyorum.'
-      }));
-      const {error}=await client.from('project_feedback').insert(rows);
-      status.textContent=error?('Gönderilemedi: '+error.message):(rows.length>1?`${rows.length} bölge bildirimi gönderildi.`:'Bölge bildirimi gönderildi.');
-      if(!error){ marks[id]=[]; sel[id]=null; const inp=list.querySelector(`[data-cut="${id}"]`); if(inp)inp.value=''; }
+      const {error}=await client.from('project_feedback').insert({
+        project_id:tr.project_id,author_id:me,track_id:id,kind:'note',
+        body:body||'Bu parça hakkında not.'
+      });
+      status.textContent=error?('Gönderilemedi: '+error.message):'Not gönderildi.';
+      if(!error && inp)inp.value='';
       b.disabled=false;
       load();
-    });
-
-    list.querySelectorAll('[data-wave]').forEach(c=>{
-      const id=c.dataset.wave; let dragging=false,startX=0;
-      const pos=e=>{const r=c.getBoundingClientRect();return ((e.clientX-r.left)/r.width)*(peaks[id]?.dur||0);};
-      c.onmousedown=e=>{if(!peaks[id])return;dragging=true;startX=pos(e);sel[id]={a:startX,b:startX};};
-      c.onmousemove=e=>{if(!dragging)return;sel[id].b=pos(e);drawWave(id);
-        const info=list.querySelector(`[data-selinfo="${id}"]`);
-        if(info)info.textContent=`Seçili bölge: ${mmss(Math.min(sel[id].a,sel[id].b))} – ${mmss(Math.max(sel[id].a,sel[id].b))}`;};
-      c.onmouseup=()=>{dragging=false;};
-      c.onmouseleave=()=>{dragging=false;};
     });
 
     list.querySelectorAll('[data-play]').forEach(b=>b.onclick=async()=>{
@@ -305,8 +210,7 @@
       if(cur){cur.audio.pause();cur.btn.textContent='▶';cur.btn.setAttribute('aria-label','Parçayı oynat');}
       const url=await signed(b.dataset.path); if(!url){status.textContent='Ses açılamadı.';return;}
       const audio=new Audio(url);
-      audio.ontimeupdate=()=>{ if(audio.duration) drawWave(id,audio.currentTime/audio.duration); };
-      audio.onended=()=>{b.textContent='▶';b.setAttribute('aria-label','Parçayı oynat');drawWave(id);cur=null;};
+      audio.onended=()=>{b.textContent='▶';b.setAttribute('aria-label','Parçayı oynat');cur=null;};
       await audio.play(); b.textContent='⏸'; b.setAttribute('aria-label','Parçayı duraklat'); cur={id,audio,btn:b};
     });
   }
