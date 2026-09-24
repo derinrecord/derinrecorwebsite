@@ -1,5 +1,66 @@
 (() => {
   const byId = id => document.getElementById(id);
+
+  function askConfirm(message){
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
+      const box = document.createElement('div');
+      box.style.cssText = 'max-width:420px;width:100%;padding:24px;border-radius:20px;background:#1a1a1e;border:1px solid rgba(255,255,255,.15);box-shadow:0 20px 60px rgba(0,0,0,.5);color:#f4f1e9;font-size:14px;line-height:1.5';
+      const p = document.createElement('p');
+      p.style.cssText = 'margin:0 0 20px;white-space:pre-wrap';
+      p.textContent = message;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:10px;justify-content:flex-end';
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.textContent = 'İPTAL';
+      cancelBtn.style.cssText = 'padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);color:inherit;font:inherit;font-size:12px;cursor:pointer';
+      const okBtn = document.createElement('button');
+      okBtn.type = 'button';
+      okBtn.textContent = 'EVET';
+      okBtn.style.cssText = 'padding:10px 18px;border-radius:12px;border:1px solid rgba(254,75,69,.5);background:rgba(254,75,69,.18);color:#ffb4b0;font:inherit;font-size:12px;cursor:pointer;font-weight:700';
+      function close(result){ overlay.remove(); document.removeEventListener('keydown', onKey); resolve(result); }
+      function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(false); } if(e.key==='Enter'){ e.preventDefault(); close(true); } }
+      cancelBtn.onclick = () => close(false);
+      okBtn.onclick = () => close(true);
+      overlay.onclick = (e) => { if(e.target === overlay) close(false); };
+      row.appendChild(cancelBtn); row.appendChild(okBtn);
+      box.appendChild(p); box.appendChild(row);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+      document.addEventListener('keydown', onKey);
+      okBtn.focus();
+    });
+  }
+  function askAlert(message){
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
+      const box = document.createElement('div');
+      box.style.cssText = 'max-width:420px;width:100%;padding:24px;border-radius:20px;background:#1a1a1e;border:1px solid rgba(255,255,255,.15);box-shadow:0 20px 60px rgba(0,0,0,.5);color:#f4f1e9;font-size:14px;line-height:1.5';
+      const p = document.createElement('p');
+      p.style.cssText = 'margin:0 0 20px;white-space:pre-wrap';
+      p.textContent = message;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:flex-end';
+      const okBtn = document.createElement('button');
+      okBtn.type = 'button';
+      okBtn.textContent = 'TAMAM';
+      okBtn.style.cssText = 'padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);color:inherit;font:inherit;font-size:12px;cursor:pointer;font-weight:700';
+      function close(){ overlay.remove(); document.removeEventListener('keydown', onKey); resolve(); }
+      function onKey(e){ if(e.key==='Escape'||e.key==='Enter'){ e.preventDefault(); close(); } }
+      okBtn.onclick = close;
+      overlay.onclick = (e) => { if(e.target === overlay) close(); };
+      row.appendChild(okBtn);
+      box.appendChild(p); box.appendChild(row);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+      document.addEventListener('keydown', onKey);
+      okBtn.focus();
+    });
+  }
+
   const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const slugify = v => String(v || '').toLowerCase()
     .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
@@ -328,14 +389,14 @@
     };
 
     byId('f-delete').onclick = async () => {
-      if (!confirm('Klasör ve içindeki parça kayıtları silinecek. Emin misiniz?')) return;
+      if (!await askConfirm('Klasör ve içindeki parça kayıtları silinecek. Emin misiniz?')) return;
       await client.from('radio_folders').delete().eq('id', id);
       go('#/klasorler'); await refresh();
     };
 
     const coverDel = byId('cover-del');
     if (coverDel) coverDel.onclick = async () => {
-      if (!confirm('Kapak görseli silinecek. Emin misiniz?')) return;
+      if (!await askConfirm('Kapak görseli silinecek. Emin misiniz?')) return;
       byId('f-msg').textContent = 'Kapak siliniyor…';
       if (folder.cover_path) await client.storage.from('radio-covers').remove([folder.cover_path]);
       const { error } = await client.from('radio_folders').update({ cover_path:null }).eq('id', id);
@@ -413,7 +474,7 @@
 
     document.querySelectorAll('[data-del-track]').forEach(b => b.onclick = async ev => {
       ev.stopPropagation();
-      if (!confirm('Parça silinecek. Emin misiniz?')) return;
+      if (!await askConfirm('Parça silinecek. Emin misiniz?')) return;
       await client.storage.from('radio-audio').remove([b.dataset.path]);
       await client.from('radio_tracks').delete().eq('id', b.dataset.delTrack);
       await refresh();
@@ -560,7 +621,7 @@
         const msg = byId('brand-code-msg');
         if (!code) { msg.textContent = 'Kod girin.'; return; }
         if (brand.access_code && code !== brand.access_code) {
-          if (!confirm('Kodu değiştirirsen markanın eski kodu/linki artık çalışmaz, yeni kodu müşteriye iletmen gerekir. Devam edilsin mi?')) return;
+          if (!await askConfirm('Kodu değiştirirsen markanın eski kodu/linki artık çalışmaz, yeni kodu müşteriye iletmen gerekir. Devam edilsin mi?')) return;
         }
         const { error } = await client.from('brands').update({ access_code: code }).eq('id', id);
         msg.textContent = error ? error.message : 'Kod kaydedildi.';
@@ -646,7 +707,7 @@
       await refresh();
     });
     byId('playlist-delete').onclick = async () => {
-      if (!confirm('Bu liste silinecek. Emin misiniz?')) return;
+      if (!await askConfirm('Bu liste silinecek. Emin misiniz?')) return;
       const { error } = await client.from('brand_playlists').delete().eq('id', playlistId);
       if (error) { msg.textContent = error.message; return; }
       go(`#/markalar/${brandId}`); await refresh();
@@ -768,7 +829,7 @@
       byId('tl-msg').textContent = error ? error.message : 'Durum güncellendi.';
     });
     document.querySelectorAll('[data-tl-del]').forEach(b => b.onclick = async () => {
-      if (!confirm('Talep silinecek. Emin misiniz?')) return;
+      if (!await askConfirm('Talep silinecek. Emin misiniz?')) return;
       await client.from('coffee_requests').delete().eq('id', b.dataset.tlDel);
       talepList();
     });
@@ -843,7 +904,7 @@
     });
 
     document.querySelectorAll('[data-ab-iptal]').forEach(b => b.onclick = async () => {
-      if (!confirm('Abonelik iptal edilecek. Şubeler yayından düşer. Emin misiniz?')) return;
+      if (!await askConfirm('Abonelik iptal edilecek. Şubeler yayından düşer. Emin misiniz?')) return;
       const { error } = await client.from('subscriptions')
         .update({ status:'canceled', canceled_at:new Date().toISOString() })
         .eq('brand_id', b.dataset.abIptal);
@@ -875,21 +936,21 @@
       setTimeout(() => { b.textContent = 'LİNKİ KOPYALA'; }, 1600);
     });
        document.querySelectorAll('[data-del-player]').forEach(b => b.onclick = async () => {
-      if (!confirm('Şube silinecek. Emin misiniz?')) return;
+      if (!await askConfirm('Şube silinecek. Emin misiniz?')) return;
       b.disabled = true; b.textContent = 'SİLİNİYOR…';
       const { error } = await client.from('brand_players').delete().eq('id', b.dataset.delPlayer);
-      if (error) { alert('Şube silinemedi: ' + error.message); b.disabled = false; b.textContent = 'SİL'; return; }
+      if (error) { await askAlert('Şube silinemedi: ' + error.message); b.disabled = false; b.textContent = 'SİL'; return; }
       await refresh();
     });
     document.querySelectorAll('[data-reset-lock]').forEach(b => b.onclick = async () => {
-      if (!confirm('Cihaz kilidi sıfırlanacak; bu şubenin linki bir sonraki açılan cihaza yeniden kilitlenecek. Emin misiniz?')) return;
+      if (!await askConfirm('Cihaz kilidi sıfırlanacak; bu şubenin linki bir sonraki açılan cihaza yeniden kilitlenecek. Emin misiniz?')) return;
       await client.from('brand_players').update({
         bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null
       }).eq('id', b.dataset.resetLock);
       await refresh();
     });
     document.querySelectorAll('[data-del-anons]').forEach(b => b.onclick = async () => {
-      if (!confirm('Anons silinecek. Emin misiniz?')) return;
+      if (!await askConfirm('Anons silinecek. Emin misiniz?')) return;
       await client.storage.from('radio-announcements').remove([b.dataset.path]);
       await client.from('radio_announcements').delete().eq('id', b.dataset.delAnons);
       await refresh();
