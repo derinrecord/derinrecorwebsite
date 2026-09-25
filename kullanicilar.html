@@ -1,20 +1,22 @@
 <!doctype html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kullanıcılar — Derin Record</title><link rel="stylesheet" href="branch.css"><link rel="stylesheet" href="auth.css"><link rel="stylesheet" href="glass.css?v=2" /><style>
 .kul-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin:1.5rem 0 1rem}
-.kul-toolbar input{padding:.65rem;background:#111;color:#fff;border:1px solid #555;min-width:220px}
-.kul-add-btn{padding:.65rem 1rem;background:var(--yellow,#f4d43e);color:#111;border:0;font-weight:800;letter-spacing:.05em;cursor:pointer}
+.kul-toolbar input{padding:.7rem 1rem;background:rgba(255,255,255,.06);color:#fff;border:1px solid var(--glass-line);border-radius:14px;min-width:220px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.kul-add-btn{padding:.7rem 1.1rem;background:linear-gradient(145deg,#e6c840,#b8992a);color:#111;border:0;border-radius:14px;font-weight:800;letter-spacing:.05em;cursor:pointer;box-shadow:0 10px 26px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.75);transition:transform .2s}
+.kul-add-btn:hover{transform:translateY(-2px)}
 .kul-status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em}
 .kul-status-active{background:rgba(126,231,143,.18);color:#7ee78f}
 .kul-status-suspended{background:rgba(255,90,90,.18);color:#ff8080}
-.admin-table select{padding:.4rem;background:#111;color:#fff;border:1px solid #555;font-size:.75rem}
+.admin-stat,.admin-panel{background:var(--glass-bg);border:1px solid var(--glass-line);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shadow);border-radius:22px}
+.admin-table select{padding:.45rem .6rem;background:rgba(255,255,255,.06);color:#fff;border:1px solid var(--glass-line);border-radius:10px;font-size:.75rem;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .kul-danger{border-color:#ff2f96!important;color:#ff8fd6!important}
 .kul-modal-overlay{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:1rem;background:rgba(0,0,0,.72)}
 .kul-modal-overlay[hidden]{display:none}
-.kul-modal{width:min(100%,26rem);padding:1.5rem;background:#171717;border:1px solid var(--yellow,#f4d43e);color:#fff}
+.kul-modal{width:min(100%,26rem);padding:1.6rem;background:var(--glass-bg);border:1px solid var(--yellow,#f4d43e);border-radius:24px;color:#fff;-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shadow)}
 .kul-modal h2{margin:0 0 .8rem;font-size:1.2rem}
 .kul-modal label{display:grid;gap:.3rem;margin:.6rem 0;font:700 .68rem/1 Arial,sans-serif;letter-spacing:.06em}
-.kul-modal input,.kul-modal select{box-sizing:border-box;width:100%;padding:.7rem;border:1px solid #5b5b5b;background:#101010;color:#fff}
+.kul-modal input,.kul-modal select{box-sizing:border-box;width:100%;padding:.7rem;border:1px solid var(--glass-line);border-radius:12px;background:rgba(255,255,255,.06);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .kul-modal-actions{display:flex;gap:.6rem;margin-top:1rem}
-.kul-modal-actions button{flex:1;padding:.75rem;border:0;font-weight:800;cursor:pointer}
+.kul-modal-actions button{flex:1;padding:.75rem;border:0;border-radius:14px;font-weight:800;cursor:pointer}
 .kul-modal-cancel{background:transparent!important;border:1px solid #666!important;color:#fff!important}
 .kul-message{min-height:1.1rem;margin-top:.6rem;font-size:.8rem;color:var(--yellow,#f4d43e)}
 .kul-empty{opacity:.7;margin-top:1.5rem}
