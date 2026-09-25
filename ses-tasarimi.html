@@ -30,6 +30,28 @@
       .sd-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px}
       .sd-modal-head span{font-size:13px;letter-spacing:.05em;opacity:.75}
       .sd-modal-head button{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:inherit;font:inherit;font-size:11px;padding:8px 16px;border-radius:12px;cursor:pointer}
+    
+      .sd-hero{position:relative;overflow:hidden;padding:100px 7vw 70px;isolation:isolate}
+      .sd-hero-bg{position:absolute;inset:-25%;z-index:-1;background:radial-gradient(circle at 18% 25%,rgba(255,45,150,.38),transparent 45%),radial-gradient(circle at 82% 12%,rgba(0,209,255,.32),transparent 45%),radial-gradient(circle at 55% 92%,rgba(232,209,90,.3),transparent 50%),radial-gradient(circle at 5% 90%,rgba(140,80,255,.25),transparent 45%),#0c0a10;filter:blur(70px) saturate(130%);animation:sdDrift 16s ease-in-out infinite alternate}
+      @keyframes sdDrift{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-3%,3%,0) scale(1.1)}100%{transform:translate3d(4%,-2%,0) scale(1.04)}}
+      .sd-hero-inner{position:relative;display:grid;grid-template-columns:minmax(260px,420px) 1fr;gap:56px;align-items:center;max-width:1180px;margin:0 auto}
+      .sd-hero-media{position:relative}
+      .sd-hero-media .sd-hero-glow{position:absolute;inset:-14%;z-index:-1;border-radius:40px;background:conic-gradient(from 0deg,#ff2f96,#00d1ff,#e8d15a,#8c50ff,#ff2f96);filter:blur(38px);opacity:.55;animation:sdSpin 10s linear infinite}
+      @keyframes sdSpin{to{transform:rotate(360deg)}}
+      .sd-hero-media img{position:relative;width:100%;border-radius:28px;display:block;box-shadow:0 30px 70px rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.14);animation:sdZoom 12s ease-in-out infinite alternate}
+      @keyframes sdZoom{from{transform:scale(1)}to{transform:scale(1.055)}}
+      .sd-hero-copy{position:relative}
+      .sd-hero-title{font-size:clamp(38px,6.4vw,74px);line-height:.94;letter-spacing:-.03em;margin:10px 0 22px;font-weight:800}
+      .sd-hero-title span{display:block}
+      .sd-hero-title .sd-t1{color:#fff}
+      .sd-hero-title .sd-amp{font-size:.5em;color:rgba(255,255,255,.4);margin:2px 0}
+      .sd-hero-title .sd-t2{background:linear-gradient(90deg,#e8d15a,#ff8fd6 60%,#7fe3ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+      .sd-cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:30px}
+      .sd-btn{display:inline-flex;align-items:center;gap:8px;padding:16px 28px;border-radius:999px;font-weight:700;font-size:14px;letter-spacing:.02em;text-decoration:none;background:#e6cf55;color:#181516;transition:transform .2s,box-shadow .2s}
+      .sd-btn:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(230,207,85,.3)}
+      .sd-btn-ghost{background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.25)}
+      .sd-btn-ghost:hover{background:rgba(255,255,255,.12);box-shadow:0 14px 30px rgba(0,0,0,.35)}
+      @media (max-width:760px){.sd-hero-inner{grid-template-columns:1fr;gap:34px}.sd-hero-media{max-width:340px;margin:0 auto}}
     </style>
   </head>
   <body>
@@ -39,22 +61,27 @@
       <div class="wordmark">DERİN<br />RECORD<b>&bull;</b></div>
     </header>
     <main class="admin-main">
-      <section class="corporate" id="ses-tasarimi-hero">
-        <p class="eyebrow">DERİN RECORD × SES TASARIMI</p>
-        <h2>SES SADECE<br /><span>DUYULMAZ, HİSSEDİLİR.</span></h2>
-        <p class="corporate-lead">
-          Sinema ve reklam projeleri için ses tasarımı ve film scoring üretiyoruz.
-          Görüntüye eşlik eden atmosferden, sahneyi taşıyan orkestrasyona kadar tüm ses dünyasını
-          kendi stüdyomuzda kuruyoruz.
-        </p>
-        <ul class="corporate-list">
-          <li><strong>Ses tasarımı</strong><span>Sahneye özel foley, atmosfer ve efekt tasarımı.</span></li>
-          <li><strong>Film scoring</strong><span>Görüntünün duygusuna eşlik eden orijinal müzik.</span></li>
-          <li><strong>Stüdyo üretimi</strong><span>Kayıttan mikse kadar tüm süreç tek çatı altında.</span></li>
-          <li><strong>Örnek çalışmalar</strong><span>Farklı film sahnelerine uyguladığımız ses tasarımı denemeleri.</span></li>
-        </ul>
-        <a class="corporate-cta" href="#iletisim">PROJENİ ANLAT →</a>
-        <img class="sd-hero-cover" src="assets/sound-design/genel-cover.jpg" alt="Derin Record stüdyosunda ses tasarımı çalışması" />
+      <section class="sd-hero" id="ses-tasarimi-hero">
+        <div class="sd-hero-bg" aria-hidden="true"></div>
+        <div class="sd-hero-inner">
+          <div class="sd-hero-media">
+            <span class="sd-hero-glow" aria-hidden="true"></span>
+            <img src="assets/sound-design/genel-cover.jpg" alt="Derin Record stüdyosunda ses tasarımı çalışması" />
+          </div>
+          <div class="sd-hero-copy">
+            <p class="eyebrow">DERİN RECORD × SES TASARIMI</p>
+            <h1 class="sd-hero-title"><span class="sd-t1">FILM SCORING</span><span class="sd-amp">&amp;</span><span class="sd-t2">SOUND DESIGN</span></h1>
+            <p class="corporate-lead">
+              Sinema ve reklam projeleri için ses tasarımı ve film scoring üretiyoruz.
+              Görüntüye eşlik eden atmosferden, sahneyi taşıyan orkestrasyona kadar tüm ses dünyasını
+              kendi stüdyomuzda kuruyoruz.
+            </p>
+            <div class="sd-cta-row">
+              <a class="sd-btn" href="#projeler">İŞLERİ İNCELE →</a>
+              <a class="sd-btn sd-btn-ghost" href="#iletisim">TEKLİF AL →</a>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="sd-projects" id="projeler">
