@@ -62,7 +62,7 @@
   }
 
   const bar=st=>{const at=STAGES.findIndex(s=>s.k===st);
-    return `<div class="track-box"><div class="track">${STAGES.map((s,i)=>`<div class="track-step ${at<0?'':i<at?'done':i===at?'now':''}"><div class="track-dot"></div>${s.l}</div>`).join('')}</div></div>`;};
+    return `<div class="stage-bar"><div class="stage-row">${STAGES.map((s,i)=>`<div class="stage-step ${at<0?'':i<at?'done':i===at?'now':''}"><div class="stage-dot"></div>${s.l}</div>`).join('')}</div></div>`;};
 
   function trackBlock(tr,i,p){
     const has=!!tr.audio_path;
