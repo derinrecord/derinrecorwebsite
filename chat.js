@@ -59,6 +59,7 @@
   let chatAtBottom = true;
   let incomingNotice = '';
   let transferOpen = false;
+  let lastRenderSignature = null;
   const seenIncomingKey = userId => `derin-record-seen-messages-${userId}`;
   async function checkNotifications(client, user) {
     const { data, error } = await client.from('direct_messages').select('id,sender_id,created_at').eq('recipient_id', user.id).neq('sender_id', user.id).order('created_at', { ascending: false }).limit(30);
@@ -139,6 +140,18 @@
     status.textContent = incomingNotice || (admin ? (error ? 'Sohbet arayüzü önizlemesi açık. Mesajlaşma için sohbet SQL kurulumu gerekir.' : people.length ? 'Antrenör seçip özel konuşmayı yönet.' : 'Sohbet arayüzü önizlemesi açık.') : 'Yöneticiyle özel olarak mesajlaş.');
     app.hidden = false;
     const pinnedIds = new Set(JSON.parse(localStorage.getItem('derin-pinned-messages') || '[]'));
+    const renderSignature = JSON.stringify({
+      contactId, admin,
+      people: people.map(person => person.id + ':' + person.full_name),
+      pinned: [...pinnedIds].sort(),
+      selected: [...selectedMessageIds].sort(),
+      messages: messages.map(message => message.id + ':' + message.body + ':' + message.created_at + ':' + (message.research_project_id || ''))
+    });
+    if (renderSignature === lastRenderSignature && !incomingNotice) {
+      if (!error && !transferOpen) refreshTimer = window.setTimeout(load, 3000);
+      return;
+    }
+    lastRenderSignature = renderSignature;
     const messageHtml = messages.length ? messages.map(message => {
       const musicMatch = message.body.match(/__DATA__:(\{[\s\S]*\})\s*$/);
       const displayBody = musicMatch ? message.body.slice(0, musicMatch.index).trim() : message.body;
