@@ -66,6 +66,14 @@
 .sd-form-msg.ok{color:#9be89b}
 .sd-form-msg.err{color:#ff8f8f}
 @media (max-width:560px){.sd-form .sd-row{grid-template-columns:1fr}}
+
+.sd-form-panel{position:relative;max-width:640px;margin:32px auto 40px;padding:44px 38px 38px;border-radius:32px;overflow:hidden;isolation:isolate;background:radial-gradient(circle at 20% 15%,rgba(255,45,150,.35),transparent 55%),radial-gradient(circle at 85% 85%,rgba(232,209,90,.22),transparent 50%),radial-gradient(circle at 90% 10%,rgba(0,209,255,.18),transparent 45%),#141018;border:1px solid rgba(255,255,255,.12);box-shadow:0 30px 70px rgba(0,0,0,.5)}
+.sd-form-panel::before{content:"";position:absolute;inset:0;z-index:-2;background-image:radial-gradient(rgba(255,255,255,.08) 1.4px,transparent 1.4px);background-size:14px 14px;opacity:.5;mix-blend-mode:overlay}
+.sd-form-panel::after{content:"";position:absolute;inset:-30%;z-index:-3;background:conic-gradient(from 0deg,#ff2f96,#e8d15a,#00d1ff,#8c50ff,#ff2f96);filter:blur(60px);opacity:.35;animation:sdSpin 14s linear infinite}
+.sd-form-pill{display:inline-flex;align-items:center;gap:8px;background:#e6cf55;color:#181516;font-weight:800;font-size:12px;letter-spacing:.06em;padding:8px 16px;border-radius:999px;margin-bottom:18px}
+.sd-form-pill span{width:7px;height:7px;border-radius:50%;background:#ff2f96;display:inline-block}
+.sd-form-panel .sd-form{margin:0}
+@media (max-width:560px){.sd-form-panel{padding:32px 22px 28px;border-radius:24px}}
 </style>
   </head>
   <body>
@@ -143,7 +151,9 @@
       <p class="section-kicker">BAĞLANTI</p>
       <h2>PROJENİ<br /><span>KONUŞALIM.</span></h2>
       
-<form class="sd-form" id="sd-request-form">
+<div class="sd-form-panel">
+  <div class="sd-form-pill"><span></span>HIZLI TEKLİF</div>
+  <form class="sd-form" id="sd-request-form">
   <div class="sd-row">
     <input type="text" name="contact_name" placeholder="Ad Soyad" required />
     <input type="email" name="email" placeholder="E-posta" required />
@@ -161,6 +171,7 @@
   <button type="submit" class="sd-btn">TALEBİ GÖNDER →</button>
   <p class="sd-form-msg" id="sd-form-msg"></p>
 </form>
+</div>
 <p class="footer-end">DERİN RECORD <span>&bull;</span> SES TASARIMI & FİLM SCORING</p>
     </footer>
 
