@@ -41,6 +41,9 @@
   transition:background .15s ease,transform .15s ease;
 }
 .chat-key-transfer-button:hover,.chat-notification-button:hover{background:var(--yellow,#d8bb2c);color:#1b171b}
+.chat-delete-chat-button{margin-left:.4rem;border:1px solid rgba(255,90,110,.55);background:rgba(255,90,110,.08);color:#ff99a7;padding:.45rem .65rem;border-radius:20px;font-size:.6rem;font-weight:900;letter-spacing:.06em;cursor:pointer;transition:background .15s ease,transform .15s ease}
+.chat-delete-chat-button:hover{background:#ff99a7;color:#1b171b}
+.chat-delete-chat-button:disabled{opacity:.6;cursor:default}
 
 /* ---------- Yerleşim (tek kolon / antrenör listesiyle iki kolon) ---------- */
 .chat-layout{display:grid;grid-template-columns:1fr;min-height:30rem}
@@ -103,6 +106,9 @@
 }
 .chat-message .msg-pin{position:absolute;left:-.3rem;top:-.5rem;font-size:.8rem;font-style:normal}
 .chat-message.selected-message{outline:2px solid var(--yellow,#d8bb2c);outline-offset:2px}
+.chat-message.selected-message::before{content:'✓';position:absolute;top:-.5rem;right:-.5rem;width:1.1rem;height:1.1rem;border-radius:50%;background:var(--yellow,#d8bb2c);color:#17151a;font-size:.62rem;font-weight:900;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.4);z-index:6}
+.chat-message.own.selected-message::before{right:auto;left:-.5rem}
+.chat-message.menu-open{z-index:5}
 .chat-message.pinned-message{box-shadow:inset 3px 0 0 var(--yellow,#d8bb2c)}
 .chat-message.music-link-message{background:#30202b;box-shadow:inset 3px 0 0 var(--pink,#cb2468)}
 .chat-message.music-link-message.own{box-shadow:inset 3px 0 0 #17151a}
