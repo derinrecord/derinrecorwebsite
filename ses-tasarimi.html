@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#17131a" />
+    <title>Ses Tasarımı & Film Scoring — Derin Record</title>
+    <meta name="description" content="Derin Record — filmler için ses tasarımı ve film scoring çalışmaları." />
+    <link rel="stylesheet" href="branch.css" />
+    <link rel="stylesheet" href="auth.css" />
+    <link rel="stylesheet" href="glass.css?v=3" />
+    <style>
+      .sd-hero-cover{width:100%;max-width:620px;border-radius:26px;margin:36px auto 0;display:block;box-shadow:0 24px 60px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.12)}
+      .sd-projects{padding:80px 7vw 100px}
+      .sd-projects .eyebrow{font-size:11px;letter-spacing:.24em;opacity:.6;text-align:center;display:block}
+      .sd-projects h2{font-size:clamp(28px,4vw,42px);line-height:.98;letter-spacing:-.03em;text-align:center;margin:12px 0 44px}
+      .sd-projects h2 span{color:#e8d15a}
+      .sd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px;max-width:1000px;margin:0 auto}
+      .sd-card{position:relative;border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.14);background:#1a1a1e;cursor:pointer;aspect-ratio:3/4;transition:transform .2s,border-color .2s}
+      .sd-card:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.3)}
+      .sd-card img{width:100%;height:100%;object-fit:cover;display:block}
+      .sd-card .sd-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,.75) 100%)}
+      .sd-card .sd-play b{position:absolute;left:16px;bottom:16px;right:16px;font-size:14px;letter-spacing:.02em}
+      .sd-card .sd-play svg{width:52px;height:52px;opacity:.9}
+      .sd-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99998;display:none;align-items:center;justify-content:center;padding:20px}
+      .sd-modal.on{display:flex}
+      .sd-modal-box{width:100%;max-width:560px;background:#17131a;border-radius:22px;border:1px solid rgba(255,255,255,.16);overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+      .sd-modal-box .sd-frame{position:relative;width:100%;padding-top:133%;background:#000}
+      .sd-modal-box .sd-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+      .sd-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px}
+      .sd-modal-head span{font-size:13px;letter-spacing:.05em;opacity:.75}
+      .sd-modal-head button{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:inherit;font:inherit;font-size:11px;padding:8px 16px;border-radius:12px;cursor:pointer}
+    </style>
+  </head>
+  <body>
+    <div class="noise" aria-hidden="true"></div>
+    <header class="header">
+      <a class="home" href="index.html"><span>&larr;</span> ANA SAYFA</a>
+      <div class="wordmark">DERİN<br />RECORD<b>&bull;</b></div>
+    </header>
+    <main class="admin-main">
+      <section class="corporate" id="ses-tasarimi-hero">
+        <p class="eyebrow">DERİN RECORD × SES TASARIMI</p>
+        <h2>SES SADECE<br /><span>DUYULMAZ, HİSSEDİLİR.</span></h2>
+        <p class="corporate-lead">
+          Sinema ve reklam projeleri için ses tasarımı ve film scoring üretiyoruz.
+          Görüntüye eşlik eden atmosferden, sahneyi taşıyan orkestrasyona kadar tüm ses dünyasını
+          kendi stüdyomuzda kuruyoruz.
+        </p>
+        <ul class="corporate-list">
+          <li><strong>Ses tasarımı</strong><span>Sahneye özel foley, atmosfer ve efekt tasarımı.</span></li>
+          <li><strong>Film scoring</strong><span>Görüntünün duygusuna eşlik eden orijinal müzik.</span></li>
+          <li><strong>Stüdyo üretimi</strong><span>Kayıttan mikse kadar tüm süreç tek çatı altında.</span></li>
+          <li><strong>Referans işler</strong><span>Uluslararası yapımlara ses tasarımı desteği.</span></li>
+        </ul>
+        <a class="corporate-cta" href="#iletisim">PROJENİ ANLAT →</a>
+        <img class="sd-hero-cover" src="assets/sound-design/genel-cover.jpg" alt="Derin Record stüdyosunda ses tasarımı çalışması" />
+      </section>
+
+      <section class="sd-projects" id="projeler">
+        <p class="eyebrow">SEÇİLİ İŞLER</p>
+        <h2>PERDEDE<br /><span>DUYULAN İŞLER.</span></h2>
+        <div class="sd-grid">
+          <div class="sd-card" data-video="1Det9SdiRmOYBL6R2XanFG-qngyexbZE_" data-title="Megatron">
+            <img src="assets/sound-design/megatron-cover.jpg" alt="Megatron ses tasarımı kapak görseli" loading="lazy" />
+            <div class="sd-play">
+              <svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+              <b>MEGATRON</b>
+            </div>
+          </div>
+          <div class="sd-card" data-video="1TXY2OK4GcqdL6EQb8fTIDq19XjE8I3Z_" data-title="Dune">
+            <img src="assets/sound-design/dune1-cover.jpg" alt="Dune ses tasarımı kapak görseli" loading="lazy" />
+            <div class="sd-play">
+              <svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+              <b>DUNE</b>
+            </div>
+          </div>
+          <div class="sd-card" data-video="11ndK19flClYqNrGwldLH4idhpP47CneI" data-title="Dune Part 2">
+            <img src="assets/sound-design/dune2-cover.jpg" alt="Dune Part 2 ses tasarımı kapak görseli" loading="lazy" />
+            <div class="sd-play">
+              <svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+              <b>DUNE PART 2</b>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="sd-modal" id="sd-modal">
+      <div class="sd-modal-box">
+        <div class="sd-modal-head">
+          <span id="sd-modal-title"></span>
+          <button id="sd-modal-close">KAPAT</button>
+        </div>
+        <div class="sd-frame">
+          <iframe id="sd-modal-iframe" src="" allow="autoplay" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div>
+
+    <footer id="iletisim">
+      <p class="section-kicker">BAĞLANTI</p>
+      <h2>PROJENİ<br /><span>KONUŞALIM.</span></h2>
+      <div class="contact-grid">
+        <a href="https://instagram.com/derin.record" target="_blank" rel="noreferrer">INSTAGRAM <strong>@derin.record ↗</strong></a>
+        <a href="tel:+905061276327">TELEFON <strong>+90 506 127 63 27 ↗</strong></a>
+      </div>
+      <p class="footer-end">DERİN RECORD <span>&bull;</span> SES TASARIMI & FİLM SCORING</p>
+    </footer>
+
+    <script>
+      (function(){
+        var modal = document.getElementById('sd-modal');
+        var iframe = document.getElementById('sd-modal-iframe');
+        var titleEl = document.getElementById('sd-modal-title');
+        function closeModal(){
+          modal.classList.remove('on');
+          iframe.src = '';
+        }
+        document.querySelectorAll('.sd-card').forEach(function(card){
+          card.addEventListener('click', function(){
+            var id = card.getAttribute('data-video');
+            titleEl.textContent = card.getAttribute('data-title') || '';
+            iframe.src = 'https://drive.google.com/file/d/' + id + '/preview';
+            modal.classList.add('on');
+          });
+        });
+        document.getElementById('sd-modal-close').addEventListener('click', closeModal);
+        modal.addEventListener('click', function(e){ if (e.target === modal) closeModal(); });
+      })();
+    </script>
+  </body>
+</html>
