@@ -42,7 +42,7 @@
     setNavigation(true);
     signup.hidden = true; coachAction.hidden = false;
     button.textContent = `${(state.profile?.full_name || state.user.email || 'HESABIM').toUpperCase()} · HESABIM`;
-    menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="admin.html">YÖNETİM PANELİ</a><a href="taleplerim.html">TALEPLERİM</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a><a href="chat.html">SOHBET</a>`;
+    menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="admin.html">YÖNETİM PANELİ</a><a href="taleplerim.html">TALEPLERİM</a><a href="kullanicilar.html">KULLANICILAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a><a href="chat.html">SOHBET</a>`;
     menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || 'HESABIM';
   }
   function toggleMenu() { const menu = document.querySelector('.account-menu'); if (menu) menu.hidden ? openMenu(menu) : closeMenu(menu); }
