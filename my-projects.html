@@ -21,25 +21,24 @@
   .proj-card .meta{font-size:12px;opacity:.6;margin:0 0 20px}
 
   /* Adımlı ilerleme çubuğu — küçültülmüş, sarı kutu içinde (kaset sarısıyla aynı ton) */
-  .stage-bar{display:inline-block;min-width:100%;box-sizing:border-box;margin:0 0 6px;
-    padding:5px 8px 4px;border-radius:10px;background:#d4c24e;color:#0b0b0d;
-    box-shadow:0 4px 10px rgba(0,0,0,.22)}
+  .stage-bar{display:inline-block;min-width:100%;box-sizing:border-box;margin:0 0 10px}
   .stage-row{display:flex;align-items:flex-start;margin:0}
-  .stage-step{flex:1;position:relative;text-align:center;font-size:6.3px;font-weight:800;letter-spacing:.02em;
-    line-height:1.05;opacity:.55;transition:opacity .3s}
+  .stage-step{flex:1;position:relative;text-align:center;font-size:9px;font-weight:800;letter-spacing:.02em;
+    line-height:1.15;color:#fff;opacity:.55;transition:opacity .3s}
   .stage-step.done,.stage-step.now{opacity:1}
-  .stage-dot{width:6px;height:6px;border-radius:50%;margin:0 auto 3px;position:relative;
+  .stage-dot{width:9px;height:9px;border-radius:50%;margin:0 auto 5px;position:relative;
     background:rgba(139,61,255,.2);border:1.5px solid rgba(139,61,255,.4);transition:.35s}
-  .stage-dot::after{content:"";position:absolute;inset:-3px;border-radius:50%;pointer-events:none;
+  .stage-dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;pointer-events:none;
     background:radial-gradient(circle,rgba(168,85,247,.6),transparent 70%);opacity:0;transition:opacity .35s}
-  .stage-step.done .stage-dot,.stage-step.now .stage-dot{background:#a855f7;border-color:#a855f7;
-    box-shadow:0 0 5px rgba(168,85,247,.85);animation:recBlink 1.3s ease-in-out infinite}
-  .stage-step.done .stage-dot::after,.stage-step.now .stage-dot::after{opacity:1}
+  .stage-step.done .stage-dot{background:#a855f7;border-color:#a855f7}
+  .stage-step.now .stage-dot{background:#a855f7;border-color:#a855f7;
+    box-shadow:0 0 6px rgba(168,85,247,.85);animation:recBlink 1.3s ease-in-out infinite}
+  .stage-step.now .stage-dot::after{opacity:1}
   .stage-step:not(.done):not(.now) .stage-dot{animation:recBlinkDim 2.6s ease-in-out infinite}
   @keyframes recBlink{0%,100%{opacity:1}50%{opacity:.3}}
   @keyframes recBlinkDim{0%,100%{opacity:1}50%{opacity:.55}}
-  .stage-step::before{content:"";position:absolute;top:3px;left:-50%;width:100%;height:1px;
-    background:rgba(11,11,13,.2)}
+  .stage-step::before{content:"";position:absolute;top:4.5px;left:-50%;width:100%;height:1px;
+    background:rgba(255,255,255,.2)}
   .stage-step:first-child::before{display:none}
   .stage-step.done::before,.stage-step.now::before{background:#a855f7}
 
