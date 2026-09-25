@@ -26,5 +26,6 @@
     app.querySelectorAll('[data-revoke]').forEach(button => button.onclick = async () => { const { error } = await client.from('demo_access').delete().eq('demo_key', button.dataset.revoke).eq('user_id', button.dataset.user); if (!error) load(); });
   }
   const escapeHtml = value => String(value || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  window.addEventListener('derin:authchange', load);
   load();
 })();
