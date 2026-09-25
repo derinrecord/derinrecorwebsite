@@ -60,5 +60,6 @@
     `).join('')}</div>`;
   }
 
+  window.addEventListener('derin:authchange', load);
   load();
 })();
