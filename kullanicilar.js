@@ -203,5 +203,6 @@ async function load() {
   }
 }
 
+window.addEventListener('derin:authchange', load);
 load();
 })();
