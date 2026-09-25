@@ -6,6 +6,7 @@
   let client = null, brandId = null, queue = [], index = 0, started = false, lastStamp = null, karistir = true;
   let bootTime = Date.now(), announcing = false;
   let openTime = null, closeTime = null, wasOpen = null;
+  let watchdogTimer = null, watchdogProgressAt = -1, watchdogStuckCount = 0;
 
   const setState = text => { byId('state').textContent = text; };
   const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -146,6 +147,29 @@
     }
   }
 
+  function startWatchdog() {
+    clearInterval(watchdogTimer);
+    watchdogProgressAt = -1;
+    watchdogStuckCount = 0;
+    watchdogTimer = setInterval(() => {
+      if (audio.paused || announcing || !queue.length) return;
+      if (audio.currentTime > watchdogProgressAt) {
+        watchdogProgressAt = audio.currentTime;
+        watchdogStuckCount = 0;
+        return;
+      }
+      watchdogStuckCount++;
+      if (watchdogStuckCount >= 2) {
+        watchdogStuckCount = 0;
+        setState('Yayın takıldı, yeniden bağlanılıyor…');
+        const track = queue[index % queue.length];
+        audio.src = audioUrl(track.storage_path);
+        audio.load();
+        audio.play().catch(() => {});
+      }
+    }, 6000);
+  }
+
   function play() {
     if (!queue.length || announcing || !isOpen()) return;
     const track = queue[index % queue.length];
@@ -224,6 +248,7 @@
     byId('start').hidden = true;
     wasOpen = null;
     checkHours();
+    startWatchdog();
   };
 
   function subscribe() {
