@@ -659,6 +659,13 @@ body.sp-open .admin-main{padding-bottom:110px}
   box-shadow:0 12px 30px rgba(0,0,0,.5);
   transition:transform .22s,box-shadow .22s}
 .float-teklif:hover{transform:translateY(-3px);box-shadow:0 18px 38px rgba(0,0,0,.6)}
+.float-teklif-wrap{position:relative}
+.float-teklif{border:0;cursor:pointer;font-family:inherit}
+.float-teklif-menu{position:absolute;bottom:calc(100% + 12px);right:0;display:grid;gap:8px;padding:10px;border-radius:16px;background:radial-gradient(circle at 20% 10%,rgba(255,45,150,.22),transparent 55%),radial-gradient(circle at 90% 90%,rgba(0,209,255,.16),transparent 50%),#141018;border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 45px rgba(0,0,0,.55);min-width:240px}
+.float-teklif-menu[hidden]{display:none}
+.float-teklif-menu a{display:block;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.05);color:#fff;text-decoration:none;font-size:11px;font-weight:700;letter-spacing:.05em;white-space:nowrap;transition:background .2s ease,color .2s ease}
+.float-teklif-menu a:hover{background:rgba(255,45,150,.18);color:#ff8fd6}
+@media(max-width:650px){.float-teklif-menu{right:-10px;min-width:210px}}
 
 .float-wa{display:inline-flex;align-items:center;justify-content:center;
   width:54px;height:54px;border-radius:50%;color:#fff;text-decoration:none;
