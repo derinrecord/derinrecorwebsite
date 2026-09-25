@@ -178,6 +178,29 @@
       panel.querySelector('input').focus();
     };
     app.querySelector('.chat-head').append(transferButton);
+    const deleteChatButton = document.createElement('button');
+    deleteChatButton.type = 'button';
+    deleteChatButton.className = 'chat-delete-chat-button';
+    deleteChatButton.textContent = 'SOHBETİ SİL';
+    deleteChatButton.onclick = async () => {
+      const confirmMsg = admin
+        ? 'Bu sohbetteki TÜM mesajlar (iki taraftan da) kalıcı olarak silinsin mi? Bu işlem geri alınamaz.'
+        : 'Bu sohbette senin gönderdiğin mesajlar kalıcı olarak silinsin mi? Bu işlem geri alınamaz.';
+      if (!window.confirm(confirmMsg)) return;
+      deleteChatButton.disabled = true;
+      deleteChatButton.textContent = 'SİLİNİYOR…';
+      let deleteError;
+      if (admin) {
+        ({ error: deleteError } = await client.from('direct_messages').delete()
+          .or(`and(sender_id.eq.${user.id},recipient_id.eq.${contactId}),and(sender_id.eq.${contactId},recipient_id.eq.${user.id})`));
+      } else {
+        ({ error: deleteError } = await client.from('direct_messages').delete()
+          .eq('sender_id', user.id).eq('recipient_id', contactId));
+      }
+      if (deleteError) { status.textContent = deleteError.message; deleteChatButton.disabled = false; deleteChatButton.textContent = 'SOHBETİ SİL'; return; }
+      load();
+    };
+    app.querySelector('.chat-head').append(deleteChatButton);
     const transferPanel = document.createElement('form');
     transferPanel.className = 'chat-transfer-panel';
     transferPanel.hidden = true;
@@ -265,7 +288,7 @@
         load();
       };
     });
-    const closeMenus = () => app.querySelectorAll('.message-context-menu').forEach(menu => menu.remove());
+    const closeMenus = () => { app.querySelectorAll('.message-context-menu').forEach(menu => menu.remove()); app.querySelectorAll('.chat-message.menu-open').forEach(el => el.classList.remove('menu-open')); };
     const writeToField = value => { composeDraft = value; const field = app.querySelector('textarea'); field.value = value; field.focus(); };
     const openMessageMenu = article => {
       closeMenus();
@@ -275,6 +298,7 @@
       menu.className = 'message-context-menu';
       menu.innerHTML = `<button type="button" data-reply>YANITLA</button><button type="button" data-copy>KOPYALA</button>${own ? '<button type="button" data-edit-menu>DÜZENLE</button><button type="button" data-pin>SABİTLE</button>' : ''}<button type="button" data-forward>İLET</button>${own ? '<button type="button" class="danger" data-delete-menu>SİL</button>' : ''}<button type="button" data-select-menu><span class="select-circle">✓</span> SEÇ</button>`;
       article.append(menu);
+      article.classList.add('menu-open');
       menu.querySelector('[data-reply]').onclick = () => { writeToField(`↪ ${body}\n`); closeMenus(); };
       menu.querySelector('[data-copy]').onclick = async () => { try { await navigator.clipboard.writeText(body); status.textContent = 'Mesaj kopyalandı.'; } catch { status.textContent = 'Kopyalama için mesajı seçebilirsin.'; } closeMenus(); };
       menu.querySelector('[data-forward]').onclick = () => { writeToField(`İletilen mesaj:\n${body}`); closeMenus(); };
@@ -318,6 +342,12 @@
       });
       ['pointerup', 'pointerleave', 'pointercancel'].forEach(type => article.addEventListener(type, cancelHold));
       article.addEventListener('contextmenu', event => { event.preventDefault(); openMessageMenu(article); });
+      article.addEventListener('click', event => {
+        if (event.target.closest('a, button, textarea')) return;
+        article.classList.toggle('selected-message');
+        if (article.classList.contains('selected-message')) selectedMessageIds.add(article.dataset.messageId);
+        else selectedMessageIds.delete(article.dataset.messageId);
+      });
     });
     app.onclick = event => { if (!event.target.closest('.chat-message')) closeMenus(); };
         const fileRow = document.createElement('div');
