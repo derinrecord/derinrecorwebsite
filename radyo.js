@@ -9,6 +9,11 @@
 
   const setState = text => { byId('state').textContent = text; };
   const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const withTimeout = (promise, ms) => Promise.race([
+    Promise.resolve(promise),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Bağlantı zaman aşımına uğradı.')), ms))
+  ]);
+  let fetchAttempts = 0;
 
   const deviceId = (() => {
     try {
@@ -55,8 +60,20 @@
   }
 
   async function fetchBroadcast({ restart = false } = {}) {
-    const { data, error } = await client.rpc('radio_now_playing', { p_player_key: key });
-    if (error) { setState('Bağlantı hatası: ' + error.message); return; }
+    let data, error;
+    try {
+      ({ data, error } = await withTimeout(client.rpc('radio_now_playing', { p_player_key: key }), 10000));
+    } catch (networkErr) {
+      error = { message: networkErr.message };
+    }
+    if (error) {
+      fetchAttempts++;
+      byId('brand').textContent = 'Bağlantı sorunu';
+      setState('Bağlantı hatası: ' + error.message + (fetchAttempts < 6 ? ' — tekrar deneniyor…' : ' — sayfayı yenile.'));
+      if (fetchAttempts < 6) setTimeout(() => fetchBroadcast({ restart }), Math.min(2000 * fetchAttempts, 10000));
+      return;
+    }
+    fetchAttempts = 0;
     if (!data || !data.length) {
       byId('brand').textContent = 'Geçersiz yayın anahtarı';
       byId('now').textContent = '';
@@ -207,7 +224,6 @@
     byId('start').hidden = true;
     wasOpen = null;
     checkHours();
-    if (isOpen()) play();
   };
 
   function subscribe() {
@@ -238,7 +254,12 @@
   }
 
   async function ping() {
-    const { data, error } = await client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: !audio.paused });
+    let data, error;
+    try {
+      ({ data, error } = await withTimeout(client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: !audio.paused }), 8000));
+    } catch {
+      return false;
+    }
     if (error) return false;
     const row = data && data[0];
     if (row && row.ok === false && row.reason === 'locked_to_other_device') {
