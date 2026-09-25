@@ -21,24 +21,27 @@
   .proj-card .meta{font-size:12px;opacity:.6;margin:0 0 20px}
 
   /* Adımlı ilerleme çubuğu — küçültülmüş, sarı kutu içinde (kaset sarısıyla aynı ton) */
-  .track-box{display:inline-block;min-width:100%;box-sizing:border-box;margin:0 0 16px;
-    padding:10px 14px 7px;border-radius:16px;background:#d4c24e;color:#0b0b0d;
-    box-shadow:0 8px 20px rgba(0,0,0,.28)}
+  .track-box{display:inline-block;min-width:100%;box-sizing:border-box;margin:0 0 10px;
+    padding:7px 12px 5px;border-radius:12px;background:#d4c24e;color:#0b0b0d;
+    box-shadow:0 6px 14px rgba(0,0,0,.24)}
   .track{display:flex;align-items:flex-start;margin:0}
-  .track-step{flex:1;position:relative;text-align:center;font-size:7.5px;letter-spacing:.04em;
-    opacity:.45;transition:opacity .3s}
+  .track-step{flex:1;position:relative;text-align:center;font-size:7.5px;font-weight:800;letter-spacing:.05em;
+    opacity:.55;transition:opacity .3s}
   .track-step.done,.track-step.now{opacity:1}
-  .track-dot{width:9px;height:9px;border-radius:50%;margin:0 auto 5px;
-    background:rgba(11,11,13,.18);border:2px solid rgba(11,11,13,.3);transition:.35s}
-  .track-step.done .track-dot{background:#106b44;border-color:#106b44;box-shadow:0 0 6px rgba(16,107,68,.6)}
-  .track-step.now .track-dot{background:#0b0b0d;border-color:#0b0b0d;
-    box-shadow:0 0 0 4px rgba(11,11,13,.14);
-    animation:tpulse 1.9s ease-in-out infinite}
-  @keyframes tpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
-  .track-step::before{content:"";position:absolute;top:4.5px;left:-50%;width:100%;height:1.5px;
+  .track-dot{width:7px;height:7px;border-radius:50%;margin:0 auto 4px;position:relative;
+    background:rgba(139,61,255,.2);border:2px solid rgba(139,61,255,.4);transition:.35s}
+  .track-dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle,rgba(168,85,247,.6),transparent 70%);opacity:0;transition:opacity .35s}
+  .track-step.done .track-dot,.track-step.now .track-dot{background:#a855f7;border-color:#a855f7;
+    box-shadow:0 0 7px rgba(168,85,247,.85);animation:recBlink 1.3s ease-in-out infinite}
+  .track-step.done .track-dot::after,.track-step.now .track-dot::after{opacity:1}
+  .track-step:not(.done):not(.now) .track-dot{animation:recBlinkDim 2.6s ease-in-out infinite}
+  @keyframes recBlink{0%,100%{opacity:1}50%{opacity:.3}}
+  @keyframes recBlinkDim{0%,100%{opacity:1}50%{opacity:.55}}
+  .track-step::before{content:"";position:absolute;top:3.5px;left:-50%;width:100%;height:1.5px;
     background:rgba(11,11,13,.2)}
   .track-step:first-child::before{display:none}
-  .track-step.done::before,.track-step.now::before{background:#106b44}
+  .track-step.done::before,.track-step.now::before{background:#a855f7}
 
   /* Kaset kartı — ana sayfadaki "DEMOLAR" bölümüyle birebir aynı görsel dil */
   .proj-tracks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
