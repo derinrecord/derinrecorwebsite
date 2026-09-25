@@ -13,19 +13,23 @@
     const header = document.querySelector('.header, .site-header');
     if (!header || document.querySelector('.account-actions')) return;
     const actions = document.createElement('div'); actions.className = 'account-actions';
-    actions.innerHTML = '<a class="account-button secondary coach-action" href="music-request.html" hidden>MÜZİĞİNİ ARAŞTIR</a><button class="account-button" type="button" data-login>GİRİŞ YAP</button><button class="account-button secondary" type="button" data-signup>KAYIT OL</button><div class="account-menu" hidden><div class="account-menu-backdrop" data-menu-close></div><aside class="account-menu-panel"><div class="account-menu-head"><span class="account-menu-name"></span><button class="account-menu-close" type="button" data-menu-close aria-label="Kapat">×</button></div><nav class="account-menu-links"></nav><button class="account-menu-logout" type="button" data-logout>ÇIKIŞ YAP</button></aside></div>';
+    actions.innerHTML = '<a class="account-button secondary coach-action" href="music-request.html" hidden>MÜZİĞİNİ ARAŞTIR</a><button class="account-button" type="button" data-login>GİRİŞ YAP</button><button class="account-button secondary" type="button" data-signup>KAYIT OL</button>';
+  const menu = document.createElement('div');
+  menu.className = 'account-menu';
+  menu.hidden = true;
+  menu.innerHTML = '<div class="account-menu-backdrop" data-menu-close></div><aside class="account-menu-panel"><div class="account-menu-head"><span class="account-menu-name"></span><button class="account-menu-close" type="button" data-menu-close aria-label="Kapat">×</button></div><nav class="account-menu-links"></nav><button class="account-menu-logout" type="button" data-logout>ÇIKIŞ YAP</button></aside>';
+  document.body.append(menu);
     const nav = header.querySelector('nav');
     nav ? header.insertBefore(actions, nav) : header.append(actions);
-    actions.querySelector('[data-login]').addEventListener('click', () => state.user ? toggleMenu(actions) : openAuth('login'));
+    actions.querySelector('[data-login]').addEventListener('click', () => state.user ? toggleMenu() : openAuth('login'));
     actions.querySelector('[data-signup]').addEventListener('click', () => openAuth('signup'));
-  const menu = actions.querySelector('.account-menu');
-  actions.querySelectorAll('[data-menu-close]').forEach(el => el.addEventListener('click', () => closeMenu(menu)));
+  menu.querySelectorAll('[data-menu-close]').forEach(el => el.addEventListener('click', () => closeMenu(menu)));
   menu.querySelector('[data-logout]').addEventListener('click', async () => { await state.client.auth.signOut(); closeMenu(menu); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && !menu.hidden) closeMenu(menu); });
   }
   function renderAccount() {
     const actions = document.querySelector('.account-actions'); if (!actions) return;
-    const button = actions.querySelector('[data-login]'), signup = actions.querySelector('[data-signup]'), coachAction = actions.querySelector('.coach-action'), menu = actions.querySelector('.account-menu');
+    const button = actions.querySelector('[data-login]'), signup = actions.querySelector('[data-signup]'), coachAction = actions.querySelector('.coach-action'), menu = document.querySelector('.account-menu');
     const header = actions.closest('.site-header');
     const navigation = header?.querySelector('nav'), menuToggle = header?.querySelector('.menu-toggle');
     const setNavigation = visible => {
@@ -41,7 +45,7 @@
     menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="admin.html">YÖNETİM PANELİ</a><a href="taleplerim.html">TALEPLERİM</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a><a href="chat.html">SOHBET</a>`;
     menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || 'HESABIM';
   }
-  function toggleMenu(actions) { const menu = actions.querySelector('.account-menu'); menu.hidden ? openMenu(menu) : closeMenu(menu); }
+  function toggleMenu() { const menu = document.querySelector('.account-menu'); if (menu) menu.hidden ? openMenu(menu) : closeMenu(menu); }
 function openMenu(menu) { menu.hidden = false; document.body.classList.add('account-menu-open'); requestAnimationFrame(() => menu.classList.add('open')); }
 function closeMenu(menu) { let done = false; const finish = () => { if (done) return; done = true; menu.hidden = true; }; menu.classList.remove('open'); document.body.classList.remove('account-menu-open'); menu.addEventListener('transitionend', finish, { once: true }); setTimeout(finish, 320); }
   function openAuth(mode) {
