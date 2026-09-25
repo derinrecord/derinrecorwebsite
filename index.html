@@ -20,7 +20,20 @@
     <link rel="stylesheet" href="side-menu-flow.css" />
     <link rel="stylesheet" href="side-menu-clean.css?v=3" />
     <link rel="stylesheet" href="hero-clarity.css" />
-  </head>
+  <style>
+#ses-tasarimi.hst-teaser{position:relative;overflow:hidden;isolation:isolate}
+.hst-bg{position:absolute;inset:-25%;z-index:-1;background:radial-gradient(circle at 15% 20%,rgba(255,45,150,.32),transparent 45%),radial-gradient(circle at 85% 15%,rgba(0,209,255,.28),transparent 45%),radial-gradient(circle at 50% 95%,rgba(232,209,90,.26),transparent 50%),radial-gradient(circle at 90% 90%,rgba(140,80,255,.22),transparent 45%),#0c0a10;filter:blur(70px) saturate(130%);animation:hstDrift 16s ease-in-out infinite alternate}
+@keyframes hstDrift{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-3%,3%,0) scale(1.1)}100%{transform:translate3d(4%,-2%,0) scale(1.04)}}
+.hst-top{position:relative;display:grid;grid-template-columns:minmax(240px,360px) 1fr;gap:48px;align-items:center;margin-bottom:44px}
+.hst-media{position:relative}
+.hst-media .hst-glow{position:absolute;inset:-14%;z-index:-1;border-radius:36px;background:conic-gradient(from 0deg,#ff2f96,#00d1ff,#e8d15a,#8c50ff,#ff2f96);filter:blur(34px);opacity:.55;animation:hstSpin 10s linear infinite}
+@keyframes hstSpin{to{transform:rotate(360deg)}}
+.hst-media img{position:relative;width:100%;border-radius:26px;display:block;box-shadow:0 26px 60px rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.14)}
+.hst-title{font-size:clamp(30px,4.6vw,48px);line-height:.98;letter-spacing:-.03em;margin:10px 0 18px;font-weight:800}
+.hst-title span{background:linear-gradient(90deg,#e8d15a,#ff8fd6 60%,#7fe3ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+@media (max-width:760px){.hst-top{grid-template-columns:1fr;gap:28px}.hst-media{max-width:320px;margin:0 auto}}
+</style>
+</head>
   <body>
     <div class="noise" aria-hidden="true"></div>
     <header class="site-header">
@@ -81,21 +94,30 @@
   <a class="corporate-cta" href="/coffee">KURUMSAL TEKLİF AL →</a>
 </section>
 
-      <section class="corporate" id="ses-tasarimi">
-  <p class="eyebrow">SES TASARIMI &amp; FİLM SCORING</p>
-  <h2>SES SADECE<br><span>DUYULMAZ, HİSSEDİLİR.</span></h2>
-  <p class="corporate-lead">
-    Sinema ve reklam projeleri için ses tasarımı ve film scoring üretiyoruz.
-    Görüntüye eşlik eden atmosferden, sahneyi taşıyan orkestrasyona kadar tüm ses dünyasını
-    kendi stüdyomuzda kuruyoruz.
-  </p>
+      <section class="corporate hst-teaser" id="ses-tasarimi">
+  <div class="hst-bg" aria-hidden="true"></div>
+  <div class="hst-top">
+    <div class="hst-media">
+      <span class="hst-glow" aria-hidden="true"></span>
+      <img src="assets/sound-design/Ads%C4%B1z%20tasar%C4%B1m1.png" alt="Derin Record stüdyosunda ses tasarımı çalışması" loading="lazy" />
+    </div>
+    <div class="hst-copy">
+      <p class="eyebrow">SES TASARIMI &amp; FİLM SCORING</p>
+      <h2 class="hst-title">PERDEYE<br><span>SES VER.</span></h2>
+      <p class="corporate-lead">
+        Sinema ve reklam projeleri için ses tasarımı ve film scoring üretiyoruz.
+        Görüntüye eşlik eden atmosferden, sahneyi taşıyan orkestrasyona kadar tüm ses dünyasını
+        kendi stüdyomuzda kuruyoruz.
+      </p>
+      <a class="corporate-cta" href="ses-tasarimi.html">İŞLERİ İNCELE →</a>
+    </div>
+  </div>
   <ul class="corporate-list">
     <li><strong>Ses tasarımı</strong><span>Sahneye özel foley, atmosfer ve efekt tasarımı.</span></li>
     <li><strong>Film scoring</strong><span>Görüntünün duygusuna eşlik eden orijinal müzik.</span></li>
     <li><strong>Stüdyo üretimi</strong><span>Kayıttan mikse kadar tüm süreç tek çatı altında.</span></li>
     <li><strong>Örnek çalışmalar</strong><span>Farklı film sahnelerine uyguladığımız ses tasarımı denemeleri.</span></li>
   </ul>
-  <a class="corporate-cta" href="ses-tasarimi.html">İŞLERİ İNCELE →</a>
 </section>
       <section class="demos" id="demolar">
         <div class="demos-heading">
