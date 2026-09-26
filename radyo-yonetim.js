@@ -637,6 +637,18 @@
         setTimeout(() => { hedef.textContent = 'LİNK'; }, 1600);
         return;
       }
+      // "YAYINI AÇ bir şey yapmadı" durumunu yerinden anlamak için: oynatıcının
+      // kullandığı iki okuma çağrısını yapar. radio_ping BİLİNÇLİ olarak
+      // çağrılmaz — ping, cihazı şubeye kilitler; panelden sınarken kilidi
+      // yöneticinin tarayıcısına bağlamak istemeyiz.
+      case 'player-check': {
+        const p = D.players.find(x => x.id === id);
+        if (!p) return;
+        pencere({ baslik: 'Bağlantı sınanıyor…', govde: '<p style="margin:0">Yayın sunucusuna soruluyor…</p>', gizleOnay: true });
+        const rapor = await baglantiSina(p);
+        pencere({ baslik: 'Bağlantı sınaması', govde: rapor, gizleOnay: true, kapatMetni: 'KAPAT' });
+        return;
+      }
       case 'player-lock':
         if (!await onaySor({ baslik: 'Cihaz kilidi sıfırlansın mı?', govde: 'Bu şubenin linki bir sonraki açılan cihaza yeniden kilitlenecek.', onayMetni: 'KİLİDİ SIFIRLA' })) return;
         await client.from('brand_players').update({
@@ -1196,6 +1208,67 @@
     else if (birim === 'ay') d.setMonth(d.getMonth() + miktar);
     else d.setDate(d.getDate() + miktar);
     return d;
+  }
+
+  // Bağlantının neden çalmadığını iki sunucu çağrısıyla söyler.
+  async function baglantiSina(p) {
+    const b = marka(p.brand_id);
+    const satir = (ad, deger, tur) => `<div class="row" style="justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:9px 0">
+      <span style="color:var(--muted)">${esc(ad)}</span>
+      <b style="color:${tur === 'kotu' ? '#ffc2ca' : (tur === 'iyi' ? '#c8ffe8' : 'var(--txt)')};text-align:right">${esc(deger)}</b>
+    </div>`;
+
+    const anahtar = p.player_key;
+    let govde = `<p>${esc(b ? b.name : 'Marka')} · ${esc(p.label)}</p>`;
+    govde += satir('Anahtar', anahtar ? anahtar : '(boş)', anahtar ? '' : 'kotu');
+    if (!anahtar) {
+      return govde + `<p style="margin:14px 0 0">Bu şube kaydında <b>yayın anahtarı yok</b>. Şubeyi silip yeniden eklerseniz yeni bir anahtar üretilir.</p>`;
+    }
+
+    let np, ab;
+    try {
+      [np, ab] = await Promise.all([
+        client.rpc('radio_now_playing', { p_player_key: anahtar }),
+        client.rpc('abonelik_durumu', { p_player_key: anahtar })
+      ]);
+    } catch (err) {
+      // Ağ hatası: pencere "sınanıyor…" yazısında kalmasın.
+      return govde + `<p style="margin:14px 0 0">Yayın sunucusuna ulaşılamadı: ${esc((err && err.message) || 'bilinmeyen hata')}</p>`;
+    }
+    const npRow = np.data && np.data[0];
+    const abRow = ab.data && ab.data[0];
+
+    let sonuc;
+    if (np.error) {
+      govde += satir('Yayın sorgusu', np.error.message, 'kotu');
+      sonuc = 'Yayın sunucusu bu anahtarı okurken hata verdi. Yukarıdaki ham mesajı bana iletin.';
+    } else if (!npRow) {
+      govde += satir('Yayın sorgusu', 'Bu anahtar tanınmadı', 'kotu');
+      govde += satir('Abonelik kaydı', abRow ? 'var' : 'yok', abRow ? '' : 'kotu');
+      sonuc = 'Yayın sunucusu bu şubenin anahtarını bulamadı. '
+        + (abRow
+          ? 'Abonelik kaydı görünüyor, yani sorun şube kaydının kendisinde: şubeyi silip yeniden eklemek yeni bir anahtar üretir.'
+          : 'Abonelik kaydı da yok: markaya Abonelikler ekranından paket ve süre tanımlayın.');
+    } else {
+      const parcalar = (np.data || []).filter(r => r.track_id);
+      govde += satir('Marka', npRow.brand_name || (b ? b.name : '—'), 'iyi');
+      govde += satir('Şube', npRow.player_label || p.label);
+      govde += satir('Yayın kaynağı', npRow.folder_name || 'atanmamış', npRow.folder_name ? '' : 'kotu');
+      govde += satir('Parça', parcalar.length + ' parça', parcalar.length ? 'iyi' : 'kotu');
+      if (abRow) govde += satir('Abonelik', abRow.gecerli ? 'geçerli' : (abRow.durum === 'yok' ? 'tanımlı değil' : 'süresi dolmuş'), abRow.gecerli ? 'iyi' : 'kotu');
+      sonuc = !npRow.folder_name
+        ? 'Bağlantı sağlam ama markaya <b>yayın kaynağı atanmamış</b>. Markalar → markanın sayfası → “Canlı yayın” bölümünden bir klasör veya liste seçin.'
+        : (!parcalar.length
+          ? 'Bağlantı sağlam ama seçili kaynakta <b>parça yok</b>. Yayın klasörlerinden parça yükleyin.'
+          : (abRow && !abRow.gecerli
+            ? 'Bağlantı sağlam ama <b>abonelik geçersiz</b>: oynatıcı yayını duraklatır.'
+            : 'Bağlantı sağlam: oynatıcı bu anahtarla markayı ve listeyi görüyor.'));
+    }
+
+    govde += `<p style="margin:14px 0 0">${sonuc}</p>`;
+    govde += `<details style="margin-top:16px"><summary style="cursor:pointer;color:var(--muted);font-size:12.5px">Sunucunun ham cevabı</summary>
+      <div class="key" style="margin-top:10px;white-space:pre-wrap">${esc(JSON.stringify({ now_playing: np.data || [], hata: np.error ? np.error.message : null, abonelik: ab.data || [] }, null, 1))}</div></details>`;
+    return govde;
   }
 
   function bosSlug(temel) {

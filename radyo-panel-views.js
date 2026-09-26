@@ -801,8 +801,12 @@
         <div class="row" style="margin-top:12px">
           <button class="btn sm" data-act="copy" data-copy="${esc(link)}" type="button">LİNKİ KOPYALA</button>
           <a class="btn sm" href="${esc(link)}" target="_blank" rel="noopener">YAYINI AÇ ↗</a>
+          <button class="btn sm" data-act="player-check" data-id="${esc(p.id)}" type="button">BAĞLANTIYI SINA</button>
         </div>
-        <p class="sub" style="margin-top:10px">Bu bağlantı şubeye aittir; telefonda tarayıcıda açılır ve cihaz kilidi sayesinde başka cihazda çalışmaz.</p>
+        <p class="sub" style="margin-top:10px">Yayın linki şubeye aittir; telefonda tarayıcıda açılır.</p>
+        ${p.bound_device_id
+          ? `<p class="sub">Bu şube <b>başka bir cihaza kilitli</b> (${esc(tarih(p.bound_at))}); yayın yalnızca o cihazda çalar. Başka bir cihazda açmak için önce kilidi sıfırlayın.</p>`
+          : '<p class="sub">Bu şube henüz bir cihaza kilitlenmedi; bağlantı <b>ilk açıldığı cihaza kilitlenir</b>.</p>'}
         ${p.last_seen_at ? `<p class="sub">son bağlantı: ${esc(tarih(p.last_seen_at))}</p>` : '<p class="sub">hiç bağlanmadı</p>'}
         ${kilitBilgi ? `<p class="sub">${esc(kilitBilgi)}</p>` : ''}
       </div>

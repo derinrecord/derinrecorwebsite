@@ -134,7 +134,20 @@ test('boş veri dostça karşılanır', () => {
 test('şube çekmecesi yayın linkini ve bakım düğmelerini taşır', () => {
   const html = V.subeCekmecesi('p1', D, ui);
   assert.ok(html.includes('https://ornek.test/radyo.html?key=dr-1'));
+  assert.ok(html.includes('data-act="player-check"'), 'bağlantı sınaması düğmesi olmalı');
   assert.ok(html.includes('KİLİDİ SIFIRLA'));
   assert.ok(html.includes('ŞUBEYİ SİL'));
   assert.ok(html.includes('MİKROFONU AÇ'));
+  // Kilitli şubede uyarı, kilitsiz şubede ne olacağı açıkça yazılmalı.
+  assert.ok(html.includes('başka bir cihaza kilitli'));
+  const kilitliDegil = V.subeCekmecesi('p4', Object.assign({}, D, {
+    players: [{ id: 'p4', brand_id: 'b1', label: 'Kilit yok', player_key: 'dr-4', bound_device_id: null, is_playing: false, last_seen_at: null }]
+  }), ui);
+  assert.ok(kilitliDegil.includes('ilk açıldığı cihaza kilitlenir'));
+});
+
+test('bağlantı sınaması düğmesi her şubede bulunmaz, yalnızca çekmecede olur', () => {
+  const liste = V.gorunum(durum({}), D, ui).html;
+  assert.ok(!liste.includes('BAĞLANTIYI SINA'), 'tabloda yer kaplamamalı');
+  assert.ok(V.subeCekmecesi('p1', D, ui).includes('BAĞLANTIYI SINA'));
 });
