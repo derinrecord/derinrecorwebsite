@@ -65,7 +65,7 @@
         else openTrackId=null;
       }
       render();
-    }catch(e){status.textContent='Projeler alınamadı: '+e.message;}
+    }catch(e){bildir('Projeler alınamadı: '+e.message,'hata');}
     finally{busy=false;}
   }
 
@@ -137,7 +137,7 @@
         </select>`:''}
         <input type="text" id="proj-newfolder-name" placeholder="Proje adı (ör. Unleashed v2)" autocomplete="off">
         <input type="file" id="proj-newfolder-file" accept="${SES_ACCEPT}">
-        <p class="proj-newfolder-hint">WAV, FLAC ve MP3 desteklenir · ${dosyaBoyutu(PARCA_BOYUTU)} üzeri dosyalar kayıpsız olarak parçalara bölünüp yüklenir (tek nesne sınırı ${dosyaBoyutu(YUKLEME_SINIRI)})</p>
+        <p class="proj-newfolder-hint">WAV, FLAC ve MP3 desteklenir · ${dosyaBoyutu(PARCA_BOYUTU)} üzeri dosyalar kayıpsız olarak parçalara bölünüp yüklenir (tek nesne sınırı ${dosyaBoyutu(YUKLEME_SINIRI)})<br><small class="proj-surum">sürüm ${SURUM}</small></p>
         <p class="proj-newfolder-error" id="proj-newfolder-error" role="alert">${safe(newFolderError)}</p>
         <p class="proj-newfolder-note" id="proj-newfolder-note" role="status">${safe(newFolderNote)}</p>
         <div class="proj-newfolder-actions">
@@ -191,6 +191,65 @@
     return '';
   }
 
+  // ---------- Görünür bildirim ----------
+  // Neden: tüm mesajlar sayfanın ÜSTÜNDEKİ durum satırına yazılıyordu. Kullanıcı
+  // ekranın ortasındaki karta baktığı için hata "hiçbir şey olmuyor" gibi
+  // görünüyordu (sessiz başarısızlık). Artık kritik mesajlar ekranın altındaki
+  // sabit kutuda çıkar; hata kutusu kendiliğinden kaybolmaz ve tek tuşla rapor
+  // kopyalanabilir (hangi aşamada, hangi dosyada, sunucunun tam cevabı).
+  const SURUM='20260926d';
+  let sonHataDetay={};
+
+  function raporMetni(){
+    const d=sonHataDetay;
+    return [
+      'Derin Record — proje ses yükleme tanı raporu',
+      'Sürüm: '+SURUM,
+      'Zaman: '+new Date().toISOString(),
+      'Sayfa: '+location.href,
+      'Tarayıcı: '+navigator.userAgent,
+      'Yetki: '+(admin?'yönetici':'antrenör'),
+      'Aşama: '+(d.asama||'-'),
+      'Dosya: '+(d.dosya||'-'),
+      'Boyut: '+(d.boyut||'-'),
+      'Uzantı/tip: '+(d.tip||'-'),
+      'Parça: '+(d.parca||'-'),
+      'Yol: '+(d.yol||'-'),
+      'Sunucu mesajı: '+(d.mesaj||'-')
+    ].join('\n');
+  }
+
+  function bildir(metin,tur){
+    status.textContent=metin;
+    if(!metin)return;
+    const tip=tur||'bilgi';
+    let kutu=document.querySelector('#proj-bildirim');
+    if(!kutu){ kutu=document.createElement('div'); kutu.id='proj-bildirim'; document.body.appendChild(kutu); }
+    kutu.className='proj-bildirim '+tip;
+    kutu.setAttribute('role',tip==='hata'?'alert':'status');
+    const p=document.createElement('p'); p.className='proj-bildirim-metin'; p.textContent=metin;
+    const kapat=document.createElement('button');
+    kapat.type='button'; kapat.className='proj-bildirim-kapat';
+    kapat.setAttribute('aria-label','Bildirimi kapat'); kapat.textContent='×';
+    kapat.onclick=()=>kutu.remove();
+    const ust=document.createElement('div'); ust.className='proj-bildirim-ust';
+    ust.append(p,kapat);
+    kutu.replaceChildren(ust);
+    if(tip==='hata'){
+      const kopyala=document.createElement('button');
+      kopyala.type='button'; kopyala.className='proj-bildirim-kopyala'; kopyala.textContent='RAPORU KOPYALA';
+      kopyala.onclick=async()=>{
+        try{ await navigator.clipboard.writeText(raporMetni()); kopyala.textContent='KOPYALANDI ✓'; }
+        catch{ kopyala.textContent='Kopyalanamadı — elle seçip kopyalayın'; }
+      };
+      const alt=document.createElement('div'); alt.className='proj-bildirim-alt';
+      alt.appendChild(kopyala); kutu.appendChild(alt);
+      console.error('[Derin Record] '+metin+'\n'+raporMetni());
+    }else{
+      clearTimeout(bildir._t); bildir._t=setTimeout(()=>{ const k=document.querySelector('#proj-bildirim'); if(k)k.remove(); },6000);
+    }
+  }
+
   // Tek noktadan yükleme: hata mesajını hint ile birleştirir, MIME reddinde bir kez nötr tip ile dener.
   // tip: parça yüklerken dilim Blob'unun tipini açıkça geçmek için (Blob'da dosya adı yoktur).
   async function yukleSes(path,file,tip){
@@ -224,6 +283,7 @@
       const yol=`${temelYol}${toplam>1?Ses.parcaEki(i,toplam):''}.${ext}`;
       const sonuc=await yukleSes(yol,dilim,tip);
       if(sonuc.error){
+        sonHataDetay.yol=yol; sonHataDetay.parca=`${i}/${dilimler.length}`; sonHataDetay.mesaj=sonuc.error.message;
         // Yarım kalan parçaları temizle: depoda eksik dosya kalmasın.
         if(yuklenen.length){ try{ await client.storage.from('project-audio').remove(yuklenen); }catch{} }
         return {error:sonuc.error,path:null,toplam};
@@ -540,7 +600,7 @@
           };
           rec.start(); p.mediaRecorder=rec; p.recording=true;
           renderDetail(tr,project);
-        }catch(e){ status.textContent='Mikrofona erişilemedi: '+e.message; }
+        }catch(e){ bildir('Mikrofona erişilemedi: '+e.message,'hata'); }
       }else{
         try{p.mediaRecorder&&p.mediaRecorder.stop();}catch{}
       }
@@ -568,10 +628,10 @@
           start_sec:p.time,kind:'note',body:p.body||null,voice_path
         });
         if(error)throw error;
-        status.textContent='Nokta gönderildi.';
+        bildir('Nokta gönderildi.','ok');
         await load();
       }catch(e){
-        status.textContent='Gönderilemedi: '+e.message;
+        bildir('Gönderilemedi: '+e.message,'hata');
         b.disabled=false; b.textContent='KAYDET VE GÖNDER';
       }
     });
@@ -582,7 +642,7 @@
         // Parçalı dosya: tüm parçaları indirip tarayıcıda birleştirerek ver.
         status.textContent='Parçalı dosya birleştiriliyor…';
         const blob=await sesBlob(b.dataset.path);
-        if(!blob){status.textContent='İndirilemedi: parçalar okunamadı.';return;}
+        if(!blob){bildir('İndirilemedi: parçalar okunamadı.','hata');return;}
         const url=URL.createObjectURL(blob);
         const a=document.createElement('a'); a.href=url; a.download=ad; a.click();
         setTimeout(()=>URL.revokeObjectURL(url),60000);
@@ -590,7 +650,7 @@
         return;
       }
       const {data,error}=await client.storage.from('project-audio').createSignedUrl(b.dataset.path,600,{download:ad});
-      if(error){status.textContent='İndirilemedi: '+error.message;return;}
+      if(error){bildir('İndirilemedi: '+error.message,'hata');return;}
       const a=document.createElement('a'); a.href=data.signedUrl; a.download=ad; a.click();
     });
 
@@ -601,21 +661,21 @@
         const removed=await client.from('project_tracks').delete().eq('id',button.dataset.trackdel);
         if(removed.error)throw removed.error;
         await client.storage.from('project-audio').remove(Ses.parcalariCoz(button.dataset.path).map(p=>p.path));
-        status.textContent='Parça silindi.';
+        bildir('Parça silindi.','ok');
         openTrackId=null; detail={};
         await load();
-      }catch(error){status.textContent='Parça silinemedi: '+error.message;}
+      }catch(error){bildir('Parça silinemedi: '+error.message,'hata');}
       finally{button.disabled=false;}
     });
 
     root.querySelectorAll('[data-newver]').forEach(inp=>inp.onchange=async()=>{
       const file=inp.files?.[0]; if(!file)return;
-      if(!sesGecerli(file)){ status.textContent=`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor.`; inp.value=''; return; }
-      status.textContent='Yeni varyasyon ekleniyor… ('+dosyaBoyutu(file.size)+')';
+      if(!sesGecerli(file)){ bildir(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,'hata'); inp.value=''; return; }
+      bildir('Yeni varyasyon ekleniyor… ('+dosyaBoyutu(file.size)+')','bilgi');
       inp.disabled=true;
       try{
         const up=await yukleSesParcali(`${project.coach_id}/${project.id}-${Date.now()}`,file,
-          (i,n)=>{ status.textContent=`Yeni varyasyon ekleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`; });
+          (i,n)=>{ bildir(`Yeni varyasyon ekleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`,'bilgi'); });
         if(up.error)throw up.error;
         const sortOrder=(tracks[project.id]||[]).length;
         const insertRes=await client.from('project_tracks').insert({
@@ -624,11 +684,11 @@
         if(insertRes.error)throw insertRes.error;
         await client.from('project_feedback').insert({project_id:project.id,author_id:me,kind:'system',
           body:`Yeni bir varyasyon eklendi (${tr.label||'parça'}). Lütfen inceleyiniz.`});
-        status.textContent='Yeni varyasyon eklendi, antrenöre bildirildi.';
+        bildir('Yeni varyasyon eklendi, antrenöre bildirildi.','ok');
         openTrackId=null; detail={};
         await load();
       }catch(e){
-        status.textContent='Yükleme hatası: '+e.message;
+        bildir('Yükleme hatası: '+e.message,'hata');
         inp.disabled=false;
       }
     });
@@ -641,7 +701,7 @@
         project_id:project.id,author_id:me,track_id:tr.id,kind:'note',
         body:body||'Bu parça hakkında not.'
       });
-      status.textContent=error?('Gönderilemedi: '+error.message):'Not gönderildi.';
+      bildir(error?'Gönderilemedi: '+error.message:'Not gönderildi.',error?'hata':'ok');
       if(!error && inp)inp.value='';
       b.disabled=false;
     });
@@ -725,7 +785,7 @@
             if(trackResult.error)throw new Error(['Parça kaydı yazılamadı.',trackResult.error.message,tabloHint(trackResult.error.message)].filter(Boolean).join(' '));
           }
           newFolderOpen=false; newFolderNote='';
-          status.textContent=file?'Yeni klasör ve ses dosyası oluşturuldu.':'Yeni klasör oluşturuldu.';
+          bildir(file?'Yeni klasör ve ses dosyası oluşturuldu.':'Yeni klasör oluşturuldu.','ok');
           await load();
         }catch(e){
           // Panel açık kalır ve hata panelin içinde görünür; sayfa arkasındaki
@@ -739,18 +799,18 @@
             if(!geri.error){
               nfError(`${stage} aşamasında hata: ${reason}`);
               nfNote(file?'Dosya seçili kaldı — ✓ düğmesiyle tekrar deneyebilirsin.':'');
-              status.textContent='Hiçbir kayıt oluşturulmadı; tekrar deneyebilirsin.';
+              bildir(`${stage} aşamasında hata: ${reason}`,'hata');
             }else{
               // Silme yetkisi yoksa proje listede kalsın; parça sonradan eklenebilsin.
               newFolderOpen=false;
               nfError('');
-              status.textContent=`Klasör açıldı ancak ses dosyası eklenemedi (${reason}). Projedeki “YENİ PARÇA EKLE” düğmesiyle tekrar deneyebilirsin.`;
+              bildir(`Klasör açıldı ancak ses dosyası eklenemedi (${reason}). Projedeki “YENİ PARÇA EKLE” düğmesiyle tekrar deneyebilirsin.`,'hata');
               await load();
             }
           }else{
             nfError(`${stage} aşamasında hata: ${reason}`);
             nfNote(file?'Dosya seçili kaldı — ✓ düğmesiyle tekrar deneyebilirsin.':'');
-            status.textContent='Klasör oluşturulamadı: '+reason;
+            bildir('Klasör oluşturulamadı: '+reason,'hata');
           }
         }finally{
           newFolderBusy=false;
@@ -769,13 +829,13 @@
     list.querySelectorAll('[data-stage]').forEach(s=>s.onchange=async()=>{
       s.disabled=true;
       const {error}=await client.from('music_projects').update({status:s.value,updated_at:new Date().toISOString()}).eq('id',s.dataset.stage);
-      status.textContent=error?'Kaydedilemedi: '+error.message:'Aşama güncellendi.';
+      bildir(error?'Kaydedilemedi: '+error.message:'Aşama güncellendi.',error?'hata':'ok');
       s.disabled=false;load();
     });
     list.querySelectorAll('[data-dlallow]').forEach(b=>b.onclick=async()=>{
       const yeni = b.dataset.on!=='1';
       const {error}=await client.from('music_projects').update({download_allowed:yeni}).eq('id',b.dataset.dlallow);
-      status.textContent = error ? error.message : (yeni?'İndirme izni verildi.':'İndirme izni kaldırıldı.');
+      bildir(error?error.message:(yeni?'İndirme izni verildi.':'İndirme izni kaldırıldı.'), error?'hata':'ok');
       load();
     });
 
@@ -785,7 +845,7 @@
         // Parçalı dosya: tüm parçaları indirip tarayıcıda birleştirerek ver.
         status.textContent='Parçalı dosya birleştiriliyor…';
         const blob=await sesBlob(b.dataset.path);
-        if(!blob){status.textContent='İndirilemedi: parçalar okunamadı.';return;}
+        if(!blob){bildir('İndirilemedi: parçalar okunamadı.','hata');return;}
         const url=URL.createObjectURL(blob);
         const a=document.createElement('a'); a.href=url; a.download=ad; a.click();
         setTimeout(()=>URL.revokeObjectURL(url),60000);
@@ -793,7 +853,7 @@
         return;
       }
       const {data,error}=await client.storage.from('project-audio').createSignedUrl(b.dataset.path,600,{download:ad});
-      if(error){status.textContent='İndirilemedi: '+error.message;return;}
+      if(error){bildir('İndirilemedi: '+error.message,'hata');return;}
       const a=document.createElement('a'); a.href=data.signedUrl; a.download=ad; a.click();
     });
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
@@ -805,19 +865,19 @@
       const file=inp.files?.[0]; if(!file)return;
       const project=projects.find(p=>p.id===inp.dataset.addtrack); if(!project)return;
       if(!sesGecerli(file)){
-        status.textContent=`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`;
+        bildir(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,'hata');
         inp.value=''; return;
       }
-      inp.disabled=true; status.textContent='Parça yükleniyor… ('+dosyaBoyutu(file.size)+')';
+      inp.disabled=true; bildir('Parça yükleniyor… ('+dosyaBoyutu(file.size)+')','bilgi');
       try{
         const uploaded=await yukleSesParcali(`${project.coach_id}/${project.id}-${Date.now()}`,file,
-          (i,n)=>{ status.textContent=`Parça yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`; });
+          (i,n)=>{ bildir(`Parça yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`,'bilgi'); });
         if(uploaded.error)throw uploaded.error;
         const label=file.name.replace(/\.[^.]+$/,'');
         const result=await client.from('project_tracks').insert({project_id:project.id,label,audio_path:uploaded.path,version:1,sort_order:(tracks[project.id]||[]).length});
         if(result.error)throw new Error(['Parça kaydı yazılamadı.',result.error.message,tabloHint(result.error.message)].filter(Boolean).join(' '));
-        status.textContent='Yeni parça projeye eklendi.'; load();
-      }catch(error){status.textContent='Parça eklenemedi: '+error.message;}
+        bildir('Yeni parça projeye eklendi.','ok'); load();
+      }catch(error){bildir('Parça eklenemedi: '+error.message,'hata');}
       finally{inp.disabled=false;inp.value='';}
     });
 
@@ -829,8 +889,8 @@
         if(removed.error)throw removed.error;
         // Parçalı dosyada tüm parçaları sil.
         await client.storage.from('project-audio').remove(Ses.parcalariCoz(button.dataset.path).map(p=>p.path));
-        status.textContent='Parça silindi.'; load();
-      }catch(error){status.textContent='Parça silinemedi: '+error.message;}
+        bildir('Parça silindi.','ok'); load();
+      }catch(error){bildir('Parça silinemedi: '+error.message,'hata');}
       finally{button.disabled=false;}
     });
 
@@ -839,18 +899,18 @@
       const tid=inp.dataset.newver;
       const tr=Object.values(tracks).flat().find(t=>t.id===tid);
       const proj=projects.find(p=>p.id===tr.project_id);
-      status.textContent='Varyasyon yükleniyor… ('+dosyaBoyutu(file.size)+')';
-      if(!sesGecerli(file)){ status.textContent=`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor.`; inp.value=''; return; }
+      bildir('Varyasyon yükleniyor… ('+dosyaBoyutu(file.size)+')','bilgi');
+      if(!sesGecerli(file)){ bildir(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,'hata'); inp.value=''; return; }
       const eskiParcalar=tr.audio_path?Ses.parcalariCoz(tr.audio_path).map(p=>p.path):[];
       const up=await yukleSesParcali(`${proj.coach_id}/${tid}-${Date.now()}`,file,
-        (i,n)=>{ status.textContent=`Varyasyon yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`; });
-      if(up.error){status.textContent='Yükleme hatası: '+up.error.message;return;}
+        (i,n)=>{ bildir(`Varyasyon yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`,'bilgi'); });
+      if(up.error){bildir('Yükleme hatası: '+up.error.message,'hata');return;}
       await client.from('project_tracks').update({audio_path:up.path,version:(tr.version||1)+1}).eq('id',tid);
       // Yeni sürüm yazıldıktan sonra eski dosyayı (ve parçalarını) temizle.
       if(eskiParcalar.length){ try{ await client.storage.from('project-audio').remove(eskiParcalar); }catch{} }
       await client.from('project_feedback').insert({project_id:proj.id,author_id:me,kind:'system',
         body:`Parçanız düzenlenmiş haliyle gönderildi (v${(tr.version||1)+1} · ${tr.label||'parça'}). Lütfen inceleyiniz.`});
-      status.textContent='Varyasyon gönderildi, antrenöre bildirildi.';
+      bildir('Varyasyon gönderildi, antrenöre bildirildi.','ok');
       load();
     });
 
@@ -859,7 +919,7 @@
       const body=box.value.trim(); if(!body)return;
       b.disabled=true;
       const {error}=await client.from('project_feedback').insert({project_id:b.dataset.fbsend,author_id:me,body,kind:'note'});
-      status.textContent=error?'Gönderilemedi: '+error.message:'Geri bildirim gönderildi.';
+      bildir(error?'Gönderilemedi: '+error.message:'Geri bildirim gönderildi.',error?'hata':'ok');
       box.value='';b.disabled=false;load();
     });
 
@@ -873,7 +933,7 @@
         project_id:tr.project_id,author_id:me,track_id:id,kind:'note',
         body:body||'Bu parça hakkında not.'
       });
-      status.textContent=error?('Gönderilemedi: '+error.message):'Not gönderildi.';
+      bildir(error?'Gönderilemedi: '+error.message:'Not gönderildi.',error?'hata':'ok');
       if(!error && inp)inp.value='';
       b.disabled=false;
       load();
@@ -883,7 +943,7 @@
       const id=b.dataset.play;
       if(cur&&cur.id===id){ if(cur.audio.paused){cur.audio.play();b.textContent='⏸';b.setAttribute('aria-label','Parçayı duraklat');}else{cur.audio.pause();b.textContent='▶';b.setAttribute('aria-label','Parçayı oynat');} return; }
       if(cur){cur.audio.pause();cur.btn.textContent='▶';cur.btn.setAttribute('aria-label','Parçayı oynat');}
-      const url=await sesUrl(b.dataset.path); if(!url){status.textContent='Ses açılamadı.';return;}
+      const url=await sesUrl(b.dataset.path); if(!url){bildir('Ses açılamadı.','hata');return;}
       const audio=new Audio(url);
       audio.onended=()=>{b.textContent='▶';b.setAttribute('aria-label','Parçayı oynat');cur=null;};
       await audio.play(); b.textContent='⏸'; b.setAttribute('aria-label','Parçayı duraklat'); cur={id,audio,btn:b};
