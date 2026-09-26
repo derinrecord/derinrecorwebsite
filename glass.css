@@ -780,3 +780,18 @@ body.sp-open .admin-main{padding-bottom:110px}
 @keyframes dzYukle{0%{width:0;left:0}50%{width:70%;left:10%}100%{width:0;left:100%}}
 
 @media(max-width:600px){.dz-ok{display:none}.dz{grid-template-columns:1fr}}
+
+/* ============================================
+   MİSAFİR ZİYARETÇİDE YÖNETİCİ LİNKİNİ GİZLE
+   auth.js oturum açıldığında body.is-admin ekler.
+   ============================================ */
+/* Yönetici araçları (radyo yönetimi) misafir ziyaretçiye hiçbir yüzeyde görünmez;
+   yönetici linkleri hesap menüsünden yönetilir. Bu kurallar olası nav linkine karşı koruma. */
+body:not(.is-admin) .site-header nav a[href="radyo-yonetim.html"],
+body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:none}
+
+/* Hareket azaltma tercihi: süs animasyonlarını kapat */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+  html{scroll-behavior:auto}
+}

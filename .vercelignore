@@ -1,0 +1,12 @@
+# Yayına girmemesi gereken kaynak/depo dosyaları.
+#
+# Bu dosyalar daha önce canlıda erişilebilirdi (ör. /supabase/derin-record.sql,
+# /CLAUDE.md, /tests/... HTTP 200 dönüyordu). Veritabanı şeması, RLS politikaları
+# ve proje içi notlar herkese açık olmamalı. Hiçbir sayfa bu dosyalara bağlantı
+# vermiyor; kaldırılmaları siteyi etkilemez.
+supabase/
+tests/
+*.md
+
+# config.js İSTENEREK hariç tutulmadı: publishable (anon) anahtar tarayıcıda
+# çalışmak zorunda ve zaten herkese açıktır; veriyi RLS korur.

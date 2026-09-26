@@ -5,10 +5,10 @@
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
-  let client=null,admin=false,me=null,projects=[],tracks={},feedback={},names={},coachList=[],busy=false;
+  let client=null,admin=false,me=null,projects=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false;
   let openTrackId=null;
   let detail={};
-  let newFolderOpen=false, newFolderBusy=false;
+  let newFolderOpen=false, newFolderBusy=false, newFolderError='', newFolderNote='';
   let localSeq=0;
   const newLocalId=()=>'local-'+(++localSeq);
 
@@ -16,19 +16,27 @@
     await window.DerinAuth.ready;
     const a=window.DerinAuth; client=a.client;
     if(!a.configured){status.textContent='Bağlantı hazırlanıyor.';return;}
-    if(!a.user){status.innerHTML='<button class="account-button" id="p-login">GİRİŞ YAP</button>';
+    if(!a.user){list.innerHTML=''; document.querySelector('#refresh').hidden=true;
+      status.innerHTML='<button class="account-button" id="p-login">GİRİŞ YAP</button>';
       document.querySelector('#p-login').onclick=()=>a.open();return;}
     me=a.user.id; admin=a.profile?.role==='admin';
     const rb=document.querySelector('#refresh'); rb.hidden=false; rb.onclick=()=>load();
-    client.channel('proj-'+me)
-      .on('postgres_changes',{event:'*',schema:'public',table:'music_projects'},()=>load())
-      .on('postgres_changes',{event:'*',schema:'public',table:'project_tracks'},()=>load())
-      .on('postgres_changes',{event:'*',schema:'public',table:'project_feedback'},()=>load())
-      .subscribe();
+    // Kanalları yalnızca bir kez kur; giriş/çıkış sonrası boot() tekrar çağrılabiliyor.
+    if(!subscribed){
+      subscribed=true;
+      client.channel('proj-'+me)
+        .on('postgres_changes',{event:'*',schema:'public',table:'music_projects'},()=>load())
+        .on('postgres_changes',{event:'*',schema:'public',table:'project_tracks'},()=>load())
+        .on('postgres_changes',{event:'*',schema:'public',table:'project_feedback'},()=>load())
+        .subscribe();
+    }
     await load();
   }
 
   async function load(){
+    // Oturum yokken sorgu atlamak zorunlu: admin/coach bilgisi yokken filtre
+    // 'coach_id=eq.null' olur ve PostgREST 400 döndürür.
+    if(!client||!me)return;
     if(busy)return; busy=true;
     try{
       let q=client.from('music_projects').select('id,coach_id,title,song,branch,status,note,download_allowed,created_at,updated_at').order('created_at',{ascending:false});
@@ -86,7 +94,7 @@
       ${p.status==='pending'?'<p class="meta">Onay bekliyor.</p>':bar(p.status)}
       <div class="proj-tracks-grid">${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<div class="proj-cassette-card proj-empty-track"><span class="card-number">—</span><img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti"><p class="meta">Henüz parça eklenmedi.</p></div>`}</div>
       ${admin?`<div class="proj-actions">
-        <label class="proj-add-track">YENİ PARÇA EKLE <input type="file" accept="audio/*" data-addtrack="${p.id}" hidden></label>
+        <label class="proj-add-track">YENİ PARÇA EKLE <input type="file" accept="${SES_ACCEPT}" data-addtrack="${p.id}" hidden></label>
         <select data-stage="${p.id}">
           <option value="pending"${p.status==='pending'?' selected':''}>Bekliyor</option>
           ${STAGES.map(s=>`<option value="${s.k}"${p.status===s.k?' selected':''}>${s.l}</option>`).join('')}
@@ -128,7 +136,10 @@
           ${coachList.map(c=>`<option value="${c.id}">${safe(c.full_name||c.id)}</option>`).join('')}
         </select>`:''}
         <input type="text" id="proj-newfolder-name" placeholder="Proje adı (ör. Unleashed v2)" autocomplete="off">
-        <input type="file" id="proj-newfolder-file" accept="audio/*">
+        <input type="file" id="proj-newfolder-file" accept="${SES_ACCEPT}">
+        <p class="proj-newfolder-hint">WAV, FLAC ve MP3 desteklenir · ${dosyaBoyutu(PARCA_BOYUTU)} üzeri dosyalar kayıpsız olarak parçalara bölünüp yüklenir (tek nesne sınırı ${dosyaBoyutu(YUKLEME_SINIRI)})</p>
+        <p class="proj-newfolder-error" id="proj-newfolder-error" role="alert">${safe(newFolderError)}</p>
+        <p class="proj-newfolder-note" id="proj-newfolder-note" role="status">${safe(newFolderNote)}</p>
         <div class="proj-newfolder-actions">
           <button type="button" class="proj-newfolder-cancel" id="proj-newfolder-cancel">VAZGEÇ</button>
           <button type="button" class="proj-newfolder-confirm" id="proj-newfolder-confirm" aria-label="Klasörü oluştur" title="Klasörü oluştur" ${newFolderBusy?'disabled':''}>${newFolderBusy?'…':'✓'}</button>
@@ -138,6 +149,114 @@
   }
 
   async function signed(path){const r=await client.storage.from('project-audio').createSignedUrl(path,3600);return r.data?.signedUrl;}
+
+  // Ses dosyası yardımcıları tek kaynaktan gelir: audio-file-types.js
+  // (aynı modül tests/audio-file-types.test.js ile doğrulanıyor).
+  const Ses=window.DerinAudioTypes;
+  const dosyaBoyutu=Ses.boyut;
+  const sesUzantisi=Ses.uzanti;
+  const sesTipi=Ses.tip;
+  const sesGecerli=Ses.gecerli;
+  const YUKLEME_SINIRI=Ses.YUKLEME_SINIRI;
+  const PARCA_BOYUTU=Ses.PARCA_BOYUTU;
+  const sesBuyuk=Ses.buyukMu;
+  // input accept listesi uzantı doğrulamasıyla aynı kaynaktan üretilir.
+  const SES_ACCEPT=Ses.accept();
+  // Kullanıcıya gösterilen desteklenen uzantı listesi.
+  const desteklenenMetin=()=>Ses.desteklenenler();
+
+  // Storage hatalarını kullanıcının atacağı adıma çevir (ham İngilizce mesaj tek başına anlaşılmıyor).
+  function storageHint(message){
+    const m=String(message||'');
+    if(/row-level security|violates|policy|Unauthorized|not allowed|permission/i.test(m))
+      return 'Depolama yetkisi reddedildi. Supabase SQL Editor’de supabase/proje-dosya-deposu.sql dosyasını çalıştırıp sayfayı yenileyin.';
+    if(/maximum allowed size|exceeded the maximum|too large|entity too large|payload|413/i.test(m))
+      return `Dosya Supabase yükleme sınırını aşıyor (ücretsiz plan üst sınırı ${dosyaBoyutu(YUKLEME_SINIRI)}). Supabase → Storage → Settings → “Global file size limit” değerini yükseltin; sınır yükseltilemiyorsa dosyayı bölerek yükleyin.`;
+    if(/mime|content.?type/i.test(m))
+      return 'Bu ses formatı depolama kovası tarafından kabul edilmiyor. Supabase SQL Editor’de supabase/proje-dosya-deposu.sql dosyasını çalıştırıp tekrar deneyin.';
+    if(/duplicate|already exists/i.test(m))
+      return 'Aynı adla bir dosya var; sayfayı yenileyip tekrar deneyin.';
+    if(/fetch|network|Failed to fetch/i.test(m))
+      return 'Bağlantı kesildi. İnternet bağlantınızı kontrol edip tekrar deneyin.';
+    return '';
+  }
+
+  // Tablo (parça / proje kaydı) hataları için aynı çeviri.
+  function tabloHint(message){
+    const m=String(message||'');
+    if(/row-level security|violates|policy|permission denied|not allowed/i.test(m))
+      return 'Kayıt yetkisi reddedildi. Supabase SQL Editor’de supabase/proje-dosya-deposu.sql dosyasını çalıştırıp sayfayı yenileyin.';
+    if(/does not exist|schema cache/i.test(m))
+      return 'Veritabanı şeması beklenenden farklı görünüyor. Supabase SQL Editor’de supabase/proje-dosya-deposu.sql dosyasını çalıştırın.';
+    return '';
+  }
+
+  // Tek noktadan yükleme: hata mesajını hint ile birleştirir, MIME reddinde bir kez nötr tip ile dener.
+  // tip: parça yüklerken dilim Blob'unun tipini açıkça geçmek için (Blob'da dosya adı yoktur).
+  async function yukleSes(path,file,tip){
+    const ct=tip||sesTipi(file);
+    const ilk=await client.storage.from('project-audio').upload(path,file,{contentType:ct,upsert:false});
+    if(!ilk.error)return {path,error:null};
+    if(/mime|content.?type/i.test(ilk.error.message||'')){
+      const ikinci=await client.storage.from('project-audio').upload(path,file,{contentType:'application/octet-stream',upsert:false});
+      if(!ikinci.error)return {path,error:null};
+    }
+    return {path,error:new Error([ilk.error.message,storageHint(ilk.error.message)].filter(Boolean).join(' — '))};
+  }
+
+  // ---------- Parçalı yükleme (50 MiB'lik tek nesne sınırı için) ----------
+  // Sunucu, 52.428.800 baytı aşan bir yüklemeyi izinlerden ÖNCE reddediyor.
+  // Bu yüzden büyük WAV'lar 45 MB'lık dilimlere bölünüp ayrı nesneler olarak
+  // yüklenir. Dilimler orijinal dosyanın kesintisiz parçalarıdır: sırayla
+  // birleştirildiğinde dosya bit düzeyinde birebir aynı çıkar (MP3'e çevirme yok).
+
+  // temelYol: uzantı ve parça eki hariç yol. Döner: {path (ilk parça), toplam}
+  async function yukleSesParcali(temelYol,file,ilerleme){
+    const toplam=Ses.parcaSayisi(file.size);
+    const tip=sesTipi(file);
+    const ext=sesUzantisi(file.name);
+    const dilimler=Ses.dilimSinirlari(file.size);
+    const yuklenen=[];
+    for(let i=1;i<=dilimler.length;i++){
+      if(ilerleme)ilerleme(i,dilimler.length);
+      const [bas,son]=dilimler[i-1];
+      const dilim=file.slice(bas,son);
+      const yol=`${temelYol}${toplam>1?Ses.parcaEki(i,toplam):''}.${ext}`;
+      const sonuc=await yukleSes(yol,dilim,tip);
+      if(sonuc.error){
+        // Yarım kalan parçaları temizle: depoda eksik dosya kalmasın.
+        if(yuklenen.length){ try{ await client.storage.from('project-audio').remove(yuklenen); }catch{} }
+        return {error:sonuc.error,path:null,toplam};
+      }
+      yuklenen.push(yol);
+    }
+    return {error:null,path:yuklenen[0],toplam};
+  }
+
+  // Parçalı dosyayı indirip tek bir Blob olarak döner.
+  async function sesBlob(path){
+    const blobs=[];
+    for(const p of Ses.parcalariCoz(path)){
+      const url=await signed(p.path);
+      if(!url)return null;
+      const cevap=await fetch(url);
+      if(!cevap.ok)return null;
+      blobs.push(await cevap.blob());
+    }
+    return new Blob(blobs,{type:'audio/wav'});
+  }
+
+  // Oynatma/analiz için tek bir URL döner: tek parçada imzalı adres, çok parçada
+  // tarayıcıda birleştirilmiş blob adresi.
+  let aktifBlobUrl=null;
+  async function sesUrl(path){
+    if(!Ses.parcaliMi(path))return signed(path);
+    const blob=await sesBlob(path);
+    if(!blob)return null;
+    if(aktifBlobUrl){ try{URL.revokeObjectURL(aktifBlobUrl);}catch{} }
+    aktifBlobUrl=URL.createObjectURL(blob);
+    return aktifBlobUrl;
+  }
 
   // ---------- Parça detayı (dalga formu / nokta işaretleme) ----------
 
@@ -232,7 +351,7 @@
       <div class="td-tools">
         ${tr.source_url?`<a class="td-tool-link" href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">KAYNAĞI AÇ ↗</a>`:''}
         ${(!admin && project.download_allowed && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}">⤓ İNDİR</button>` : ''}
-        ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="audio/*" data-newver="${tr.id}" hidden></label>`:''}
+        ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="${SES_ACCEPT}" data-newver="${tr.id}" hidden></label>`:''}
         ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
       </div>
       ${has?`<div class="td-quicknote">
@@ -309,7 +428,7 @@
       }
     }
     if(tr.audio_path){
-      const url=await signed(tr.audio_path);
+      const url=await sesUrl(tr.audio_path);
       if(url){
         const audio=new Audio(url);
         detail.audioEl=audio;
@@ -458,9 +577,21 @@
     });
 
     root.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
-      const {data,error}=await client.storage.from('project-audio').createSignedUrl(b.dataset.path,600,{download:b.dataset.name+'.mp3'});
+      const ad=`${b.dataset.name}.${sesUzantisi(b.dataset.path)||'wav'}`;
+      if(Ses.parcaliMi(b.dataset.path)){
+        // Parçalı dosya: tüm parçaları indirip tarayıcıda birleştirerek ver.
+        status.textContent='Parçalı dosya birleştiriliyor…';
+        const blob=await sesBlob(b.dataset.path);
+        if(!blob){status.textContent='İndirilemedi: parçalar okunamadı.';return;}
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.href=url; a.download=ad; a.click();
+        setTimeout(()=>URL.revokeObjectURL(url),60000);
+        status.textContent='İndirildi.';
+        return;
+      }
+      const {data,error}=await client.storage.from('project-audio').createSignedUrl(b.dataset.path,600,{download:ad});
       if(error){status.textContent='İndirilemedi: '+error.message;return;}
-      const a=document.createElement('a'); a.href=data.signedUrl; a.download=b.dataset.name; a.click();
+      const a=document.createElement('a'); a.href=data.signedUrl; a.download=ad; a.click();
     });
 
     root.querySelectorAll('[data-trackdel]').forEach(button=>button.onclick=async()=>{
@@ -469,7 +600,7 @@
       try{
         const removed=await client.from('project_tracks').delete().eq('id',button.dataset.trackdel);
         if(removed.error)throw removed.error;
-        await client.storage.from('project-audio').remove([button.dataset.path]);
+        await client.storage.from('project-audio').remove(Ses.parcalariCoz(button.dataset.path).map(p=>p.path));
         status.textContent='Parça silindi.';
         openTrackId=null; detail={};
         await load();
@@ -479,16 +610,16 @@
 
     root.querySelectorAll('[data-newver]').forEach(inp=>inp.onchange=async()=>{
       const file=inp.files?.[0]; if(!file)return;
-      status.textContent='Yeni varyasyon ekleniyor…';
+      if(!sesGecerli(file)){ status.textContent=`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor.`; inp.value=''; return; }
+      status.textContent='Yeni varyasyon ekleniyor… ('+dosyaBoyutu(file.size)+')';
       inp.disabled=true;
-      const ext=file.name.split('.').pop()||'mp3';
-      const path=`${project.coach_id}/${project.id}-${Date.now()}.${ext}`;
       try{
-        const up=await client.storage.from('project-audio').upload(path,file,{contentType:file.type||'audio/mpeg'});
+        const up=await yukleSesParcali(`${project.coach_id}/${project.id}-${Date.now()}`,file,
+          (i,n)=>{ status.textContent=`Yeni varyasyon ekleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`; });
         if(up.error)throw up.error;
         const sortOrder=(tracks[project.id]||[]).length;
         const insertRes=await client.from('project_tracks').insert({
-          project_id:project.id,label:tr.label||'Parça',audio_path:path,version:1,sort_order:sortOrder
+          project_id:project.id,label:tr.label||'Parça',audio_path:up.path,version:1,sort_order:sortOrder
         });
         if(insertRes.error)throw insertRes.error;
         await client.from('project_feedback').insert({project_id:project.id,author_id:me,kind:'system',
@@ -527,6 +658,26 @@
       nfOverlay.onclick=(e)=>{ if(e.target===nfOverlay){ newFolderOpen=false; render(); } };
       const nfCancel=list.querySelector('#proj-newfolder-cancel');
       if(nfCancel)nfCancel.onclick=()=>{ newFolderOpen=false; render(); };
+      // Dosya seçilince, isim alanı boşsa proje adını dosya adından türet.
+      // Böylece 'dosya + antrenör seç ve ✓ bas' akışı isim yazmadan da çalışır.
+      const nfFile=list.querySelector('#proj-newfolder-file');
+      const nfName=list.querySelector('#proj-newfolder-name');
+      if(nfFile&&nfName)nfFile.onchange=()=>{
+        const picked=nfFile.files?.[0];
+        const noteEl=list.querySelector('#proj-newfolder-note');
+        const errEl=list.querySelector('#proj-newfolder-error');
+        if(picked&&!nfName.value.trim())nfName.value=picked.name.replace(/\.[^.]+$/,'').slice(0,120);
+        if(noteEl){
+          const parca=sesBuyuk(picked)?Ses.parcaSayisi(picked.size):0;
+          noteEl.textContent=picked
+            ? `${picked.name} · ${dosyaBoyutu(picked.size)}${parca>1?` · kayıpsız ${parca} parçaya bölünecek`:''}`
+            : '';
+        }
+        if(errEl){
+          if(picked&&!sesGecerli(picked)) errEl.textContent=`“${sesUzantisi(picked.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`;
+          else if(errEl.textContent&&(!picked||sesGecerli(picked))) errEl.textContent='';
+        }
+      };
       const nfConfirm=list.querySelector('#proj-newfolder-confirm');
       if(nfConfirm)nfConfirm.onclick=async()=>{
         if(newFolderBusy)return;
@@ -534,33 +685,76 @@
         const fileInp=list.querySelector('#proj-newfolder-file');
         const coachSel=list.querySelector('#proj-newfolder-coach');
         const title=(nameInp?.value||'').trim();
-        if(!title){ status.textContent='Klasöre önce bir isim ver.'; nameInp?.focus(); return; }
+        // Dosya, panel yeniden çizilmeden ÖNCE okunmalı: render() input'u DOM'dan
+        // çıkarır ve Safari/iOS bu durumda FileList'i boşaltır (sessiz başarısızlık).
+        const file=fileInp?.files?.[0]||null;
+        // Panel yükleme boyunca HİÇ yeniden çizilmez: böylece dosya referansı kopmaz
+        // (Safari/iOS detached input FileList'ini boşaltır) ve hatadan sonra kullanıcı
+        // dosyayı yeniden seçmek zorunda kalmaz. Mesajlar doğrudan DOM'a yazılır.
+        const nfError=text=>{ newFolderError=text; const el=list.querySelector('#proj-newfolder-error'); if(el)el.textContent=text; };
+        const nfNote=text=>{ newFolderNote=text; const el=list.querySelector('#proj-newfolder-note'); if(el)el.textContent=text; };
+        if(!title){ nfError('Klasöre önce bir isim ver.'); nameInp?.focus(); return; }
         let targetCoach=me;
         if(admin){
           targetCoach=coachSel?.value||'';
-          if(!targetCoach){ status.textContent='Önce bir antrenör seç.'; coachSel?.focus(); return; }
+          if(!targetCoach){ nfError('Önce bir antrenör seç.'); coachSel?.focus(); return; }
         }
-        newFolderBusy=true; render();
+        if(file&&!sesGecerli(file)){
+          nfError(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`);
+          return;
+        }
+        nfError('');
+        nfNote(file?`${file.name} yükleniyor… (${dosyaBoyutu(file.size)})`:'Ses dosyası seçilmedi; klasör boş açılacak.');
+        newFolderBusy=true;
+        nfConfirm.disabled=true; nfConfirm.textContent='…';
+        const bitti=()=>{ const btn=list.querySelector('#proj-newfolder-confirm'); if(btn){ btn.disabled=false; btn.textContent='✓'; } };
+        let stage='kayıt', projectId=null, created=false;
         try{
           const {data:proj,error:projErr}=await client.from('music_projects')
             .insert({coach_id:targetCoach,title,status:'pending'}).select().single();
-          if(projErr)throw projErr;
-          const file=fileInp?.files?.[0];
+          if(projErr)throw new Error([projErr.message,tabloHint(projErr.message)].filter(Boolean).join(' '));
+          if(!proj?.id)throw new Error('Proje kaydı oluşturulamadı.');
+          projectId=proj.id; created=true;
           if(file){
-            const ext=file.name.split('.').pop()||'mp3';
-            const path=`${targetCoach}/${proj.id}-${Date.now()}.${ext}`;
-            const up=await client.storage.from('project-audio').upload(path,file,{contentType:file.type||'audio/mpeg'});
+            stage='ses yükleme';
+            const up=await yukleSesParcali(`${targetCoach}/${proj.id}-${Date.now()}`,file,
+              (i,n)=>nfNote(`${file.name} yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`));
             if(up.error)throw up.error;
-            const trackResult=await client.from('project_tracks').insert({project_id:proj.id,label:title,audio_path:path,version:1,sort_order:0});
-            if(trackResult.error)throw trackResult.error;
+            stage='parça kaydı';
+            const trackResult=await client.from('project_tracks').insert({project_id:proj.id,label:title,audio_path:up.path,version:1,sort_order:0});
+            if(trackResult.error)throw new Error(['Parça kaydı yazılamadı.',trackResult.error.message,tabloHint(trackResult.error.message)].filter(Boolean).join(' '));
           }
-          status.textContent='Yeni klasör oluşturuldu.';
-          newFolderOpen=false;
+          newFolderOpen=false; newFolderNote='';
+          status.textContent=file?'Yeni klasör ve ses dosyası oluşturuldu.':'Yeni klasör oluşturuldu.';
           await load();
         }catch(e){
-          status.textContent='Klasör oluşturulamadı: '+e.message;
+          // Panel açık kalır ve hata panelin içinde görünür; sayfa arkasındaki
+          // durum satırı overlay yüzünden okunamıyordu.
+          const reason=e?.message||'Bilinmeyen hata.';
+          newFolderNote='';
+          if(created){
+            // Yarım kalan klasörü geri al: kullanıcı listede içi boş, kullanılamayan
+            // bir proje görmesin (eski hatada tam olarak bu oluyordu).
+            const geri=await client.from('music_projects').delete().eq('id',projectId);
+            if(!geri.error){
+              nfError(`${stage} aşamasında hata: ${reason}`);
+              nfNote(file?'Dosya seçili kaldı — ✓ düğmesiyle tekrar deneyebilirsin.':'');
+              status.textContent='Hiçbir kayıt oluşturulmadı; tekrar deneyebilirsin.';
+            }else{
+              // Silme yetkisi yoksa proje listede kalsın; parça sonradan eklenebilsin.
+              newFolderOpen=false;
+              nfError('');
+              status.textContent=`Klasör açıldı ancak ses dosyası eklenemedi (${reason}). Projedeki “YENİ PARÇA EKLE” düğmesiyle tekrar deneyebilirsin.`;
+              await load();
+            }
+          }else{
+            nfError(`${stage} aşamasında hata: ${reason}`);
+            nfNote(file?'Dosya seçili kaldı — ✓ düğmesiyle tekrar deneyebilirsin.':'');
+            status.textContent='Klasör oluşturulamadı: '+reason;
+          }
         }finally{
-          newFolderBusy=false; render();
+          newFolderBusy=false;
+          bitti();
         }
       };
     }
@@ -586,9 +780,21 @@
     });
 
     list.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
-      const {data,error}=await client.storage.from('project-audio').createSignedUrl(b.dataset.path,600,{download:b.dataset.name+'.mp3'});
+      const ad=`${b.dataset.name}.${sesUzantisi(b.dataset.path)||'wav'}`;
+      if(Ses.parcaliMi(b.dataset.path)){
+        // Parçalı dosya: tüm parçaları indirip tarayıcıda birleştirerek ver.
+        status.textContent='Parçalı dosya birleştiriliyor…';
+        const blob=await sesBlob(b.dataset.path);
+        if(!blob){status.textContent='İndirilemedi: parçalar okunamadı.';return;}
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.href=url; a.download=ad; a.click();
+        setTimeout(()=>URL.revokeObjectURL(url),60000);
+        status.textContent='İndirildi.';
+        return;
+      }
+      const {data,error}=await client.storage.from('project-audio').createSignedUrl(b.dataset.path,600,{download:ad});
       if(error){status.textContent='İndirilemedi: '+error.message;return;}
-      const a=document.createElement('a'); a.href=data.signedUrl; a.download=b.dataset.name; a.click();
+      const a=document.createElement('a'); a.href=data.signedUrl; a.download=ad; a.click();
     });
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Proje silinecek. Emin misiniz?'))return;
@@ -598,15 +804,18 @@
     list.querySelectorAll('[data-addtrack]').forEach(inp=>inp.onchange=async()=>{
       const file=inp.files?.[0]; if(!file)return;
       const project=projects.find(p=>p.id===inp.dataset.addtrack); if(!project)return;
-      const ext=file.name.split('.').pop()||'mp3';
-      const path=`${project.coach_id}/${project.id}-${Date.now()}.${ext}`;
-      inp.disabled=true; status.textContent='Parça yükleniyor…';
+      if(!sesGecerli(file)){
+        status.textContent=`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`;
+        inp.value=''; return;
+      }
+      inp.disabled=true; status.textContent='Parça yükleniyor… ('+dosyaBoyutu(file.size)+')';
       try{
-        const uploaded=await client.storage.from('project-audio').upload(path,file,{contentType:file.type||'audio/mpeg'});
+        const uploaded=await yukleSesParcali(`${project.coach_id}/${project.id}-${Date.now()}`,file,
+          (i,n)=>{ status.textContent=`Parça yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`; });
         if(uploaded.error)throw uploaded.error;
         const label=file.name.replace(/\.[^.]+$/,'');
-        const result=await client.from('project_tracks').insert({project_id:project.id,label,audio_path:path,version:1,sort_order:(tracks[project.id]||[]).length});
-        if(result.error)throw result.error;
+        const result=await client.from('project_tracks').insert({project_id:project.id,label,audio_path:uploaded.path,version:1,sort_order:(tracks[project.id]||[]).length});
+        if(result.error)throw new Error(['Parça kaydı yazılamadı.',result.error.message,tabloHint(result.error.message)].filter(Boolean).join(' '));
         status.textContent='Yeni parça projeye eklendi.'; load();
       }catch(error){status.textContent='Parça eklenemedi: '+error.message;}
       finally{inp.disabled=false;inp.value='';}
@@ -618,7 +827,8 @@
       try{
         const removed=await client.from('project_tracks').delete().eq('id',button.dataset.trackdel);
         if(removed.error)throw removed.error;
-        await client.storage.from('project-audio').remove([button.dataset.path]);
+        // Parçalı dosyada tüm parçaları sil.
+        await client.storage.from('project-audio').remove(Ses.parcalariCoz(button.dataset.path).map(p=>p.path));
         status.textContent='Parça silindi.'; load();
       }catch(error){status.textContent='Parça silinemedi: '+error.message;}
       finally{button.disabled=false;}
@@ -629,11 +839,15 @@
       const tid=inp.dataset.newver;
       const tr=Object.values(tracks).flat().find(t=>t.id===tid);
       const proj=projects.find(p=>p.id===tr.project_id);
-      status.textContent='Varyasyon yükleniyor…';
-      const path=`${proj.coach_id}/${tid}-${Date.now()}.${file.name.split('.').pop()||'mp3'}`;
-      const up=await client.storage.from('project-audio').upload(path,file,{contentType:file.type||'audio/mpeg'});
+      status.textContent='Varyasyon yükleniyor… ('+dosyaBoyutu(file.size)+')';
+      if(!sesGecerli(file)){ status.textContent=`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor.`; inp.value=''; return; }
+      const eskiParcalar=tr.audio_path?Ses.parcalariCoz(tr.audio_path).map(p=>p.path):[];
+      const up=await yukleSesParcali(`${proj.coach_id}/${tid}-${Date.now()}`,file,
+        (i,n)=>{ status.textContent=`Varyasyon yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`; });
       if(up.error){status.textContent='Yükleme hatası: '+up.error.message;return;}
-      await client.from('project_tracks').update({audio_path:path,version:(tr.version||1)+1}).eq('id',tid);
+      await client.from('project_tracks').update({audio_path:up.path,version:(tr.version||1)+1}).eq('id',tid);
+      // Yeni sürüm yazıldıktan sonra eski dosyayı (ve parçalarını) temizle.
+      if(eskiParcalar.length){ try{ await client.storage.from('project-audio').remove(eskiParcalar); }catch{} }
       await client.from('project_feedback').insert({project_id:proj.id,author_id:me,kind:'system',
         body:`Parçanız düzenlenmiş haliyle gönderildi (v${(tr.version||1)+1} · ${tr.label||'parça'}). Lütfen inceleyiniz.`});
       status.textContent='Varyasyon gönderildi, antrenöre bildirildi.';
@@ -669,7 +883,7 @@
       const id=b.dataset.play;
       if(cur&&cur.id===id){ if(cur.audio.paused){cur.audio.play();b.textContent='⏸';b.setAttribute('aria-label','Parçayı duraklat');}else{cur.audio.pause();b.textContent='▶';b.setAttribute('aria-label','Parçayı oynat');} return; }
       if(cur){cur.audio.pause();cur.btn.textContent='▶';cur.btn.setAttribute('aria-label','Parçayı oynat');}
-      const url=await signed(b.dataset.path); if(!url){status.textContent='Ses açılamadı.';return;}
+      const url=await sesUrl(b.dataset.path); if(!url){status.textContent='Ses açılamadı.';return;}
       const audio=new Audio(url);
       audio.onended=()=>{b.textContent='▶';b.setAttribute('aria-label','Parçayı oynat');cur=null;};
       await audio.play(); b.textContent='⏸'; b.setAttribute('aria-label','Parçayı duraklat'); cur={id,audio,btn:b};
@@ -678,6 +892,12 @@
 
   let cur=null;
 
-  window.addEventListener('derin:authchange',()=>{if(client)load();});
+  window.addEventListener('derin:authchange',()=>{
+    if(!client)return;
+    const currentUser=window.DerinAuth.user;
+    if(!currentUser){ me=null; admin=false; }          // çıkış: kimliği sıfırla
+    if(currentUser&&currentUser.id===me){ load(); return; }
+    boot();                                            // giriş / kullanıcı değişimi
+  });
   boot();
 })();

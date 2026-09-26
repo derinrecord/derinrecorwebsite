@@ -18,6 +18,10 @@
   menu.className = 'account-menu';
   menu.hidden = true;
   menu.innerHTML = '<div class="account-menu-backdrop" data-menu-close></div><aside class="account-menu-panel"><div class="account-menu-head"><span class="account-menu-name"></span><button class="account-menu-close" type="button" data-menu-close aria-label="Kapat">×</button></div><nav class="account-menu-links"></nav><button class="account-menu-logout" type="button" data-logout>ÇIKIŞ YAP</button></aside>';
+  // Yönetici girişi öncesi body etiketi işaretlenir; CSS misafir ziyaretçide yönetici linkini gizler.
+  const syncAdminHint = () => { document.body.classList.toggle('is-admin', state.profile?.role === 'admin'); };
+  window.addEventListener('derin:authchange', syncAdminHint);
+  syncAdminHint();
   document.body.append(menu);
     const nav = header.querySelector('nav');
     nav ? header.insertBefore(actions, nav) : header.append(actions);
@@ -42,7 +46,7 @@
     setNavigation(true);
     signup.hidden = true; coachAction.hidden = false;
     button.textContent = `${(state.profile?.full_name || state.user.email || 'HESABIM').toUpperCase()} · HESABIM`;
-    menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="taleplerim.html">TALEPLERİM</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a><a href="chat.html">SOHBET</a>`;
+    menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a><a href="chat.html">SOHBET</a>`;
     menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || 'HESABIM';
   }
   function toggleMenu() { const menu = document.querySelector('.account-menu'); if (menu) menu.hidden ? openMenu(menu) : closeMenu(menu); }
@@ -53,7 +57,7 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
     if (!overlay) { overlay = document.createElement('div'); overlay.className = 'auth-overlay'; document.body.append(overlay); }
     if (!configured) { overlay.innerHTML = '<section class="auth-card"><button class="auth-close">KAPAT</button><h2>HESAP SİSTEMİ HAZIRLANIYOR</h2><p>Yönetici, Supabase bağlantı bilgilerini ekledikten sonra e-posta ve şifreyle kayıt/giriş açılacak.</p></section>'; overlay.hidden=false; overlay.querySelector('.auth-close').onclick=()=>overlay.hidden=true; return; }
     const signup = mode === 'signup';
-    overlay.innerHTML = `<section class="auth-card"><button class="auth-close" type="button">KAPAT</button><h2>${signup ? 'ANTRENÖR KAYDI' : 'HESABINA GİR'}</h2><p>${signup ? 'Kaydın yönetici onayından sonra demo erişimin açılır.' : 'Demo notlarına ulaşmak için giriş yap.'}</p><form class="auth-form">${signup ? '<label>AD SOYAD<input name="name" autocomplete="name" required></label>' : ''}<label>E-POSTA<input name="email" type="email" autocomplete="email" required></label><label>ŞİFRE<input name="password" type="password" minlength="8" autocomplete="current-password" required></label><button class="auth-submit">${signup ? 'KAYIT OL' : 'GİRİŞ YAP'}</button></form><button class="auth-switch" type="button">${signup ? 'Zaten hesabın var mı? Giriş yap' : 'Hesabın yok mu? Antrenör olarak kayıt ol'}</button><p class="auth-message"></p></section>`;
+    overlay.innerHTML = `<section class="auth-card"><button class="auth-close" type="button">KAPAT</button><h2>${signup ? 'ANTRENÖR KAYDI' : 'HESABINA GİR'}</h2><p>${signup ? 'Kaydın yönetici onayından sonra demo erişimin açılır.' : 'Demo notlarına ulaşmak için giriş yap.'}</p><form class="auth-form">${signup ? '<label>AD SOYAD<input name="name" autocomplete="name" required></label>' : ''}<label>E-POSTA<input name="email" type="email" autocomplete="email" required></label><label>ŞİFRE<input name="password" type="password" minlength="8" autocomplete="${signup ? 'new-password' : 'current-password'}" required></label><button class="auth-submit">${signup ? 'KAYIT OL' : 'GİRİŞ YAP'}</button></form><button class="auth-switch" type="button">${signup ? 'Zaten hesabın var mı? Giriş yap' : 'Hesabın yok mu? Antrenör olarak kayıt ol'}</button><p class="auth-message"></p></section>`;
     overlay.hidden = false;
     overlay.querySelector('.auth-close').onclick = () => overlay.hidden = true;
     overlay.querySelector('.auth-switch').onclick = () => openAuth(signup ? 'login' : 'signup');
@@ -81,7 +85,7 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
     };
   }
   async function loadProfile(user) {
-    if (!user) { state.user=null; state.profile=null; emit(); renderAccount(); return; }
+    if (!user) { state.user=null; state.profile=null; document.body.classList.remove('is-admin'); emit(); renderAccount(); return; }
     state.user = user;
     let profile;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -90,7 +94,7 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
       await new Promise(resolve => setTimeout(resolve, 350));
     }
     state.profile = profile || { id:user.id, full_name:user.user_metadata?.full_name || '', role:'coach' };
-    emit(); renderAccount();
+    emit(); renderAccount(); document.body.classList.toggle('is-admin', state.profile?.role === 'admin');
   }
   async function init() {
     if (document.querySelector('.player-controls')) {

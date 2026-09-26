@@ -11,6 +11,8 @@
     } catch (e) { return iso; }
   };
   const byId = id => document.getElementById(id);
+  // tel: bağlantısı yalnızca rakam ve + karakteriyle kurulur; boşluk/parantez bağlantıyı bozar.
+  const telHref = value => String(value || '').replace(/[^+\d]/g, '');
 
   async function load() {
     await window.DerinAuth.ready;
@@ -53,7 +55,7 @@
         <div class="talep-meta">
           <span class="talep-date">${formatDate(row.created_at)}</span>
           ${row.email ? `<a href="mailto:${escapeHtml(row.email)}">${escapeHtml(row.email)}</a>` : ''}
-          ${row.phone ? `<a href="tel:${escapeHtml(row.phone)}">${escapeHtml(row.phone)}</a>` : ''}
+          ${row.phone ? `<a href="tel:${telHref(row.phone)}">${escapeHtml(row.phone)}</a>` : ''}
         </div>
         ${row.message ? `<p class="talep-message">${escapeHtml(row.message)}</p>` : ''}
       </article>

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PROJELERİM — Derin Record</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="branch.css">
 <link rel="stylesheet" href="auth.css">
 <link rel="stylesheet" href="glass.css?v=2">
@@ -229,6 +230,11 @@
   .proj-newfolder-panel input[type=file]{width:100%;box-sizing:border-box;padding:11px 14px;border-radius:14px;
     margin-bottom:20px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;
     font:inherit;font-size:12px}
+  .proj-newfolder-error{margin:0 0 10px;font-size:12.5px;line-height:1.55;color:#ff9db0}
+  .proj-newfolder-error:empty{display:none}
+  .proj-newfolder-note{margin:0 0 10px;font-size:12px;line-height:1.5;opacity:.62}
+  .proj-newfolder-note:empty{display:none}
+  .proj-newfolder-hint{margin:-14px 0 16px;font-size:11px;line-height:1.5;opacity:.5}
   .proj-newfolder-actions{display:flex;justify-content:flex-end;gap:12px;align-items:center}
   .proj-newfolder-cancel{padding:11px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.2);
     background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:12px;cursor:pointer}
@@ -257,9 +263,10 @@
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
-<script src="auth.js?v=20260914"></script>
+<script src="auth.js?v=20260926"></script>
+<script src="audio-file-types.js?v=2"></script>
 <script src="project-track-controls.js?v=1"></script>
-<script src="projects.js?v=20260925b"></script>
+<script src="sortable-touch.js?v=1"></script>
+<script src="projects.js?v=20260926c"></script>
 </body>
 </html>
-<script src="sortable-touch.js?v=1"></script>
