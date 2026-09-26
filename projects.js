@@ -197,7 +197,7 @@
   // görünüyordu (sessiz başarısızlık). Artık kritik mesajlar ekranın altındaki
   // sabit kutuda çıkar; hata kutusu kendiliğinden kaybolmaz ve tek tuşla rapor
   // kopyalanabilir (hangi aşamada, hangi dosyada, sunucunun tam cevabı).
-  const SURUM='20260926d';
+  const SURUM='20260926e';
   let sonHataDetay={};
 
   function raporMetni(){
@@ -270,27 +270,17 @@
   // birleştirildiğinde dosya bit düzeyinde birebir aynı çıkar (MP3'e çevirme yok).
 
   // temelYol: uzantı ve parça eki hariç yol. Döner: {path (ilk parça), toplam}
+  // Mantık audio-file-types.js içindedir (Ses.parcaliYukle): aynı kod sohbet
+  // sayfasındaki müzik gönderimi ve testler tarafından da kullanılır.
   async function yukleSesParcali(temelYol,file,ilerleme){
-    const toplam=Ses.parcaSayisi(file.size);
-    const tip=sesTipi(file);
-    const ext=sesUzantisi(file.name);
-    const dilimler=Ses.dilimSinirlari(file.size);
-    const yuklenen=[];
-    for(let i=1;i<=dilimler.length;i++){
-      if(ilerleme)ilerleme(i,dilimler.length);
-      const [bas,son]=dilimler[i-1];
-      const dilim=file.slice(bas,son);
-      const yol=`${temelYol}${toplam>1?Ses.parcaEki(i,toplam):''}.${ext}`;
-      const sonuc=await yukleSes(yol,dilim,tip);
-      if(sonuc.error){
-        sonHataDetay.yol=yol; sonHataDetay.parca=`${i}/${dilimler.length}`; sonHataDetay.mesaj=sonuc.error.message;
-        // Yarım kalan parçaları temizle: depoda eksik dosya kalmasın.
-        if(yuklenen.length){ try{ await client.storage.from('project-audio').remove(yuklenen); }catch{} }
-        return {error:sonuc.error,path:null,toplam};
-      }
-      yuklenen.push(yol);
+    const sonuc=await Ses.parcaliYukle({
+      yukle:(yol,dilim,tip)=>yukleSes(yol,dilim,tip),
+      sil:yollar=>client.storage.from('project-audio').remove(yollar)
+    },temelYol,file,ilerleme);
+    if(sonuc.error){
+      sonHataDetay.yol=sonuc.yol; sonHataDetay.parca=`${sonuc.parca}/${sonuc.toplam}`; sonHataDetay.mesaj=sonuc.error.message;
     }
-    return {error:null,path:yuklenen[0],toplam};
+    return sonuc;
   }
 
   // Parçalı dosyayı indirip tek bir Blob olarak döner.

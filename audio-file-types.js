@@ -117,6 +117,32 @@
     return !!dosya && dosya.size > PARCA_BOYUTU;
   }
 
+  // Parçalı yükleme: tek nesne sınırı aşıldığında dosyayı dilimlere bölüp
+  // sırayla yükler. Girdi/çıktı dışarıdan verilir (io) — böylece hem tarayıcı
+  // (Supabase storage) hem testler (sahte io) aynı mantığı kullanır.
+  //   io.yukle(yol, dilim, tip) -> Promise<{error}>
+  //   io.sil(yollar)            -> Promise (isteğe bağlı)
+  // Döner: {error, path, toplam} — hata hâlinde yüklenmiş parçalar temizlenir.
+  async function parcaliYukle(io, temelYol, dosya, ilerleme) {
+    var toplam = parcaSayisi(dosya.size);
+    var uz = uzanti(dosya.name);
+    var mime = tip(dosya);
+    var sinirlar = dilimSinirlari(dosya.size);
+    var yuklenen = [];
+    for (var i = 1; i <= sinirlar.length; i++) {
+      if (ilerleme) ilerleme(i, sinirlar.length);
+      var yol = temelYol + (toplam > 1 ? parcaEki(i, toplam) : '') + '.' + uz;
+      var sonuc = await io.yukle(yol, dosya.slice(sinirlar[i - 1][0], sinirlar[i - 1][1]), mime);
+      if (sonuc && sonuc.error) {
+        // Yarım kalan parçaları temizle: depoda eksik dosya kalmasın.
+        if (yuklenen.length && io.sil) { try { await io.sil(yuklenen); } catch (e) {} }
+        return { error: sonuc.error, path: null, toplam: toplam, yol: yol, parca: i };
+      }
+      yuklenen.push(yol);
+    }
+    return { error: null, path: yuklenen[0], toplam: toplam, yol: yuklenen[0], parca: 1 };
+  }
+
   var api = {
     TIPLER: TIPLER,
     UZANTILAR: UZANTILAR,
@@ -133,7 +159,8 @@
     parcaEki: parcaEki,
     parcaliMi: parcaliMi,
     parcalariCoz: parcalariCoz,
-    buyukMu: buyukMu
+    buyukMu: buyukMu,
+    parcaliYukle: parcaliYukle
   };
 
   if (typeof window !== 'undefined') window.DerinAudioTypes = api;

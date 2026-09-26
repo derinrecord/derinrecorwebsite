@@ -363,7 +363,7 @@
           <span class="dz-kart k3"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h2l2-6 4 12 3-9 2 3h5"/></svg></span>
         </span>
         <span class="dz-ok dz-ok-r"><svg viewBox="0 0 40 40" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M32 6c0 14-6 22-22 24"/><path d="M16 24l-6 6 7 4"/></svg></span>
-        <span class="dz-yazi"><b>Müziği sürükle bırak</b><small>veya <u>dosya seç</u> · MP3, WAV</small></span>
+        <span class="dz-yazi"><b>Müziği sürükle bırak</b><small>veya <u>dosya seç</u> · WAV, MP3, FLAC · büyük dosyalar parçalanır</small></span>
         <span class="dz-dosya" id="dz-dosya" hidden></span>
       </label>
       <div class="dz-alt">
@@ -401,7 +401,9 @@
         syncPct.textContent = '0%';
         clearInterval(syncTimer);
         syncTimer = setInterval(() => {
-          const pct = Math.min(92, Math.round(92 * (1 - Math.exp(-(Date.now() - t0) / tau))));
+          // Gerçek parça ilerlemesi varsa (çok parçalı yükleme) onun altına düşme.
+          const gercek = Number(sync.dataset.gercek || 0);
+          const pct = Math.max(gercek, Math.min(92, Math.round(92 * (1 - Math.exp(-(Date.now() - t0) / tau)))));
           syncFill.style.width = pct + '%';
           syncPct.textContent = pct + '%';
         }, 90);
@@ -454,7 +456,10 @@
 
       dz.addEventListener('drop', e => {
         const f = e.dataTransfer.files && e.dataTransfer.files[0];
-        if (f && f.type.startsWith('audio/')) ata(f);
+        // Uzantı kontrolü de yapılır: bazı sistemlerde .wav dosyasının tipi boş
+        // gelir ve yalnızca type kontrolü bırakılan dosyayı sessizce yok sayardı.
+        const Ses = window.DerinAudioTypes;
+        if (f && (f.type.startsWith('audio/') || (Ses && Ses.gecerli(f)))) ata(f);
       });
 
       gonder.addEventListener('click', () => {
@@ -473,7 +478,7 @@
           if (m && m.textContent) { bitir(); gozle.disconnect(); }
         });
         gozle.observe(fileRow, { childList: true, subtree: true, characterData: true });
-        setTimeout(() => { gonder.classList.remove('yukleniyor'); syncBitir(); gozle.disconnect(); }, 60000);
+        setTimeout(() => { gonder.classList.remove('yukleniyor'); syncBitir(); gozle.disconnect(); }, 180000);
       });
 
       goster();
@@ -501,6 +506,7 @@
            const projectId = fileRow.querySelector('#chat-proj').value;
 
             let hedefProje = projectId;
+           let yeniProje = false;
            if (!hedefProje) {
                status.textContent = 'Bu antrenör için yeni proje açılıyor…';
              const yeni = await client.from('music_projects')
@@ -508,12 +514,57 @@
        .select('id').single();
        if (yeni.error) { status.textContent = 'Proje açılamadı: ' + yeni.error.message; return; }
        hedefProje = yeni.data.id;
+       yeniProje = true;
       }
 
-           const path = `${contactId}/${hedefProje}-${Date.now()}.${file.name.split('.').pop() || 'mp3'}`;
-      const up = await client.storage.from('project-audio')
-        .upload(path, file, { contentType: file.type || 'audio/mpeg' });
-      if (up.error) { status.textContent = 'Yükleme hatası: ' + up.error.message; return; }
+      // Uzantı doğrulaması + 45 MB üzeri dosyalar için parçalı yükleme.
+      // Tek nesne sınırı (50 MiB) aşılırsa sunucu 413 döndürür ve dosya hiç
+      // yüklenmez; bu yüzden büyük WAV'lar kayıpsız parçalara bölünür.
+      const Ses = window.DerinAudioTypes;
+      if (!Ses || !Ses.gecerli(file)) {
+        status.textContent = `“${file.name}” desteklenen bir ses dosyası değil. Desteklenenler: ${Ses ? Ses.desteklenenler() : 'wav, mp3, flac, m4a, aac, ogg'}.`;
+        if (yeniProje) await client.from('music_projects').delete().eq('id', hedefProje);
+        return;
+      }
+      const syncKart = fileRow.querySelector('#us-sync');
+      const up = await Ses.parcaliYukle({
+        yukle: async (yol, dilim, tip) => {
+          const ilk = await client.storage.from('project-audio').upload(yol, dilim, { contentType: tip, upsert: false });
+          if (!ilk.error) return { error: null };
+          if (/mime|content.?type/i.test(ilk.error.message || '')) {
+            const ikinci = await client.storage.from('project-audio').upload(yol, dilim, { contentType: 'application/octet-stream', upsert: false });
+            if (!ikinci.error) return { error: null };
+          }
+          return { error: new Error(ilk.error.message) };
+        },
+        sil: yollar => client.storage.from('project-audio').remove(yollar)
+      }, `${contactId}/${hedefProje}-${Date.now()}`, file, (i, n) => {
+        if (syncKart) {
+          const pct = Math.round((i - 1) / n * 100);
+          syncKart.dataset.gercek = String(pct);
+          const pctEl = syncKart.querySelector('#us-sync-pct'); if (pctEl) pctEl.textContent = pct + '%';
+          const dolgu = syncKart.querySelector('#us-fill'); if (dolgu) dolgu.style.width = pct + '%';
+        }
+        status.textContent = `Müzik yükleniyor… parça ${i}/${n} (${Ses.boyut(file.size)})`;
+      });
+      if (up.error) {
+        // Yarım kalan yeni proje listede kalmasın (aksi hâlde “Henüz parça
+        // eklenmedi” yazan boş bir kaset oluşuyordu).
+        if (yeniProje) await client.from('music_projects').delete().eq('id', hedefProje);
+        const ek = /maximum allowed size|exceeded the maximum|413/i.test(up.error.message)
+          ? ' Dosya boyutu depolama sınırını aşıyor.'
+          : /row-level security|policy|Unauthorized/i.test(up.error.message)
+            ? ' Depolama yetkisi reddedildi; depolama izinlerini kontrol edin.'
+            : '';
+        status.textContent = 'Yükleme hatası: ' + up.error.message + ek + (yeniProje ? ' Hiçbir proje oluşturulmadı.' : '');
+        const hataKutusu = fileRow.querySelector('.chat-file-msg') || document.createElement('div');
+        hataKutusu.className = 'chat-file-msg';
+        hataKutusu.style.cssText = 'flex:1 1 100%;font-size:12px;color:#ff9db0;padding-top:6px';
+        hataKutusu.textContent = 'Yükleme başarısız — dosya gönderilmedi.';
+        if (!hataKutusu.parentNode) fileRow.appendChild(hataKutusu);
+        return;
+      }
+      const path = up.path;
 
       const existing = await client.from('project_tracks')
                 .select('id,version').eq('project_id', hedefProje).order('sort_order').limit(1);

@@ -103,3 +103,93 @@ test('parçalı olmayan yol tek elemanlı liste döner', () => {
   assert.deepEqual(Ses.parcalariCoz(yol), [{ path: yol, index: 1, toplam: 1 }]);
   assert.deepEqual(Ses.parcalariCoz(null), [{ path: '', index: 1, toplam: 1 }]);
 });
+
+// --- Parçalı yükleme (Ses.parcaliYukle) -------------------------------------
+// Sahte io ile çalışır: gerçek Supabase çağrısı yok.
+
+function sahteDosya(ad, boyut) {
+  const veri = Buffer.alloc(boyut);
+  for (let i = 0; i < boyut; i += 997) veri[i] = i % 251;
+  return {
+    name: ad,
+    size: boyut,
+    type: '',
+    slice(bas, son) { return veri.subarray(bas, son); },
+    veri
+  };
+}
+
+test('53 MB dosya iki parça olarak yüklenir ve parça yolları doğru üretilir', async () => {
+  const dosya = sahteDosya('darbuka remix 1.wav', 53 * 1048576);
+  const yuklenenler = [];
+  const sonuc = await Ses.parcaliYukle({
+    yukle: async (yol, dilim, tip) => { yuklenenler.push({ yol, boyut: dilim.length, tip }); return { error: null }; }
+  }, 'antrenor-1/proje-2-1758880000000', dosya);
+
+  assert.equal(sonuc.error, null);
+  assert.equal(sonuc.toplam, 2);
+  assert.equal(sonuc.path, 'antrenor-1/proje-2-1758880000000-p01of02.wav');
+  assert.deepEqual(yuklenenler.map((y) => y.yol), [
+    'antrenor-1/proje-2-1758880000000-p01of02.wav',
+    'antrenor-1/proje-2-1758880000000-p02of02.wav'
+  ]);
+  assert.ok(yuklenenler.every((y) => y.boyut <= Ses.YUKLEME_SINIRI), 'parça servis tavanını aşmamalı');
+  assert.ok(yuklenenler.every((y) => y.tip === 'audio/wav'), 'WAV içerik tipi korunmalı');
+});
+
+test('tek parçalı dosyada yol parça eki almaz', async () => {
+  const dosya = sahteDosya('kisa.mp3', 3 * 1048576);
+  const yollar = [];
+  const sonuc = await Ses.parcaliYukle({
+    yukle: async (yol) => { yollar.push(yol); return { error: null }; }
+  }, 'antrenor-1/proje-2-1758880000000', dosya);
+
+  assert.equal(sonuc.toplam, 1);
+  assert.deepEqual(yollar, ['antrenor-1/proje-2-1758880000000.mp3']);
+  assert.equal(sonuc.path, yollar[0]);
+});
+
+test('ortada hata olursa yüklenmiş parçalar silinir ve hata bilgisi döner', async () => {
+  const dosya = sahteDosya('buyuk.wav', 53 * 1048576);
+  const silinen = [];
+  let cagri = 0;
+  const sonuc = await Ses.parcaliYukle({
+    yukle: async () => (++cagri === 2
+      ? { error: new Error('The object exceeded the maximum allowed size') }
+      : { error: null }),
+    sil: async (yollar) => { silinen.push(...yollar); }
+  }, 'antrenor-1/proje-2', dosya);
+
+  assert.equal(sonuc.path, null);
+  assert.equal(sonuc.parca, 2);
+  assert.equal(sonuc.toplam, 2);
+  assert.equal(sonuc.yol, 'antrenor-1/proje-2-p02of02.wav');
+  assert.match(sonuc.error.message, /exceeded the maximum allowed size/);
+  assert.deepEqual(silinen, ['antrenor-1/proje-2-p01of02.wav'], 'yarım kalan parça temizlenmeli');
+});
+
+test('ilk parçada hata olursa silinecek parça yoktur', async () => {
+  const dosya = sahteDosya('buyuk.wav', 53 * 1048576);
+  let silmeCagrildi = false;
+  const sonuc = await Ses.parcaliYukle({
+    yukle: async () => ({ error: new Error('row-level security policy') }),
+    sil: async () => { silmeCagrildi = true; }
+  }, 'antrenor-1/proje-2', dosya);
+
+  assert.equal(sonuc.parca, 1);
+  assert.equal(sonuc.yol, 'antrenor-1/proje-2-p01of02.wav');
+  assert.equal(silmeCagrildi, false);
+});
+
+test('parçalı yükleme kayıpsızdır: yüklenen dilimler birleşince kaynakla bit düzeyinde aynı', async () => {
+  const dosya = sahteDosya('master.wav', 53 * 1048576);
+  const dilimler = [];
+  const sonuc = await Ses.parcaliYukle({
+    yukle: async (yol, dilim) => { dilimler.push(Buffer.from(dilim)); return { error: null }; }
+  }, 'antrenor-1/proje-2', dosya);
+
+  assert.equal(sonuc.toplam, 2);
+  const birlesik = Buffer.concat(dilimler);
+  assert.equal(birlesik.length, dosya.size);
+  assert.equal(birlesik.equals(dosya.veri), true, 'birleştirilen dosya orijinalle birebir aynı olmalı');
+});
