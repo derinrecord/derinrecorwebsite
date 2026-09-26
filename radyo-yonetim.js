@@ -559,7 +559,6 @@
     const hataVar = sonuclar.find(s => s.error);
     if (hataVar) { hata('Sıra kaydedilemedi: ' + hataVar.error.message); return; }
     D.tracks.forEach(t => { const i = idlistesi.indexOf(t.id); if (i > -1) t.sort_order = i; });
-    const kutu = el('track-drop');
     bildir('Sıra güncellendi.');
     ciz();
   }
