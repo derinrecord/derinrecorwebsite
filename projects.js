@@ -10,6 +10,13 @@
   let detail={};
   let newFolderOpen=false, newFolderBusy=false, newFolderError='', newFolderNote='';
   let localSeq=0;
+
+  // Katlanmış projeler: kart açık/kapalı tercihi tarayıcıda saklanır, böylece
+  // sayfa yenilendiğinde veya canlı güncelleme listeyi yeniden çizdiğinde
+  // kullanıcı bıraktığı yerde bulur.
+  let katliProjeler={};
+  try{ katliProjeler=JSON.parse(localStorage.getItem('derin:katli-projeler')||'{}')||{}; }catch{ katliProjeler={}; }
+  const katliKaydet=()=>{ try{ localStorage.setItem('derin:katli-projeler',JSON.stringify(katliProjeler)); }catch{} };
   const newLocalId=()=>'local-'+(++localSeq);
 
   async function boot(){
@@ -21,6 +28,15 @@
       document.querySelector('#p-login').onclick=()=>a.open();return;}
     me=a.user.id; admin=a.profile?.role==='admin';
     const rb=document.querySelector('#refresh'); rb.hidden=false; rb.onclick=()=>load();
+    const foldAll=document.querySelector('#foldall');
+    if(foldAll)foldAll.onclick=()=>{
+      // Tümü katlıysa hepsini aç, değilse hepsini katla.
+      const hepsi=hepsiKatliMi();
+      projects.forEach(p=>{ katliProjeler[p.id]=!hepsi; });
+      katliKaydet();
+      list.querySelectorAll('[data-projfold]').forEach(h=>katlaUygula(h,!hepsi));
+      tumunuKatlaEtiketiniYenile();
+    };
     // Kanalları yalnızca bir kez kur; giriş/çıkış sonrası boot() tekrar çağrılabiliyor.
     if(!subscribed){
       subscribed=true;
@@ -86,11 +102,40 @@
     </div>`;
   }
 
+  // Kart gövdesini "katla/aç": sınıfı değiştirmek yeterli (CSS yüksekliği
+  // animasyonla kapatıyor), bu yüzden liste yeniden çizilmez ve odak kaymaz.
+  function katlaUygula(head,katli){
+    const kart=head.closest('.proj-card'); if(!kart)return;
+    kart.classList.toggle('katli',katli);
+    head.setAttribute('aria-expanded',katli?'false':'true');
+    const govde=kart.querySelector('.proj-fold-inner'); if(govde)govde.inert=katli;
+    const etiket=head.querySelector('.proj-fold-label'); if(etiket)etiket.textContent=katli?'AÇ':'KATLA';
+    const ok=head.querySelector('.proj-fold-arrow'); if(ok)ok.textContent=katli?'▸':'▾';
+  }
+
+  function hepsiKatliMi(){ return projects.length>0&&projects.every(p=>katliProjeler[p.id]); }
+  function tumunuKatlaEtiketiniYenile(){
+    const fa=document.querySelector('#foldall');
+    if(!fa)return;
+    fa.textContent=hepsiKatliMi()?'TÜMÜNÜ AÇ':'TÜMÜNÜ KATLA';
+  }
+
   function card(p){
     const trs=tracks[p.id]||[], fbs=(feedback[p.id]||[]).filter(f=>f.start_sec==null);
-    return `<article class="proj-card">
-      <h3>${safe(p.title||'Proje')}</h3>
-      <p class="meta">${safe(admin?(names[p.coach_id]||'Antrenör'):'Sana ait proje')}${p.branch?' · '+safe(p.branch):''} · ${new Date(p.updated_at||p.created_at).toLocaleString('tr-TR')}</p>
+    const katli=!!katliProjeler[p.id];
+    const asama=p.status==='pending'?'BEKLİYOR':((STAGES.find(s=>s.k===p.status)||{}).l||'');
+    return `<article class="proj-card${katli?' katli':''}">
+      <div class="proj-head" data-projfold="${p.id}" role="button" tabindex="0" aria-expanded="${katli?'false':'true'}" aria-controls="proj-body-${p.id}">
+        <div class="proj-head-main">
+          <h3>${safe(p.title||'Proje')}</h3>
+          <p class="meta">${safe(admin?(names[p.coach_id]||'Antrenör'):'Sana ait proje')}${p.branch?' · '+safe(p.branch):''} · ${new Date(p.updated_at||p.created_at).toLocaleString('tr-TR')}</p>
+        </div>
+        <span class="proj-stage-chip">${asama}</span>
+        <span class="proj-fold-label">${katli?'AÇ':'KATLA'}</span>
+        <span class="proj-fold-arrow" aria-hidden="true">${katli?'▸':'▾'}</span>
+      </div>
+      <div class="proj-fold" id="proj-body-${p.id}">
+      <div class="proj-fold-inner"${katli?' inert':''}>
       ${p.status==='pending'?'<p class="meta">Onay bekliyor.</p>':bar(p.status)}
       <div class="proj-tracks-grid">${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<div class="proj-cassette-card proj-empty-track"><span class="card-number">—</span><img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti"><p class="meta">Henüz parça eklenmedi.</p></div>`}</div>
       ${admin?`<div class="proj-actions">
@@ -107,6 +152,8 @@
       }).join(''):'<li style="opacity:.45">Henüz geri bildirim yok.</li>'}</ul>
       <textarea data-fb="${p.id}" placeholder="Geri bildirim yaz…"></textarea>
       <div class="proj-actions"><button data-fbsend="${p.id}">GÖNDER</button></div></div>
+      </div>
+      </div>
     </article>`;
   }
 
@@ -123,6 +170,8 @@
       ${newFolderOpen?newFolderPanel():''}
       ${groupsHtml}`;
     status.textContent=projects.length?`${projects.length} proje · anlık güncellenir.`:'Henüz proje yok.';
+    const foldAll=document.querySelector('#foldall');
+    if(foldAll){ foldAll.hidden=!projects.length; tumunuKatlaEtiketiniYenile(); }
     wire();
   }
 
@@ -197,7 +246,7 @@
   // görünüyordu (sessiz başarısızlık). Artık kritik mesajlar ekranın altındaki
   // sabit kutuda çıkar; hata kutusu kendiliğinden kaybolmaz ve tek tuşla rapor
   // kopyalanabilir (hangi aşamada, hangi dosyada, sunucunun tam cevabı).
-  const SURUM='20260926e';
+  const SURUM='20260926f';
   let sonHataDetay={};
 
   function raporMetni(){
@@ -808,6 +857,19 @@
         }
       };
     }
+
+    // Proje kartını katla/aç — başlık satırı tıklanabilir (klavyeyle de).
+    list.querySelectorAll('[data-projfold]').forEach(head=>{
+      const degistir=()=>{
+        const id=head.dataset.projfold;
+        katliProjeler[id]=!katliProjeler[id];
+        katliKaydet();
+        katlaUygula(head,!!katliProjeler[id]);
+        tumunuKatlaEtiketiniYenile();
+      };
+      head.onclick=degistir;
+      head.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); degistir(); } };
+    });
 
     list.querySelectorAll('[data-tdopen]').forEach(el=>el.onclick=()=>{
       const trackId=el.dataset.tdopen;

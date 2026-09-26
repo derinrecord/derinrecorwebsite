@@ -21,6 +21,31 @@
   .proj-card h3{margin:0 0 4px;font-size:18px}
   .proj-card .meta{font-size:12px;opacity:.6;margin:0 0 20px}
 
+  /* Katlanabilir proje kartı — başlık satırı her zaman görünür kalır,
+     gövde katlanırken yüksekliği animasyonla kapanır (grid-template-rows). */
+  .proj-head{display:flex;align-items:flex-start;gap:14px;cursor:pointer;user-select:none;margin-bottom:22px}
+  .proj-head-main{flex:1 1 auto;min-width:0}
+  /* Katlıyken başlık tek bakışta okunsun: uzun antrenör adı en fazla iki satır. */
+  .proj-head .meta{margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .proj-head:focus-visible{outline:2px solid #a855f7;outline-offset:6px;border-radius:12px}
+  .proj-head:hover .proj-fold-label{background:rgba(255,255,255,.16)}
+  .proj-fold-label{flex:0 0 auto;padding:7px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.07);font-size:10px;font-weight:800;letter-spacing:.08em;white-space:nowrap}
+  .proj-fold-arrow{flex:0 0 auto;width:14px;text-align:center;font-size:14px;opacity:.7}
+  .proj-stage-chip{flex:0 0 auto;padding:7px 12px;border-radius:999px;border:1px solid rgba(168,85,247,.45);
+    background:rgba(168,85,247,.16);color:#d9bcff;font-size:10px;font-weight:800;letter-spacing:.06em;white-space:nowrap}
+  /* Açıkken aşama adım şeridi zaten görünür; çipte tekrar etmiyoruz. */
+  .proj-card:not(.katli) .proj-stage-chip{display:none}
+  .proj-fold{display:grid;grid-template-rows:1fr;transition:grid-template-rows .32s ease}
+  .proj-card.katli .proj-fold{grid-template-rows:0fr}
+  .proj-card.katli .proj-head{margin-bottom:4px}
+  .proj-fold-inner{overflow:hidden;min-height:0}
+  #foldall{margin:0 0 22px;padding:10px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.07);color:inherit;font:inherit;font-size:11px;font-weight:800;
+    letter-spacing:.06em;cursor:pointer}
+  #foldall:hover{background:rgba(255,255,255,.16)}
+  @media(prefers-reduced-motion:reduce){.proj-fold{transition:none}}
+
   /* Adımlı ilerleme çubuğu — küçültülmüş, sarı kutu içinde (kaset sarısıyla aynı ton) */
   .stage-bar{display:inline-block;min-width:100%;box-sizing:border-box;margin:0 0 10px}
   .stage-row{display:flex;align-items:flex-start;margin:0}
@@ -278,6 +303,7 @@
   <h1>PROJELERİM<br><span>VE AŞAMALAR.</span></h1>
   <p id="s" role="status">Hesap kontrol ediliyor…</p>
   <button id="refresh" type="button" hidden>Yenile</button>
+  <button id="foldall" type="button" hidden>TÜMÜNÜ KATLA</button>
   <section id="list"></section>
 </main>
 <script src="config.js"></script>
@@ -286,6 +312,6 @@
 <script src="audio-file-types.js?v=3"></script>
 <script src="project-track-controls.js?v=1"></script>
 <script src="sortable-touch.js?v=1"></script>
-<script src="projects.js?v=20260926e"></script>
+<script src="projects.js?v=20260926f"></script>
 </body>
 </html>
