@@ -207,7 +207,7 @@ const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec').order('sort_order'),
       client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at,open_time,close_time,bound_device_id,bound_at,first_ip,last_ip,last_ip_at,is_playing').order('label'),
-      client.from('brand_broadcast').select('brand_id,folder_id,shuffle,updated_at'),
+      client.from('brand_broadcast').select('brand_id,folder_id,playlist_id,shuffle,updated_at'),
       client.from('radio_announcements').select('id,brand_id,storage_path,label,created_at').order('created_at',{ascending:false}).limit(20),
       client.from('brand_playlists').select('id,brand_id,name,description,cover_path,shuffle,created_at').order('created_at'),
       client.from('brand_playlist_tracks').select('id,playlist_id,track_id,sort_order').order('sort_order'),
@@ -240,7 +240,7 @@ const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
 
   function home() {
     const { brands, folders, tracks, players, broadcast } = state;
-    const live = broadcast.filter(b => b.folder_id).length;
+    const live = broadcast.filter(b => b.folder_id || b.playlist_id).length;
     const onlineCount = players.filter(p => isFresh(p)).length;
     const lockedCount = players.filter(p => p.bound_device_id).length;
     const playingCount = players.filter(p => p.is_playing && isFresh(p)).length;

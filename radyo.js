@@ -28,6 +28,25 @@
   const coverUrl = path => client.storage.from('radio-covers').getPublicUrl(path).data.publicUrl;
   const anonsUrl = path => client.storage.from('radio-announcements').getPublicUrl(path).data.publicUrl;
 
+  function renderPlaylist(tracks) {
+    const list = byId('playlist');
+    if (!tracks.length) {
+      list.innerHTML = '<li class="playlist-empty">Bu çalma listesine henüz şarkı eklenmemiş.</li>';
+      return;
+    }
+    list.innerHTML = tracks.map((track, order) => `
+      <li data-track-id="${safe(track.track_id)}">
+        <span class="track-no">${order + 1}</span>
+        <span class="track-title">${safe(track.title)}</span>
+      </li>`).join('');
+  }
+
+  function markPlaying(trackId) {
+    byId('playlist').querySelectorAll('li').forEach(item => {
+      item.classList.toggle('is-playing', item.dataset.trackId === String(trackId));
+    });
+  }
+
   const toMinutes = t => {
     if (!t) return null;
     const [h, m] = String(t).split(':');
@@ -80,6 +99,7 @@
       byId('now').textContent = '';
       byId('folder').textContent = '';
       byId('cover').style.display = 'none';
+      renderPlaylist([]);
       audio.pause();
            const ab = await client.rpc('abonelik_durumu', { p_player_key: key });
       const d = ab.data && ab.data[0];
@@ -94,7 +114,8 @@
       return;
     }
 
-    const head = data[0];
+    const view = window.DerinRadioPlaylistQueue.fromRpcRows(data);
+    const head = view.head;
     brandId = head.brand_id;
     byId('brand').textContent = head.brand_name;
     byId('branch').textContent = head.player_label || '';
@@ -109,11 +130,12 @@
     if (head.cover_path) { cover.src = coverUrl(head.cover_path); cover.style.display = 'block'; }
     else { cover.style.display = 'none'; }
 
-    const tracks = data.filter(row => row.track_id);
+    const tracks = view.tracks;
     const changed = restart || head.updated_at !== lastStamp;
     lastStamp = head.updated_at;
 
-    byId('folder').textContent = head.folder_name ? head.folder_name + ' · ' + tracks.length + ' parça' : '';
+    byId('folder').textContent = view.playlistName ? view.playlistName + ' · ' + tracks.length + ' parça' : '';
+    renderPlaylist(tracks);
 
     if (!tracks.length) {
       queue = [];
@@ -123,12 +145,13 @@
       return;
     }
 
-            if (changed) {
+    if (changed) {
       karistir = head.shuffle;
       queue = karistir ? shuffled(tracks) : tracks;
       index = 0;
       if (started && !announcing && isOpen()) play();
     }
+    if (started && queue.length) markPlaying(queue[index % queue.length].track_id);
     checkHours();
   }
 
@@ -173,6 +196,7 @@
   function play() {
     if (!queue.length || announcing || !isOpen()) return;
     const track = queue[index % queue.length];
+    markPlaying(track.track_id);
     audio.src = audioUrl(track.storage_path);
     audio.volume = 1;
     audio.play().then(() => {
@@ -275,6 +299,7 @@
     byId('now').textContent = '';
     byId('folder').textContent = '';
     byId('cover').style.display = 'none';
+    renderPlaylist([]);
     setState('Bu yayın linki başka bir cihaza kayıtlı. Derin Record ile iletişime geçin.');
   }
 
@@ -301,6 +326,16 @@
       setState('Bu sayfa şubeye özel link ile açılmalıdır.');
       return;
     }
+    if (!window.supabase?.createClient) {
+      byId('brand').textContent = 'Bağlantı kurulamadı';
+      setState('Yayın sistemi yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');
+      return;
+    }
+    if (!window.DerinRadioPlaylistQueue?.fromRpcRows) {
+      byId('brand').textContent = 'Oynatıcı yüklenemedi';
+      setState('Sayfayı yenileyin. Sorun sürerse Derin Record ile iletişime geçin.');
+      return;
+    }
     client = window.supabase.createClient(window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
 
     if (await ping()) return;
@@ -316,5 +351,8 @@
     setInterval(checkHours, 30000);
   }
 
-  boot();
+  boot().catch(error => {
+    byId('brand').textContent = 'Yayın açılamadı';
+    setState(error?.message || 'Beklenmeyen bir bağlantı hatası oluştu. Sayfayı yenileyin.');
+  });
 })();

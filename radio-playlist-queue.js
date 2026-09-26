@@ -17,5 +17,19 @@
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   }
 
-  return { resolveQueue };
+  function fromRpcRows(rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    const head = list[0] || null;
+    const tracks = list
+      .filter(row => row?.track_id && row?.storage_path)
+      .slice()
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    return {
+      head,
+      playlistName: head?.folder_name || '',
+      tracks
+    };
+  }
+
+  return { resolveQueue, fromRpcRows };
 });
