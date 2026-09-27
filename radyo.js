@@ -30,6 +30,11 @@
   // "yok" ise sunucu bu anahtarla bir şube kaydı bulamıyor demektir; bu,
   // marka pasif/kaynak atanmamış olmasından ayrı bir arızadır.
   let anahtarDurumu = null;
+  // Kafedeki personelin cihazdan seçtiği çalma listesi. Boşsa yönetimin
+  // atadığı kaynak ("otomatik") çalınır. Seçim cihazda saklanır.
+  let seciliListe = null;
+  let listeler = [];
+  const LISTE_ANAHTARI = 'derin_record_liste' + (key ? '_' + key : '');
 
   // Sunucu yayın anahtarını uuid olarak bekler. Paneldeki kayıtta anahtar boş
   // kalmışsa kopyalanan bağlantı "...?key=null" olur; sunucu bunu uuid sanıp
@@ -177,6 +182,10 @@
     if (head.cover_path) { cover.src = coverUrl(head.cover_path); cover.style.display = 'block'; }
     else { cover.style.display = 'none'; }
 
+    // Personel bir liste seçtiyse yayını yönetimin atadığı kaynakla ezmeyiz:
+    // marka adı ve saatler güncellenir, çalan liste olduğu gibi kalır.
+    if (seciliListe) return;
+
     const tracks = view.tracks;
     const changed = restart || head.updated_at !== lastStamp;
     lastStamp = head.updated_at;
@@ -248,11 +257,31 @@
     audio.volume = 1;
     audio.play().then(() => {
       byId('now').innerHTML = '<span class="dot"></span>' + safe(track.title);
+      // Çalabildiyse başlat düğmesine gerek yok.
+      byId('start').hidden = true;
       setState('');
     }).catch(() => {
+      // Tarayıcı sesli otomatik çalmayı engelledi: tek bir dokunuş yeter.
       byId('start').hidden = false;
       setState('Tarayıcı otomatik çalmayı engelledi. Başlatmak için butona dokunun.');
     });
+  }
+
+  // Yayını başlatır. Hem düğmeye basıldığında hem de sayfa açılışında
+  // kendiliğinden denendiğinde aynı yolu kullanır: tarayıcı sesi engellerse
+  // düğme geri görünür, engellemezse hiç görünmez.
+  function basla() {
+    started = true;
+    wasOpen = null;
+    startWatchdog();
+    if (!isOpen()) {
+      // Mesai dışında başlatılacak bir şey yok; düğme de gerekmiyor.
+      byId('start').hidden = true;
+      checkHours();
+      return;
+    }
+    if (queue.length) play();
+    else checkHours();
   }
 
   function fade(from, to, ms) {
@@ -314,13 +343,104 @@
     Promise.resolve(client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: playing })).catch(() => {});
   }
 
-  byId('start').onclick = () => {
-    started = true;
-    byId('start').hidden = true;
-    wasOpen = null;
-    checkHours();
-    startWatchdog();
-  };
+  byId('start').onclick = basla;
+
+  // Cihaz uykuya girip geri döndüğünde yayın sessizce ölü kalmasın.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && started && audio.paused) play();
+  });
+
+  // ---- Personelin çalma listesi seçimi ----------------------------------
+  // Yönetim markaya bir kaynak atar; o kaynak "otomatik" seçeneğidir. Kafedeki
+  // personel cihazdan markanın kendi listelerinden birini seçip onu çaldırabilir.
+  // Seçim cihazda saklanır, yani her sabah yeniden seçmek gerekmez.
+
+  async function listeParcalariniAl(id) {
+    try {
+      const bag = await client.from('brand_playlist_tracks')
+        .select('track_id,sort_order').eq('playlist_id', id).order('sort_order');
+      const siralar = (bag && bag.data) || [];
+      if (!siralar.length) return [];
+      const tr = await client.from('radio_tracks')
+        .select('id,title,storage_path').in('id', siralar.map(x => x.track_id));
+      const bulunan = new Map(((tr && tr.data) || []).map(t => [t.id, t]));
+      // Sıra, listenin kendi sırası olmalı; eksik parçalar atlanır.
+      return siralar.map(x => bulunan.get(x.track_id)).filter(Boolean)
+        .map(t => ({ track_id: t.id, title: t.title, storage_path: t.storage_path }));
+    } catch { return []; }
+  }
+
+  function secimCiz() {
+    const kap = byId('liste-kap'), sec = byId('liste-sec');
+    if (!kap || !sec) return;
+    if (!listeler.length) { kap.hidden = true; return; }
+    sec.innerHTML = '<option value="">OTOMATİK — yönetimin atadığı yayın</option>'
+      + listeler.map(l => `<option value="${safe(l.id)}">${safe(l.name)}</option>`).join('');
+    sec.value = seciliListe || '';
+    kap.hidden = false;
+  }
+
+  // `cal: false` yalnızca açılışta kullanılır: kuyruğu kurar ama başlatmayı
+  // tek yerden (basla) yapmak için sesi kendi başına başlatmaz.
+  async function listeSec(id, { cal = true } = {}) {
+    seciliListe = id || null;
+    try {
+      if (seciliListe) localStorage.setItem(LISTE_ANAHTARI, seciliListe);
+      else localStorage.removeItem(LISTE_ANAHTARI);
+    } catch { /* özel mod: seçim yalnızca bu oturumda kalır */ }
+
+    if (!seciliListe) {
+      // Otomatiğe dönüş: yönetimin atadığı kaynağı baştan kur.
+      lastStamp = null;
+      await fetchBroadcast({ restart: true });
+      return;
+    }
+
+    const secilen = listeler.find(l => l.id === seciliListe);
+    const parcalar = await listeParcalariniAl(seciliListe);
+    byId('folder').textContent = (secilen ? secilen.name : 'Seçili liste')
+      + (parcalar.length ? ' · ' + parcalar.length + ' parça' : '');
+    renderPlaylist(parcalar);
+
+    if (!parcalar.length) {
+      queue = [];
+      audio.pause();
+      byId('now').textContent = 'Yayın bekleniyor';
+      setState('Bu listede henüz parça yok. Başka bir liste seçin ya da parça ekletin.');
+      return;
+    }
+
+    karistir = secilen ? !!secilen.shuffle : false;
+    queue = karistir ? shuffled(parcalar) : parcalar;
+    index = 0;
+    if (cal) {
+      byId('now').textContent = '';
+      if (isOpen() && !announcing) play();
+    }
+  }
+
+  async function listeleriHazirla() {
+    if (!brandId || typeof client.from !== 'function') return;
+    let data = null;
+    try {
+      const sonuc = await client.from('brand_playlists')
+        .select('id,name,shuffle').eq('brand_id', brandId).order('name');
+      data = sonuc && sonuc.data;
+    } catch { data = null; }
+    // Yönetim bu tabloyu dışarıya açmadıysa liste boş döner; seçici hiç
+    // görünmez ve oynatıcı eskisi gibi yönetimin atadığı kaynağı çalar.
+    listeler = Array.isArray(data) ? data : [];
+    if (!listeler.length) return;
+    try {
+      const kayitli = localStorage.getItem(LISTE_ANAHTARI);
+      if (kayitli && listeler.some(l => l.id === kayitli)) seciliListe = kayitli;
+    } catch { /* yok say */ }
+    secimCiz();
+    if (seciliListe) await listeSec(seciliListe, { cal: false });
+  }
+
+  const listeKutusu = byId('liste-sec');
+  if (listeKutusu) listeKutusu.onchange = () => listeSec(listeKutusu.value);
 
   function subscribe() {
     client.channel('radio-' + key)
@@ -405,7 +525,12 @@
     await fetchBroadcast({ restart: true });
     if (!brandId) return;
 
-    byId('start').hidden = false;
+    // Kendiliğinden başlatmayı deneriz: kiosk olarak işaretlenmiş bir cihazda
+    // (--autoplay-policy=no-user-gesture-required) düğme hiç çıkmaz; tarayıcı
+    // sesi engelliyorsa düğme görünür ve tek bir dokunuş yeter.
+    // Kayıtlı liste seçimi varsa kuyruğu o kurar; sonra tek yerden başlatırız.
+    await listeleriHazirla();
+    basla();
     subscribe();
 
     setInterval(ping, 60000);

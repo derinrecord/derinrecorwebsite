@@ -52,6 +52,12 @@
         display:inline-block;padding:7px 13px;border-radius:13px;user-select:all;
         background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16)}
   .hours{margin-top:14px;font-size:12px;opacity:.45;letter-spacing:.06em}
+  .liste{margin-top:20px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+  .liste label{font-size:10.5px;letter-spacing:.2em;opacity:.5}
+  .liste select{appearance:none;-webkit-appearance:none;padding:11px 16px;border-radius:15px;
+        font:inherit;font-size:13px;color:#f4f4f5;cursor:pointer;max-width:100%;
+        background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.22)}
+  .liste select:focus{outline:none;border-color:rgba(255,255,255,.5)}
 </style>
 </head>
 <body>
@@ -67,11 +73,15 @@
   <div class="state" id="state"></div>
   <div class="tani" id="tani" hidden></div>
   <div class="hours" id="hours"></div>
+  <div class="liste" id="liste-kap" hidden>
+    <label for="liste-sec">ÇALMA LİSTESİ</label>
+    <select id="liste-sec"></select>
+  </div>
   <audio id="audio"></audio>
 </div>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="radio-playlist-queue.js?v=20260926a"></script>
-<script src="radyo.js?v=20260927a"></script>
+<script src="radyo.js?v=20260927b"></script>
 </body>
 </html>
