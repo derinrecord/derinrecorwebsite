@@ -17,6 +17,58 @@ const senaryo = process.argv[2] || 'zincir-kopuk';
 const cikti = process.argv[3] || path.join('tests', 'onizleme.html');
 const ciktiYolu = path.resolve(kok, cikti);
 
+// "canli" modu Canlı durum ekranını örnek verilerle önizler: üç şube yan yana
+// gelsin ki "çalıyor / duraklatıldı / çevrimdışı" ve tazelik yazısı gözle
+// doğrulanabilsin.
+if (senaryo === 'canli') {
+  const V = require(path.join(kok, 'radyo-panel-views.js'));
+  const simdi = Date.now();
+  const snOnce = n => new Date(simdi - n * 1000).toISOString();
+  const sube = (id, label, ek) => ({
+    id, brand_id: 'b1', label, player_key: 'a1b2c3d4-e5f6-4a7b-8c9d-00000000000' + id.slice(1),
+    last_seen_at: snOnce(8), open_time: '09:00:00', close_time: '22:00:00',
+    bound_device_id: null, bound_at: null, first_ip: null, last_ip: '1.2.3.4',
+    last_ip_at: snOnce(8), is_playing: true, ...ek
+  });
+  const D = {
+    brands: [{ id: 'b1', name: 'Mokka Coffee', slug: 'mokka-coffee', access_code: 'K', is_active: true }],
+    folders: [{ id: 'f1', name: 'Öğleden Sonra', cover_path: null, shuffle: true }],
+    tracks: [{ id: 't1', folder_id: 'f1', title: 'Parça', storage_path: 'f1/a.wav', sort_order: 0, duration_sec: 180, cover_path: null }],
+    players: [
+      sube('p1', 'Alsancak'),
+      sube('p2', 'Karşıyaka', { last_seen_at: snOnce(40), is_playing: false }),
+      sube('p3', 'Bornova', { last_seen_at: snOnce(3600), is_playing: true })
+    ],
+    broadcast: [{ brand_id: 'b1', folder_id: 'f1', playlist_id: null, updated_at: snOnce(600) }],
+    announcements: [], playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: []
+  };
+  const ui = {
+    cover: p => p, ses: p => p, anons: p => p,
+    playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
+    accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
+    now: () => simdi, saglikSonuc: () => null
+  };
+  const gorunum = V.gorunum({ nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '' }, D, ui);
+  const sayfa3 = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — canlı durum</title>
+<style>
+${oku('radyo-panel.css')}
+body{background:#0b0b0d;padding:22px;display:block}
+.panel{max-width:1080px;margin:0 auto}
+</style>
+</head>
+<body><div class="panel">${gorunum.html}</div></body>
+</html>`;
+  fs.writeFileSync(ciktiYolu, sayfa3);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · canlı durum');
+  return;
+}
+
 // "pencere" modu oynatıcı yerine panel penceresini önizler: önizleme sunucusu
 // tek dosya sunduğu için panel CSS'ini de satır içine alırız.
 if (senaryo === 'pencere') {

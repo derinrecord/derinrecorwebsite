@@ -43,6 +43,29 @@
     ? chip('live', 'BAĞLI', true)
     : chip('off', 'ÇEVRİMDIŞI');
   const caliyorChip = (p, now) => (p.is_playing && canliMi(p, now)) ? chip('live', '▶ ÇALIYOR', true) : '';
+
+  // Panelin "canlı" bilgisi son görülme zamanına dayanır. Ekranda bunu "8 sn
+  // önce" diye yazmak şart: yoksa donmuş bir kayıttaki "ÇALIYOR" yazısı canlı
+  // sanılır. Bu, "şu an gerçekten çalıyor mu?" sorusunun dürüst cevabıdır.
+  function goreli(zaman, now) {
+    if (!zaman) return '';
+    const sn = Math.max(0, Math.round((now - new Date(zaman).getTime()) / 1000));
+    if (sn < 60) return sn + ' sn önce';
+    const dk = Math.round(sn / 60);
+    if (dk < 60) return dk + ' dk önce';
+    const sa = Math.round(dk / 60);
+    if (sa < 24) return sa + ' sa önce';
+    return Math.round(sa / 24) + ' gün önce';
+  }
+
+  // Yayın hücresinin ikinci satırı: ses gerçekten akıyor mu ve bu bilgi ne kadar
+  // taze? Çevrimdışıysa susar; bağlantı durumunu zaten DURUM sütunu yazıyor.
+  function yayinDurumu(p, now) {
+    if (!canliMi(p, now)) return '';
+    const damga = esc(goreli(p.last_seen_at, now));
+    const nisan = p.is_playing ? chip('live', '▶ ÇALIYOR', true) : chip('gold', 'DURAKLATILDI');
+    return nisan + ' <span class="sub">' + damga + '</span>';
+  }
   const kilitChip = p => p.bound_device_id ? chip('lock', 'KİLİTLİ') : chip('off', 'serbest');
   const bos = (kolon, metin) => `<tr><td colspan="${kolon}"><div class="empty">${esc(metin)}</div></td></tr>`;
 
@@ -166,7 +189,7 @@
             <span class="sub">${esc(marka ? marka.name : '—')}</span></span></div></td>
           <td class="tight">${bagliChip(p, now)}</td>
           <td>${k.ad ? esc(k.ad) : '<span class="sub">yayın atanmadı</span>'}
-            <span class="sub">${caliyorChip(p, now) || (canliMi(p, now) ? 'bekliyor' : '')}</span></td>
+            <span class="sub">${yayinDurumu(p, now)}</span></td>
           <td class="tight">${esc(hhmm(p.open_time) || '—')}–${esc(hhmm(p.close_time) || '—')}</td>
           <td class="tight">${kilitChip(p)}</td>
           <td><div class="row-actions">
@@ -186,7 +209,7 @@
       <div class="panel">
         <h3>ŞUBELER (${D.players.length})</h3>
         <table>
-          <thead><tr><th>ŞUBE</th><th>DURUM</th><th>ŞU AN ÇALAN</th><th>SAAT</th><th>CİHAZ</th><th></th></tr></thead>
+          <thead><tr><th>ŞUBE</th><th>DURUM</th><th title="Markaya atanmış yayın kaynağı; oynatıcı bu kaynağı sırayla çalar. Çalan parçanın adı sunucuda tutulmuyor.">YAYIN KAYNAĞI</th><th>SAAT</th><th>CİHAZ</th><th></th></tr></thead>
           <tbody>${satirlar || bos(6, 'Eşleşen şube yok.')}</tbody>
         </table>
       </div>`;
@@ -1074,6 +1097,8 @@
     saglikOzet: saglikOzet,
     saglikView: saglikView,
     saglikChip: saglikChip,
+    goreli: goreli,
+    yayinDurumu: yayinDurumu,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu
   };

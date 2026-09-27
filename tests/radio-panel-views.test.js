@@ -78,8 +78,44 @@ test('canlı durum şube bağlantısını, çalan akışı ve kilidi gösterir',
   assert.ok(html.includes('BAĞLI'));
   assert.ok(html.includes('▶ ÇALIYOR'));
   assert.ok(html.includes('KİLİTLİ'));
-  assert.ok(html.includes('Sabah Açılış'), 'şubenin çaldığı kaynak adı görünmeli');
+  assert.ok(html.includes('Sabah Açılış'), 'markaya atanmış kaynak adı görünmeli');
   assert.ok(html.includes('09:00–22:00'), 'yayın saatleri görünmeli');
+});
+
+// Sunucuda "şu an çalan parça" tutulmuyor: panel yalnızca markaya atanmış kaynağı
+// ve oynatıcının ses verip vermediğini biliyor. Sütun adı bunu doğru söylemeli,
+// yoksa yönetici gerçek parçayı gördüğünü sanır. Canlı bilginin tazeliği de
+// ekranda olmalı; donmuş bir "ÇALIYOR" yazısı canlı sanılmasın.
+test('yayın sütunu çalan parçayı gösterdiğini iddia etmez, tazeliğini yazar', () => {
+  const { html } = V.gorunum(durum({}), D, ui);
+  assert.ok(html.includes('YAYIN KAYNAĞI'), 'sütun ne gösterdiğini söylemeli');
+  assert.ok(!html.includes('ŞU AN ÇALAN'), 'çalan parça gösteriliyormuş gibi yazılmamalı');
+  assert.match(html, /\d+ sn önce/, 'canlı bilginin tazeliği yazılmalı');
+  assert.ok(html.includes('▶ ÇALIYOR'));
+
+  // Ses vermeyen ama bağlı şube "duraklatıldı" görünür.
+  const duraklatilmis = V.gorunum(durum({}), {
+    ...D, players: [{ ...D.players[0], is_playing: false }]
+  }, ui).html;
+  assert.ok(duraklatilmis.includes('DURAKLATILDI'));
+  assert.ok(!duraklatilmis.includes('▶ ÇALIYOR'));
+
+  // Çevrimdışı şubede yayın hücresi susar; bağlantı durumunu DURUM sütunu yazar.
+  const cevrimdisi = V.gorunum(durum({}), {
+    ...D, players: [{ ...D.players[0], last_seen_at: null, is_playing: true }]
+  }, ui).html;
+  assert.ok(cevrimdisi.includes('ÇEVRİMDIŞI'));
+  assert.ok(!cevrimdisi.includes('▶ ÇALIYOR'), 'bayat kayıt canlı sayılmamalı');
+});
+
+// Tazelik metni kullanıcıya "bu bilgi ne kadar yeni" sorusunu yanıtlamalı.
+test('son görülme süresi okunur biçimde yazılır', () => {
+  const t = Date.now();
+  assert.equal(V.goreli(new Date(t - 12000).toISOString(), t), '12 sn önce');
+  assert.equal(V.goreli(new Date(t - 300000).toISOString(), t), '5 dk önce');
+  assert.equal(V.goreli(new Date(t - 7200000).toISOString(), t), '2 sa önce');
+  assert.equal(V.goreli(new Date(t - 3 * 86400000).toISOString(), t), '3 gün önce');
+  assert.equal(V.goreli(null, t), '');
 });
 
 test('kullanıcıdan gelen metin kaçırılır (XSS)', () => {
