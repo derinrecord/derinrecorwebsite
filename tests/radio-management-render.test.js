@@ -120,6 +120,26 @@ test('sunum, liste yokken yanıltıcı boş liste mesajı vermez', () => {
   assert.ok(kaynak.includes('Sunum hazırlanmayı bekliyor'));
 });
 
+// Çalan parça alanları sonradan eklendi; panel onları ayrı ve hataya toleranslı
+// bir sorguyla çekmeli. Ana veri sorgusuna karıştırılsaydı, alanlar eklenmeden
+// panel hiç açılmazdı.
+test('panel çalan parça alanlarını hataya toleranslı yükler', () => {
+  assert.match(source, /from\('brand_players'\)\.select\('id,now_title,now_at'\)/);
+  assert.match(source, /calanlar\.error/, 'sorgu hatası ana yüklemeyi bozmamalı');
+});
+
+// Kurulum SQL'i depoda olmalı: kurulumu yapan kişi neyi çalıştırdığını görebilsin.
+test('çalan parça kurulumu SQL dosyası olarak depoda', () => {
+  const sql = fs.readFileSync(require.resolve('../supabase/radio-calan-parca.sql'), 'utf8');
+  assert.match(sql, /add column if not exists now_title text/);
+  assert.match(sql, /add column if not exists now_at timestamptz/);
+  assert.match(sql, /create or replace function public\.radio_now_report/);
+  assert.match(sql, /security definer/);
+  assert.match(sql, /grant execute on function public\.radio_now_report/);
+  // Var olan radio_ping yeniden tanımlanmamalı: cihaz kilidi bozulmasın.
+  assert.ok(!/create or replace function public\.radio_ping/.test(sql));
+});
+
 test('sunum sayfası yeni tasarımı ve fade geçişlerini yükler', () => {
   const sunum = fs.readFileSync(require.resolve('../coffee-marka.html'), 'utf8');
   assert.match(sunum, /marka-sunum\.css/);

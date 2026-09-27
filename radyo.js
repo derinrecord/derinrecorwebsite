@@ -35,6 +35,9 @@
   let seciliListe = null;
   let listeler = [];
   const LISTE_ANAHTARI = 'derin_record_liste' + (key ? '_' + key : '');
+  // Şu an çalan parça: sunucuya bildiririz ki panelde gerçekten hangi parçanın
+  // çaldığı görünsün (eskiden yalnızca "ses çalıyor mu" biliniyordu).
+  let calanParca = null;
 
   // Sunucu yayın anahtarını uuid olarak bekler. Paneldeki kayıtta anahtar boş
   // kalmışsa kopyalanan bağlantı "...?key=null" olur; sunucu bunu uuid sanıp
@@ -260,6 +263,8 @@
       // Çalabildiyse başlat düğmesine gerek yok.
       byId('start').hidden = true;
       setState('');
+      calanParca = track;
+      calaniBildir(track);
     }).catch(() => {
       // Tarayıcı sesli otomatik çalmayı engelledi: tek bir dokunuş yeter.
       byId('start').hidden = false;
@@ -341,6 +346,17 @@
   function reportPlaying(playing) {
     if (!client || !key) return;
     Promise.resolve(client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: playing })).catch(() => {});
+  }
+
+  // Sunucuya "şu an bu parça çalıyor" bilgisini bırakır. Bu alanlar ve
+  // radio_now_report fonksiyonu henüz eklenmemişse çağrı başarısız olur;
+  // oynatıcı bunu yok sayar ve çalmaya devam eder. Var olan radio_ping'e
+  // dokunmadığımız için cihaz kilidi de etkilenmez.
+  function calaniBildir(track) {
+    if (!client || !key || !track || !track.title) return;
+    Promise.resolve(client.rpc('radio_now_report', {
+      p_player_key: key, p_track_id: track.track_id || null, p_title: track.title
+    })).catch(() => {});
   }
 
   byId('start').onclick = basla;
@@ -533,7 +549,9 @@
     basla();
     subscribe();
 
-    setInterval(ping, 60000);
+    // Bildirimi dakikada bir tazeleriz: panel "8 sn önce" gibi taze bir damga
+    // gösterirken parçanın hâlâ çaldığından emin olur.
+    setInterval(() => { ping(); calaniBildir(calanParca); }, 60000);
     setInterval(() => fetchBroadcast(), 120000);
     setInterval(checkHours, 30000);
   }

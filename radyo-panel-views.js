@@ -58,13 +58,35 @@
     return Math.round(sa / 24) + ' gün önce';
   }
 
+  // Oynatıcının bildirdiği parça yalnızca taze olduğu sürece gösterilir; aksi
+  // hâlde cihaz kapandıktan sonra da "şu an bu çalıyor" yazılı kalırdı.
+  const PARCA_PENCERESI = 150000;
+  const parcaTaze = (p, now) => !!(p.now_title && p.now_at
+    && (now - new Date(p.now_at).getTime()) < PARCA_PENCERESI);
+
   // Yayın hücresinin ikinci satırı: ses gerçekten akıyor mu ve bu bilgi ne kadar
   // taze? Çevrimdışıysa susar; bağlantı durumunu zaten DURUM sütunu yazıyor.
-  function yayinDurumu(p, now) {
+  function yayinDurumu(p, k, now, kaynakTekrar) {
     if (!canliMi(p, now)) return '';
     const damga = esc(goreli(p.last_seen_at, now));
     const nisan = p.is_playing ? chip('live', '▶ ÇALIYOR', true) : chip('gold', 'DURAKLATILDI');
-    return nisan + ' <span class="sub">' + damga + '</span>';
+    // Parça adı üstte yazıyorsa kaynağı burada tekrar ederiz (bağlam için);
+    // üstte kaynak adı yazıyorsa tekrara gerek yok.
+    const kaynak = (kaynakTekrar && k && k.ad) ? ' · ' + esc(k.ad) : '';
+    return nisan + ' <span class="sub">' + damga + kaynak + '</span>';
+  }
+
+  // Canlı durum ekranındaki yayın hücresi. Oynatıcı parça bildirdiyse gerçekten
+  // çalan parçanın adı üstte yazar; bildirim yoksa (kurulum eskiyse) markaya
+  // atanmış kaynak adı gösterilir ve altta tekrar edilmez.
+  function yayinHucresi(p, k, now) {
+    // Çevrimdışı bir şubede "şu an bu çalıyor" demeyiz: ses akmıyordur, elimizdeki
+    // bayrak da son görülme zamanı kadar eskidir.
+    const calan = (canliMi(p, now) && p.is_playing && parcaTaze(p, now)) ? p.now_title : null;
+    const ust = calan
+      ? esc(calan)
+      : (k && k.ad ? esc(k.ad) : '<span class="sub">yayın atanmadı</span>');
+    return ust + ' <span class="sub">' + yayinDurumu(p, k, now, !!calan) + '</span>';
   }
   const kilitChip = p => p.bound_device_id ? chip('lock', 'KİLİTLİ') : chip('off', 'serbest');
   const bos = (kolon, metin) => `<tr><td colspan="${kolon}"><div class="empty">${esc(metin)}</div></td></tr>`;
@@ -188,8 +210,7 @@
           <td><div class="cell-main"><span class="cover">📻</span><span><b>${esc(p.label)}</b>
             <span class="sub">${esc(marka ? marka.name : '—')}</span></span></div></td>
           <td class="tight">${bagliChip(p, now)}</td>
-          <td>${k.ad ? esc(k.ad) : '<span class="sub">yayın atanmadı</span>'}
-            <span class="sub">${yayinDurumu(p, now)}</span></td>
+          <td>${yayinHucresi(p, k, now)}</td>
           <td class="tight">${esc(hhmm(p.open_time) || '—')}–${esc(hhmm(p.close_time) || '—')}</td>
           <td class="tight">${kilitChip(p)}</td>
           <td><div class="row-actions">
@@ -209,7 +230,7 @@
       <div class="panel">
         <h3>ŞUBELER (${D.players.length})</h3>
         <table>
-          <thead><tr><th>ŞUBE</th><th>DURUM</th><th title="Markaya atanmış yayın kaynağı; oynatıcı bu kaynağı sırayla çalar. Çalan parçanın adı sunucuda tutulmuyor.">YAYIN KAYNAĞI</th><th>SAAT</th><th>CİHAZ</th><th></th></tr></thead>
+          <thead><tr><th>ŞUBE</th><th>DURUM</th><th title="Şu an çalan parça. Oynatıcı parça adını henüz bildirmiyorsa markaya atanmış yayın kaynağı yazılır.">ŞU AN ÇALAN</th><th>SAAT</th><th>CİHAZ</th><th></th></tr></thead>
           <tbody>${satirlar || bos(6, 'Eşleşen şube yok.')}</tbody>
         </table>
       </div>`;
@@ -996,6 +1017,9 @@
       <h3>${esc(p.label)}</h3>
       <p class="sub">${esc(b ? b.name : '—')}${k && k.ad ? ' · ' + esc(k.ad) : ''}</p>
       <div class="row">${bagliChip(p, now)}${caliyorChip(p, now)}${kilitChip(p)}</div>
+      ${(canliMi(p, now) && p.is_playing && parcaTaze(p, now))
+        ? `<p class="sub">Şu an çalıyor: <b>${esc(p.now_title)}</b> · ${esc(goreli(p.last_seen_at, now))}</p>`
+        : ''}
 
       <div class="block"><h4>YAYIN LİNKİ</h4>
         <div class="key">${esc(link)}</div>
@@ -1098,7 +1122,8 @@
     saglikView: saglikView,
     saglikChip: saglikChip,
     goreli: goreli,
-    yayinDurumu: yayinDurumu,
+    yayinHucresi: yayinHucresi,
+    parcaTaze: parcaTaze,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu
   };

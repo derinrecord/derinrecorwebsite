@@ -94,6 +94,7 @@ async function calistir(senaryo) {
       if (senaryo.ping === 'taninmiyor') return [{ ok: false, reason: 'invalid_key' }];
       return [{ ok: true }];
     }
+    if (ad === 'radio_now_report') return [{ ok: true }];
     if (ad === 'radio_now_playing') return senaryo.parca ? PARCALAR : [];
     if (ad === 'abonelik_durumu') {
       // 'bos': sunucu anahtarı hiç tanımıyor (boş dizi). 'yok': anahtar tanınıyor
@@ -123,7 +124,14 @@ async function calistir(senaryo) {
     document: { getElementById: al, addEventListener() {}, body: {}, querySelectorAll: () => [] },
     supabase: {
       createClient: () => ({
-        rpc: (ad, p) => Promise.resolve({ data: rpc(ad, p || {}), error: null }),
+        rpc: (ad, p) => {
+          // 'bildirimHatasi': radio_now_report ve alanları henüz eklenmemiş gibi
+          // davranır; oynatıcı bunu yok sayıp çalmaya devam etmeli.
+          if (senaryo.bildirimHatasi && ad === 'radio_now_report') {
+            return Promise.resolve({ data: null, error: { message: 'column "now_title" does not exist' } });
+          }
+          return Promise.resolve({ data: rpc(ad, p || {}), error: null });
+        },
         from: tablo,
         storage: { from: () => ({ getPublicUrl: p => ({ data: { publicUrl: 'prova://' + p } }) }) },
         channel: () => kanal
@@ -153,6 +161,7 @@ async function calistir(senaryo) {
     get saatler() { return metin('hours'); },
     get cihazKimligi() { return depo.get('derin_record_device_id') || null; },
     get pingler() { return cagrilar.filter(c => c.ad === 'radio_ping'); },
+    get bildirimler() { return cagrilar.filter(c => c.ad === 'radio_now_report'); },
     // Liste seçici
     get secenekler() { return (dugumAl('liste-sec') || {}).innerHTML || ''; },
     get secili() { return (dugumAl('liste-sec') || {}).value || ''; },
@@ -332,6 +341,38 @@ test('silinmiş liste kayıtlıysa otomatiğe düşülür', async () => {
   });
   assert.equal(s.secili, '', 'geçersiz kayıt yok sayılmalı');
   assert.ok(s.liste.includes('Sabah Işığı'), 'otomatik yayın çalınmalı');
+});
+
+// ---- Çalan parça bildirimi ---------------------------------------------
+// Panel "şu an çalan" bilgisini yalnızca oynatıcı bildirirse gösterebilir.
+
+test('oynatıcı hangi parçayı çaldığını sunucuya bildirir', async () => {
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true });
+  assert.equal(s.bildirimler.length, 1);
+  assert.equal(s.bildirimler[0].p.p_title, 'Sabah Işığı');
+  assert.equal(s.bildirimler[0].p.p_track_id, 't0');
+  assert.equal(s.bildirimler[0].p.p_player_key, PROVA_ANAHTAR);
+});
+
+test('personel listesinden çalınan parça da bildirilir', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI
+  });
+  await s.sec('L1');
+  const son = s.bildirimler[s.bildirimler.length - 1];
+  assert.equal(son.p.p_title, 'Filtre Kahve', 'seçilen listenin parçası bildirilmeli');
+});
+
+test('bildirim yapılamasa da yayın çalmaya devam eder', async () => {
+  // supabase/radio-calan-parca.sql çalıştırılmadıysa sunucu hata döner; bu,
+  // sahadaki yayını etkilememeli.
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, bildirimHatasi: true });
+  assert.equal(s.durum, '');
+  assert.equal(s.tani, '');
+  assert.equal(s.baslatGorunur, false);
+  assert.ok(s.liste.includes('Sabah Işığı'));
+  assert.ok(s.calinan.includes('f1/p0.wav'));
 });
 
 test('teşhis satırı ve liste seçici oynatıcı sayfasında bulunur', () => {

@@ -214,6 +214,18 @@
       coffeeAttempts: coffeeAttempts.data || [], subscriptions: subscriptions.data || [], plans: plans.data || [],
       requests: D.requests
     };
+
+    // Çalan parça alanları sonradan eklendi (supabase/radio-calan-parca.sql).
+    // Henüz eklenmemişse bu sorgu hata döner; o zaman oynatıcı da bildirim
+    // yapmaz ve ekranda markaya atanmış kaynak adı görünür. Sorguyu ayrı ve
+    // hataya toleranslı tutarız ki ana yükleme bundan etkilenmesin.
+    try {
+      const calanlar = await client.from('brand_players').select('id,now_title,now_at');
+      if (!calanlar.error && Array.isArray(calanlar.data)) {
+        const harita = new Map(calanlar.data.map(x => [x.id, x]));
+        D.players = D.players.map(p => Object.assign({}, p, harita.get(p.id) || {}));
+      }
+    } catch { /* alanlar daha eklenmemiş: sorun değil */ }
   }
 
   // sessiz: yalnızca Canlı durum ekranı kendini tazeler; form girdileriniz

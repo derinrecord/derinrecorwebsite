@@ -82,14 +82,45 @@ test('canlı durum şube bağlantısını, çalan akışı ve kilidi gösterir',
   assert.ok(html.includes('09:00–22:00'), 'yayın saatleri görünmeli');
 });
 
-// Sunucuda "şu an çalan parça" tutulmuyor: panel yalnızca markaya atanmış kaynağı
-// ve oynatıcının ses verip vermediğini biliyor. Sütun adı bunu doğru söylemeli,
-// yoksa yönetici gerçek parçayı gördüğünü sanır. Canlı bilginin tazeliği de
-// ekranda olmalı; donmuş bir "ÇALIYOR" yazısı canlı sanılmasın.
-test('yayın sütunu çalan parçayı gösterdiğini iddia etmez, tazeliğini yazar', () => {
+// Panel artık gerçekten çalan parçayı gösterebiliyor; ama bu bilgi oynatıcının
+// bildirimine bağlı. Bildirim yoksa veya bayatsa markaya atanmış kaynağa düşmeli
+// ve canlı bilginin tazeliği ekranda yazmalı.
+test('yayın sütunu çalan parçayı gösterir, bildirim yoksa kaynağa düşer', () => {
+  const simdi2 = Date.now();
+  const k = { ad: 'Öğleden sonra akışı', tip: 'klasör' };
+  const taze = new Date(simdi2 - 5000).toISOString();
+  const bayat = new Date(simdi2 - 600000).toISOString();
+  const canli = { is_playing: true, last_seen_at: taze };
+
+  const calan = V.yayinHucresi({ ...canli, now_title: 'Kalabalık Caddesi', now_at: taze }, k, simdi2);
+  assert.ok(calan.includes('Kalabalık Caddesi'), 'bildirilen parça görünmeli');
+  assert.ok(calan.includes('▶ ÇALIYOR'));
+  assert.ok(calan.includes('Öğleden sonra akışı'), 'bağlam için kaynak da yazılmalı');
+
+  // Bildirim yok (kurulum eski): kaynak adına düşer, kaynağı tekrar etmez.
+  const bildirimsiz = V.yayinHucresi(canli, k, simdi2);
+  assert.ok(bildirimsiz.includes('Öğleden sonra akışı'));
+  assert.equal(bildirimsiz.match(/Öğleden sonra akışı/g).length, 1, 'kaynak bir kez yazılmalı');
+
+  // Bayat bildirim gösterilmemeli: cihaz kapanınca eski parça yazılı kalmaz.
+  const bayatHucre = V.yayinHucresi({ ...canli, now_title: 'Eski Parça', now_at: bayat }, k, simdi2);
+  assert.ok(!bayatHucre.includes('Eski Parça'), 'bayat parça adı gösterilmemeli');
+  assert.ok(bayatHucre.includes('Öğleden sonra akışı'));
+
+  // Duraklatılmışken ses akmıyor; parça adı iddia edilmemeli.
+  const durmus = V.yayinHucresi({ ...canli, is_playing: false, now_title: 'Kalabalık Caddesi', now_at: taze }, k, simdi2);
+  assert.ok(!durmus.includes('Kalabalık Caddesi'));
+  assert.ok(durmus.includes('DURAKLATILDI'));
+
+  // Çevrimdışı şubede hiçbir şey iddia edilmez.
+  const kapali = V.yayinHucresi({ is_playing: true, last_seen_at: null, now_title: 'Kalabalık Caddesi', now_at: taze }, k, simdi2);
+  assert.ok(!kapali.includes('▶ ÇALIYOR'));
+  assert.ok(!kapali.includes('Kalabalık Caddesi'));
+});
+
+test('canlı durum ekranı sütunu ve tazeliği doğru yazar', () => {
   const { html } = V.gorunum(durum({}), D, ui);
-  assert.ok(html.includes('YAYIN KAYNAĞI'), 'sütun ne gösterdiğini söylemeli');
-  assert.ok(!html.includes('ŞU AN ÇALAN'), 'çalan parça gösteriliyormuş gibi yazılmamalı');
+  assert.ok(html.includes('ŞU AN ÇALAN'));
   assert.match(html, /\d+ sn önce/, 'canlı bilginin tazeliği yazılmalı');
   assert.ok(html.includes('▶ ÇALIYOR'));
 
@@ -106,6 +137,19 @@ test('yayın sütunu çalan parçayı gösterdiğini iddia etmez, tazeliğini ya
   }, ui).html;
   assert.ok(cevrimdisi.includes('ÇEVRİMDIŞI'));
   assert.ok(!cevrimdisi.includes('▶ ÇALIYOR'), 'bayat kayıt canlı sayılmamalı');
+});
+
+// Şube çekmecesinde de gerçekten çalan parça görünmeli; destek için gerekli.
+test('şube çekmecesi çalan parçayı gösterir', () => {
+  const simdi3 = Date.now();
+  const html = V.subeCekmecesi('p1', {
+    ...D, players: [{
+      ...D.players[0], is_playing: true,
+      now_title: 'Kalabalık Caddesi', now_at: new Date(simdi3 - 4000).toISOString()
+    }]
+  }, ui);
+  assert.ok(html.includes('Kalabalık Caddesi'));
+  assert.ok(html.includes('Şu an çalıyor'), 'etiket ne olduğunu söylemeli');
 });
 
 // Tazelik metni kullanıcıya "bu bilgi ne kadar yeni" sorusunu yanıtlamalı.

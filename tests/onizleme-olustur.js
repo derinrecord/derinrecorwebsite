@@ -35,9 +35,14 @@ if (senaryo === 'canli') {
     folders: [{ id: 'f1', name: 'Öğleden Sonra', cover_path: null, shuffle: true }],
     tracks: [{ id: 't1', folder_id: 'f1', title: 'Parça', storage_path: 'f1/a.wav', sort_order: 0, duration_sec: 180, cover_path: null }],
     players: [
-      sube('p1', 'Alsancak'),
+      // Parça bildirimi yapıyor: gerçekten çalan parça görünmeli.
+      sube('p1', 'Alsancak', { now_title: 'Kalabalık Caddesi', now_track_id: null, now_at: snOnce(8) }),
+      // Bağlı ama duraklatılmış: parça adı iddia edilmemeli.
       sube('p2', 'Karşıyaka', { last_seen_at: snOnce(40), is_playing: false }),
-      sube('p3', 'Bornova', { last_seen_at: snOnce(3600), is_playing: true })
+      // Çevrimdışı: bayat kayıt canlı sanılmamalı.
+      sube('p3', 'Bornova', { last_seen_at: snOnce(3600), is_playing: true }),
+      // Bildirim yok (kurulum eski): kaynak adına düşmeli.
+      sube('p4', 'Buca', { last_seen_at: snOnce(20), is_playing: true })
     ],
     broadcast: [{ brand_id: 'b1', folder_id: 'f1', playlist_id: null, updated_at: snOnce(600) }],
     announcements: [], playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: []
