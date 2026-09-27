@@ -7,12 +7,19 @@ const GUN = 86400000;
 const simdi = Date.now();
 const iso = ms => new Date(simdi + ms).toISOString();
 
+// Sunucu yayın anahtarını uuid olarak bekler; kurgular da gerçekçi olsun.
+const ANAHTAR = n => 'a1b2c3d4-e5f6-4a7b-8c9d-' + String(n).padStart(12, '0');
+const ANAHTAR_NISANTASI = ANAHTAR(1);
+const ANAHTAR_KILITSIZ = ANAHTAR(4);
+const ANAHTAR_ALSANCAK = ANAHTAR(8);
+const ANAHTAR_ZEYTINLI = ANAHTAR(9);
+
 const D = {
   brands: [{ id: 'b1', name: 'Mokka Coffee', slug: 'mokka-coffee', access_code: 'KOD', is_active: true }],
   folders: [{ id: 'f1', name: 'Sabah Açılış', description: 'Yumuşak giriş', cover_path: null, shuffle: true }],
   tracks: [{ id: 't1', folder_id: 'f1', title: '%C3%9Csk%C3%BCdar %26 Co', storage_path: 'f1/parca.wav', sort_order: 0, duration_sec: 185, cover_path: null }],
   players: [{
-    id: 'p1', brand_id: 'b1', label: 'Nişantaşı', player_key: 'dr-1', last_seen_at: new Date().toISOString(),
+    id: 'p1', brand_id: 'b1', label: 'Nişantaşı', player_key: ANAHTAR_NISANTASI, last_seen_at: new Date().toISOString(),
     open_time: '09:00:00', close_time: '22:00:00', bound_device_id: 'cihaz-1', bound_at: new Date().toISOString(),
     first_ip: null, last_ip: '1.2.3.4', last_ip_at: new Date().toISOString(), is_playing: true
   }],
@@ -133,7 +140,7 @@ test('boş veri dostça karşılanır', () => {
 
 test('şube çekmecesi yayın linkini ve bakım düğmelerini taşır', () => {
   const html = V.subeCekmecesi('p1', D, ui);
-  assert.ok(html.includes('https://ornek.test/radyo.html?key=dr-1'));
+  assert.ok(html.includes('https://ornek.test/radyo.html?key=' + ANAHTAR_NISANTASI));
   assert.ok(html.includes('data-act="player-check"'), 'bağlantı sınaması düğmesi olmalı');
   assert.ok(html.includes('KİLİDİ SIFIRLA'));
   assert.ok(html.includes('ŞUBEYİ SİL'));
@@ -141,7 +148,7 @@ test('şube çekmecesi yayın linkini ve bakım düğmelerini taşır', () => {
   // Kilitli şubede uyarı, kilitsiz şubede ne olacağı açıkça yazılmalı.
   assert.ok(html.includes('başka bir cihaza kilitli'));
   const kilitliDegil = V.subeCekmecesi('p4', Object.assign({}, D, {
-    players: [{ id: 'p4', brand_id: 'b1', label: 'Kilit yok', player_key: 'dr-4', bound_device_id: null, is_playing: false, last_seen_at: null }]
+    players: [{ id: 'p4', brand_id: 'b1', label: 'Kilit yok', player_key: ANAHTAR_KILITSIZ, bound_device_id: null, is_playing: false, last_seen_at: null }]
   }), ui);
   assert.ok(kilitliDegil.includes('ilk açıldığı cihaza kilitlenir'));
 });
@@ -192,7 +199,21 @@ test('her kopuk halka için düzeltme adımı üretilir', () => {
   assert.equal(V.saglikTani(p, listeD).duzeltmeler[0].hedef, '#/listeler/l1');
 
   assert.deepEqual(V.saglikTani(p, { ...D, subscriptions: [] }).duzeltmeler.map(d => d.tip), ['abonelik']);
-  assert.deepEqual(V.saglikTani({ ...p, player_key: '' }, D).duzeltmeler.map(d => d.tip), ['cekmece']);
+  assert.deepEqual(V.saglikTani({ ...p, player_key: '' }, D).duzeltmeler.map(d => d.tip), ['anahtar']);
+});
+
+// Panel kopyaladığı bağlantıya güvenir; anahtar uuid değilse link "...?key=null"
+// olur ve oynatıcı sunucuya hiç ulaşamaz. Bozuk anahtar bu yüzden boş anahtar
+// gibi zincirin en başında anılır ve yenilenmesi önerilir.
+test('bozuk anahtar boş anahtar gibi yakalanır ve yenilenmesi önerilir', () => {
+  const bozuk = V.saglikTani({ ...D.players[0], player_key: 'null' }, D);
+  assert.equal(bozuk.seviye, 'kotu');
+  assert.ok(bozuk.sorunlar.some(s => s.includes('anahtarı bozuk')));
+  assert.deepEqual(bozuk.duzeltmeler.map(d => d.tip), ['anahtar']);
+
+  assert.equal(V.anahtarGecerli(ANAHTAR_NISANTASI), true);
+  ['null', '', null, undefined, '1234'].forEach(deger =>
+    assert.equal(V.anahtarGecerli(deger), false, String(deger) + ' geçersiz sayılmalı'));
 });
 
 test('sağlık ekranı düzeltme düğmelerini satıra basar', () => {
@@ -233,8 +254,8 @@ test('yayın sağlığı ekranı sorunlu şubeleri üste dizer', () => {
     broadcast: [{ brand_id: 'b2', folder_id: 'f1', playlist_id: null }],
     subscriptions: [{ ...D.subscriptions[0], brand_id: 'b2' }],
     players: [
-      { id: 'p9', brand_id: 'b2', label: 'Zeytinli', player_key: 'k9', last_seen_at: new Date().toISOString(), bound_device_id: null, is_playing: true },
-      { id: 'p8', brand_id: 'b1', label: 'Alsancak', player_key: 'k8', last_seen_at: null, bound_device_id: 'cihaz-9', is_playing: false }
+      { id: 'p9', brand_id: 'b2', label: 'Zeytinli', player_key: ANAHTAR_ZEYTINLI, last_seen_at: new Date().toISOString(), bound_device_id: null, is_playing: true },
+      { id: 'p8', brand_id: 'b1', label: 'Alsancak', player_key: ANAHTAR_ALSANCAK, last_seen_at: null, bound_device_id: 'cihaz-9', is_playing: false }
     ]
   };
   const { html } = V.gorunum(durum({ nav: 'canli', sub: 'saglik' }), karisik, ui);

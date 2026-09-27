@@ -76,13 +76,29 @@ test('sınama, anahtar tanınırken yayın boşsa yanlış halkayı göstermez',
 // sunucu cevabı silinir ve satır yeniden hesaplanıp yeşile döner.
 test('sağlık ekranı düzeltmeleri yerinde uygular', () => {
   assert.match(source, /case 'saglik-fix'/);
-  ['marka-aktif', 'kaynak', 'abonelik', 'parca', 'cekmece'].forEach(tip =>
+  ['marka-aktif', 'kaynak', 'abonelik', 'parca', 'cekmece', 'anahtar'].forEach(tip =>
     assert.ok(source.includes(`'${tip}'`), `${tip} düzeltmesi bağlanmalı`));
   assert.match(source, /from\('brands'\)\.update\(\{ is_active: true \}\)/);
   assert.match(source, /from\('brand_broadcast'\)\.upsert\(/);
   assert.match(source, /from\('subscriptions'\)\.upsert\(/);
   // Eski sunucu cevabı kalırsa satır yeşile dönse de kırmızı görünürdü.
   assert.ok((source.match(/delete saglikSonuc\[/g) || []).length >= 2);
+});
+
+// Sunucu yayın anahtarını uuid olarak bekler. Şube eklerken anahtarı açıkça
+// üretmezsek veritabanı varsayılanına kalırız; alan boş kalırsa panelin
+// kopyaladığı link "...?key=null" olur ve sahadaki oynatıcı hiç açılmaz.
+test('şube eklerken anahtar açıkça üretilir ve bozuk anahtar kopyalanmaz', () => {
+  const ekle = source.slice(source.indexOf("case 'player-add'"), source.indexOf("case 'folder-open'"));
+  assert.ok(ekle.includes('player_key: crypto.randomUUID()'), 'anahtar istemcide üretilip gönderilmeli');
+
+  const kopyala = source.slice(source.indexOf("case 'player-copy'"), source.indexOf("case 'player-check'"));
+  assert.ok(kopyala.includes('V.anahtarGecerli'), 'kopyalamadan önce anahtar doğrulanmalı');
+
+  // Bozuk anahtar şubeyi silmeyi gerektirmez: kayıt yerinde kalır, anahtar tazelenir.
+  const yenile = source.slice(source.indexOf("if (tip === 'anahtar')"), source.indexOf("case 'saglik-denetle'"));
+  assert.ok(yenile.includes('player_key: crypto.randomUUID()'), 'yeni anahtar üretilmeli');
+  assert.ok(yenile.includes(".update("), 'anahtar yerinde güncellenmeli');
 });
 
 test('sunum sayfası yeni tasarımı ve fade geçişlerini yükler', () => {

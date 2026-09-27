@@ -31,6 +31,13 @@
   // marka pasif/kaynak atanmamış olmasından ayrı bir arızadır.
   let anahtarDurumu = null;
 
+  // Sunucu yayın anahtarını uuid olarak bekler. Paneldeki kayıtta anahtar boş
+  // kalmışsa kopyalanan bağlantı "...?key=null" olur; sunucu bunu uuid sanıp
+  // 400 döner ve oynatıcı boşuna tekrar tekrar dener. Bu yüzden sunucuya hiç
+  // gitmeden burada yakalarız.
+  const gecerliAnahtar = deger =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(deger || ''));
+
   const deviceId = (() => {
     try {
       let id = localStorage.getItem('derin_record_device_id');
@@ -371,6 +378,13 @@
     if (!key) {
       byId('brand').textContent = 'Yayın anahtarı yok';
       setState('Bu sayfa şubeye özel link ile açılmalıdır.');
+      return;
+    }
+    if (!gecerliAnahtar(key)) {
+      // "...?key=null" gibi eksik kopyalanmış bağlantı buraya düşer.
+      byId('brand').textContent = 'Bağlantı eksik kopyalanmış';
+      setState('Bu adresteki yayın anahtarı geçersiz görünüyor. Panelde şubeyi açıp “LİNKİ KOPYALA” ile bağlantıyı baştan alın.');
+      tani('anahtar-bozuk');
       return;
     }
     if (!window.supabase?.createClient) {

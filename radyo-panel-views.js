@@ -199,6 +199,13 @@
   // abonelik geçerli mi, anahtar duruyor mu. Sunucuya hiç gitmez, bu yüzden
   // ekran anında doludur; "Sunucuyla doğrula" düğmesi ayrıca gerçek cevabı alır.
 
+  // Sunucu yayın anahtarını uuid olarak bekler. Kayıtta anahtar boş kalmışsa
+  // panelin kopyaladığı link "...?key=null" olur; oynatıcı hiç açılmaz, sunucu
+  // 400 döner. Boş anahtar bu yüzden zincirin en başında anılmalı.
+  function anahtarGecerli(deger) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(deger || ''));
+  }
+
   // Markanın canlı yayında çalacağı parçalar (liste ya da klasör kaynağından).
   function kaynakParcalari(D, yayin) {
     if (!yayin) return [];
@@ -231,9 +238,11 @@
       sorunlar.push('Marka pasif: sunucu pasif markaya yayın vermez.');
       duzeltmeler.push({ tip: 'marka-aktif', etiket: 'MARKAYI YAYINA AL' });
     }
-    if (!p.player_key) {
-      sorunlar.push('Yayın anahtarı boş; şubeyi silip yeniden ekleyin.');
-      duzeltmeler.push({ tip: 'cekmece', etiket: 'ŞUBEYİ YÖNET' });
+    if (!anahtarGecerli(p.player_key)) {
+      sorunlar.push(p.player_key
+        ? 'Yayın anahtarı bozuk; kopyalanan link oynatıcıyı açmaz.'
+        : 'Yayın anahtarı boş; kopyalanan link oynatıcıyı açmaz.');
+      duzeltmeler.push({ tip: 'anahtar', etiket: 'ANAHTARI YENİLE' });
     }
     if (!yayin) {
       sorunlar.push('Canlı yayın kaydı yok: markaya hiç kaynak atanmamış.');
@@ -1030,6 +1039,7 @@
     topbar: topbar,
     gorunum: gorunum,
     subeCekmecesi: subeCekmecesi,
+    anahtarGecerli: anahtarGecerli,
     saglikTani: saglikTani,
     saglikOzet: saglikOzet,
     saglikView: saglikView,

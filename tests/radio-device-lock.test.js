@@ -12,6 +12,9 @@ const KOK = path.join(__dirname, '..');
 const radyoKaynak = fs.readFileSync(path.join(KOK, 'radyo.js'), 'utf8');
 const kuyrukKaynak = fs.readFileSync(path.join(KOK, 'radio-playlist-queue.js'), 'utf8');
 
+// Sunucu yayın anahtarını uuid olarak bekler; prova da gerçekçi olsun.
+const PROVA_ANAHTAR = 'a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa';
+
 const MARKA = {
   brand_id: 'b-prova-0001', brand_name: 'Mokka Coffee', player_label: 'Alsancak',
   open_time: '09:00:00', close_time: '22:00:00', folder_id: 'f1',
@@ -79,7 +82,7 @@ async function calistir(senaryo) {
     clearTimeout,
     setInterval: () => 0,
     clearInterval: () => {},
-    location: { search: '?key=k-prova' },
+    location: { search: '?key=' + (senaryo.key || PROVA_ANAHTAR) },
     localStorage: {
       getItem: k => (depo.has(k) ? depo.get(k) : null),
       setItem: (k, v) => depo.set(k, v)
@@ -129,7 +132,18 @@ test('ilk cihazdan açılışta yayın tanınır ve başlat düğmesi görünür
   assert.equal(s.cihazKimligi, 'cihaz-test-1');
   assert.equal(s.pingler.length, 1);
   assert.equal(s.pingler[0].p.p_device_id, 'cihaz-test-1');
-  assert.equal(s.pingler[0].p.p_player_key, 'k-prova');
+  assert.equal(s.pingler[0].p.p_player_key, PROVA_ANAHTAR);
+});
+
+test('eksik kopyalanmış bağlantı sunucuya hiç gitmeden yakalanır', async () => {
+  // Panelde anahtar boş kalmışsa kopyalanan link "...?key=null" olur. Eskiden
+  // bu sunucuya gidip 400 alıyor, ekranda anlamsız bir bağlantı hatası ve boşuna
+  // tekrar denemeler görünüyordu.
+  const s = await calistir({ key: 'null', ping: 'ok', parca: true, abonelik: 'gecerli' });
+  assert.equal(s.marka, 'Bağlantı eksik kopyalanmış');
+  assert.match(s.durum, /LİNKİ KOPYALA/);
+  assert.equal(s.tani, 'Teşhis kodu: anahtar-bozuk');
+  assert.equal(s.pingler.length, 0, 'sunucuya hiç sorulmamalı');
 });
 
 test('başka mekândaki cihazdan açılışta cihaz kilidi devreye girer', async () => {
@@ -160,6 +174,9 @@ test('sunucu anahtarı hiç tanımıyorsa oynatıcı bunu ayrı söyler', async 
   assert.equal(s.marka, 'Yayın anahtarı tanınmıyor');
   assert.match(s.durum, /sistemde yok/);
   assert.equal(s.tani, 'Teşhis kodu: anahtar-yok');
+  // Hata ekranında "henüz şarkı eklenmemiş" yazısı çıkmamalı: yayın çalışıyormuş
+  // gibi okunuyor.
+  assert.equal(s.liste, '');
 });
 
 test('teşhis kodu abonelik arızasını da ayırır', async () => {

@@ -660,6 +660,23 @@
         if (tip === 'abonelik') { abonelikBaslat(p.brand_id); return; }
         if (tip === 'parca') { git(hedef.dataset.hedef); return; }
         if (tip === 'cekmece') { cekmeceAc(V.subeCekmecesi(p.id, D, ui)); return; }
+
+        // Boş/bozuk anahtar, şubeyi silip yeniden eklemeyi gerektirmiyor: kaydı
+        // yerinde tutup yalnızca anahtarı tazeleriz, geçmiş ve cihaz kaydı kalır.
+        if (tip === 'anahtar') {
+          if (!await onaySor({
+            baslik: 'Yayın anahtarı yenilensin mi?',
+            govde: `“${p.label}” için yeni bir yayın anahtarı üretilir. Şubeye verilmiş eski bağlantı çalışmayı durdurur; yeni linki kopyalayıp sahaya iletmeniz gerekir.`,
+            onayMetni: 'ANAHTARI YENİLE'
+          })) return;
+          const { error } = await client.from('brand_players').update({
+            player_key: crypto.randomUUID()
+          }).eq('id', p.id);
+          if (error) return hata('Anahtar yenilenemedi: ' + error.message);
+          delete saglikSonuc[p.id];
+          await yenile(false); bildir('Yeni yayın anahtarı üretildi; yeni linki kopyalayın.');
+          return;
+        }
         return;
       }
 
@@ -698,6 +715,11 @@
       case 'player-copy': {
         const p = D.players.find(x => x.id === id);
         if (!p) return;
+        // Bozuk anahtarı kopyalamak, sahadaki cihaza "açılmayan link" teslim
+        // etmek demektir; sessizce kopyalamak yerine söyleriz.
+        if (!V.anahtarGecerli(p.player_key)) {
+          return hata('Bu şubenin yayın anahtarı geçersiz. Yayın sağlığı ekranından "ANAHTARI YENİLE" ile yeni anahtar üretin.');
+        }
         try { await navigator.clipboard.writeText(ui.playerBase() + p.player_key); hedef.textContent = 'KOPYALANDI'; bildir('Yayın linki kopyalandı.'); }
         catch (err) { return hata('Link kopyalanamadı.'); }
         setTimeout(() => { hedef.textContent = 'LİNK'; }, 1600);
@@ -737,8 +759,12 @@
       case 'player-add': {
         const ad = el('p-label').value.trim();
         if (!ad) return hata('Şube adı gerekli.');
+        // Anahtar istemcide üretilip AÇIKÇA gönderilir. Veritabanı varsayılanına
+        // güvenmek, alan boş kalırsa kopyalanan bağlantıyı "...?key=null" yapıyor;
+        // sunucu bunu uuid sanıp hata verdiği için sahadaki oynatıcı açılmıyordu.
         const { error } = await client.from('brand_players').insert({
           brand_id: id, label: ad,
+          player_key: crypto.randomUUID(),
           open_time: el('p-open').value || null, close_time: el('p-close').value || null
         });
         if (error) return hata('Şube eklenemedi: ' + error.message);
