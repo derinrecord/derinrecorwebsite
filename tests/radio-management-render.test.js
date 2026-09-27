@@ -101,6 +101,15 @@ test('şube eklerken anahtar açıkça üretilir ve bozuk anahtar kopyalanmaz', 
   assert.ok(yenile.includes(".update("), 'anahtar yerinde güncellenmeli');
 });
 
+// Kurulum komutu yalnızca geçerli anahtarla verilmeli: bozuk anahtarla verilen
+// komut, cihazı hiç açılmayan bir linke kilitler.
+test('dokunuşsuz kurulum yalnızca geçerli anahtarla açılır', () => {
+  assert.match(source, /case 'player-kiosk'/);
+  const kol = source.slice(source.indexOf("case 'player-kiosk'"), source.indexOf("case 'player-check'"));
+  assert.ok(kol.includes('V.anahtarGecerli'), 'anahtar doğrulanmalı');
+  assert.ok(kol.includes('V.kioskKurulum'), 'komut görünüm katmanından gelmeli');
+});
+
 test('sunum sayfası yeni tasarımı ve fade geçişlerini yükler', () => {
   const sunum = fs.readFileSync(require.resolve('../coffee-marka.html'), 'utf8');
   assert.match(sunum, /marka-sunum\.css/);
@@ -119,4 +128,15 @@ test('panel sayfası görünüm modülünü ve stil dosyasını yükler', () => 
   assert.match(sayfa, /audio-file-types\.js/);
   // Bozuk HTML: script etiketi </html> sonrasına yazılmamalı.
   assert.ok(sayfa.trimEnd().endsWith('</html>'), 'dosya </html> ile bitmeli');
+});
+
+// Panel dosyaları her değişiklikte sürüm damgası taşımalı; yoksa tarayıcı eski
+// dosyayı önbellekten çalar ve sahadaki düzeltme kimseye görünmez.
+test('panel dosyaları sürüm damgasıyla yüklenir', () => {
+  const sayfa = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');
+  ['radyo-panel\.css', 'radyo-panel-views\.js', 'radyo-yonetim\.js', 'audio-file-types\.js']
+    .forEach(dosya => {
+      const kalip = new RegExp(dosya + '\\?v=[0-9a-z]+');
+      assert.match(sayfa, kalip, dosya + ' sürüm damgası taşımalı');
+    });
 });

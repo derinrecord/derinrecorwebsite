@@ -226,6 +226,12 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .modal h3{margin:0 0 8px;font-size:18px}
 .modal p{margin:0 0 18px;color:var(--muted);font-size:13.5px}
 .modal .modal-body{font-size:13.5px;color:var(--muted)}
+/* Kurulum/onay pencereleri de çekmecedeki blok düzenini kullanır; başlıklar
+   varsayılan h4 boşluklarına kalırsa pencere dağınık görünüyordu. */
+.modal .block{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
+.modal .block:first-child{border-top:0;padding-top:0;margin-top:0}
+.modal .block h4{margin:0 0 10px;font-size:11px;letter-spacing:.16em;color:var(--muted)}
+.modal .key{color:var(--txt)}
 .modal .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap}
 .tick-list{max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:var(--r);margin-bottom:4px}
 .tick-list label{display:flex;gap:12px;align-items:center;padding:11px 13px;border-bottom:1px solid var(--line);cursor:pointer}

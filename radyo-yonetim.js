@@ -729,6 +729,22 @@
       // kullandığı iki okuma çağrısını yapar. radio_ping BİLİNÇLİ olarak
       // çağrılmaz — ping, cihazı şubeye kilitler; panelden sınarken kilidi
       // yöneticinin tarayıcısına bağlamak istemeyiz.
+      // Cihazın bir kez "kiosk" olarak işaretlenmesi için gereken komutu verir:
+      // sonrasında radyo, cihaz açıldığında kimse düğmeye basmadan çalar.
+      case 'player-kiosk': {
+        const p = D.players.find(x => x.id === id);
+        if (!p) return;
+        if (!V.anahtarGecerli(p.player_key)) {
+          return hata('Önce geçerli bir yayın anahtarı üretin: Yayın sağlığı → ANAHTARI YENİLE.');
+        }
+        pencere({
+          baslik: 'Dokunuşsuz yayın kurulumu — ' + p.label,
+          govde: V.kioskKurulum(ui.playerBase() + p.player_key),
+          gizleOnay: true, kapatMetni: 'KAPAT'
+        });
+        return;
+      }
+
       case 'player-check': {
         const p = D.players.find(x => x.id === id);
         if (!p) return;

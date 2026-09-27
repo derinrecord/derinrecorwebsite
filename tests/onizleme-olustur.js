@@ -17,6 +17,36 @@ const senaryo = process.argv[2] || 'zincir-kopuk';
 const cikti = process.argv[3] || path.join('tests', 'onizleme.html');
 const ciktiYolu = path.resolve(kok, cikti);
 
+// "pencere" modu oynatıcı yerine panel penceresini önizler: önizleme sunucusu
+// tek dosya sunduğu için panel CSS'ini de satır içine alırız.
+if (senaryo === 'pencere') {
+  const V = require(path.join(kok, 'radyo-panel-views.js'));
+  const link = 'https://www.derinrecord.com/radyo.html?key=a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa';
+  const pencereli = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel penceresi — dokunuşsuz kurulum</title>
+<style>
+${oku('radyo-panel.css')}
+body{background:#0b0b0d;padding:26px}
+.modal-wrap{display:flex}
+</style>
+</head>
+<body>
+<div class="modal-wrap open"><div class="modal">
+  <h3>Dokunuşsuz yayın kurulumu — Alsancak</h3>
+  <div class="modal-body">${V.kioskKurulum(link)}</div>
+  <div class="modal-actions"><button class="btn" type="button">KAPAT</button></div>
+</div></div>
+</body>
+</html>`;
+  fs.writeFileSync(ciktiYolu, pencereli);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · panel penceresi');
+  return;
+}
+
 let sayfa = oku('radyo-cihaz-prova.html');
 const kuyruk = oku('radio-playlist-queue.js');
 // Oynatıcı anahtarı yalnızca sorgu dizesinden okur; provada sorgu dizesi

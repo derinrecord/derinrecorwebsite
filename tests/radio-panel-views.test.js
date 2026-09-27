@@ -216,6 +216,31 @@ test('bozuk anahtar boş anahtar gibi yakalanır ve yenilenmesi önerilir', () =
     assert.equal(V.anahtarGecerli(deger), false, String(deger) + ' geçersiz sayılmalı'));
 });
 
+// Cihazı dokunuşsuz çalıştırma ayarı panelden verilir: komut şubenin gerçek
+// linkiyle hazır gelmeli ki kimse elle birleştirmesin.
+test('dokunuşsuz kurulum komutu şubenin linkiyle hazır verilir', () => {
+  const link = 'https://ornek.test/radyo.html?key=' + ANAHTAR_NISANTASI;
+  const html = V.kioskKurulum(link);
+  assert.ok(html.includes(link), 'komut şubenin linkini içermeli');
+  assert.ok(html.includes('--autoplay-policy=no-user-gesture-required'));
+  assert.ok(html.includes('--kiosk'));
+  assert.ok(/MACOS/i.test(html) && /WINDOWS/i.test(html), 'iki platform da anlatılmalı');
+  // Komutlar kopyalanabilmeli.
+  assert.equal((html.match(/data-act="copy"/g) || []).length, 2);
+  // Ayarlanmazsa tek dokunuşun yettiği de yazmalı.
+  assert.ok(html.includes('YAYINI BAŞLAT'));
+
+  // Link HTML'e gömülürken kaçış yapılmalı, yoksa data-copy bozulur.
+  assert.ok(V.kioskKurulum('https://x/radyo.html?key=a"b').includes('&quot;'));
+});
+
+// Şube çekmecesinde kurulum düğmesi bulunmalı, yoksa özellik görünmez.
+test('şube çekmecesi dokunuşsuz kurulum düğmesi gösterir', () => {
+  const html = V.subeCekmecesi('p1', D, ui);
+  assert.ok(html.includes('data-act="player-kiosk"'));
+  assert.ok(html.includes('DOKUNUŞSUZ KURULUM'));
+});
+
 test('sağlık ekranı düzeltme düğmelerini satıra basar', () => {
   const pasifD = {
     ...D,

@@ -980,6 +980,7 @@
           <button class="btn sm" data-act="copy" data-copy="${esc(link)}" type="button">LİNKİ KOPYALA</button>
           <a class="btn sm" href="${esc(link)}" target="_blank" rel="noopener">YAYINI AÇ ↗</a>
           <button class="btn sm" data-act="player-check" data-id="${esc(p.id)}" type="button">BAĞLANTIYI SINA</button>
+          <button class="btn sm" data-act="player-kiosk" data-id="${esc(p.id)}" type="button">DOKUNUŞSUZ KURULUM</button>
         </div>
         <p class="sub" style="margin-top:10px">Yayın linki şubeye aittir; telefonda tarayıcıda açılır.</p>
         ${p.bound_device_id
@@ -1015,6 +1016,34 @@
       </div>`;
   }
 
+  // Şube cihazını "dokunuşsuz" çalıştırma kurulumu. Tarayıcılar sesli otomatik
+  // çalmayı engellediği için cihazın bir kez kiosk olarak işaretlenmesi gerekir;
+  // komutu şubenin gerçek linkiyle hazır veririz ki kimse elle birleştirmesin.
+  function kioskKurulum(link) {
+    const mac = 'open -a "Google Chrome" --args --autoplay-policy=no-user-gesture-required --kiosk "' + link + '"';
+    const win = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --autoplay-policy=no-user-gesture-required --kiosk "' + link + '"';
+    const kopyala = (metin, etiket) => `<div class="key">${esc(metin)}</div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn sm" data-act="copy" data-copy="${esc(metin)}" type="button">${etiket}</button>
+        </div>`;
+    return `
+      <p class="sub">Bu ayar şube cihazında <b>bir kez</b> yapılır. Sonrasında radyo, cihaz açıldığında ve mesai saatinde kimse düğmeye basmadan çalar.</p>
+
+      <div class="block"><h4>1 · MACOS</h4>
+        ${kopyala(mac, 'KOMUTU KOPYALA')}
+        <p class="sub" style="margin-top:10px">Terminal'e yapıştırıp çalıştırın: Chrome tam ekran açılır ve yayın kendiliğinden başlar. Her açılışta çalışması için Sistem Ayarları → Genel → Oturum Açma Öğeleri'ne ekleyin.</p>
+      </div>
+
+      <div class="block"><h4>2 · WINDOWS</h4>
+        ${kopyala(win, 'HEDEFİ KOPYALA')}
+        <p class="sub" style="margin-top:10px">Chrome kısayoluna sağ tıklayıp Özellikler → <b>Hedef</b> alanına yapıştırın. Kısayolu Başlangıç klasörüne koyarsanız cihaz açılışında kendiliğinden çalışır.</p>
+      </div>
+
+      <div class="block"><h4>3 · BU AYAR YAPILMAZSA</h4>
+        <p class="sub">Tarayıcılar sesli otomatik çalmayı engeller. O durumda sayfa açılınca <b>YAYINI BAŞLAT</b> düğmesine bir kez dokunmak yeterlidir. Mesai saatleri dışında düğme hiç çıkmaz; yayın açılış saatinde kendiliğinden başlar.</p>
+      </div>`;
+  }
+
   // ---------- Parça detayı (pencere içeriği) ----------
   function parcaDetay(t, alt, kapakUrl) {
     return `<div style="text-align:center">
@@ -1040,6 +1069,7 @@
     gorunum: gorunum,
     subeCekmecesi: subeCekmecesi,
     anahtarGecerli: anahtarGecerli,
+    kioskKurulum: kioskKurulum,
     saglikTani: saglikTani,
     saglikOzet: saglikOzet,
     saglikView: saglikView,
