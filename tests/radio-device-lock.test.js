@@ -68,12 +68,21 @@ async function calistir(senaryo) {
   dugumler.set('audio', audio);
 
   const cagrilar = [];
+  const sayaclar = [];
   const depo = new Map(Object.entries(senaryo.depoBaslangic || {}));
 
   // Personelin liste seçimi, üç tabloyu okur (liste başlıkları, listenin
   // parçaları, parçaların dosya yolları). Hepsini taklit ediyoruz.
+  const okumaSayaci = new Map();
   const tabloVerisi = tabloAd => {
-    if (tabloAd === 'brand_playlists') return senaryo.listeler || [];
+    const n = (okumaSayaci.get(tabloAd) || 0) + 1;
+    okumaSayaci.set(tabloAd, n);
+    if (tabloAd === 'brand_playlists') {
+      // 'listelerSonra': yönetim panelden adı değiştirdi ya da listeyi sildi;
+      // ikinci okumada yeni hâli gelir (cihazın tazeleme davranışını sınar).
+      if (senaryo.listelerSonra && n > 1) return senaryo.listelerSonra;
+      return senaryo.listeler || [];
+    }
     if (tabloAd === 'brand_playlist_tracks') return senaryo.listeParcalari || [];
     if (tabloAd === 'radio_tracks') return senaryo.studioParcalari || [];
     return [];
@@ -112,7 +121,9 @@ async function calistir(senaryo) {
     URLSearchParams,
     setTimeout: (fn) => setTimeout(fn, 0),
     clearTimeout,
-    setInterval: () => 0,
+    // Zamanlayıcılar kaydedilir ama kendiliğinden çalışmaz: test hangi
+    // davranışı sınadığını bilerek tetikler (tikla).
+    setInterval: (fn, ms) => { sayaclar.push({ fn, ms }); return sayaclar.length; },
     clearInterval: () => {},
     location: { search: '?key=' + (senaryo.key || PROVA_ANAHTAR) },
     localStorage: {
@@ -183,6 +194,12 @@ async function calistir(senaryo) {
       const kutu = dugumAl('liste-sec');
       kutu.value = kimlik;
       await kutu.onchange();
+      await new Promise(done => setTimeout(done, 20));
+    },
+    // Belirli aralıkla kurulan bütün zamanlayıcıları bir kez çalıştırır:
+    // "cihaz gün boyu açık kaldığında ne olur" sorusunu sınar.
+    async tikla(ms) {
+      for (const s of sayaclar.filter(x => x.ms === ms)) await s.fn();
       await new Promise(done => setTimeout(done, 20));
     }
   };
@@ -404,6 +421,51 @@ test('boş liste seçilince parça bildirimi temizlenir', async () => {
   const son = s.bildirimler[s.bildirimler.length - 1];
   assert.equal(son.p.p_title, null);
   assert.equal(son.p.p_track_id, null);
+});
+
+// Yönetim panelden bir listeyi yeniden adlandırdığında kafedeki cihaz gün boyu
+// açık kalsa da seçici yeni adı göstermeli; personelin seçimi ve çalan parça
+// bundan etkilenmemeli.
+test('liste adı sonradan değişirse cihazdaki seçici kendiliğinden tazelenir', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI,
+    listelerSonra: [
+      { id: 'L1', name: 'Öğle Molası', shuffle: false },
+      { id: 'L2', name: 'Akşam Sesi', shuffle: true }
+    ]
+  });
+  await s.sec('L1');
+  const calan = s.calinan;
+
+  await s.tikla(600000);
+  assert.ok(s.secenekler.includes('Öğle Molası'), 'yeni ad seçicide görünmeli');
+  assert.ok(!s.secenekler.includes('Sabah Kahve'), 'eski ad kalmamalı');
+  assert.equal(s.secili, 'L1', 'personelin seçimi korunmalı');
+  assert.equal(s.calinan, calan, 'çalan parça değişmemeli');
+  assert.ok(s.liste.includes('Filtre Kahve'), 'kuyruk aynı kalmalı');
+
+  // Bildirim de yeni adı taşımalı: panel adı sunucudaki kayıttan da okuyor ama
+  // cihazın kendi raporu da güncel olmalı.
+  await s.tikla(60000);
+  assert.equal(s.bildirimler[s.bildirimler.length - 1].p.p_playlist_name, 'Öğle Molası');
+});
+
+// Personelin seçtiği liste panelden silinirse cihaz sessizce boşta kalmamalı:
+// seçim temizlenip yönetimin atadığı yayına dönülür.
+test('seçili liste silinirse otomatiğe dönülür', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI,
+    listelerSonra: [{ id: 'L2', name: 'Akşam Sesi', shuffle: true }]
+  });
+  await s.sec('L1');
+  assert.equal(s.kayitliListe, 'L1');
+
+  await s.tikla(600000);
+  assert.equal(s.secili, '', 'seçim temizlenmeli');
+  assert.equal(s.kayitliListe, null);
+  assert.ok(s.liste.includes('Sabah Işığı'), 'otomatik yayının parçaları dönmeli');
 });
 
 // supabase/radio-liste-bildirimi.sql henüz çalıştırılmadıysa sunucu beş

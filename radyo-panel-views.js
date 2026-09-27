@@ -887,6 +887,18 @@
         <button class="btn danger" data-act="list-del" data-id="${esc(pl.id)}" type="button">LİSTEYİ SİL</button>
         <span class="sub" id="list-msg"></span>
       </div>
+      <div class="panel" style="margin-bottom:18px">
+        <h3>LİSTE ADI</h3>
+        <p class="panel-sub">Ad; panelde, müşteri sunumunda ve kafedeki personelin cihazındaki seçicide görünür. Yazım hatası olan adları buradan düzeltebilirsin.</p>
+        <div class="form-grid">
+          <div class="field"><label for="pl-name">YENİ AD</label>
+            <input id="pl-name" value="${esc(pl.name)}" placeholder="Örn. Öğle Molası" autocomplete="off"></div>
+          <button class="btn" data-act="list-rename" data-id="${esc(pl.id)}" type="button">ADI KAYDET</button>
+        </div>
+        <span class="sub" id="list-name-msg">${kullanan
+          ? 'Bu liste ' + kullanan + ' şubede yayında; adı değişince panelde ve sunumda yeni ad görünür.'
+          : 'Bu liste hiçbir şubeye atanmamış; personel cihazdan seçerse çalar.'}</span>
+      </div>
       <div class="panel">
         <h3>AKIŞ (${kayitlar.length})</h3>
         <table>

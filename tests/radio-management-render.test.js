@@ -140,6 +140,30 @@ test('çalan parça kurulumu SQL dosyası olarak depoda', () => {
   assert.ok(!/create or replace function public\.radio_ping/.test(sql));
 });
 
+// Liste adı sahaya çıkıyor (panel, müşteri sunumu, personelin cihaz seçicisi).
+// Yazım hatası olan bir adı düzeltebilmek için panel kaydetmeyi bilmeli ve
+// kaydedilen ad temizlenmeli; " oğğle  molası " gibi bir ad yeniden sahaya
+// düşmemeli.
+test('panel liste adını düzenleyip kaydedebilir', () => {
+  assert.match(source, /case 'list-rename'/);
+  assert.ok(/from\('brand_playlists'\)\.update\(\{ name: ad \}\)/.test(source), 'ad güncellenmeli');
+  assert.match(source, /replace\(\/\\s\+\/g, ' '\)/, 'çoklu boşluklar temizlenmeli');
+  assert.ok(source.includes('Liste adı boş olamaz'), 'boş ad reddedilmeli');
+});
+
+test('liste bildirimi kurulumu SQL dosyası olarak depoda', () => {
+  const sql = fs.readFileSync(require.resolve('../supabase/radio-liste-bildirimi.sql'), 'utf8');
+  assert.match(sql, /add column if not exists now_playlist_id uuid/);
+  assert.match(sql, /add column if not exists now_playlist_name text/);
+  assert.match(sql, /p_playlist_id uuid default null/);
+  assert.match(sql, /grant execute on function public\.radio_now_report\(uuid, text, uuid, uuid, text\)/);
+  // Eski üç parametreli sürüm düşürülmeli: aynı ada iki imza kalırsa PostgREST
+  // hangisini çağıracağını bilemez (PGRST203) ve bildirim reddedilir.
+  assert.match(sql, /drop function if exists public\.radio_now_report\(uuid, text, uuid\)/);
+  // Cihaz kilidi bozulmasın.
+  assert.ok(!/create or replace function public\.radio_ping/.test(sql));
+});
+
 test('sunum sayfası yeni tasarımı ve fade geçişlerini yükler', () => {
   const sunum = fs.readFileSync(require.resolve('../coffee-marka.html'), 'utf8');
   assert.match(sunum, /marka-sunum\.css/);

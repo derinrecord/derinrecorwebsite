@@ -1112,6 +1112,21 @@
         await yenile(false); bildir('Liste silindi.');
         return;
       }
+      case 'list-rename': {
+        const pl = D.playlists.find(x => x.id === id);
+        if (!pl) return;
+        // Ad yalnızca panelde değil, müşteri sunumunda ve personelin cihazındaki
+        // seçicide de görünür; bu yüzden baştaki/sondaki ve çoklu boşlukları
+        // temizleyip kaydederiz (" oğğle  molası " gibi adlar sahaya çıkmasın).
+        const ad = (el('pl-name').value || '').trim().replace(/\s+/g, ' ');
+        if (!ad) return hata('Liste adı boş olamaz.');
+        if (ad === pl.name) return bildir('Ad zaten bu.');
+        const { error } = await client.from('brand_playlists').update({ name: ad }).eq('id', id);
+        if (error) return hata('Ad kaydedilemedi: ' + error.message);
+        await yenile(false);
+        bildir('Liste adı güncellendi. Açık duran oynatıcılar yeni adı birkaç dakika içinde kendiliğinden alır.');
+        return;
+      }
       case 'list-addtrack': {
         const pl = D.playlists.find(x => x.id === id);
         if (!pl) return;

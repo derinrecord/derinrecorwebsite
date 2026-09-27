@@ -490,6 +490,37 @@
     if (seciliListe) await listeSec(seciliListe, { cal: false });
   }
 
+  // Liste adları değişebilir: yönetim panelden bir listeyi yeniden adlandırabilir.
+  // Kafedeki cihaz gün boyu açık kaldığı için seçicideki adları kendiliğinden
+  // tazeleriz. Kuyruğa, çalan parçaya ve personelin seçimine dokunmayız: ekranda
+  // başka bir listeye atlayan bir yayın olmasın.
+  async function listeAdlariniTazele() {
+    if (!brandId || typeof client.from !== 'function') return;
+    let data = null;
+    try {
+      const sonuc = await client.from('brand_playlists')
+        .select('id,name,shuffle').eq('brand_id', brandId).order('name');
+      data = sonuc && sonuc.data;
+    } catch { data = null; }
+    if (!Array.isArray(data) || !data.length) return;
+    listeler = data;
+    // Seçili liste artık yoksa otomatiğe döneriz: silinmiş bir listeyi çalmaya
+    // çalışmak yerine yönetimin atadığı yayına dönmek doğru davranıştır.
+    if (seciliListe && !listeler.some(l => l.id === seciliListe)) {
+      await listeSec('');
+      secimCiz();
+      return;
+    }
+    if (seciliListe) {
+      const secilen = listeler.find(l => l.id === seciliListe);
+      calanListe = { id: seciliListe, ad: secilen ? secilen.name : '' };
+      if (secilen) {
+        byId('folder').textContent = secilen.name + (queue.length ? ' · ' + queue.length + ' parça' : '');
+      }
+    }
+    secimCiz();
+  }
+
   const listeKutusu = byId('liste-sec');
   if (listeKutusu) listeKutusu.onchange = () => listeSec(listeKutusu.value);
 
@@ -592,6 +623,8 @@
     // bilgisini siler, panel de dürüst davranıp atanmış kaynağı gösterir.
     setInterval(() => { ping(); if (calanParca) calaniBildir(calanParca); }, 60000);
     setInterval(() => fetchBroadcast(), 120000);
+    // Yönetim liste adını değiştirdiyse cihazı elle yenilemek gerekmesin.
+    setInterval(listeAdlariniTazele, 600000);
     setInterval(checkHours, 30000);
   }
 

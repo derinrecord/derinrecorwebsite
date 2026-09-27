@@ -294,6 +294,16 @@ test('çalma listesi detayı sıra düğmelerini uçlarda kapatır', () => {
   assert.ok(html.includes('AKIŞ (2)'));
 });
 
+// Liste adı yazımı sahaya çıkıyor (panelde, müşteri sunumunda ve personelin
+// cihazındaki seçicide). Panelden düzeltilebilmesi için alan bulunmalı ve mevcut
+// ad önceden dolu gelmeli.
+test('liste detayı listeyi yeniden adlandırmayı sağlar', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', openPlaylist: 'l1' }), D, ui);
+  assert.ok(html.includes('data-act="list-rename"'), 'adı kaydet düğmesi olmalı');
+  assert.match(html, /id="pl-name" value="Akşam Akışı"/, 'mevcut ad önceden yazılmalı');
+  assert.ok(html.includes('LİSTE ADI'), 'alanın ne olduğu yazılmalı');
+});
+
 test('boş veri dostça karşılanır', () => {
   const bos = { brands: [], folders: [], tracks: [], players: [], broadcast: [], announcements: [], playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: [] };
   assert.ok(V.gorunum(durum({}), bos, ui).html.includes('Eşleşen şube yok'));
