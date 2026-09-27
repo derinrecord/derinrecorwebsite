@@ -114,7 +114,9 @@
       byId('now').textContent = '';
       byId('folder').textContent = '';
       byId('cover').style.display = 'none';
-      renderPlaylist([]);
+      // Listeyi boş bırakırız: burada "henüz şarkı eklenmemiş" yazmak, yayın
+      // çalışıyormuş da parça yokmuş gibi okunuyor ve ekip yanlış yere bakıyor.
+      byId('playlist').innerHTML = '';
       audio.pause();
       // radio_now_playing boş döndüğünde dört ayrı arıza aynı ekrana düşer:
       // anahtar hiç tanınmıyor, marka pasif, canlı yayın kaynağı atanmamış ya da
