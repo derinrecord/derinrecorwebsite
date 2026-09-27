@@ -56,7 +56,7 @@ test('yan menüde yedi ayrı ekran ve sayıları görünür', () => {
   }, { ad: 'Derin Record', alt: 'yonetici@ornek.test', basHarf: 'DR' });
 
   assert.ok(html.includes('data-nav="canli" data-sub="subeler"'), 'Canlı durum menüde olmalı');
-  ['klasorler', 'anonslar', 'markalar', 'listeler', 'abonelikler', 'talepler'].forEach(sub => {
+  ['saglik', 'klasorler', 'anonslar', 'markalar', 'listeler', 'abonelikler', 'talepler'].forEach(sub => {
     assert.ok(html.includes(`data-sub="${sub}"`), `${sub} menüde olmalı`);
   });
   assert.ok(html.includes('>4</span>'), 'şube sayısı menüde görünmeli');
@@ -144,6 +144,129 @@ test('şube çekmecesi yayın linkini ve bakım düğmelerini taşır', () => {
     players: [{ id: 'p4', brand_id: 'b1', label: 'Kilit yok', player_key: 'dr-4', bound_device_id: null, is_playing: false, last_seen_at: null }]
   }), ui);
   assert.ok(kilitliDegil.includes('ilk açıldığı cihaza kilitlenir'));
+});
+
+// Yayın zinciri: şube anahtarı → markanın canlı yayın kaydı → markanın aktif
+// olması → kaynakta parça → abonelik. Kopuk halka "bu link tanınmadı" demektir.
+test('yayın sağlığı zincirdeki kopuk halkayı bulur', () => {
+  const p = D.players[0];
+  assert.equal(V.saglikTani(p, D).seviye, 'iyi');
+
+  const pasif = { ...D, brands: [{ ...D.brands[0], is_active: false }] };
+  const pasifTani = V.saglikTani(p, pasif);
+  assert.equal(pasifTani.seviye, 'kotu');
+  assert.ok(pasifTani.sorunlar.some(s => s.includes('Marka pasif')));
+
+  assert.ok(V.saglikTani(p, { ...D, broadcast: [] }).sorunlar.some(s => s.includes('Canlı yayın kaydı yok')));
+  assert.ok(V.saglikTani(p, { ...D, broadcast: [{ brand_id: 'b1', folder_id: null, playlist_id: null }] })
+    .sorunlar.some(s => s.includes('kaynak seçilmemiş')));
+  assert.ok(V.saglikTani(p, { ...D, tracks: [], playlistTracks: [] }).sorunlar.some(s => s.includes('hiç parça yok')));
+  assert.ok(V.saglikTani(p, { ...D, subscriptions: [] }).sorunlar.some(s => s.includes('Abonelik tanımlı değil')));
+  assert.ok(V.saglikTani(p, { ...D, subscriptions: [{ ...D.subscriptions[0], current_end: iso(-2 * GUN) }] })
+    .sorunlar.some(s => s.includes('süresi')));
+  assert.ok(V.saglikTani({ ...p, player_key: '' }, D).sorunlar.some(s => s.includes('anahtarı boş')));
+});
+
+// Her sorunun yanında onu yerinde kapatan bir düzeltme adımı taşınır:
+// ekran “ne eksik” derken aynı zamanda “nasıl düzeltilir” demeli.
+test('her kopuk halka için düzeltme adımı üretilir', () => {
+  const p = D.players[0];
+  assert.equal(V.saglikTani(p, D).duzeltmeler.length, 0, 'sağlam şubede düzeltme çıkmaz');
+
+  const pasif = V.saglikTani(p, { ...D, brands: [{ ...D.brands[0], is_active: false }] });
+  assert.deepEqual(pasif.duzeltmeler.map(d => d.tip), ['marka-aktif']);
+
+  const yayinsiz = V.saglikTani(p, { ...D, broadcast: [] });
+  assert.deepEqual(yayinsiz.duzeltmeler.map(d => d.tip), ['kaynak']);
+
+  const parcasiz = V.saglikTani(p, { ...D, tracks: [], playlistTracks: [] });
+  assert.equal(parcasiz.duzeltmeler[0].tip, 'parca');
+  assert.equal(parcasiz.duzeltmeler[0].hedef, '#/klasorler/f1', 'klasör kaynağında klasöre götürmeli');
+
+  // Liste kaynağında düzeltme parça listesinin kendisine götürür.
+  const listeD = {
+    ...D,
+    broadcast: [{ brand_id: 'b1', folder_id: null, playlist_id: 'l1' }],
+    playlistTracks: []
+  };
+  assert.equal(V.saglikTani(p, listeD).duzeltmeler[0].hedef, '#/listeler/l1');
+
+  assert.deepEqual(V.saglikTani(p, { ...D, subscriptions: [] }).duzeltmeler.map(d => d.tip), ['abonelik']);
+  assert.deepEqual(V.saglikTani({ ...p, player_key: '' }, D).duzeltmeler.map(d => d.tip), ['cekmece']);
+});
+
+test('sağlık ekranı düzeltme düğmelerini satıra basar', () => {
+  const pasifD = {
+    ...D,
+    brands: [{ ...D.brands[0], is_active: false }],
+    broadcast: [],
+    subscriptions: []
+  };
+  const { html } = V.gorunum(durum({ nav: 'canli', sub: 'saglik' }), pasifD, ui);
+  assert.ok(html.includes('data-act="saglik-fix"'));
+  ['marka-aktif', 'kaynak', 'abonelik'].forEach(tip =>
+    assert.ok(html.includes(`data-tip="${tip}"`), `${tip} düzeltmesi görünmeli`));
+  assert.ok(html.includes('MARKAYI YAYINA AL'));
+  assert.ok(html.includes('KAYNAK ATA'));
+  assert.ok(html.includes('ABONELİK BAŞLAT'));
+  assert.ok(html.includes('btn sm primary'), 'ilk düzeltme öne çıkmalı');
+  // Sağlam şubede düzeltme düğmesi olmamalı.
+  const saglam = V.gorunum(durum({ nav: 'canli', sub: 'saglik' }), D, ui).html;
+  assert.ok(!saglam.includes('data-act="saglik-fix"'));
+});
+
+test('hiç bağlanmamış ama zinciri tam şube uyarı sayılır', () => {
+  const hic = { ...D, players: [{ ...D.players[0], last_seen_at: null }] };
+  const tani = V.saglikTani(hic.players[0], hic);
+  assert.equal(tani.seviye, 'uyari');
+  assert.equal(tani.sorunlar.length, 0);
+  assert.equal(V.saglikOzet(hic).uyari, 1);
+});
+
+test('yayın sağlığı ekranı sorunlu şubeleri üste dizer', () => {
+  const karisik = {
+    ...D,
+    brands: [
+      { id: 'b1', name: 'Mokka Coffee', slug: 'mokka', is_active: false },
+      { id: 'b2', name: 'Roast & Co', slug: 'roast', is_active: true }
+    ],
+    broadcast: [{ brand_id: 'b2', folder_id: 'f1', playlist_id: null }],
+    subscriptions: [{ ...D.subscriptions[0], brand_id: 'b2' }],
+    players: [
+      { id: 'p9', brand_id: 'b2', label: 'Zeytinli', player_key: 'k9', last_seen_at: new Date().toISOString(), bound_device_id: null, is_playing: true },
+      { id: 'p8', brand_id: 'b1', label: 'Alsancak', player_key: 'k8', last_seen_at: null, bound_device_id: 'cihaz-9', is_playing: false }
+    ]
+  };
+  const { html } = V.gorunum(durum({ nav: 'canli', sub: 'saglik' }), karisik, ui);
+  assert.ok(html.includes('YAYIN SAĞLIĞI'));
+  assert.ok(html.includes('data-act="saglik-denetle"'), 'sunucu doğrulama düğmesi olmalı');
+  assert.ok(html.includes('YAYIN ÇALIŞMAZ'));
+  assert.ok(html.includes('zincirde kopuk halka var'));
+  assert.ok(html.includes('cihaza kilitli'), 'kilit durumu satırda görünmeli');
+  assert.ok(html.indexOf('Alsancak') < html.indexOf('Zeytinli'), 'sorunlu şube üstte olmalı');
+  assert.equal(V.saglikOzet(karisik).kotu, 1);
+  assert.equal(V.saglikOzet(karisik).iyi, 1);
+  assert.equal(V.saglikOzet({ ...karisik, players: [] }).kotu, 0);
+});
+
+test('sunucu doğrulamasının sonucu tabloda görünür', () => {
+  const sonucli = { ...ui, saglikSonuc: id => (id === 'p1' ? { durum: 'iyi', metin: '3 parça gönderiyor' } : null) };
+  const html = V.gorunum(durum({ nav: 'canli', sub: 'saglik' }), D, sonucli).html;
+  assert.ok(html.includes('3 parça gönderiyor'));
+  // Denetim çalıştırılmadıysa hücre boş kalmaz: "denenmedi" yazar.
+  assert.ok(V.gorunum(durum({ nav: 'canli', sub: 'saglik' }), D, ui).html.includes('denenmedi'));
+});
+
+test('marka detayı markayı yayına alıp durdurmayı gösterir', () => {
+  const aktif = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), D, ui).html;
+  assert.ok(aktif.includes('MARKA AKTİF'), 'aktif marka açıkça yazılmalı');
+  assert.ok(aktif.includes('data-act="brand-active" data-id="b1"'));
+  assert.ok(aktif.includes('MARKAYI DURDUR'));
+
+  const pasifD = Object.assign({}, D, { brands: [{ ...D.brands[0], is_active: false }] });
+  const pasif = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), pasifD, ui).html;
+  assert.ok(pasif.includes('MARKA PASİF'), 'pasif marka işaretlenmeli');
+  assert.ok(pasif.includes('MARKAYI YAYINA AL'));
 });
 
 test('bağlantı sınaması düğmesi her şubede bulunmaz, yalnızca çekmecede olur', () => {

@@ -1,182 +1,432 @@
+/* Derin Record — marka sunumu.
+   Veriyi coffee_brand_auth ile açar, listeleri ve parçaları okur.
+   Parça geçişleri hem görselde hem seste fade ile akar:
+   parça bitmeden 2.6 sn önce ses kısılır, yeni parça 1.1 sn'de açılır. */
 (() => {
 const byId = id => document.getElementById(id);
 const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clean = n => { try { return decodeURIComponent(n); } catch { return n; } };
-const fmt = s => isFinite(s) ? Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0') : '0:00';
+const fmt = s => (isFinite(s) && s > 0)
+  ? Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') : '0:00';
+const sureMetni = s => {
+  const t = Math.round(s || 0);
+  return t >= 60 ? Math.floor(t / 60) + ' dk' : t + ' sn';
+};
+const es = (a, b) => String(a) === String(b);
+const bekle = ms => new Promise(done => setTimeout(done, ms));
+
 const client = window.supabase.createClient(
-window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
-
+  window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
 const slug = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
-const audioUrl = p => client.storage.from('radio-audio').getPublicUrl(p).data.publicUrl;
-const coverUrl = p => p ? client.storage.from('radio-covers').getPublicUrl(p).data.publicUrl : null;
+const urly = (kova, p) => p ? client.storage.from(kova).getPublicUrl(p).data.publicUrl : null;
+const kapak = p => urly('radio-covers', p);
+const ses = p => urly('radio-audio', p);
 
-const audio = byId('br-audio');
-let queue = [];
-let aktif = -1;
+const audio = byId('mk-audio');
+const KAPANMA_MS = 2600;   // parça sonundaki fade out
+const ACILMA_MS = 1100;    // yeni parçanın fade in'i
+const DUGME_MS = 420;      // düğmeyle geçişte kısa fade
+const GORSEL_MS = 340;     // sahne görselinin fade süresi
+const EN_KISA = 8;         // saniyeden kısa parçalarda uçtan geçiş yapılmaz
 
-function showTrackDetail(track, subtitle, cover){
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
-  overlay.innerHTML = `
-    <div style="max-width:360px;width:100%;padding:32px 28px;border-radius:24px;background:#1a1a1e;border:1px solid rgba(255,255,255,.15);box-shadow:0 20px 60px rgba(0,0,0,.5);color:#f4f1e9;text-align:center">
-      ${cover ? `<img src="${cover}" alt="" style="width:220px;height:220px;border-radius:18px;object-fit:cover;margin:0 auto 20px;display:block;box-shadow:0 12px 30px rgba(0,0,0,.5)">`
-        : `<div style="width:220px;height:220px;border-radius:18px;background:rgba(255,255,255,.08);margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:48px;opacity:.4">♪</div>`}
-      <h3 style="margin:0 0 6px;font-size:19px">${safe(clean(track.title))}</h3>
-      <p style="margin:0;opacity:.6;font-size:13px">${safe(subtitle || '')}</p>
-      <button id="br-detail-close" style="margin-top:24px;padding:10px 24px;border-radius:14px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:inherit;font:inherit;font-size:12px;cursor:pointer">KAPAT</button>
-    </div>`;
-  document.body.appendChild(overlay);
-  const close = () => overlay.remove();
-  overlay.querySelector('#br-detail-close').onclick = close;
-  overlay.onclick = e => { if (e.target === overlay) close(); };
-}
+let listeler = [];
+let kuyruk = [];
+let sira = -1;
+let acikListe = null;
+let seviye = 1;
+let gecisVar = false;
+let fadeZaman = null;
+let sahneIsi = Promise.resolve();
+let surukluyor = false;
 
-function playAt(q, i){
-  if (i < 0 || i >= q.length) return;
-  queue = q;
-  aktif = i;
-  const t = q[i];
-  audio.src = audioUrl(t.storage_path);
-  byId('sp-player').classList.add('on');
-  document.body.classList.add('sp-open');
-  byId('sp-title').textContent = clean(t.title);
-  byId('sp-sub').textContent = t._playlistName || '';
-  const img = byId('sp-now-img');
-  const c = coverUrl(t.cover_path) || coverUrl(t._playlistCover);
-  if (c) { img.src = c; img.style.display = ''; } else { img.style.display = 'none'; }
-  document.querySelectorAll('.sp-row').forEach(r => r.classList.toggle('playing', r.dataset.track === t.id && r.dataset.plist === t._playlistId));
-  audio.play().then(() => { byId('sp-toggle').textContent = '⏸'; }).catch(() => { byId('sp-toggle').textContent = '▶'; });
-}
+// ---------- Ses geçişleri ----------
+function iptalFade() { if (fadeZaman) { clearInterval(fadeZaman); fadeZaman = null; } }
 
-function wirePlayer(playlists){
-  byId('sp-toggle').onclick = () => {
-    if (!audio.src) return;
-    if (audio.paused) { audio.play(); byId('sp-toggle').textContent = '⏸'; }
-    else { audio.pause(); byId('sp-toggle').textContent = '▶'; }
-  };
-  byId('sp-next').onclick = () => { if (queue.length) playAt(queue, (aktif + 1) % queue.length); };
-  byId('sp-prev').onclick = () => { if (queue.length) playAt(queue, (aktif - 1 + queue.length) % queue.length); };
-  byId('sp-vol').oninput = e => { audio.volume = e.target.value / 100; };
-  byId('sp-seek').oninput = e => { if (audio.duration) audio.currentTime = (e.target.value/1000) * audio.duration; };
-  audio.ontimeupdate = () => {
-    if (!audio.duration) return;
-    byId('sp-cur').textContent = fmt(audio.currentTime);
-    byId('sp-dur').textContent = fmt(audio.duration);
-    byId('sp-seek').value = Math.round((audio.currentTime / audio.duration) * 1000);
-  };
-  audio.onended = () => { if (queue.length) playAt(queue, (aktif + 1) % queue.length); };
-  byId('sp-now').onclick = () => {
-    if (aktif < 0) return;
-    const t = queue[aktif];
-    showTrackDetail(t, t._playlistName, coverUrl(t.cover_path) || coverUrl(t._playlistCover));
-  };
-  document.querySelectorAll('.sp-row').forEach(row => {
-    row.addEventListener('click', () => {
-      const p = playlists.find(x => x.id === row.dataset.plist);
-      if (!p) return;
-      const idx = Number(row.dataset.idx);
-      if (aktif === idx && queue === p._tracks) {
-        const t = p._tracks[idx];
-        showTrackDetail(t, p.name, coverUrl(t.cover_path) || coverUrl(p.cover_path));
-      } else {
-        playAt(p._tracks, idx);
-      }
-    });
+function fade(hedef, ms) {
+  return new Promise(done => {
+    iptalFade();
+    const bas = audio.volume;
+    const varis = Math.min(1, Math.max(0, hedef));
+    if (ms <= 0 || Math.abs(varis - bas) < 0.005) { audio.volume = varis; done(); return; }
+    const adim = Math.max(8, Math.min(30, Math.round(ms / 50)));
+    const fark = (varis - bas) / adim;
+    let i = 0;
+    fadeZaman = setInterval(() => {
+      i++;
+      audio.volume = Math.min(1, Math.max(0, bas + fark * i));
+      if (i >= adim) { iptalFade(); audio.volume = varis; done(); }
+    }, ms / adim);
   });
 }
 
-function ciz(brand, playlists) {
-  byId('br-lock').hidden = true;
-  const app = byId('br-app');
+// ---------- Kuyruk ----------
+function sonraki(yon) {
+  if (!kuyruk.length) return -1;
+  return (sira + yon + kuyruk.length) % kuyruk.length;
+}
+
+function kaynakYukle(t, baslangic) {
+  audio.volume = Math.min(1, Math.max(0, baslangic));
+  audio.src = ses(t.storage_path);
+  audio.play().catch(() => {
+    audio.volume = seviye;
+    durum('Tarayıcı otomatik çalmayı engelledi. Başlatmak için oynat düğmesine dokunun.');
+  });
+}
+
+// Parçayı seçer: kaynağı yükler, sahneyi ve listeyi tazeler.
+function parcaSec(i, { cal = true, baslangic = seviye } = {}) {
+  if (i < 0 || i >= kuyruk.length) return;
+  sira = i;
+  const t = kuyruk[i];
+  if (cal) kaynakYukle(t, baslangic);
+  sahneYaz(t);
+  satirlariIsaretle();
+}
+
+// Düğme/liste tıklamasıyla geçiş: kısa fade out → parça → fade in.
+async function gecisCal(i) {
+  if (gecisVar || i < 0) return;
+  gecisVar = true;
+  try {
+    if (!audio.paused) await fade(0, DUGME_MS);
+    parcaSec(i, { baslangic: 0 });
+    await fade(seviye, ACILMA_MS);
+  } finally { gecisVar = false; }
+}
+
+// Parça sonuna yaklaşınca kesintisiz geçiş.
+async function uctanGecis() {
+  if (gecisVar) return;
+  gecisVar = true;
+  try {
+    await fade(0, KAPANMA_MS);
+    const i = sonraki(1);
+    if (i < 0) return;
+    parcaSec(i, { baslangic: 0 });
+    await fade(seviye, ACILMA_MS);
+  } finally { gecisVar = false; }
+}
+
+audio.addEventListener('timeupdate', () => {
+  const d = audio.duration;
+  if (isFinite(d) && d > 0) {
+    byId('mk-cur').textContent = fmt(audio.currentTime);
+    byId('mk-dur').textContent = fmt(d);
+    if (!surukluyor) byId('mk-seek').value = Math.round((audio.currentTime / d) * 1000);
+  }
+  if (gecisVar || audio.paused || !kuyruk.length) return;
+  if (!isFinite(d) || d < EN_KISA) return;
+  const kalan = d - audio.currentTime;
+  if (kalan > 0.25 && kalan <= KAPANMA_MS / 1000) uctanGecis();
+});
+
+audio.addEventListener('ended', () => {
+  if (gecisVar) return;
+  gecisVar = true;
+  const i = sonraki(1);
+  if (i >= 0) {
+    parcaSec(i, { baslangic: 0 });
+    fade(seviye, ACILMA_MS).then(() => { gecisVar = false; });
+  } else { gecisVar = false; }
+});
+
+audio.addEventListener('error', () => {
+  if (gecisVar || !kuyruk.length) return;
+  durum('Parça açılamadı, sıradakine geçiliyor…');
+  setTimeout(() => { const i = sonraki(1); if (i >= 0) gecisCal(i); }, 900);
+});
+
+// Kullanıcı duraklattıysa yarı kalan fade'i bitir ki ses kapalı kalmasın.
+audio.addEventListener('pause', () => { if (!gecisVar) { iptalFade(); audio.volume = seviye; } });
+
+// ---------- Sahne (görsel fade) ----------
+function sahneYaz(t) {
+  const stage = byId('mk-stage');
+  if (!stage) return;
+  sahneIsi = sahneIsi.then(async () => {
+    stage.classList.add('gizle');
+    await bekle(GORSEL_MS);
+    doldur(t);
+    stage.classList.remove('gizle');
+  }).catch(() => {});
+}
+
+function doldur(t) {
+  const stage = byId('mk-stage');
+  if (!stage) return;
+  const art = byId('mk-art');
+  if (!t) {
+    art.innerHTML = '<div class="ph">♪</div>';
+    byId('mk-tur').textContent = 'HAZIR';
+    byId('mk-baslik').textContent = 'Yayın bekleniyor';
+    byId('mk-alt').textContent = 'Bu listede henüz parça yok.';
+    byId('mk-album').textContent = '';
+    stage.classList.remove('caliyor');
+    return;
+  }
+  const kapakPath = t.cover_path || t._playlistCover;
+  art.innerHTML = kapak(kapakPath)
+    ? `<img src="${safe(kapak(kapakPath))}" alt="">`
+    : '<div class="ph">♪</div>';
+  byId('mk-tur').textContent = 'ŞİMDİ ÇALIYOR';
+  byId('mk-baslik').textContent = clean(t.title);
+  byId('mk-alt').textContent = t._playlistName || '';
+  byId('mk-album').textContent = t._album || '';
+  stage.classList.toggle('caliyor', !audio.paused);
+}
+
+audio.addEventListener('play', () => { const s = byId('mk-stage'); if (s) s.classList.add('caliyor'); });
+audio.addEventListener('pause', () => { const s = byId('mk-stage'); if (s) s.classList.remove('caliyor'); });
+
+function satirlariIsaretle() {
+  const t = kuyruk[sira];
+  document.querySelectorAll('.mk-item').forEach(el => {
+    el.classList.toggle('calisiyor', !!t && es(el.dataset.track, t.id) && es(el.dataset.plist, t._playlistId));
+  });
+}
+
+function durum(metin) {
+  const el = byId('mk-durum');
+  if (el) el.textContent = metin || '';
+}
+
+// ---------- Çizim ----------
+function tabsCiz() {
+  const kutu = byId('mk-tabs');
+  kutu.innerHTML = listeler.map(pl => `
+    <button class="mk-tab" type="button" data-plist="${safe(pl.id)}" aria-pressed="${es(pl.id, acikListe && acikListe.id)}">
+      ${kapak(pl.cover_path) ? `<img src="${safe(kapak(pl.cover_path))}" alt="">` : '<span class="ph">♪</span>'}
+      <span><b>${safe(pl.name)}</b><small>${pl._tracks.length} parça · ${sureMetni(pl._sure)}</small></span>
+    </button>`).join('');
+}
+
+function listeCiz() {
+  const pl = acikListe;
+  const baslik = byId('mk-liste-baslik');
+  const kutu = byId('mk-liste');
+  baslik.innerHTML = `<span>${safe(pl ? pl.name : '')}</span><span>${pl ? pl._tracks.length + ' parça · ' + sureMetni(pl._sure) : ''}</span>`;
+  if (!pl || !pl._tracks.length) {
+    kutu.innerHTML = '<p class="mk-bos">Bu listede henüz şarkı yok.</p>';
+    return;
+  }
+  kutu.innerHTML = `<div class="mk-list-head"><span>#</span><span>BAŞLIK</span><span style="text-align:right">SÜRE</span></div>
+    <ol class="mk-list" id="mk-satirlar">${pl._tracks.map((t, i) => `
+      <li class="mk-item" data-track="${safe(t.id)}" data-plist="${safe(pl.id)}" data-idx="${i}">
+        <span class="no"><span class="sira">${i + 1}</span>
+          <span class="mk-eq" aria-hidden="true"><i></i><i></i><i></i></span></span>
+        <span class="ttl">${kapak(t.cover_path)
+          ? `<img src="${safe(kapak(t.cover_path))}" alt="">`
+          : '<span class="ph" aria-hidden="true">♪</span>'}
+          <span class="ad">${safe(clean(t.title))}</span></span>
+        <span class="sure">${fmt(t.duration_sec)}</span>
+      </li>`).join('')}</ol>`;
+}
+
+function istatistikCiz(brand) {
+  const parcaSayisi = listeler.reduce((n, pl) => n + pl._tracks.length, 0);
+  const toplam = listeler.reduce((n, pl) => n + pl._sure, 0);
+  byId('mk-stats').innerHTML = `
+    <div class="mk-stat"><b>${listeler.length}</b><span>ÇALMA LİSTESİ</span></div>
+    <div class="mk-stat"><b>${parcaSayisi}</b><span>PARÇA</span></div>
+    <div class="mk-stat"><b>${sureMetni(toplam)}</b><span>TOPLAM AKIŞ</span></div>`;
+  byId('mk-selam').textContent = 'DERİN RECORD × ' + String(brand.name || '').toUpperCase();
+}
+
+function ciz(brand, plist) {
+  byId('mk-lock').hidden = true;
+  const app = byId('mk-app');
   app.hidden = false;
+  const vurgu = /^#[0-9a-f]{3,8}$/i.test(brand.accent_color || '') ? brand.accent_color : '#e8d15a';
+  byId('mk-root').style.setProperty('--mk-accent', vurgu);
+
+  const notlar = [
+    brand.roast_profile,
+    ...(Array.isArray(brand.tasting_notes) ? brand.tasting_notes : [])
+  ].filter(Boolean);
 
   app.innerHTML = `
-<section class="br-hero">
-<p class="br-eyebrow">DERİN RECORD × ${safe(brand.name).toUpperCase()}</p>
-<h1>${safe(brand.name)}<br><span style="color:${safe(brand.accent_color || '#e8d15a')}">İÇİN KURGULANDI.</span></h1>
-${brand.tagline ? `<p class="br-tag">${safe(brand.tagline)}</p>` : ''}
-${(brand.roast_profile || (brand.tasting_notes && brand.tasting_notes.length)) ? `<div class="br-notes">
-${brand.roast_profile ? `<span class="br-note">${safe(brand.roast_profile)}</span>` : ''}
-${(brand.tasting_notes || []).map(n => `<span class="br-note">${safe(n)}</span>`).join('')}
-</div>` : ''}
+<section class="mk-hero mk-shell">
+  <p class="mk-eyebrow" id="mk-selam">DERİN RECORD</p>
+  <h1>${safe(brand.name)}<br><span>İÇİN KURGULANDI.</span></h1>
+  ${brand.tagline ? `<p class="mk-tag">${safe(brand.tagline)}</p>` : ''}
+  ${notlar.length ? `<div class="mk-notes">${notlar.map(n => `<span class="mk-note">${safe(n)}</span>`).join('')}</div>` : ''}
+  <div class="mk-stats" id="mk-stats"></div>
 </section>
 
-${playlists.length ? playlists.map(p => `
-<section class="br-sec">
-<h2>${safe(p.name)}</h2>
-${p._tracks.length ? `
-<div class="sp-th"><span>#</span><span>BAŞLIK</span><span>SÜRE</span><span></span></div>
-<ul class="sp-rows">
-${p._tracks.map((t,i) => `
-<li class="sp-row" data-track="${t.id}" data-plist="${p.id}" data-idx="${i}">
-<span class="no">${i+1}</span>
-<span class="ttl" style="display:flex;align-items:center;gap:8px">${t.cover_path ? `<img src="${coverUrl(t.cover_path)}" style="width:22px;height:22px;border-radius:5px;object-fit:cover;flex:0 0 auto">` : ''}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safe(clean(t.title))}</span></span>
-<span class="dur">${fmt(t.duration_sec)}</span>
-<span class="act"></span>
-</li>`).join('')}
-</ul>` : '<p style="opacity:.55;font-size:13px">Bu listede henüz şarkı yok.</p>'}
-</section>`).join('') : '<section class="br-sec"><p style="opacity:.6;font-size:13.5px">Akış kurgusu hazırlanıyor.</p></section>'}
+<section class="mk-shell">
+  <div class="mk-tabs" id="mk-tabs"></div>
 
-<div class="sp-player" id="sp-player">
-<div class="sp-now" id="sp-now" style="cursor:pointer">
-<img id="sp-now-img" src="" alt="" style="display:none">
-<div class="t"><b id="sp-title">—</b><small id="sp-sub"></small></div>
-</div>
-<div class="sp-ctr">
-<div class="sp-btns">
-<button id="sp-prev">⏮</button>
-<button class="main" id="sp-toggle">▶</button>
-<button id="sp-next">⏭</button>
-</div>
-<div class="sp-seek">
-<span id="sp-cur">0:00</span>
-<input type="range" id="sp-seek" value="0" min="0" max="1000">
-<span id="sp-dur">0:00</span>
-</div>
-</div>
-<div class="sp-vol">🔊<input type="range" id="sp-vol" min="0" max="100" value="100"></div>
-</div>`;
+  <div class="mk-stage" id="mk-stage">
+    <div class="mk-art" id="mk-art"><div class="ph">♪</div>
+      <span class="mk-live"><i></i>CANLI</span></div>
+    <div class="mk-meta">
+      <div class="mk-icerik">
+        <p class="mk-lbl" id="mk-tur">HAZIR</p>
+        <h2 id="mk-baslik">Bir liste seçin</h2>
+        <p class="mk-sub" id="mk-alt">Listeyi seçtiğinizde parçalar akmaya başlar.</p>
+        <p class="mk-album" id="mk-album"></p>
+      </div>
+      <div class="mk-prog">
+        <span id="mk-cur">0:00</span>
+        <input type="range" id="mk-seek" min="0" max="1000" value="0" aria-label="İlerleme">
+        <span id="mk-dur">0:00</span>
+      </div>
+      <div class="mk-cmds">
+        <button id="mk-geri" type="button" aria-label="Önceki">⏮</button>
+        <button class="mk-main" id="mk-oyna" type="button" aria-label="Oynat">▶</button>
+        <button id="mk-ileri" type="button" aria-label="Sonraki">⏭</button>
+        <div class="mk-vol">🔊<input type="range" id="mk-ses" min="0" max="100" value="100" aria-label="Ses"></div>
+      </div>
+      <p class="mk-sub" id="mk-durum" style="margin-top:14px"></p>
+    </div>
+  </div>
 
-  wirePlayer(playlists);
+  <div class="mk-panel">
+    <h3 id="mk-liste-baslik"></h3>
+    <div id="mk-liste"></div>
+  </div>
+
+  <div class="mk-foot">
+    <span>DERİN RECORD · ÖZEL SUNUM</span>
+    <span>${new Date().getFullYear()}</span>
+  </div>
+</section>`;
+
+  istatistikCiz(brand);
+  acikListe = listeler[0] || null;
+  kuyruk = acikListe ? acikListe._tracks : [];
+  tabsCiz();
+  listeCiz();
+  doldur(kuyruk[0] || null);
+  bagla();
 }
 
-async function ac(kod) {
-  const err = byId('br-err');
-  err.textContent = 'Kontrol ediliyor…';
-  const { data, error } = await client.rpc('coffee_brand_auth', { p_slug: slug, p_code: kod });
-  if (error) { err.textContent = 'Hata: ' + error.message; return; }
-  if (!data || !data.length) { err.textContent = 'Kod doğru değil ya da sunum hazır değil.'; return; }
-  const brand = data[0];
-
-  const { data: playlistsRaw } = await client.from('brand_playlists')
-    .select('id,name,cover_path,created_at').eq('brand_id', brand.brand_id).order('created_at');
-  const plist = playlistsRaw || [];
-  const playlistIds = plist.map(p => p.id);
-  const { data: pt } = playlistIds.length
-    ? await client.from('brand_playlist_tracks').select('id,playlist_id,track_id,sort_order').in('playlist_id', playlistIds).order('sort_order')
-    : { data: [] };
-  const trackIds = [...new Set((pt||[]).map(x => x.track_id))];
-  const { data: tracks } = trackIds.length
-    ? await client.from('radio_tracks').select('id,title,storage_path,cover_path,duration_sec').in('id', trackIds)
-    : { data: [] };
-  const trackById = Object.fromEntries((tracks||[]).map(t => [t.id, t]));
-
-  plist.forEach(p => {
-    p._tracks = (pt||[]).filter(x => x.playlist_id === p.id)
-      .map(x => trackById[x.track_id]).filter(Boolean)
-      .map(t => ({ ...t, _playlistId: p.id, _playlistName: p.name, _playlistCover: p.cover_path }));
+function bagla() {
+  byId('mk-tabs').addEventListener('click', async e => {
+    const dugme = e.target.closest('.mk-tab');
+    if (!dugme) return;
+    const pl = listeler.find(x => es(x.id, dugme.dataset.plist));
+    if (!pl || (acikListe && es(pl.id, acikListe.id))) return;
+    const devam = !audio.paused && !!audio.src;
+    acikListe = pl;
+    kuyruk = pl._tracks;
+    sira = -1;
+    tabsCiz();
+    listeCiz();
+    if (devam && kuyruk.length) await gecisCal(0);
+    else { satirlariIsaretle(); sahneYaz(kuyruk[0] || null); }
   });
 
-  sessionStorage.setItem('br-' + slug, kod);
-  ciz(brand, plist);
+  byId('mk-liste').addEventListener('click', e => {
+    const satir = e.target.closest('.mk-item');
+    if (!satir) return;
+    const i = Number(satir.dataset.idx);
+    const t = kuyruk[i];
+    if (!t) return;
+    if (sira === i && es(t._playlistId, acikListe.id)) detayGoster(t);
+    else gecisCal(i);
+  });
+
+  byId('mk-oyna').onclick = () => {
+    if (!kuyruk.length) return;
+    if (sira < 0) { gecisCal(0); return; }
+    if (audio.paused) {
+      audio.play().catch(() => durum('Parça açılamadı.'));
+    } else {
+      audio.pause();
+    }
+  };
+  audio.addEventListener('play', () => { byId('mk-oyna').textContent = '⏸'; });
+  audio.addEventListener('pause', () => { byId('mk-oyna').textContent = '▶'; });
+
+  byId('mk-ileri').onclick = () => { const i = sonraki(1); if (i >= 0) gecisCal(i); };
+  byId('mk-geri').onclick = () => {
+    if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+    const i = sonraki(-1);
+    if (i >= 0) gecisCal(i);
+  };
+  byId('mk-ses').oninput = e => { seviye = Number(e.target.value) / 100; iptalFade(); audio.volume = seviye; };
+  byId('mk-seek').addEventListener('input', () => { surukluyor = true; });
+  byId('mk-seek').addEventListener('change', e => {
+    surukluyor = false;
+    if (isFinite(audio.duration) && audio.duration) audio.currentTime = (Number(e.target.value) / 1000) * audio.duration;
+  });
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'ArrowRight') byId('mk-ileri').click();
+    else if (e.key === 'ArrowLeft') byId('mk-geri').click();
+    else if (e.key === ' ') { e.preventDefault(); byId('mk-oyna').click(); }
+  });
 }
 
-byId('br-enter').onclick = () => {
-  const kod = byId('br-code').value.trim();
-  if (kod) ac(kod);
-};
-byId('br-code').addEventListener('keydown', e => { if (e.key === 'Enter') byId('br-enter').click(); });
+function detayGoster(t) {
+  const kapakPath = t.cover_path || t._playlistCover;
+  const ov = document.createElement('div');
+  ov.className = 'mk-ov';
+  ov.innerHTML = `
+    <div class="mk-card" role="dialog" aria-modal="true">
+      ${kapak(kapakPath) ? `<img src="${safe(kapak(kapakPath))}" alt="">` : '<div class="ph">♪</div>'}
+      <h3>${safe(clean(t.title))}</h3>
+      <p>${safe(t._playlistName || '')}${t.duration_sec ? ' · ' + fmt(t.duration_sec) : ''}</p>
+      <button id="mk-kapat" type="button">KAPAT</button>
+    </div>`;
+  document.body.appendChild(ov);
+  const kapat = () => ov.remove();
+  ov.querySelector('#mk-kapat').onclick = kapat;
+  ov.onclick = e => { if (e.target === ov) kapat(); };
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { kapat(); document.removeEventListener('keydown', esc); }
+  });
+}
 
-const kayitli = sessionStorage.getItem('br-' + slug);
-if (kayitli) ac(kayitli);
+// ---------- Açılış ----------
+async function ac(kod) {
+  const hata = byId('mk-hata');
+  const dugme = byId('mk-gir');
+  hata.textContent = 'Kontrol ediliyor…';
+  dugme.disabled = true;
+  const { data, error } = await client.rpc('coffee_brand_auth', { p_slug: slug, p_code: kod });
+  dugme.disabled = false;
+  if (error) { hata.textContent = 'Bağlantı kurulamadı: ' + error.message; return; }
+  if (!data || !data.length) {
+    hata.textContent = 'Kod doğru değil ya da sunum henüz hazır değil.';
+    return;
+  }
+  const brand = data[0];
+
+  const { data: plistRaw } = await client.from('brand_playlists')
+    .select('id,name,cover_path,created_at').eq('brand_id', brand.brand_id).order('created_at');
+  listeler = plistRaw || [];
+  const idler = listeler.map(p => p.id);
+  const { data: pt } = idler.length
+    ? await client.from('brand_playlist_tracks').select('id,playlist_id,track_id,sort_order').in('playlist_id', idler).order('sort_order')
+    : { data: [] };
+  const trackIds = [...new Set((pt || []).map(x => x.track_id))];
+  const { data: parcalar } = trackIds.length
+    ? await client.from('radio_tracks').select('id,title,storage_path,cover_path,duration_sec').in('id', trackIds)
+    : { data: [] };
+  const trackById = Object.fromEntries((parcalar || []).map(t => [t.id, t]));
+
+  listeler.forEach(pl => {
+    pl._tracks = (pt || []).filter(x => x.playlist_id === pl.id)
+      .map(x => trackById[x.track_id]).filter(Boolean)
+      .map(t => ({ ...t, _playlistId: pl.id, _playlistName: pl.name, _playlistCover: pl.cover_path }));
+    pl._sure = pl._tracks.reduce((n, t) => n + (Number(t.duration_sec) || 0), 0);
+  });
+
+  try { sessionStorage.setItem('br-' + slug, kod); } catch {}
+  ciz(brand, listeler);
+}
+
+byId('mk-gir').onclick = () => {
+  const kod = byId('mk-kod').value.trim();
+  if (!kod) { byId('mk-hata').textContent = 'Erişim kodunu girin.'; return; }
+  ac(kod).catch(err => { byId('mk-hata').textContent = 'Beklenmeyen hata: ' + (err.message || ''); });
+};
+byId('mk-kod').addEventListener('keydown', e => { if (e.key === 'Enter') byId('mk-gir').click(); });
+
+let kayitli = null;
+try { kayitli = sessionStorage.getItem('br-' + slug); } catch {}
+if (kayitli) ac(kayitli).catch(err => { byId('mk-hata').textContent = 'Beklenmeyen hata: ' + (err.message || ''); });
 })();

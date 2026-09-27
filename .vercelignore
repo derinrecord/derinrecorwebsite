@@ -8,5 +8,9 @@ supabase/
 tests/
 *.md
 
+# Tasarım provaları ve çıkarılan görselleri yayına girmesin.
+*-prova.html
+prova-gorseller/
+
 # config.js İSTENEREK hariç tutulmadı: publishable (anon) anahtar tarayıcıda
 # çalışmak zorunda ve zaten herkese açıktır; veriyi RLS korur.

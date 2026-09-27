@@ -149,6 +149,7 @@ option{background:#141317;color:var(--txt)}
 .tile b{display:block;font-size:30px;letter-spacing:-.6px;margin:6px 0 2px}
 .tile small{font-size:12px;color:var(--muted)}
 .tile.gold{border-color:rgba(212,194,78,.4);background:rgba(212,194,78,.09)}
+.tile.danger{border-color:rgba(255,95,109,.45);background:rgba(255,95,109,.1)}
 
 .tabs{display:inline-flex;gap:4px;padding:4px;border-radius:var(--r);border:1px solid var(--line);
   background:var(--surface);margin-bottom:18px;flex-wrap:wrap}

@@ -26,6 +26,61 @@ test('panel hem abonelik hem talep ekranını yönlendirir', () => {
   assert.match(source, /talepler: \{ nav: 'musteri', sub: 'talepler' \}/);
 });
 
+// Yeni marka oluştururken is_active yazılmazsa sunucu yayını vermez ve şube
+// linki "bu link tanınmadı" der; bu yüzden alan açıkça true yazılmalı ve
+// yayına al/durdur düğmesi bulunmalı.
+test('panel markayı aktif yazar ve yayın durumunu değiştirebilir', () => {
+  assert.match(source, /case 'brand-active'/);
+  assert.match(source, /is_active: acilacak/);
+  const ekler = source.match(/is_active: true/g) || [];
+  assert.ok(ekler.length >= 2, 'marka oluşturan iki akış da is_active: true yazmalı');
+});
+
+// Bağlantı sınaması oynatıcının sunucudaki koşullarını panelde de kontrol eder.
+test('bağlantı sınaması yerel koşulları tek tek raporlar', () => {
+  ['Marka durumu', 'Canlı yayın satırı', 'Yayın kaynağı', 'Kaynaktaki parça', 'Abonelik']
+    .forEach(satir => assert.ok(source.includes(satir), `${satir} satırı raporlanmalı`));
+  assert.match(source, /panel_eksikleri/);
+});
+
+// "Yayın sağlığı" ekranı bütün şubelerin zincirini tek listede denetler;
+// sunucu doğrulaması da cihaz kilidini bağlamamalıdır.
+test('yayın sağlığı ekranı rotalanır ve cihaz kilidini bağlamaz', () => {
+  assert.match(source, /saglik: \{ nav: 'canli', sub: 'saglik' \}/);
+  assert.match(source, /case 'saglik-denetle'/);
+  const bas = source.indexOf("case 'saglik-denetle'");
+  const son = source.indexOf("case 'branch-open'", bas);
+  assert.ok(son > bas);
+  assert.ok(!source.slice(bas, son).includes("rpc('radio_ping'"), 'denetim radio_ping çağırmamalı');
+  assert.match(source, /V\.saglikChip\(/);
+  assert.match(source, /saglikSonuc: id =>/);
+  assert.match(source, /V\.saglikTani\(p, D\)/);
+});
+
+// Sağlık ekranındaki düzeltmeler yerinde uygulanır: kayıt güncellenir, eski
+// sunucu cevabı silinir ve satır yeniden hesaplanıp yeşile döner.
+test('sağlık ekranı düzeltmeleri yerinde uygular', () => {
+  assert.match(source, /case 'saglik-fix'/);
+  ['marka-aktif', 'kaynak', 'abonelik', 'parca', 'cekmece'].forEach(tip =>
+    assert.ok(source.includes(`'${tip}'`), `${tip} düzeltmesi bağlanmalı`));
+  assert.match(source, /from\('brands'\)\.update\(\{ is_active: true \}\)/);
+  assert.match(source, /from\('brand_broadcast'\)\.upsert\(/);
+  assert.match(source, /from\('subscriptions'\)\.upsert\(/);
+  // Eski sunucu cevabı kalırsa satır yeşile dönse de kırmızı görünürdü.
+  assert.ok((source.match(/delete saglikSonuc\[/g) || []).length >= 2);
+});
+
+test('sunum sayfası yeni tasarımı ve fade geçişlerini yükler', () => {
+  const sunum = fs.readFileSync(require.resolve('../coffee-marka.html'), 'utf8');
+  assert.match(sunum, /marka-sunum\.css/);
+  assert.match(sunum, /coffee-marka\.js\?v=3/);
+
+  const kaynak = fs.readFileSync(require.resolve('../coffee-marka.js'), 'utf8');
+  ['KAPANMA_MS', 'ACILMA_MS', 'uctanGecis', 'fade('].forEach(iz =>
+    assert.ok(kaynak.includes(iz), `${iz} geçiş kodunda olmalı`));
+  assert.ok(!kaynak.includes('sp-player'), 'eski sabit oynatıcı barı kullanılmamalı');
+});
+
 test('panel sayfası görünüm modülünü ve stil dosyasını yükler', () => {
   const sayfa = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');
   assert.match(sayfa, /radyo-panel-views\.js/);

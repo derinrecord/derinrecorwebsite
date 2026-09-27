@@ -35,6 +35,8 @@
   let recorder = null, recParcalari = [], recAkis = null, recZaman = null, recBaslangic = 0;
   let ses = null, calmaListesi = [], calmaIdx = -1, calmaBaslik = '', oynaticiKuruldu = false;
   let yenileZaman = null;
+  // "SUNUCUYLA DOĞRULA" sonuçları: şube kimliği → { durum, metin }.
+  let saglikSonuc = {};
 
   // ---------- Yardımcılar ----------
   const siteRoot = () => location.href.split('#')[0].split('?')[0].replace(/[^/]*$/, '');
@@ -47,7 +49,8 @@
     accept: () => (Ses ? Ses.accept() : 'audio/*'),
     desteklenenler: () => (Ses ? Ses.desteklenenler() : 'mp3, wav'),
     parcaNotu: () => '45 MB üzeri dosyalar kayıpsız parçalara bölünerek yüklenir',
-    now: () => Date.now()
+    now: () => Date.now(),
+    saglikSonuc: id => saglikSonuc[id] || null
   };
 
   function bildir(mesaj, tur) {
@@ -120,6 +123,7 @@
   const ROTALAR = {
     canli: { nav: 'canli', sub: 'subeler' },
     subeler: { nav: 'canli', sub: 'subeler' },
+    saglik: { nav: 'canli', sub: 'saglik' },
     klasorler: { nav: 'icerik', sub: 'klasorler' },
     anons: { nav: 'icerik', sub: 'anonslar' },
     markalar: { nav: 'musteri', sub: 'markalar' },
@@ -148,7 +152,7 @@
     if (state.openPlaylist) return '#/listeler/' + state.openPlaylist;
     if (state.openBrand) return '#/markalar/' + state.openBrand;
     if (state.openFolder) return '#/klasorler/' + state.openFolder;
-    if (state.nav === 'canli') return '#/canli';
+    if (state.nav === 'canli') return state.sub === 'saglik' ? '#/saglik' : '#/canli';
     if (state.nav === 'icerik') return state.sub === 'anonslar' ? '#/anons' : '#/klasorler';
     if (state.sub === 'listeler') return '#/listeler';
     if (state.sub === 'abonelikler') return '#/abonelikler';
@@ -164,7 +168,9 @@
       announcements: D.announcements.length,
       brands: D.brands.length,
       playlists: D.playlists.length,
-      requests: D.requests ? D.requests.length : null
+      requests: D.requests ? D.requests.length : null,
+      // Menüde "kaç şubede yayın çalışmaz" görünsün; sorun yoksa rozet çizilmez.
+      saglik: D.players.length ? (V.saglikOzet(D).kotu || null) : null
     };
   }
 
@@ -627,6 +633,66 @@
         return;
       }
 
+      // --- yayın sağlığı: tek tıkla düzeltme ---
+      // Kırmızı satırdaki her sorunun yanında, o sorunu yerinde kapatan düğme
+      // durur. Kayıt güncellenince satır yeniden hesaplanır ve kendiliğinden
+      // yeşile döner; sunucu doğrulaması da sıfırlanır ki eski cevap kalmasın.
+      case 'saglik-fix': {
+        const p = D.players.find(x => x.id === id);
+        if (!p) return;
+        const b = marka(p.brand_id);
+        const tip = hedef.dataset.tip;
+
+        if (tip === 'marka-aktif') {
+          if (!await onaySor({
+            baslik: 'Marka yayına alınsın mı?',
+            govde: `“${b ? b.name : 'Marka'}” aktif edilir ve bütün şubeleri seçili akışı çalmaya başlar.`,
+            onayMetni: 'YAYINA AL'
+          })) return;
+          const { error } = await client.from('brands').update({ is_active: true }).eq('id', p.brand_id);
+          if (error) return hata('Marka yayına alınamadı: ' + error.message);
+          delete saglikSonuc[p.id];
+          await yenile(false); bildir('Marka yayına alındı, satır yenilendi.');
+          return;
+        }
+
+        if (tip === 'kaynak') { kaynakPenceresi(p); return; }
+        if (tip === 'abonelik') { abonelikBaslat(p.brand_id); return; }
+        if (tip === 'parca') { git(hedef.dataset.hedef); return; }
+        if (tip === 'cekmece') { cekmeceAc(V.subeCekmecesi(p.id, D, ui)); return; }
+        return;
+      }
+
+      // --- yayın sağlığı ---
+      // Bütün şubeler için oynatıcının kullandığı iki okuma çağrısını çalıştırır
+      // ve sonucu satır satır yazar. radio_ping BİLİNÇLİ olarak çağrılmaz:
+      // denetim, hiçbir cihazı şubeye kilitlememelidir.
+      case 'saglik-denetle': {
+        const toplam = D.players.length;
+        if (!toplam) return;
+        const msg = el('saglik-msg');
+        saglikSonuc = {};
+        hedef.disabled = true;
+        let biten = 0;
+        if (msg) msg.textContent = `Sunucuya soruluyor… 0/${toplam}`;
+        await Promise.all(D.players.map(async p => {
+          const sonuc = await sunucuSina(p);
+          saglikSonuc[p.id] = sonuc;
+          biten++;
+          let hucre = null;
+          try { hucre = document.querySelector('[data-sunucu="' + p.id + '"]'); } catch (err) { hucre = null; }
+          if (hucre) hucre.innerHTML = V.saglikChip(sonuc.durum, sonuc.metin);
+          if (msg) msg.textContent = `Sunucuya soruluyor… ${biten}/${toplam}`;
+        }));
+        hedef.disabled = false;
+        const bozuk = D.players.filter(p => saglikSonuc[p.id] && saglikSonuc[p.id].durum === 'kotu').length;
+        if (msg) msg.textContent = bozuk
+          ? `${toplam} şube denendi · ${bozuk} şubede sunucu yayını vermiyor.`
+          : `${toplam} şube denendi · hepsi sunucudan yayın alıyor.`;
+        bildir(bozuk ? bozuk + ' şubede sunucu yayını vermiyor.' : 'Bütün şubeler sunucudan yayın alıyor.');
+        return;
+      }
+
       // --- şubeler ---
       case 'branch-open': cekmeceAc(V.subeCekmecesi(id, D, ui)); return;
       case 'player-copy': {
@@ -863,8 +929,11 @@
         const ad = el('brand-name').value.trim();
         if (!ad) return hata('Marka adı gerekli.');
         const slug = bosSlug(slugify(ad));
+        // is_active AÇIK yazılır: sunucu yayını yalnızca aktif markalara verir ve
+        // panelde marka oluştururken bu alanı boş bırakırsak şube linki
+        // “bu link tanınmadı” der.
         const { data, error } = await client.from('brands').insert({
-          name: ad, slug, contact: el('brand-contact').value.trim() || null
+          name: ad, slug, is_active: true, contact: el('brand-contact').value.trim() || null
         }).select('id').single();
         if (error) return hata('Marka oluşturulamadı: ' + error.message);
         await yenile(false); bildir('Marka oluşturuldu.');
@@ -875,10 +944,26 @@
         const ad = el('ab-brand-name').value.trim();
         if (!ad) return hata('Marka adı gerekli.');
         const { error } = await client.from('brands').insert({
-          name: ad, slug: bosSlug(slugify(ad)), contact: el('ab-brand-contact').value.trim() || null
+          name: ad, slug: bosSlug(slugify(ad)), is_active: true, contact: el('ab-brand-contact').value.trim() || null
         });
         if (error) return hata('Marka oluşturulamadı: ' + error.message);
         await yenile(false); bildir('Marka oluşturuldu.');
+        return;
+      }
+      // Markayı yayına alıp durdurur. Sunucu yayını yalnızca aktif markalara
+      // verdiği için bu anahtar, yeni markaların sessizce pasif kalmasını önler.
+      case 'brand-active': {
+        const b = marka(id);
+        const acilacak = !!(b && b.is_active === false);
+        if (!acilacak && !await onaySor({
+          baslik: 'Marka durdurulsun mu?',
+          govde: `“${b ? b.name : 'Marka'}” pasife alınır: bütün şubelerin yayını kesilir ve yayın linkleri “bu link tanınmadı” der.`,
+          onayMetni: 'MARKAYI DURDUR'
+        })) return;
+        const { error } = await client.from('brands').update({ is_active: acilacak }).eq('id', id);
+        if (error) return hata('Marka durumu değiştirilemedi: ' + error.message);
+        await yenile(false);
+        bildir(acilacak ? 'Marka yayına alındı.' : 'Marka durduruldu.');
         return;
       }
       case 'brand-slug-set': {
@@ -1218,9 +1303,27 @@
       <b style="color:${tur === 'kotu' ? '#ffc2ca' : (tur === 'iyi' ? '#c8ffe8' : 'var(--txt)')};text-align:right">${esc(deger)}</b>
     </div>`;
 
+    // radio_now_playing sunucuda şu zinciri arar: şube anahtarı → markanın canlı
+    // yayın satırı (inner join) → markanın aktif olması → abonelik. İlk halkaları
+    // panelin elindeki veriden doğrularız; hangisi kopuksa aşağıda kırmızı çıkar.
+    // Kural tek yerde dursun: aynı denetim "Yayın sağlığı" ekranında bütün
+    // şubeler için de kullanılıyor (V.saglikTani).
+    const tani = V.saglikTani(p, D);
+    const yayin = D.broadcast.find(x => x.brand_id === p.brand_id);
+    const kaynakId = yayin ? (yayin.playlist_id || yayin.folder_id) : null;
+    const parcalar = tani.parcalar;
+    const abonelik = D.subscriptions.find(s => s.brand_id === p.brand_id);
+    const abGecerli = !!abonelik && !tani.sorunlar.some(s => s.indexOf('Aboneliğin süresi') === 0);
+    const eksikler = tani.sorunlar;
+
     const anahtar = p.player_key;
     let govde = `<p>${esc(b ? b.name : 'Marka')} · ${esc(p.label)}</p>`;
-    govde += satir('Anahtar', anahtar ? anahtar : '(boş)', anahtar ? '' : 'kotu');
+    govde += satir('Anahtar', anahtar ? anahtar : '(boş)', anahtar ? 'iyi' : 'kotu');
+    govde += satir('Marka durumu', (b && b.is_active === false) ? 'pasif — yayın verilmez' : 'aktif', (b && b.is_active === false) ? 'kotu' : 'iyi');
+    govde += satir('Canlı yayın satırı', yayin ? 'var' : 'yok — yayın sorgusu boş döner', yayin ? 'iyi' : 'kotu');
+    govde += satir('Yayın kaynağı', !yayin ? '—' : (kaynakId ? (yayin.playlist_id ? 'liste seçili' : 'klasör seçili') : 'seçilmemiş'), kaynakId ? 'iyi' : 'kotu');
+    govde += satir('Kaynaktaki parça', kaynakId ? parcalar.length + ' parça' : '—', parcalar.length ? 'iyi' : 'kotu');
+    govde += satir('Abonelik', abonelik ? (abGecerli ? 'geçerli' : 'süresi dolmuş') : 'tanımlı değil', abGecerli ? 'iyi' : 'kotu');
     if (!anahtar) {
       return govde + `<p style="margin:14px 0 0">Bu şube kaydında <b>yayın anahtarı yok</b>. Şubeyi silip yeniden eklerseniz yeni bir anahtar üretilir.</p>`;
     }
@@ -1244,11 +1347,10 @@
       sonuc = 'Yayın sunucusu bu anahtarı okurken hata verdi. Yukarıdaki ham mesajı bana iletin.';
     } else if (!npRow) {
       govde += satir('Yayın sorgusu', 'Bu anahtar tanınmadı', 'kotu');
-      govde += satir('Abonelik kaydı', abRow ? 'var' : 'yok', abRow ? '' : 'kotu');
-      sonuc = 'Yayın sunucusu bu şubenin anahtarını bulamadı. '
-        + (abRow
-          ? 'Abonelik kaydı görünüyor, yani sorun şube kaydının kendisinde: şubeyi silip yeniden eklemek yeni bir anahtar üretir.'
-          : 'Abonelik kaydı da yok: markaya Abonelikler ekranından paket ve süre tanımlayın.');
+      sonuc = eksikler.length
+        ? 'Sunucu bu anahtarı bulamadı; nedeni yukarıdaki <b>kırmızı</b> satırlar: ' + eksikler.join(' · ')
+          + '. Bunlar düzeltilince bağlantı kendiliğinden çalışır ve sayfa yenilemeye gerek kalmaz.'
+        : 'Paneldeki kayıtların hepsi tam görünüyor ama sunucu anahtarı yine de bulamadı. Şubeyi silip yeniden eklemek yeni bir anahtar üretir; sorun sürerse bu raporu Derin Record’a iletin.';
     } else {
       const parcalar = (np.data || []).filter(r => r.track_id);
       govde += satir('Marka', npRow.brand_name || (b ? b.name : '—'), 'iyi');
@@ -1267,8 +1369,131 @@
 
     govde += `<p style="margin:14px 0 0">${sonuc}</p>`;
     govde += `<details style="margin-top:16px"><summary style="cursor:pointer;color:var(--muted);font-size:12.5px">Sunucunun ham cevabı</summary>
-      <div class="key" style="margin-top:10px;white-space:pre-wrap">${esc(JSON.stringify({ now_playing: np.data || [], hata: np.error ? np.error.message : null, abonelik: ab.data || [] }, null, 1))}</div></details>`;
+      <div class="key" style="margin-top:10px;white-space:pre-wrap">${esc(JSON.stringify({ now_playing: np.data || [], hata: np.error ? np.error.message : null, abonelik: ab.data || [], panel_eksikleri: eksikler.map(e => e.replace(/<[^>]+>/g, '')) }, null, 1))}</div></details>`;
     return govde;
+  }
+
+  // Bir şubenin yayınını gerçekten sunucuya sorar (panelde sınama aracı).
+  async function sunucuSina(p) {
+    if (!p.player_key) return { durum: 'kotu', metin: 'anahtar yok' };
+    let np, ab;
+    try {
+      [np, ab] = await Promise.all([
+        client.rpc('radio_now_playing', { p_player_key: p.player_key }),
+        client.rpc('abonelik_durumu', { p_player_key: p.player_key })
+      ]);
+    } catch (err) {
+      return { durum: 'uyari', metin: 'sunucuya ulaşılamadı' };
+    }
+    if (np.error) return { durum: 'uyari', metin: 'sunucu hatası' };
+    const satir = np.data && np.data[0];
+    if (!satir) {
+      const abRow = ab.data && ab.data[0];
+      if (abRow && !abRow.gecerli) return { durum: 'kotu', metin: abRow.durum === 'yok' ? 'abonelik yok' : 'abonelik bitmiş' };
+      return { durum: 'kotu', metin: 'anahtar tanınmadı' };
+    }
+    const parca = (np.data || []).filter(r => r.track_id).length;
+    if (!satir.folder_name) return { durum: 'kotu', metin: 'yayın kaynağı yok' };
+    if (!parca) return { durum: 'kotu', metin: 'kaynakta parça yok' };
+    return { durum: 'iyi', metin: `${parca} parça gönderiyor` };
+  }
+
+  // Eksik canlı yayın kaydını yerinde oluşturur. Kaynak seçimi parayla ya da
+  // müzikle ilgili olduğu için sessizce tahmin etmeyiz: en dolu kaynak önerilir,
+  // kararı yönetici verir.
+  function kaynakPenceresi(p) {
+    const b = marka(p.brand_id);
+    const listeSayisi = id => D.playlistTracks.filter(x => x.playlist_id === id).length;
+    const secenekler = [
+      ...D.playlists.filter(pl => pl.brand_id === p.brand_id)
+        .map(pl => ({ deger: 'playlist:' + pl.id, ad: pl.name + ' · marka listesi', adet: listeSayisi(pl.id) })),
+      ...D.folders.map(f => ({
+        deger: 'folder:' + f.id, ad: f.name + ' · yayın klasörü',
+        adet: D.tracks.filter(t => t.folder_id === f.id).length
+      }))
+    ].filter(s => s.adet > 0).sort((a, c) => c.adet - a.adet);
+
+    if (!secenekler.length) {
+      return hata('Önce bir yayın klasörüne parça yükleyin ya da marka için çalma listesi oluşturun.');
+    }
+
+    pencere({
+      baslik: 'Yayın kaynağı seç',
+      onayMetni: 'KAYNAĞI ATA',
+      govde: `
+        <p>${esc(b ? b.name : 'Marka')} · ${esc(p.label)} şubesinin çalacağı akış seçilir.</p>
+        <div class="field"><label for="kaynak-sec">YAYIN KAYNAĞI</label>
+          <select id="kaynak-sec">${secenekler.map((s, i) =>
+            `<option value="${esc(s.deger)}"${i === 0 ? ' selected' : ''}>${esc(s.ad)} · ${s.adet} parça</option>`).join('')}</select></div>
+        <p class="sub">Kaynak atanınca şube anında bu akışı çalar; sonradan markanın sayfasından değiştirilebilir.</p>`,
+      onOnay: async () => {
+        const [tur, deger] = el('kaynak-sec').value.split(':');
+        const { error } = await client.from('brand_broadcast').upsert({
+          brand_id: p.brand_id,
+          folder_id: tur === 'folder' ? deger : null,
+          playlist_id: tur === 'playlist' ? deger : null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'brand_id' });
+        if (error) return hata('Kaynak atanamadı: ' + error.message);
+        delete saglikSonuc[p.id];
+        await yenile(false); bildir('Yayın kaynağı atandı, satır yenilendi.');
+      }
+    });
+  }
+
+  // Paket ve süre seçtirip aboneliği başlatır (yayın sağlığı düzeltmesi).
+  function abonelikBaslat(brandId) {
+    const b = marka(brandId);
+    if (!b) return;
+    if (!D.plans.length) return hata('Önce Abonelikler ekranından bir paket oluşturun.');
+    const subeSayisi = Math.max(1, D.players.filter(p => p.brand_id === brandId).length);
+    const mevcut = D.subscriptions.find(s => s.brand_id === brandId);
+
+    pencere({
+      baslik: mevcut ? 'Abonelik süresi ekle' : 'Abonelik başlat',
+      onayMetni: 'KAYDET',
+      govde: `
+        <p>${esc(b.name)} için yayın süresi tanımlanır. Bu markanın ${subeSayisi} şubesi var.</p>
+        <div class="form-grid">
+          <div class="field"><label for="sa-plan">PAKET</label>
+            <select id="sa-plan">${D.plans.map((pl, i) =>
+              `<option value="${esc(pl.id)}"${i === 0 ? ' selected' : ''}>${esc(pl.name)}${pl.monthly_price ? ' · ' + esc(pl.monthly_price) + ' TL/ay' : ''}</option>`).join('')}</select></div>
+          <div class="field"><label for="sa-sube">ŞUBE SAYISI</label>
+            <input id="sa-sube" type="number" min="1" value="${subeSayisi}"></div>
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="sa-tur" value="active" checked> Aktif / uzat</label>
+          <label><input type="radio" name="sa-tur" value="trial"> Deneme</label>
+        </div>
+        <div class="form-grid">
+          <div class="field"><label for="sa-miktar">MİKTAR</label>
+            <input id="sa-miktar" type="number" min="1" value="1"></div>
+          <div class="field"><label for="sa-birim">BİRİM</label>
+            <select id="sa-birim"><option value="ay">ay</option><option value="gun">gün</option><option value="yil">yıl</option></select></div>
+        </div>`,
+      onOnay: async () => {
+        const tur = el('modal').querySelector('input[name="sa-tur"]:checked').value;
+        const miktar = Math.max(1, Number(el('sa-miktar').value) || 1);
+        const birim = el('sa-birim').value;
+        const baz = (mevcut && mevcut.status === 'active' && mevcut.current_end && new Date(mevcut.current_end) > new Date())
+          ? new Date(mevcut.current_end) : new Date();
+        const bitis = sureEkle(baz, miktar, birim).toISOString();
+        const alanlar = tur === 'trial'
+          ? { status: 'trial', trial_ends_at: bitis, current_start: new Date().toISOString(), current_end: null }
+          : { status: 'active', current_end: bitis };
+        const { error } = await client.from('subscriptions').upsert({
+          brand_id: brandId,
+          plan_id: el('sa-plan').value,
+          branch_count: Math.max(1, Number(el('sa-sube').value) || 1),
+          updated_at: new Date().toISOString(),
+          ...alanlar
+        }, { onConflict: 'brand_id' });
+        if (error) return hata('Abonelik kaydedilemedi: ' + error.message);
+        Object.keys(saglikSonuc).forEach(k => { if ((D.players.find(p => p.id === k) || {}).brand_id === brandId) delete saglikSonuc[k]; });
+        await yenile(false);
+        bildir(tur === 'trial' ? 'Deneme süresi başlatıldı.' : 'Abonelik kaydedildi.');
+      }
+    });
   }
 
   function bosSlug(temel) {

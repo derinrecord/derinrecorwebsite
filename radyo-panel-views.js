@@ -87,7 +87,8 @@
       marka: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0l-7.2-7.2A2 2 0 013 12V4h8a2 2 0 011.4.6l7.2 7.2a2 2 0 010 1.6z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>',
       liste: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg>',
       abonelik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/></svg>',
-      talep: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="3"/></svg>'
+      talep: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="3"/></svg>',
+      saglik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>'
     };
     return `
       <div class="brand">
@@ -97,6 +98,7 @@
       <nav class="nav">
         <div class="nav-title">GÜNLÜK</div>
         ${oge('canli', 'subeler', 'Canlı durum', 'Şubeler ve anons', counts.players, ikonlar.canli)}
+        ${oge('canli', 'saglik', 'Yayın sağlığı', 'Otomatik denetim', counts.saglik, ikonlar.saglik)}
 
         <div class="nav-title">İÇERİK</div>
         ${oge('icerik', 'klasorler', 'Yayın klasörleri', 'Parçalar, sıra, kapak', counts.folders, ikonlar.klasor)}
@@ -118,6 +120,7 @@
 
   const BASLIKLAR = {
     'canli/subeler': ['Canlı durum', 'Şubelerin bağlantısı, o an çalan akış ve cihaz kilidi'],
+    'canli/saglik': ['Yayın sağlığı', 'Bütün şubelerin yayın zinciri tek ekranda denetlenir'],
     'icerik/klasorler': ['Yayın klasörleri', 'Parçaları yükle, sırala, kapağı değiştir'],
     'icerik/anonslar': ['Anonslar', 'Mikrofonla kaydedilen duyurular'],
     'musteri/markalar': ['Markalar', 'Şubeler, yayın linkleri ve çalma listeleri'],
@@ -185,6 +188,165 @@
         <table>
           <thead><tr><th>ŞUBE</th><th>DURUM</th><th>ŞU AN ÇALAN</th><th>SAAT</th><th>CİHAZ</th><th></th></tr></thead>
           <tbody>${satirlar || bos(6, 'Eşleşen şube yok.')}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // ---------- YAYIN SAĞLIĞI ----------
+  // Aşağıdaki denetim, oynatıcının sunucudan istediği radio_now_playing
+  // fonksiyonunun aradığı zinciri panelin elindeki veriden tek tek yoklar:
+  // marka aktif mi, canlı yayın kaynağı var mı, kaynakta parça var mı,
+  // abonelik geçerli mi, anahtar duruyor mu. Sunucuya hiç gitmez, bu yüzden
+  // ekran anında doludur; "Sunucuyla doğrula" düğmesi ayrıca gerçek cevabı alır.
+
+  // Markanın canlı yayında çalacağı parçalar (liste ya da klasör kaynağından).
+  function kaynakParcalari(D, yayin) {
+    if (!yayin) return [];
+    if (yayin.playlist_id) {
+      return D.playlistTracks
+        .filter(x => x.playlist_id === yayin.playlist_id)
+        .map(x => D.tracks.find(t => t.id === x.track_id))
+        .filter(Boolean);
+    }
+    if (yayin.folder_id) return D.tracks.filter(t => t.folder_id === yayin.folder_id);
+    return [];
+  }
+
+  // Bir şubenin yayın zincirindeki kopuk halkalar.
+  function saglikTani(p, D, now) {
+    const t = now || Date.now();
+    const b = D.brands.find(x => x.id === p.brand_id);
+    const yayin = D.broadcast.find(x => x.brand_id === p.brand_id);
+    const parcalar = kaynakParcalari(D, yayin);
+    const ab = D.subscriptions.find(s => s.brand_id === p.brand_id);
+    const bitis = abonelikBitis(ab);
+    const k = kaynak(D, p.brand_id);
+    const sorunlar = [];
+    // Her sorunun yanında oyunda tek tıkla çözümü de taşınır (tip + etiket +
+    // hedef). Böylece ekran “ne eksik” ile “nasıl düzeltilir” ayrışmasın.
+    const duzeltmeler = [];
+
+    if (!b) sorunlar.push('Marka kaydı bulunamadı.');
+    else if (b.is_active === false) {
+      sorunlar.push('Marka pasif: sunucu pasif markaya yayın vermez.');
+      duzeltmeler.push({ tip: 'marka-aktif', etiket: 'MARKAYI YAYINA AL' });
+    }
+    if (!p.player_key) {
+      sorunlar.push('Yayın anahtarı boş; şubeyi silip yeniden ekleyin.');
+      duzeltmeler.push({ tip: 'cekmece', etiket: 'ŞUBEYİ YÖNET' });
+    }
+    if (!yayin) {
+      sorunlar.push('Canlı yayın kaydı yok: markaya hiç kaynak atanmamış.');
+      duzeltmeler.push({ tip: 'kaynak', etiket: 'KAYNAK ATA' });
+    } else if (!k.tip) {
+      sorunlar.push('Canlı yayına kaynak seçilmemiş (klasör ya da liste).');
+      duzeltmeler.push({ tip: 'kaynak', etiket: 'KAYNAK SEÇ' });
+    } else if (!parcalar.length) {
+      sorunlar.push('Seçili kaynakta hiç parça yok.');
+      duzeltmeler.push({
+        tip: 'parca', etiket: 'PARÇA YÜKLE',
+        hedef: yayin.playlist_id ? '#/listeler/' + yayin.playlist_id : '#/klasorler/' + yayin.folder_id
+      });
+    }
+    if (!ab) {
+      sorunlar.push('Abonelik tanımlı değil.');
+      duzeltmeler.push({ tip: 'abonelik', etiket: 'ABONELİK BAŞLAT' });
+    } else if (bitis && new Date(bitis).getTime() <= t) {
+      sorunlar.push('Aboneliğin süresi ' + uzunTarih(bitis) + ' tarihinde dolmuş.');
+      duzeltmeler.push({ tip: 'abonelik', etiket: 'SÜRE EKLE' });
+    }
+
+    // Kopuk halka yoksa şube sağlamdır; ama hiç bağlanmamış bir şube henüz
+    // kurulmamış olabilir, bunu hata değil uyarı sayarız.
+    const seviye = sorunlar.length ? 'kotu' : (p.last_seen_at ? 'iyi' : 'uyari');
+    return {
+      seviye: seviye, sorunlar: sorunlar, duzeltmeler: duzeltmeler,
+      kaynak: k, parcalar: parcalar, bitis: bitis, marka: b
+    };
+  }
+
+  function saglikOzet(D, now) {
+    const t = now || Date.now();
+    let kotu = 0, uyari = 0, iyi = 0;
+    D.players.forEach(p => {
+      const s = saglikTani(p, D, t).seviye;
+      if (s === 'kotu') kotu++;
+      else if (s === 'uyari') uyari++;
+      else iyi++;
+    });
+    return { kotu: kotu, uyari: uyari, iyi: iyi };
+  }
+
+  const saglikChip = (durum, metin) => durum === 'kotu'
+    ? chip('danger', metin)
+    : (durum === 'uyari' ? chip('gold', metin) : (durum === 'iyi' ? chip('live', metin, true) : chip('off', metin)));
+
+  const SIRA = { kotu: 0, uyari: 1, iyi: 2 };
+
+  function saglikView(state, D, ui) {
+    const now = ui.now();
+    const q = norm(state.q);
+    const tumu = D.players.map(p => ({ p: p, t: saglikTani(p, D, now) }));
+    const ozet = { kotu: 0, uyari: 0, iyi: 0 };
+    tumu.forEach(x => { ozet[x.t.seviye]++; });
+
+    const satirlar = tumu
+      .filter(x => {
+        const marka = x.t.marka ? x.t.marka.name : '';
+        return hit(q, x.p.label, marka, x.t.sorunlar.join(' '), x.t.kaynak.ad || '');
+      })
+      .sort((a, b) => (SIRA[a.t.seviye] - SIRA[b.t.seviye]) || (a.p.label || '').localeCompare(b.p.label || '', 'tr'))
+      .map(x => {
+        const p = x.p, t = x.t;
+        const saniye = t.parcalar.reduce((n, parca) => n + (Number(parca.duration_sec) || 0), 0);
+        const sunucu = ui.saglikSonuc ? ui.saglikSonuc(p.id) : null;
+        const icerik = t.kaynak.ad
+          ? `<b>${esc(t.kaynak.ad)}</b><span class="sub">${t.parcalar.length} parça · ${mmss(saniye)}</span>`
+          : '<span class="sub">yayın kaynağı yok</span>';
+        const sorun = t.seviye === 'iyi'
+          ? chip('live', p.last_seen_at ? 'SAĞLAM' : 'HAZIR', true)
+          : (t.seviye === 'uyari' ? chip('gold', 'KURULUM BEKLİYOR') : chip('danger', 'YAYIN ÇALIŞMAZ'));
+        return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
+          <td><div class="cell-main"><span class="cover">${t.seviye === 'kotu' ? '⚠' : (t.seviye === 'uyari' ? '⏳' : '📻')}</span>
+            <span><b>${esc(p.label)}</b><span class="sub">${esc(t.marka ? t.marka.name : '—')}
+              · ${p.bound_device_id ? 'cihaza kilitli' : 'cihaz serbest'}</span></span></div></td>
+          <td>${sorun}${t.sorunlar.length ? `<span class="sub">${esc(t.sorunlar[0])}</span>` : ''}
+            ${t.seviye === 'uyari' ? '<span class="sub">Bağlantı hazır; cihaz henüz açılmamış.</span>' : ''}
+            ${t.duzeltmeler.length ? `<div class="row-actions" style="margin-top:8px;justify-content:flex-start">${t.duzeltmeler.map((d, i) =>
+              `<button class="btn sm${i === 0 ? ' primary' : ''}" data-act="saglik-fix" data-tip="${esc(d.tip)}"
+                data-id="${esc(p.id)}"${d.hedef ? ` data-hedef="${esc(d.hedef)}"` : ''} type="button">${esc(d.etiket)}</button>`).join('')}</div>` : ''}</td>
+          <td>${icerik}</td>
+          <td class="tight" data-sunucu="${esc(p.id)}">${sunucu
+            ? saglikChip(sunucu.durum, sunucu.metin)
+            : '<span class="sub">denenmedi</span>'}</td>
+          <td><div class="row-actions">
+            <button class="btn sm" data-act="player-check" data-id="${esc(p.id)}" type="button">SINA</button>
+            <button class="btn sm" data-act="player-copy" data-id="${esc(p.id)}" type="button">LİNK</button>
+            <button class="btn sm" data-act="branch-open" data-id="${esc(p.id)}" type="button">YÖNET ›</button>
+          </div></td>
+        </tr>`;
+      }).join('');
+
+    return `
+      <div class="tiles">
+        <div class="tile ${ozet.kotu ? 'danger' : 'gold'}"><span>YAYIN ÇALIŞMAZ</span><b>${ozet.kotu}</b><small>zincirde kopuk halka var</small></div>
+        <div class="tile"><span>KURULUM BEKLİYOR</span><b>${ozet.uyari}</b><small>bağlantı hazır, cihaz açılmamış</small></div>
+        <div class="tile"><span>SAĞLAM</span><b>${ozet.iyi}</b><small>sunucudan yayın alıyor</small></div>
+        <div class="tile"><span>ŞUBE</span><b>${D.players.length}</b><small>${D.brands.length} marka · ${D.players.filter(p => canliMi(p, now)).length} şu an bağlı</small></div>
+      </div>
+      <div class="panel">
+        <h3>YAYIN SAĞLIĞI <span>${D.players.length} şube denetlendi</span></h3>
+        <p class="panel-sub">Oynatıcı yayını isterken sunucu şu zinciri arar: şube anahtarı → markanın canlı yayın kaydı → markanın
+          aktif olması → kaynakta parça → abonelik. Kopuk halka varsa şube “bu link tanınmadı” der. Buradaki denetim
+          zinciri panelin elindeki kayıtlardan yoklar; “SUNUCUYLA DOĞRULA” düğmesi aynı kontrolü gerçek sunucuya da sorar.</p>
+        <div class="row" style="margin-bottom:14px">
+          <button class="btn primary" data-act="saglik-denetle" type="button">SUNUCUYLA DOĞRULA</button>
+          <span class="sub">Cihaz kilidi bilerek denenmez: sınama, hiçbir cihazı şubeye kilitlemez.</span>
+        </div>
+        <span class="sub" id="saglik-msg"></span>
+        <table>
+          <thead><tr><th>ŞUBE</th><th>DURUM</th><th>YAYIN İÇERİĞİ</th><th>SUNUCU</th><th></th></tr></thead>
+          <tbody>${satirlar || bos(5, D.players.length ? 'Aramayla eşleşen şube yok.' : 'Henüz şube yok.')}</tbody>
         </table>
       </div>`;
   }
@@ -452,7 +614,14 @@
         k.ad || 'yayın atanmadı'])}
       <div class="panel" style="margin-bottom:18px">
         <h3>CANLI YAYIN</h3>
-        <p class="panel-sub">Markanın bütün şubeleri bu akışı çalar. Kapalıysa şubeler yayın bekler.</p>
+        <p class="panel-sub">Markanın bütün şubeleri bu akışı çalar. Marka pasifse, canlı yayın kaydı yoksa ya da kaynak seçilmemişse şubeler yayın bekler ve oynatıcı “bu link tanınmadı” der.</p>
+        <div class="row" style="margin-bottom:16px">
+          ${b.is_active === false ? chip('danger', 'MARKA PASİF — YAYIN VERİLMEZ') : chip('live', 'MARKA AKTİF', true)}
+          <button class="btn${b.is_active === false ? ' primary' : ''}" data-act="brand-active" data-id="${esc(b.id)}" type="button">${b.is_active === false ? 'MARKAYI YAYINA AL' : 'MARKAYI DURDUR'}</button>
+          <span class="sub">${b.is_active === false
+            ? 'Pasif markanın anahtarı sunucuda tanınmaz; bütün şubeler “bu link tanınmadı” görür.'
+            : 'Durdurursanız bu markanın bütün yayın linkleri anında devre dışı kalır.'}</span>
+        </div>
         <div class="form-grid">
           <div class="field"><label for="live-source">YAYIN KAYNAĞI</label>
             <select id="live-source" data-act="live-source" data-id="${esc(b.id)}">
@@ -761,7 +930,7 @@
   function gorunum(state, D, ui) {
     const bas = topbar(state, D, ui.now());
     const kabuk = html => ({ baslik: bas.baslik, alt: bas.alt, html: html });
-    if (state.nav === 'canli') return kabuk(canliView(state, D, ui));
+    if (state.nav === 'canli') return kabuk(state.sub === 'saglik' ? saglikView(state, D, ui) : canliView(state, D, ui));
     if (state.nav === 'icerik') {
       const govde = state.openFolder
         ? klasorDetay(state, D, ui)
@@ -861,6 +1030,10 @@
     topbar: topbar,
     gorunum: gorunum,
     subeCekmecesi: subeCekmecesi,
+    saglikTani: saglikTani,
+    saglikOzet: saglikOzet,
+    saglikView: saglikView,
+    saglikChip: saglikChip,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu
   };
