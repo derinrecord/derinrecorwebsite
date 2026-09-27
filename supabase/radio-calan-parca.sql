@@ -57,6 +57,11 @@ $$;
 -- 3) Oynatıcı anon anahtarıyla çağırır.
 grant execute on function public.radio_now_report(uuid, text, uuid) to anon, authenticated;
 
+-- 4) Yeni fonksiyonu API'nin görebilmesi için şema önbelleğini tazele.
+--    Bu satır olmadan çağrı bir süre "PGRST202: could not find the function"
+--    diye 404 dönebilir.
+notify pgrst, 'reload schema';
+
 -- Doğrulama: aşağıdaki satırlar sütunların oluştuğunu gösterir.
 --   select column_name from information_schema.columns
 --    where table_name = 'brand_players' and column_name like 'now_%';
