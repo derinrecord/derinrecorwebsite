@@ -498,7 +498,7 @@
       <td><div class="row-actions">
         <button class="btn sm" data-act="track-play" data-id="${esc(t.id)}" type="button">DİNLE</button>
         <button class="btn sm" data-act="track-rename" data-id="${esc(t.id)}" type="button">AD</button>
-        <button class="btn sm" data-act="track-img" data-id="${esc(t.id)}" type="button">RESİM</button>
+        <button class="btn sm" data-act="track-img" data-id="${esc(t.id)}" type="button">KAPAK</button>
         <button class="btn sm" data-act="track-move" data-id="${esc(t.id)}" type="button">TAŞI</button>
         <button class="btn sm danger" data-act="track-del" data-id="${esc(t.id)}"
           data-path="${esc(t.storage_path)}" type="button">SİL</button>
@@ -534,9 +534,8 @@
           <div class="field"><label for="f-name">KLASÖR ADI</label>
             <input id="f-name" value="${esc(f.name)}" autocomplete="off"></div>
           <button class="btn" data-act="folder-rename" type="button">ADI KAYDET</button>
-          <div class="field"><label for="cover-file">KAPAK GÖRSELİ</label>
-            <input id="cover-file" type="file" accept="image/*"></div>
-          ${f.cover_path ? '<button class="btn" data-act="cover-del" type="button">KAPAĞI SİL</button>' : ''}
+          <div class="field"><label>KAPAK GÖRSELİ</label>
+            <button class="btn" data-act="cover-open" type="button">${f.cover_path ? 'KAPAĞI DEĞİŞTİR' : 'KAPAK YERLEŞTİR'}</button></div>
           <button class="btn" data-act="folder-shuffle" type="button">${f.shuffle === false ? 'KARIŞIK ÇALMAYA GEÇ' : 'SIRAYLA ÇALMAYA GEÇ'}</button>
         </div>
         <hr class="divider">
@@ -828,7 +827,9 @@
         const adet = D.playlistTracks.filter(x => x.playlist_id === pl.id).length;
         const kullanan = D.broadcast.filter(x => x.playlist_id === pl.id).length;
         return `<tr class="selectable" data-act="list-open" data-id="${esc(pl.id)}">
-          <td><div class="cell-main"><span class="cover">🎧</span><span><b>${esc(pl.name)}</b>
+          <td><div class="cell-main">${pl.cover_path
+            ? `<span class="cover"><img src="${esc(kapakYolu(pl.cover_path, ui))}" alt="" loading="lazy"></span>`
+            : '<span class="cover">🎧</span>'}<span><b>${esc(pl.name)}</b>
             <span class="sub">${esc(pl.description || uzunTarih(pl.created_at) + ' tarihinde oluşturuldu')}</span></span></div></td>
           <td class="tight">${esc(b ? b.name : '—')}</td>
           <td class="tight">${adet} parça</td>
@@ -886,6 +887,15 @@
         <button class="btn primary" data-act="list-addtrack" data-id="${esc(pl.id)}" type="button">+ ŞARKI EKLE</button>
         <button class="btn danger" data-act="list-del" data-id="${esc(pl.id)}" type="button">LİSTEYİ SİL</button>
         <span class="sub" id="list-msg"></span>
+      </div>
+      <div class="panel" style="margin-bottom:18px">
+        <h3>LİSTE KAPAĞI</h3>
+        <p class="panel-sub">Kapak, müşteri sunumunda ve panelde bu listenin simgesi olur. Görseli kendi dosyalarından elle seçersin.</p>
+        <div class="row">
+          ${kapakHucre(pl.cover_path, ui, '🎧')}
+          <button class="btn" data-act="list-img" data-id="${esc(pl.id)}" type="button">${pl.cover_path ? 'KAPAĞI DEĞİŞTİR' : 'KAPAK YERLEŞTİR'}</button>
+          <span class="sub">${pl.cover_path ? 'Kapak yerleştirildi.' : 'Bu listenin henüz kapağı yok; sunumda simge görünür.'}</span>
+        </div>
       </div>
       <div class="panel" style="margin-bottom:18px">
         <h3>LİSTE ADI</h3>
@@ -1147,6 +1157,30 @@
       </div>`;
   }
 
+  // ---------- Kapak yerleştirme (pencere içeriği) ----------
+  // Kapaklar sahada görünüyor: oynatıcı ekranında, müşteri sunumunda ve panelde.
+  // Yönetim kapağı elle yerleştirir (indirilmiş görseli seçer), bu yüzden
+  // pencerede **seçtiği görseli kaydetmeden önce** görür: hangi görselin hangi
+  // parçaya gittiği karışmasın. Aynı pencere parça, liste ve klasör için
+  // kullanılır; kayıt düğmesinin adı bile aynı kalır.
+  function kapakPenceresi({ kapakUrl, alt, mevcutVar }) {
+    return `
+      <div style="text-align:center;margin-bottom:16px">
+        <span id="kapak-kutu" style="display:inline-grid;place-items:center;width:190px;height:190px;border-radius:16px;overflow:hidden;background:rgba(255,255,255,.07)">
+          <img id="kapak-onizleme" src="${esc(kapakUrl || '')}" alt=""${kapakUrl ? '' : ' hidden'}
+            style="width:100%;height:100%;object-fit:cover">
+          <span id="kapak-bos"${kapakUrl ? ' hidden' : ''} style="font-size:40px;opacity:.45">♪</span>
+        </span>
+        <p class="sub" style="margin:10px 0 0">${esc(alt || '')}</p>
+      </div>
+      <div class="field"><label for="kapak-file">GÖRSEL SEÇ</label>
+        <input id="kapak-file" type="file" accept="image/*"></div>
+      <p class="sub" id="kapak-msg">Seçtiğin görsel yukarıda görünür; kaydettiğinde yayına geçer. Kare (1:1) görseller en iyi sonucu verir.</p>
+      ${mevcutVar
+        ? '<button class="btn danger" data-act="kapak-sil" type="button" style="margin-top:12px">KAPAĞI KALDIR</button>'
+        : ''}`;
+  }
+
   // ---------- Parça detayı (pencere içeriği) ----------
   function parcaDetay(t, alt, kapakUrl) {
     return `<div style="text-align:center">
@@ -1183,6 +1217,7 @@
     bildirimTaze: bildirimTaze,
     calanListe: calanListe,
     personelListesi: personelListesi,
+    kapakPenceresi: kapakPenceresi,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu
   };

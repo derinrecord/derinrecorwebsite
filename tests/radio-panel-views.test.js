@@ -294,6 +294,41 @@ test('çalma listesi detayı sıra düğmelerini uçlarda kapatır', () => {
   assert.ok(html.includes('AKIŞ (2)'));
 });
 
+// Kapaklar elle yerleştirilir: yönetim indirdiği görseli kendi seçer. Pencerede
+// seçilen görsel KAYDEDİLMEDEN önce görünmeli ki hangi görselin hangi parçaya
+// gittiği karışmasın; mevcut kapak varsa kaldırma yolu da olmalı.
+test('kapak penceresi görseli önizler, mevcut kapağı kaldırmayı sunar', () => {
+  const bos = V.kapakPenceresi({ kapakUrl: null, alt: 'Kalabalık Caddesi', mevcutVar: false });
+  assert.ok(bos.includes('id="kapak-file"'), 'görsel seçme alanı olmalı');
+  assert.ok(bos.includes('id="kapak-onizleme"'), 'önizleme alanı olmalı');
+  assert.ok(!bos.includes('KAPAĞI KALDIR'), 'kapak yokken kaldırma düğmesi çıkmaz');
+  assert.ok(bos.includes('Kalabalık Caddesi'), 'pencerede hangi kaydın kapağı olduğu yazılmalı');
+
+  const dolu = V.kapakPenceresi({ kapakUrl: '/kapak/tracks/a.jpg', alt: 'Kalabalık Caddesi', mevcutVar: true });
+  assert.ok(dolu.includes('src="/kapak/tracks/a.jpg"'), 'mevcut kapak gösterilmeli');
+  assert.ok(dolu.includes('data-act="kapak-sil"'), 'kaldırma düğmesi olmalı');
+});
+
+test('parça, liste ve klasör kapakları panelden yerleştirilebilir', () => {
+  const klasor = V.gorunum(durum({ nav: 'icerik', sub: 'klasorler', openFolder: 'f1' }), D, ui).html;
+  assert.ok(klasor.includes('data-act="track-img"'), 'parça satırında kapak düğmesi olmalı');
+  assert.ok(klasor.includes('>KAPAK<'), 'düğme ne yaptığını söylemeli');
+  assert.ok(klasor.includes('data-act="cover-open"'), 'klasör kapağı da aynı akışla yerleştirilmeli');
+  assert.ok(!klasor.includes('id="cover-file"'), 'önizlemesiz eski dosya alanı kalkmalı');
+
+  const liste = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', openPlaylist: 'l1' }), D, ui).html;
+  assert.ok(liste.includes('data-act="list-img"'), 'liste kapağı yerleştirilebilmeli');
+  assert.ok(liste.includes('KAPAK YERLEŞTİR'), 'kapağı olmayan listede yerleştirme istenir');
+
+  const kapakli = { ...D, playlists: [{ ...D.playlists[0], cover_path: 'listeler/l1.jpg' }] };
+  const kapakliHtml = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', openPlaylist: 'l1' }), kapakli, ui).html;
+  assert.ok(kapakliHtml.includes('/kapak/listeler/l1.jpg'), 'yerleştirilmiş kapak görünmeli');
+  assert.ok(kapakliHtml.includes('KAPAĞI DEĞİŞTİR'));
+  // Liste listesinde de kapak simgesi görünmeli.
+  assert.ok(V.gorunum(durum({ nav: 'musteri', sub: 'listeler' }), kapakli, ui).html
+    .includes('/kapak/listeler/l1.jpg'));
+});
+
 // Liste adı yazımı sahaya çıkıyor (panelde, müşteri sunumunda ve personelin
 // cihazındaki seçicide). Panelden düzeltilebilmesi için alan bulunmalı ve mevcut
 // ad önceden dolu gelmeli.

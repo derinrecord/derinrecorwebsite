@@ -85,6 +85,87 @@
     kaydiTemizle();
     if (kapat) kapat();
   }
+  // ---------- Kapak yerleştirme ----------
+  // Kapaklar elle yerleştirilir: yönetim indirdiği görseli kendi seçer. Panel
+  // önce önizler, sonra kaydeder; böylece hangi görselin hangi parçaya/listeye
+  // gittiği karışmaz. Parça, marka listesi ve klasör için tek akış kullanılır.
+  const KAPAK_BUCKET = 'radio-covers';
+  // Açık penceredeki "KAPAĞI KALDIR" düğmesinin çağıracağı iş.
+  let kapakKaldir = null;
+
+  async function kapakYukle(dosya, onEk) {
+    const uzanti = ((dosya.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')) || 'jpg';
+    const yol = onEk + '/' + crypto.randomUUID() + '.' + uzanti;
+    const up = await client.storage.from(KAPAK_BUCKET)
+      .upload(yol, dosya, { contentType: dosya.type || 'image/jpeg' });
+    return up.error ? { hata: 'Görsel yüklenemedi: ' + up.error.message } : { yol: yol };
+  }
+
+  // Değiştirilen ya da kaldırılan kapağın dosyasını depodan sileriz; yoksa
+  // depoda kimsenin görmediği eski görseller birikir.
+  async function kapakDosyaSil(yol) {
+    if (!yol) return;
+    try { await client.storage.from(KAPAK_BUCKET).remove([yol]); } catch { /* dosya yoksa sorun değil */ }
+  }
+
+  // s: { baslik, alt, kapak (depo yolu), onEk (depo klasörü), kaydet(yol), kaldir() }
+  function kapakPenceresiAc(s) {
+    kapakKaldir = s.kaldir || null;
+    pencere({
+      baslik: s.baslik,
+      govde: V.kapakPenceresi({ kapakUrl: s.kapak ? ui.cover(s.kapak) : null, alt: s.alt, mevcutVar: !!s.kapak }),
+      onayMetni: 'KAPAĞI KAYDET',
+      onOnay: () => kapakKaydet(s),
+      onKapat: () => { kapakOnizlemeBirak(); kapakKaldir = null; }
+    });
+    const giris = el('kapak-file');
+    const onizleme = el('kapak-onizleme');
+    const bos = el('kapak-bos');
+    if (!giris) return;
+    giris.onchange = () => {
+      const dosya = giris.files && giris.files[0];
+      if (!dosya) return;
+      if (!/^image\//.test(dosya.type || '')) {
+        giris.value = '';
+        return hata('Yalnızca görsel dosyası yerleştirebilirsin.');
+      }
+      kapakOnizlemeBirak();
+      onizleme.src = URL.createObjectURL(dosya);
+      onizleme.hidden = false;
+      if (bos) bos.hidden = true;
+      el('kapak-msg').textContent = dosya.name + ' · ' + Math.max(1, Math.round(dosya.size / 1024))
+        + ' KB seçildi (henüz kaydedilmedi).';
+    };
+  }
+
+  // Önizleme için üretilen geçici blob adresini bırakırız; paneli gün boyu açık
+  // tutan bir yönetici onlarca kapak yerleştirdiğinde bellekte birikmesin.
+  function kapakOnizlemeBirak() {
+    const onizleme = el('kapak-onizleme');
+    if (onizleme && onizleme.src && onizleme.src.indexOf('blob:') === 0) URL.revokeObjectURL(onizleme.src);
+  }
+
+  async function kapakKaydet(s) {
+    try {
+      const giris = el('kapak-file');
+      const dosya = giris && giris.files && giris.files[0];
+      if (!dosya) return bildir('Önce bir görsel seç.');
+      const { yol, hata: yuklemeHatasi } = await kapakYukle(dosya, s.onEk);
+      if (yuklemeHatasi) return hata(yuklemeHatasi);
+      const kayitHatasi = await s.kaydet(yol);
+      // Kayıt tutmazsa yüklediğimiz dosyayı hemen geri sileriz: depoda sahipsiz
+      // görsel kalmasın.
+      if (kayitHatasi) { await kapakDosyaSil(yol); return hata(kayitHatasi); }
+      await kapakDosyaSil(s.kapak);
+      pencereKapat();
+      await yenile(false);
+      bildir('Kapak yerleştirildi.');
+    } finally {
+      kapakOnizlemeBirak();
+      kapakKaldir = null;
+    }
+  }
+
   function onaySor(s) {
     return new Promise(res => {
       pencere({
@@ -831,6 +912,10 @@
           const yollar = parcalar.flatMap(t => Ses.parcalariCoz(t.storage_path).map(p => p.path));
           await client.storage.from('radio-audio').remove(yollar);
         }
+        // Kapaklar da birlikte gitsin: klasörün ve parçaların görselleri
+        // depoda sahipsiz kalmasın.
+        await kapakDosyaSil(f && f.cover_path);
+        for (const t of parcalar) await kapakDosyaSil(t.cover_path);
         await client.from('radio_tracks').delete().eq('folder_id', id);
         const { error } = await client.from('radio_folders').delete().eq('id', id);
         if (error) return hata('Klasör silinemedi: ' + error.message);
@@ -856,14 +941,33 @@
         bildir(yeni ? 'Karışık çalma açık — her tur yeniden karışır.' : 'Sırayla çalma açık.');
         return;
       }
-      case 'cover-del': {
+      // Kapak yerleştirme: parça, liste ve klasör aynı pencereyi kullanır.
+      case 'cover-open': {
         const f = D.folders.find(x => x.id === state.openFolder);
-        if (!f || !f.cover_path) return;
-        if (!await onaySor({ baslik: 'Kapak silinsin mi?', govde: 'Klasörün kapak görseli kaldırılacak.', onayMetni: 'KAPAĞI SİL' })) return;
-        await client.storage.from('radio-covers').remove([f.cover_path]);
-        const { error } = await client.from('radio_folders').update({ cover_path: null }).eq('id', f.id);
-        if (error) return hata('Kapak silinemedi: ' + error.message);
-        await yenile(false); bildir('Kapak silindi.');
+        if (!f) return;
+        kapakPenceresiAc({
+          baslik: 'Klasör kapağı',
+          alt: f.name + ' · ' + D.tracks.filter(t => t.folder_id === f.id).length + ' parça',
+          kapak: f.cover_path,
+          onEk: 'klasorler',
+          kaydet: async yol => {
+            const { error } = await client.from('radio_folders').update({ cover_path: yol }).eq('id', f.id);
+            return error ? 'Kapak kaydedilemedi: ' + error.message : null;
+          },
+          kaldir: f.cover_path ? async () => {
+            const { error } = await client.from('radio_folders').update({ cover_path: null }).eq('id', f.id);
+            if (error) return hata('Kapak kaldırılamadı: ' + error.message);
+            await kapakDosyaSil(f.cover_path);
+            pencereKapat(); await yenile(false); bildir('Kapak kaldırıldı.');
+          } : null
+        });
+        return;
+      }
+      case 'kapak-sil': {
+        const sil = kapakKaldir;
+        if (!sil) return;
+        kapakKaldir = null;
+        await sil();
         return;
       }
 
@@ -893,19 +997,23 @@
       case 'track-img': {
         const t = D.tracks.find(x => x.id === id);
         if (!t) return;
-        const giris = document.createElement('input');
-        giris.type = 'file'; giris.accept = 'image/*';
-        giris.onchange = async () => {
-          const dosya = giris.files && giris.files[0];
-          if (!dosya) return;
-          const yol = `tracks/${t.id}-${Date.now()}.${(dosya.name.split('.').pop() || 'jpg').toLowerCase()}`;
-          const up = await client.storage.from('radio-covers').upload(yol, dosya, { contentType: dosya.type || 'image/jpeg' });
-          if (up.error) return hata('Görsel yüklenemedi: ' + up.error.message);
-          const { error } = await client.from('radio_tracks').update({ cover_path: yol }).eq('id', t.id);
-          if (error) return hata('Görsel kaydedilemedi: ' + error.message);
-          await yenile(false); bildir('Parça görseli güncellendi.');
-        };
-        giris.click();
+        const f = D.folders.find(x => x.id === t.folder_id);
+        kapakPenceresiAc({
+          baslik: 'Parça kapağı',
+          alt: V.clean(t.title) + (f ? ' · ' + f.name : ''),
+          kapak: t.cover_path,
+          onEk: 'tracks',
+          kaydet: async yol => {
+            const { error } = await client.from('radio_tracks').update({ cover_path: yol }).eq('id', t.id);
+            return error ? 'Kapak kaydedilemedi: ' + error.message : null;
+          },
+          kaldir: t.cover_path ? async () => {
+            const { error } = await client.from('radio_tracks').update({ cover_path: null }).eq('id', t.id);
+            if (error) return hata('Kapak kaldırılamadı: ' + error.message);
+            await kapakDosyaSil(t.cover_path);
+            pencereKapat(); await yenile(false); bildir('Kapak kaldırıldı.');
+          } : null
+        });
         return;
       }
       case 'track-move': {
@@ -953,6 +1061,7 @@
           onayMetni: 'PARÇAYI SİL'
         })) return;
         if (Ses) await client.storage.from('radio-audio').remove(Ses.parcalariCoz(hedef.dataset.path || (t && t.storage_path)).map(p => p.path));
+        if (t && t.cover_path) await kapakDosyaSil(t.cover_path);
         const { error } = await client.from('radio_tracks').delete().eq('id', id);
         if (error) return hata('Parça silinemedi: ' + error.message);
         await yenile(false); bildir('Parça silindi.');
@@ -1127,6 +1236,28 @@
         bildir('Liste adı güncellendi. Açık duran oynatıcılar yeni adı birkaç dakika içinde kendiliğinden alır.');
         return;
       }
+      case 'list-img': {
+        const pl = D.playlists.find(x => x.id === id);
+        if (!pl) return;
+        const b = D.brands.find(x => x.id === pl.brand_id);
+        kapakPenceresiAc({
+          baslik: 'Liste kapağı',
+          alt: pl.name + (b ? ' · ' + b.name : ''),
+          kapak: pl.cover_path,
+          onEk: 'listeler',
+          kaydet: async yol => {
+            const { error } = await client.from('brand_playlists').update({ cover_path: yol }).eq('id', pl.id);
+            return error ? 'Kapak kaydedilemedi: ' + error.message : null;
+          },
+          kaldir: pl.cover_path ? async () => {
+            const { error } = await client.from('brand_playlists').update({ cover_path: null }).eq('id', pl.id);
+            if (error) return hata('Kapak kaldırılamadı: ' + error.message);
+            await kapakDosyaSil(pl.cover_path);
+            pencereKapat(); await yenile(false); bildir('Kapak kaldırıldı.');
+          } : null
+        });
+        return;
+      }
       case 'list-addtrack': {
         const pl = D.playlists.find(x => x.id === id);
         if (!pl) return;
@@ -1297,20 +1428,6 @@
         Array.from(hedef.files).forEach(f => { if (Ses && Ses.gecerli(f)) toplam += f.size; else atlanan++; });
         el('track-msg').textContent = adet + ' dosya seçildi · ' + (Ses ? Ses.boyut(toplam) : '') + (atlanan ? ` · ${atlanan} dosya desteklenmiyor` : '');
       } else if (el('track-msg')) el('track-msg').textContent = '';
-      return;
-    }
-
-    if (hedef.id === 'cover-file') {
-      const dosya = hedef.files && hedef.files[0];
-      if (!dosya) return;
-      const f = D.folders.find(x => x.id === state.openFolder);
-      if (!f) return;
-      const yol = `${f.id}/${Date.now()}.${(dosya.name.split('.').pop() || 'jpg').toLowerCase()}`;
-      const up = await client.storage.from('radio-covers').upload(yol, dosya, { contentType: dosya.type || 'image/jpeg' });
-      if (up.error) return hata('Kapak yüklenemedi: ' + up.error.message);
-      const { error } = await client.from('radio_folders').update({ cover_path: yol }).eq('id', f.id);
-      if (error) return hata('Kapak kaydedilemedi: ' + error.message);
-      await yenile(false); bildir('Kapak güncellendi.');
       return;
     }
 

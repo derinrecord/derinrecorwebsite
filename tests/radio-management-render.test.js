@@ -151,6 +151,32 @@ test('panel liste adını düzenleyip kaydedebilir', () => {
   assert.ok(source.includes('Liste adı boş olamaz'), 'boş ad reddedilmeli');
 });
 
+// Kapaklar elle yerleştirilir: yönetim indirdiği görseli kendi seçer. Üç kayıt
+// türü de aynı akışı kullanmalı ve değiştirilen kapağın eski dosyası depodan
+// silinmeli; yoksa depoda kimsenin görmediği eski görseller birikir.
+test('panel kapakları elle yerleştirir ve eskisini depodan temizler', () => {
+  ['cover-open', 'track-img', 'list-img', 'kapak-sil'].forEach(act =>
+    assert.ok(source.includes(`case '${act}'`), `${act} işlenmeli`));
+  assert.ok(source.includes("storage.from('radio-covers')"), 'kapaklar radio-covers kovasına yüklenmeli');
+  ['radio_tracks', 'brand_playlists', 'radio_folders'].forEach(tablo =>
+    assert.ok(new RegExp('from\\(' + "'" + tablo + "'" + '\\)\\.update\\(\\{ cover_path: yol \\}\\)').test(source),
+      `${tablo} kapağı kaydedilmeli`));
+  assert.match(source, /kapakDosyaSil\(s\.kapak\)/, 'değiştirilen kapağın dosyası silinmeli');
+  assert.ok(source.includes('function kapakOnizlemeBirak'), 'önizleme blob adresi bırakılmalı');
+  // Kayıt tutmazsa yüklenen dosya geri silinmeli: depoda sahipsiz görsel kalmasın.
+  assert.match(source, /if \(kayitHatasi\) \{ await kapakDosyaSil\(yol\)/);
+  // Önizlemesiz eski tek yol kalkmalı: tek akış kalsın.
+  assert.ok(!source.includes("hedef.id === 'cover-file'"), 'eski dosya alanı akışı kalkmalı');
+});
+
+test('parça ya da klasör silinince kapak dosyası da temizlenir', () => {
+  const parcaSil = source.slice(source.indexOf("case 'track-del'"));
+  assert.ok(parcaSil.slice(0, 900).includes('kapakDosyaSil(t.cover_path)'));
+  const klasorSil = source.slice(source.indexOf("case 'folder-del'"));
+  assert.ok(klasorSil.slice(0, 1200).includes('kapakDosyaSil(f && f.cover_path)'));
+  assert.ok(klasorSil.slice(0, 1200).includes('for (const t of parcalar) await kapakDosyaSil(t.cover_path)'));
+});
+
 test('liste bildirimi kurulumu SQL dosyası olarak depoda', () => {
   const sql = fs.readFileSync(require.resolve('../supabase/radio-liste-bildirimi.sql'), 'utf8');
   assert.match(sql, /add column if not exists now_playlist_id uuid/);
