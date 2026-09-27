@@ -57,6 +57,21 @@ test('yayın sağlığı ekranı rotalanır ve cihaz kilidini bağlamaz', () => 
   assert.match(source, /V\.saglikTani\(p, D\)/);
 });
 
+// abonelik_durumu yalnızca anahtarı tanıdığında satır döner. Satır geçerliyse
+// anahtar tanınıyordur; bu durumda "anahtar tanınmadı" demek kullanıcıyı yanlış
+// halkaya (linke) baktırıyordu. Doğru cevap "yayın zinciri kopuk" olmalı.
+test('sınama, anahtar tanınırken yayın boşsa yanlış halkayı göstermez', () => {
+  const sina = source.slice(
+    source.indexOf('async function sunucuSina'),
+    source.indexOf('function kaynakPenceresi')
+  );
+  assert.ok(sina.includes("'anahtar var, yayın zinciri kopuk'"), 'sınama doğru teşhisi vermeli');
+  assert.ok(sina.indexOf('abRow.gecerli') < sina.indexOf("'anahtar tanınmadı'"), 'abonelik satırı varsa önce o değerlendirilmeli');
+
+  const cekmece = source.slice(source.indexOf('async function baglantiSina'));
+  assert.ok(cekmece.includes('Anahtar tanınıyor ama yayın boş'), 'çekmece raporu da aynı ayrımı yapmalı');
+});
+
 // Sağlık ekranındaki düzeltmeler yerinde uygulanır: kayıt güncellenir, eski
 // sunucu cevabı silinir ve satır yeniden hesaplanıp yeşile döner.
 test('sağlık ekranı düzeltmeleri yerinde uygular', () => {

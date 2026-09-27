@@ -56,9 +56,9 @@ async function calistir(senaryo) {
   const rpc = (ad, p) => {
     cagrilar.push({ ad, p });
     if (ad === 'radio_ping') {
-      return senaryo.ping === 'kilitli'
-        ? [{ ok: false, reason: 'locked_to_other_device' }]
-        : [{ ok: true }];
+      if (senaryo.ping === 'kilitli') return [{ ok: false, reason: 'locked_to_other_device' }];
+      if (senaryo.ping === 'taninmiyor') return [{ ok: false, reason: 'invalid_key' }];
+      return [{ ok: true }];
     }
     if (ad === 'radio_now_playing') return senaryo.parca ? PARCALAR : [];
     if (ad === 'abonelik_durumu') {
@@ -108,6 +108,7 @@ async function calistir(senaryo) {
     marka: metin('brand'),
     sub: metin('branch'),
     durum: metin('state'),
+    tani: metin('tani'),
     liste: (dugumler.get('playlist') || {}).innerHTML || '',
     baslatGorunur: !(dugumler.get('start') || {}).hidden,
     saatler: metin('hours'),
@@ -141,14 +142,43 @@ test('başka mekândaki cihazdan açılışta cihaz kilidi devreye girer', async
   assert.equal(s.pingler.length, 1);
 });
 
-test('yayın kaynağı/satırı olmayan markada oynatıcı "bu link tanınmadı" der', async () => {
-  // radio_now_playing boş döner: markaya canlı yayın kaynağı atanmamış ya da
-  // marka pasif. Kullanıcının bildirdiği ekranın birebir karşılığı.
+test('anahtar geçerli ama yayın zinciri kopuksa oynatıcı doğru halkayı gösterir', async () => {
+  // radio_now_playing boş döner, oysa radio_ping anahtarı tanıyor ve abonelik
+  // geçerli: yani kopukluk markada (pasif) ya da canlı yayın kaynağında.
+  // Kullanıcının gördüğü ekran buydu; eskiden yalnızca "bu link tanınmadı"
+  // yazdığı için ekip yanlış halkaya bakıyordu.
   const s = await calistir({ ping: 'ok', parca: false, abonelik: 'gecerli' });
-  assert.equal(s.marka, 'Geçersiz yayın anahtarı');
-  assert.match(s.durum, /Bu link tanınmadı/);
+  assert.equal(s.marka, 'Yayın zinciri kopuk');
+  assert.match(s.durum, /marka yayında değil ya da canlı yayın kaynağı atanmamış/);
+  assert.equal(s.tani, 'Teşhis kodu: marka-pasif-veya-kaynak-yok');
   assert.ok(!s.liste.includes('Sabah Işığı'));
   assert.equal(s.baslatGorunur, false);
+});
+
+test('sunucu anahtarı hiç tanımıyorsa oynatıcı bunu ayrı söyler', async () => {
+  const s = await calistir({ ping: 'taninmiyor', parca: false, abonelik: 'bos' });
+  assert.equal(s.marka, 'Yayın anahtarı tanınmıyor');
+  assert.match(s.durum, /sistemde yok/);
+  assert.equal(s.tani, 'Teşhis kodu: anahtar-yok');
+});
+
+test('teşhis kodu abonelik arızasını da ayırır', async () => {
+  const yok = await calistir({ ping: 'ok', parca: false, abonelik: 'yok' });
+  assert.equal(yok.tani, 'Teşhis kodu: abonelik-yok');
+  const bitti = await calistir({ ping: 'ok', parca: false, abonelik: 'bitti' });
+  assert.equal(bitti.tani, 'Teşhis kodu: abonelik-bitmis');
+});
+
+test('yayın çalışıyorsa ekranda teşhis kodu kalmaz', async () => {
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli' });
+  assert.equal(s.tani, '');
+  assert.equal(s.durum, '');
+});
+
+test('teşhis satırı oynatıcı sayfasında bulunur ve sürüm tazelenir', () => {
+  const sayfa = fs.readFileSync(path.join(KOK, 'radyo.html'), 'utf8');
+  assert.match(sayfa, /id="tani"/);
+  assert.match(sayfa, /radyo\.js\?v=20260927a/);
 });
 
 test('abonelik dolduysa oynatıcı yayını duraklatır', async () => {

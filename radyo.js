@@ -9,12 +9,27 @@
   let watchdogTimer = null, watchdogProgressAt = -1, watchdogStuckCount = 0;
 
   const setState = text => { byId('state').textContent = text; };
+
+  // Saha ekibi telefonla ararken "ne yazıyor?" sorusunu bitirmek için: ekranda
+  // kısa, kopyalanabilir bir teşhis kodu bırakırız. Kod, zincirin hangi
+  // halkasının koptuğunu söyler; Derin Record tarafında tek bakışta anlaşılır.
+  function tani(kod) {
+    const el = byId('tani');
+    if (!el) return;
+    if (!kod) { el.textContent = ''; el.hidden = true; return; }
+    el.hidden = false;
+    el.textContent = 'Teşhis kodu: ' + kod;
+  }
   const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const withTimeout = (promise, ms) => Promise.race([
     Promise.resolve(promise),
     new Promise((_, reject) => setTimeout(() => reject(new Error('Bağlantı zaman aşımına uğradı.')), ms))
   ]);
   let fetchAttempts = 0;
+  // radio_ping'in anahtarı tanıyıp tanımadığı. null: henüz bilinmiyor.
+  // "yok" ise sunucu bu anahtarla bir şube kaydı bulamıyor demektir; bu,
+  // marka pasif/kaynak atanmamış olmasından ayrı bir arızadır.
+  let anahtarDurumu = null;
 
   const deviceId = (() => {
     try {
@@ -101,18 +116,41 @@
       byId('cover').style.display = 'none';
       renderPlaylist([]);
       audio.pause();
-           const ab = await client.rpc('abonelik_durumu', { p_player_key: key });
-      const d = ab.data && ab.data[0];
-      if (d && !d.gecerli) {
+      // radio_now_playing boş döndüğünde dört ayrı arıza aynı ekrana düşer:
+      // anahtar hiç tanınmıyor, marka pasif, canlı yayın kaynağı atanmamış ya da
+      // abonelik geçersiz. Aşağıda bunları tek tek ayırıp doğrusunu söyleriz,
+      // yoksa ekip yerinde deneme yanılma yapmak zorunda kalıyor.
+      let d = null;
+      try {
+        const ab = await client.rpc('abonelik_durumu', { p_player_key: key });
+        d = ab && ab.data && ab.data[0];
+      } catch { /* abonelik okunamazsa d=null kalır */ }
+
+      if (anahtarDurumu === 'yok') {
+        // radio_ping bu anahtarla bir şube bulamadı.
+        byId('brand').textContent = 'Yayın anahtarı tanınmıyor';
+        setState('Bu bağlantıdaki anahtar sistemde yok. Şube silinip yeniden eklendiyse paneldeki yeni bağlantıyı kullanın.');
+        tani('anahtar-yok');
+      } else if (d && !d.gecerli) {
         byId('brand').textContent = 'Yayın duraklatıldı';
         setState(d.durum === 'yok'
           ? 'Bu şube için abonelik tanımlı değil. Derin Record ile iletişime geçin.'
           : 'Abonelik süresi doldu. Yenilendiğinde yayın kendiliğinden devam eder.');
-          } else {
+        tani(d.durum === 'yok' ? 'abonelik-yok' : 'abonelik-bitmis');
+      } else if (d && d.gecerli) {
+        // Anahtar da abonelik de sağlam: kopukluk markanın kendisinde.
+        byId('brand').textContent = 'Yayın zinciri kopuk';
+        setState('Anahtar geçerli ama sunucu markaya yayın vermiyor: marka yayında değil ya da canlı yayın kaynağı atanmamış. Panelde Yayın sağlığı ekranı bunu tek tıkla düzeltir.');
+        tani('marka-pasif-veya-kaynak-yok');
+      } else {
         setState('Bu link tanınmadı. Lütfen Derin Record ile iletişime geçin.');
+        tani('anahtar-belirsiz');
       }
       return;
     }
+
+    // Yayın geldi: geride kalmış bir teşhis kodu varsa temizle.
+    tani('');
 
     const view = window.DerinRadioPlaylistQueue.fromRpcRows(data);
     const head = view.head;
@@ -308,15 +346,22 @@
     try {
       ({ data, error } = await withTimeout(client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: !audio.paused }), 8000));
     } catch {
-      return false;
+      return { durum: 'belirsiz' };
     }
-    if (error) return false;
+    if (error) return { durum: 'belirsiz' };
     const row = data && data[0];
     if (row && row.ok === false && row.reason === 'locked_to_other_device') {
       lockedOut();
-      return true;
+      return { durum: 'kilitli' };
     }
-    return false;
+    if (row && row.ok === false && row.reason === 'invalid_key') {
+      // Sunucu bu anahtarla şube bulamıyor: 'bu link tanınmadı' demenin
+      // asıl sebebi bu olabilir, o yüzden ayrı işaretleriz.
+      anahtarDurumu = 'yok';
+      return { durum: 'gecersiz' };
+    }
+    anahtarDurumu = 'var';
+    return { durum: 'ok' };
   }
 
   async function boot() {
@@ -338,7 +383,8 @@
     }
     client = window.supabase.createClient(window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
 
-    if (await ping()) return;
+    const ilkPing = await ping();
+    if (ilkPing.durum === 'kilitli') return;
 
     await fetchBroadcast({ restart: true });
     if (!brandId) return;

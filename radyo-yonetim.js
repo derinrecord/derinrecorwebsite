@@ -1346,11 +1346,24 @@
       govde += satir('Yayın sorgusu', np.error.message, 'kotu');
       sonuc = 'Yayın sunucusu bu anahtarı okurken hata verdi. Yukarıdaki ham mesajı bana iletin.';
     } else if (!npRow) {
-      govde += satir('Yayın sorgusu', 'Bu anahtar tanınmadı', 'kotu');
-      sonuc = eksikler.length
-        ? 'Sunucu bu anahtarı bulamadı; nedeni yukarıdaki <b>kırmızı</b> satırlar: ' + eksikler.join(' · ')
-          + '. Bunlar düzeltilince bağlantı kendiliğinden çalışır ve sayfa yenilemeye gerek kalmaz.'
-        : 'Paneldeki kayıtların hepsi tam görünüyor ama sunucu anahtarı yine de bulamadı. Şubeyi silip yeniden eklemek yeni bir anahtar üretir; sorun sürerse bu raporu Derin Record’a iletin.';
+      // abonelik_durumu yalnızca anahtarı tanıdığında satır döner. Satır varsa
+      // anahtar geçerlidir; boş yayın, markanın yayında olmamasından ya da canlı
+      // yayın kaynağının atanmamış olmasından gelir. Bunu "anahtar tanınmadı"
+      // diye yazmak yanlış halkaya baktırıyordu.
+      if (abRow && abRow.gecerli) {
+        govde += satir('Yayın sorgusu', 'Anahtar tanınıyor ama yayın boş', 'kotu');
+        sonuc = 'Sunucu anahtarı tanıyor (abonelik kaydı okundu) ama yayın listesi boş dönüyor: marka yayında değil ya da canlı yayın kaynağı atanmamış. '
+          + (eksikler.length
+            ? 'Yukarıdaki <b>kırmızı</b> satırlar bunu doğruluyor: ' + eksikler.join(' · ')
+            : 'Yayın sağlığı ekranı bunu tek tıkla düzeltir.')
+          + ' Düzeltince bağlantı kendiliğinden çalışır, sayfa yenilemeye gerek yok.';
+      } else {
+        govde += satir('Yayın sorgusu', 'Bu anahtar tanınmadı', 'kotu');
+        sonuc = eksikler.length
+          ? 'Sunucu bu anahtarı bulamadı; nedeni yukarıdaki <b>kırmızı</b> satırlar: ' + eksikler.join(' · ')
+            + '. Bunlar düzeltilince bağlantı kendiliğinden çalışır ve sayfa yenilemeye gerek kalmaz.'
+          : 'Paneldeki kayıtların hepsi tam görünüyor ama sunucu anahtarı yine de bulamadı. Şubeyi silip yeniden eklemek yeni bir anahtar üretir; sorun sürerse bu raporu Derin Record’a iletin.';
+      }
     } else {
       const parcalar = (np.data || []).filter(r => r.track_id);
       govde += satir('Marka', npRow.brand_name || (b ? b.name : '—'), 'iyi');
@@ -1390,6 +1403,8 @@
     if (!satir) {
       const abRow = ab.data && ab.data[0];
       if (abRow && !abRow.gecerli) return { durum: 'kotu', metin: abRow.durum === 'yok' ? 'abonelik yok' : 'abonelik bitmiş' };
+      // Anahtar tanınıyor (abonelik satırı döndü) ama yayın boş.
+      if (abRow && abRow.gecerli) return { durum: 'kotu', metin: 'anahtar var, yayın zinciri kopuk' };
       return { durum: 'kotu', metin: 'anahtar tanınmadı' };
     }
     const parca = (np.data || []).filter(r => r.track_id).length;

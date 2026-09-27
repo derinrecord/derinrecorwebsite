@@ -48,6 +48,9 @@
          box-shadow:0 10px 26px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.9)}
   button:active{transform:scale(.97)}
   .state{margin-top:20px;font-size:13px;opacity:.6;min-height:20px}
+  .tani{margin-top:12px;font-size:12px;opacity:.5;letter-spacing:.04em;
+        display:inline-block;padding:7px 13px;border-radius:13px;user-select:all;
+        background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16)}
   .hours{margin-top:14px;font-size:12px;opacity:.45;letter-spacing:.06em}
 </style>
 </head>
@@ -62,12 +65,13 @@
   <ol class="playlist" id="playlist" aria-label="Çalma listesi"></ol>
   <button id="start" hidden>YAYINI BAŞLAT</button>
   <div class="state" id="state"></div>
+  <div class="tani" id="tani" hidden></div>
   <div class="hours" id="hours"></div>
   <audio id="audio"></audio>
 </div>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="radio-playlist-queue.js?v=20260926a"></script>
-<script src="radyo.js?v=20260926b"></script>
+<script src="radyo.js?v=20260927a"></script>
 </body>
 </html>
