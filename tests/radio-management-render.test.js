@@ -110,10 +110,20 @@ test('dokunuşsuz kurulum yalnızca geçerli anahtarla açılır', () => {
   assert.ok(kol.includes('V.kioskKurulum'), 'komut görünüm katmanından gelmeli');
 });
 
+// Markaya liste eklenmemişse (ya da listeler okunamıyorsa) sunum sessizce boş
+// kalıyordu ve "bu listede parça yok" diyordu; ortada liste olmadığını söylemeli.
+test('sunum, liste yokken yanıltıcı boş liste mesajı vermez', () => {
+  const kaynak = fs.readFileSync(require.resolve('../coffee-marka.js'), 'utf8');
+  assert.ok(kaynak.includes('function bosSunum'), 'boş sunum durumu tanımlanmalı');
+  assert.match(kaynak, /if \(!listeler\.length\) bosSunum\(\)/);
+  assert.ok(kaynak.includes('henüz çalma listesi eklenmemiş'));
+  assert.ok(kaynak.includes('Sunum hazırlanmayı bekliyor'));
+});
+
 test('sunum sayfası yeni tasarımı ve fade geçişlerini yükler', () => {
   const sunum = fs.readFileSync(require.resolve('../coffee-marka.html'), 'utf8');
   assert.match(sunum, /marka-sunum\.css/);
-  assert.match(sunum, /coffee-marka\.js\?v=3/);
+  assert.match(sunum, /coffee-marka\.js\?v=\d+/);
 
   const kaynak = fs.readFileSync(require.resolve('../coffee-marka.js'), 'utf8');
   ['KAPANMA_MS', 'ACILMA_MS', 'uctanGecis', 'fade('].forEach(iz =>

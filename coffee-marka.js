@@ -201,6 +201,18 @@ function tabsCiz() {
     </button>`).join('');
 }
 
+// Markaya hiç çalma listesi eklenmemişse sunum "bu listede henüz şarkı yok"
+// diyerek yanıltıyordu: ortada liste bile yok. Doğrusunu söyleriz, yoksa kafe
+// sahibi hizmette hiç müzik olmadığını sanıyor.
+function bosSunum() {
+  byId('mk-liste-baslik').innerHTML = '<span>ÇALMA LİSTESİ YOK</span><span></span>';
+  byId('mk-liste').innerHTML = '<p class="mk-bos">Bu markaya henüz çalma listesi eklenmemiş. Listeler eklendiğinde parçalar burada akmaya başlar.</p>';
+  byId('mk-tur').textContent = 'HAZIR DEĞİL';
+  byId('mk-baslik').textContent = 'Sunum hazırlanmayı bekliyor';
+  byId('mk-alt').textContent = 'Derin Record ile iletişime geçin.';
+  byId('mk-album').textContent = '';
+}
+
 function listeCiz() {
   const pl = acikListe;
   const baslik = byId('mk-liste-baslik');
@@ -299,6 +311,7 @@ function ciz(brand, plist) {
   tabsCiz();
   listeCiz();
   doldur(kuyruk[0] || null);
+  if (!listeler.length) bosSunum();
   bagla();
 }
 
