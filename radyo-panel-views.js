@@ -61,32 +61,66 @@
   // Oynatıcının bildirdiği parça yalnızca taze olduğu sürece gösterilir; aksi
   // hâlde cihaz kapandıktan sonra da "şu an bu çalıyor" yazılı kalırdı.
   const PARCA_PENCERESI = 150000;
-  const parcaTaze = (p, now) => !!(p.now_title && p.now_at
+  // Oynatıcı parçayı ve listeyi aynı bildirimde, aynı damgayla tazeler
+  // (parça değişiminde + dakikada bir), o yüzden tazelik tek damgadan okunur.
+  const bildirimTaze = (p, now) => !!(p.now_at
     && (now - new Date(p.now_at).getTime()) < PARCA_PENCERESI);
+  const parcaTaze = (p, now) => !!(p.now_title && bildirimTaze(p, now));
 
-  // Yayın hücresinin ikinci satırı: ses gerçekten akıyor mu ve bu bilgi ne kadar
-  // taze? Çevrimdışıysa susar; bağlantı durumunu zaten DURUM sütunu yazıyor.
-  function yayinDurumu(p, k, now, kaynakTekrar) {
+  // Cihazın çaldığı çalma listesi (personel cihazdan seçtiyse o, yönetim markaya
+  // liste atadıysa o). Ad, panelin elindeki güncel listeden okunur: liste yeniden
+  // adlandırıldığında cihaz eski adı bildirmeye devam etse bile panel doğrusunu
+  // yazar; liste panelde yoksa oynatıcının bildirdiği adla yetiniriz. Cihaz
+  // çevrimdışıysa ya da bildirim bayatsa hiçbir şey iddia edilmez.
+  function calanListe(p, D, now) {
+    if (!canliMi(p, now) || !bildirimTaze(p, now)) return null;
+    const pl = (p.now_playlist_id && D && D.playlists)
+      ? D.playlists.find(x => x.id === p.now_playlist_id)
+      : null;
+    if (pl) return { id: pl.id, ad: pl.name };
+    if (p.now_playlist_name) return { id: p.now_playlist_id || null, ad: p.now_playlist_name };
+    return null;
+  }
+
+  // Cihazın çaldığı liste yönetimin atadığından farklıysa, bunun tek açıklaması
+  // kafedeki personelin cihazdan başka bir liste seçmesidir. Aynıysa susarız:
+  // aynı adı iki kez yazmak "iki farklı yayın var" gibi okunur.
+  function personelListesi(p, k, D, now) {
+    const liste = calanListe(p, D, now);
+    if (!liste || !liste.ad) return null;
+    const atanan = k && k.ad ? k.ad : null;
+    if (atanan && norm(atanan) === norm(liste.ad)) return null;
+    return liste;
+  }
+
+  // Yayın hücresinin ikinci satırı: ses gerçekten akıyor mu, bu bilgi ne kadar
+  // taze ve cihaz hangi listeyi çalıyor? Çevrimdışıysa susar; bağlantı durumunu
+  // zaten DURUM sütunu yazıyor.
+  function yayinDurumu(p, k, now, kaynakTekrar, farkliListe) {
     if (!canliMi(p, now)) return '';
     const damga = esc(goreli(p.last_seen_at, now));
     const nisan = p.is_playing ? chip('live', '▶ ÇALIYOR', true) : chip('gold', 'DURAKLATILDI');
     // Parça adı üstte yazıyorsa kaynağı burada tekrar ederiz (bağlam için);
-    // üstte kaynak adı yazıyorsa tekrara gerek yok.
-    const kaynak = (kaynakTekrar && k && k.ad) ? ' · ' + esc(k.ad) : '';
-    return nisan + ' <span class="sub">' + damga + kaynak + '</span>';
+    // üstte kaynak adı yazıyorsa tekrara gerek yok. Cihaz atanmıştan başka bir
+    // liste çalıyorsa atanmış kaynağı hiç yazmayız: "şu an ne çalıyor" sorusuna
+    // yan yana iki farklı cevap durmasın.
+    const kaynak = (kaynakTekrar && !farkliListe && k && k.ad) ? ' · ' + esc(k.ad) : '';
+    const liste = farkliListe ? ' · <b>çalınan liste:</b> ' + esc(farkliListe.ad) : '';
+    return nisan + ' <span class="sub">' + damga + kaynak + liste + '</span>';
   }
 
   // Canlı durum ekranındaki yayın hücresi. Oynatıcı parça bildirdiyse gerçekten
   // çalan parçanın adı üstte yazar; bildirim yoksa (kurulum eskiyse) markaya
   // atanmış kaynak adı gösterilir ve altta tekrar edilmez.
-  function yayinHucresi(p, k, now) {
+  function yayinHucresi(p, k, now, D) {
     // Çevrimdışı bir şubede "şu an bu çalıyor" demeyiz: ses akmıyordur, elimizdeki
     // bayrak da son görülme zamanı kadar eskidir.
     const calan = (canliMi(p, now) && p.is_playing && parcaTaze(p, now)) ? p.now_title : null;
     const ust = calan
       ? esc(calan)
       : (k && k.ad ? esc(k.ad) : '<span class="sub">yayın atanmadı</span>');
-    return ust + ' <span class="sub">' + yayinDurumu(p, k, now, !!calan) + '</span>';
+    const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
+    return ust + ' <span class="sub">' + yayinDurumu(p, k, now, !!calan, farkli) + '</span>';
   }
   const kilitChip = p => p.bound_device_id ? chip('lock', 'KİLİTLİ') : chip('off', 'serbest');
   const bos = (kolon, metin) => `<tr><td colspan="${kolon}"><div class="empty">${esc(metin)}</div></td></tr>`;
@@ -210,7 +244,7 @@
           <td><div class="cell-main"><span class="cover">📻</span><span><b>${esc(p.label)}</b>
             <span class="sub">${esc(marka ? marka.name : '—')}</span></span></div></td>
           <td class="tight">${bagliChip(p, now)}</td>
-          <td>${yayinHucresi(p, k, now)}</td>
+          <td>${yayinHucresi(p, k, now, D)}</td>
           <td class="tight">${esc(hhmm(p.open_time) || '—')}–${esc(hhmm(p.close_time) || '—')}</td>
           <td class="tight">${kilitChip(p)}</td>
           <td><div class="row-actions">
@@ -230,7 +264,7 @@
       <div class="panel">
         <h3>ŞUBELER (${D.players.length})</h3>
         <table>
-          <thead><tr><th>ŞUBE</th><th>DURUM</th><th title="Şu an çalan parça. Oynatıcı parça adını henüz bildirmiyorsa markaya atanmış yayın kaynağı yazılır.">ŞU AN ÇALAN</th><th>SAAT</th><th>CİHAZ</th><th></th></tr></thead>
+          <thead><tr><th>ŞUBE</th><th>DURUM</th><th title="Şu an çalan parça. Oynatıcı parça adını henüz bildirmiyorsa markaya atanmış yayın kaynağı yazılır. Personel cihazdan başka bir çalma listesi seçtiyse o liste de burada görünür.">ŞU AN ÇALAN</th><th>SAAT</th><th>CİHAZ</th><th></th></tr></thead>
           <tbody>${satirlar || bos(6, 'Eşleşen şube yok.')}</tbody>
         </table>
       </div>`;
@@ -621,16 +655,22 @@
 
     const subeSatirlari = subeler
       .filter(p => hit(q, p.label, p.player_key))
-      .map(p => `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
-        <td><b>${esc(p.label)}</b><span class="sub">${esc(p.player_key)}</span></td>
-        <td class="tight">${bagliChip(p, now)}</td>
+      .map(p => {
+        // Personel cihazdan başka bir liste seçtiyse şube satırında görünsün:
+        // marka sayfası "şubeler gerçekten ne çalıyor" sorusunun cevabı olsun.
+        const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
+        return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
+        <td><b>${esc(p.label)}</b><span class="sub">${esc(p.player_key)}</span>${farkli
+          ? `<span class="sub">çalıyor: <b>${esc(farkli.ad)}</b></span>` : ''}</td>
+        <td class="tight">${bagliChip(p, now)}${farkli ? chip('gold', 'FARKLI LİSTE', true) : ''}</td>
         <td class="tight">${p.last_seen_at ? esc(tarih(p.last_seen_at)) : 'hiç bağlanmadı'}</td>
         <td class="tight">${kilitChip(p)}</td>
         <td><div class="row-actions">
           <button class="btn sm" data-act="player-copy" data-id="${esc(p.id)}" type="button">LİNK</button>
           <button class="btn sm" data-act="branch-open" data-id="${esc(p.id)}" type="button">YÖNET ›</button>
         </div></td>
-      </tr>`).join('');
+      </tr>`;
+      }).join('');
 
     const listeSatirlari = listeler.map(pl => {
       const adet = D.playlistTracks.filter(x => x.playlist_id === pl.id).length;
@@ -1008,6 +1048,7 @@
     const now = ui.now();
     const k = b ? kaynak(D, b.id) : null;
     const link = ui.playerBase() + p.player_key;
+    const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
     const kilitBilgi = [
       p.bound_at ? 'kilitlenme: ' + tarih(p.bound_at) : null,
       p.last_ip ? 'IP: ' + p.last_ip : null,
@@ -1019,6 +1060,9 @@
       <div class="row">${bagliChip(p, now)}${caliyorChip(p, now)}${kilitChip(p)}</div>
       ${(canliMi(p, now) && p.is_playing && parcaTaze(p, now))
         ? `<p class="sub">Şu an çalıyor: <b>${esc(p.now_title)}</b> · ${esc(goreli(p.last_seen_at, now))}</p>`
+        : ''}
+      ${farkli
+        ? `<p class="sub">Personel cihazdan başka bir liste seçmiş: <b>${esc(farkli.ad)}</b> · yönetimin atadığı kaynak: <b>${esc(k && k.ad ? k.ad : 'atanmamış')}</b></p>`
         : ''}
 
       <div class="block"><h4>YAYIN LİNKİ</h4>
@@ -1124,6 +1168,9 @@
     goreli: goreli,
     yayinHucresi: yayinHucresi,
     parcaTaze: parcaTaze,
+    bildirimTaze: bildirimTaze,
+    calanListe: calanListe,
+    personelListesi: personelListesi,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu
   };

@@ -38,6 +38,11 @@
   // Şu an çalan parça: sunucuya bildiririz ki panelde gerçekten hangi parçanın
   // çaldığı görünsün (eskiden yalnızca "ses çalıyor mu" biliniyordu).
   let calanParca = null;
+  // Şu an çalınan çalma listesi. Personel cihazdan bir liste seçtiyse onu,
+  // yönetimin atadığı kaynak bir listeyse onu taşır. Panel bu sayede "cihaz
+  // benim atadığımı mı çalıyor, personel başka bir liste mi seçmiş" sorusunu
+  // cevaplayabilir. {id, ad} ya da liste yoksa null (klasör kaynağı).
+  let calanListe = null;
 
   // Sunucu yayın anahtarını uuid olarak bekler. Paneldeki kayıtta anahtar boş
   // kalmışsa kopyalanan bağlantı "...?key=null" olur; sunucu bunu uuid sanıp
@@ -193,6 +198,14 @@
     const changed = restart || head.updated_at !== lastStamp;
     lastStamp = head.updated_at;
 
+    // Yönetimin atadığı kaynak bir çalma listesiyse adını panele bildiririz.
+    // Klasör kaynağında liste yoktur: null gider, panel atanmış kaynağı yazar.
+    // (Marka listeleri okunamıyorsa ayırt edemeyiz; bu durumda da null gider ve
+    // panel doğru olanı — atanmış kaynağı — gösterir.)
+    calanListe = listeler.some(l => l.id === head.folder_id)
+      ? { id: head.folder_id, ad: head.folder_name || '' }
+      : null;
+
     byId('folder').textContent = view.playlistName ? view.playlistName + ' · ' + tracks.length + ' parça' : '';
     renderPlaylist(tracks);
 
@@ -263,7 +276,6 @@
       // Çalabildiyse başlat düğmesine gerek yok.
       byId('start').hidden = true;
       setState('');
-      calanParca = track;
       calaniBildir(track);
     }).catch(() => {
       // Tarayıcı sesli otomatik çalmayı engelledi: tek bir dokunuş yeter.
@@ -348,15 +360,35 @@
     Promise.resolve(client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: playing })).catch(() => {});
   }
 
-  // Sunucuya "şu an bu parça çalıyor" bilgisini bırakır. Bu alanlar ve
+  // Sunucuya "şu an bu parça ve bu liste çalıyor" bilgisini bırakır. Alanlar ve
   // radio_now_report fonksiyonu henüz eklenmemişse çağrı başarısız olur;
   // oynatıcı bunu yok sayar ve çalmaya devam eder. Var olan radio_ping'e
   // dokunmadığımız için cihaz kilidi de etkilenmez.
-  function calaniBildir(track) {
-    if (!client || !key || !track || !track.title) return;
-    Promise.resolve(client.rpc('radio_now_report', {
-      p_player_key: key, p_track_id: track.track_id || null, p_title: track.title
-    })).catch(() => {});
+  //
+  // `track` null verilirse "artık bir şey çalmıyor" diye bildiririz; yoksa
+  // panelde silinmiş bir listeye ait eski parça adı asılı kalırdı.
+  async function calaniBildir(track) {
+    if (!client || !key) return;
+    if (track && track.title) calanParca = track;
+    else if (!track) calanParca = null;
+
+    const ortak = {
+      p_player_key: key,
+      p_track_id: (track && track.track_id) || null,
+      p_title: (track && track.title) || null
+    };
+    const listeAlanlari = {
+      p_playlist_id: calanListe ? calanListe.id : null,
+      p_playlist_name: calanListe && calanListe.ad ? calanListe.ad : null
+    };
+    try {
+      const tam = await client.rpc('radio_now_report', Object.assign({}, ortak, listeAlanlari));
+      if (!tam || !tam.error) return;
+      // supabase/radio-liste-bildirimi.sql henüz çalıştırılmadıysa sunucu beş
+      // parametreli çağrıyı reddeder. Eski imzayla tekrar deneriz: parça adı
+      // panele akmaya devam etsin, kaybedilen yalnızca liste satırı olsun.
+      await client.rpc('radio_now_report', ortak);
+    } catch { /* bildirim "olsa iyi olur" katmanıdır: yayın etkilenmez */ }
   }
 
   byId('start').onclick = basla;
@@ -414,6 +446,7 @@
 
     const secilen = listeler.find(l => l.id === seciliListe);
     const parcalar = await listeParcalariniAl(seciliListe);
+    calanListe = { id: seciliListe, ad: secilen ? secilen.name : '' };
     byId('folder').textContent = (secilen ? secilen.name : 'Seçili liste')
       + (parcalar.length ? ' · ' + parcalar.length + ' parça' : '');
     renderPlaylist(parcalar);
@@ -423,6 +456,8 @@
       audio.pause();
       byId('now').textContent = 'Yayın bekleniyor';
       setState('Bu listede henüz parça yok. Başka bir liste seçin ya da parça ekletin.');
+      // Boş liste seçildi: sunucuda eski parça bildirimi asılı kalmasın.
+      calaniBildir(null);
       return;
     }
 
@@ -483,6 +518,8 @@
     byId('folder').textContent = '';
     byId('cover').style.display = 'none';
     renderPlaylist([]);
+    calanListe = null;
+    calaniBildir(null);
     setState('Bu yayın linki başka bir cihaza kayıtlı. Derin Record ile iletişime geçin.');
   }
 
@@ -551,7 +588,9 @@
 
     // Bildirimi dakikada bir tazeleriz: panel "8 sn önce" gibi taze bir damga
     // gösterirken parçanın hâlâ çaldığından emin olur.
-    setInterval(() => { ping(); calaniBildir(calanParca); }, 60000);
+    // Çalan bir şey yokken bildirim göndermeyiz: boş bildirim sunucudaki parça
+    // bilgisini siler, panel de dürüst davranıp atanmış kaynağı gösterir.
+    setInterval(() => { ping(); if (calanParca) calaniBildir(calanParca); }, 60000);
     setInterval(() => fetchBroadcast(), 120000);
     setInterval(checkHours, 30000);
   }

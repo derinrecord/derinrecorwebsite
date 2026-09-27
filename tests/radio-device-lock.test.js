@@ -130,6 +130,11 @@ async function calistir(senaryo) {
           if (senaryo.bildirimHatasi && ad === 'radio_now_report') {
             return Promise.resolve({ data: null, error: { message: 'column "now_title" does not exist' } });
           }
+          // 'listeAlaniYok': sunucu henüz supabase/radio-liste-bildirimi.sql ile
+          // güncellenmemiş; beş parametreli çağrıyı tanımaz, eski imzayı tanır.
+          if (senaryo.listeAlaniYok && ad === 'radio_now_report' && p && 'p_playlist_id' in p) {
+            return Promise.resolve({ data: null, error: { message: 'PGRST202: could not find the function public.radio_now_report' } });
+          }
           return Promise.resolve({ data: rpc(ad, p || {}), error: null });
         },
         from: tablo,
@@ -352,9 +357,12 @@ test('oynatıcı hangi parçayı çaldığını sunucuya bildirir', async () => 
   assert.equal(s.bildirimler[0].p.p_title, 'Sabah Işığı');
   assert.equal(s.bildirimler[0].p.p_track_id, 't0');
   assert.equal(s.bildirimler[0].p.p_player_key, PROVA_ANAHTAR);
+  // Yönetimin atadığı kaynak bir klasörse bildirilecek bir liste yoktur.
+  assert.equal(s.bildirimler[0].p.p_playlist_id, null);
+  assert.equal(s.bildirimler[0].p.p_playlist_name, null);
 });
 
-test('personel listesinden çalınan parça da bildirilir', async () => {
+test('personel listesinden çalınan parça ve liste adı bildirilir', async () => {
   const s = await calistir({
     ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
     listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI
@@ -362,6 +370,59 @@ test('personel listesinden çalınan parça da bildirilir', async () => {
   await s.sec('L1');
   const son = s.bildirimler[s.bildirimler.length - 1];
   assert.equal(son.p.p_title, 'Filtre Kahve', 'seçilen listenin parçası bildirilmeli');
+  // Panel "personel başka liste mi seçti" sorusunu ancak bu iki alanla cevaplar.
+  assert.equal(son.p.p_playlist_id, 'L1');
+  assert.equal(son.p.p_playlist_name, 'Sabah Kahve');
+});
+
+// Personel otomatiğe döndüğünde sunucuda liste bilgisi kalmamalı; yoksa panel
+// hâlâ "personel şu listeyi seçmiş" yazar.
+test('otomatiğe dönünce liste bildirimi temizlenir', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI
+  });
+  await s.sec('L1');
+  assert.equal(s.bildirimler[s.bildirimler.length - 1].p.p_playlist_id, 'L1');
+
+  await s.sec('');
+  const son = s.bildirimler[s.bildirimler.length - 1];
+  assert.equal(son.p.p_playlist_id, null, 'liste bilgisi silinmeli');
+  assert.equal(son.p.p_playlist_name, null);
+  assert.ok(son.p.p_title, 'otomatik yayının parçası yine bildirilmeli');
+});
+
+// Boş bir liste seçilirse çalınacak parça yoktur: sunucuda eski parça adı asılı
+// kalmamalı, yoksa panel hâlâ o parça çalıyormuş gibi gösterir.
+test('boş liste seçilince parça bildirimi temizlenir', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    listeler: LISTELER, listeParcalari: [], studioParcalari: []
+  });
+  await s.sec('L1');
+  assert.match(s.durum, /henüz parça yok/);
+  const son = s.bildirimler[s.bildirimler.length - 1];
+  assert.equal(son.p.p_title, null);
+  assert.equal(son.p.p_track_id, null);
+});
+
+// supabase/radio-liste-bildirimi.sql henüz çalıştırılmadıysa sunucu beş
+// parametreli çağrıyı reddeder. Oynatıcı o zaman eski imzayla tekrar dener:
+// panelde parça adı görünmeye devam eder, kaybedilen yalnızca liste satırı olur.
+test('liste alanları sunucuda yoksa eski imzayla bildirim yapılır', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, listeAlaniYok: true,
+    listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI
+  });
+  await s.sec('L1');
+  const yeni = s.bildirimler.filter(c => 'p_playlist_id' in c.p);
+  assert.equal(yeni.length, 0, 'liste alanı olmayan sunucuya liste parametresi gönderilmemeli');
+  const son = s.bildirimler[s.bildirimler.length - 1];
+  assert.equal(son.p.p_title, 'Filtre Kahve', 'parça adı yine bildirilmeli');
+  assert.ok(!('p_playlist_id' in son.p));
+  // Yayın bundan etkilenmemeli.
+  assert.equal(s.durum, '');
+  assert.equal(s.baslatGorunur, false);
 });
 
 test('bildirim yapılamasa da yayın çalmaya devam eder', async () => {

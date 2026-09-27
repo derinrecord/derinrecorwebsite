@@ -35,8 +35,13 @@ if (senaryo === 'canli') {
     folders: [{ id: 'f1', name: 'Öğleden Sonra', cover_path: null, shuffle: true }],
     tracks: [{ id: 't1', folder_id: 'f1', title: 'Parça', storage_path: 'f1/a.wav', sort_order: 0, duration_sec: 180, cover_path: null }],
     players: [
-      // Parça bildirimi yapıyor: gerçekten çalan parça görünmeli.
-      sube('p1', 'Alsancak', { now_title: 'Kalabalık Caddesi', now_track_id: null, now_at: snOnce(8) }),
+      // Parça bildirimi yapıyor: gerçekten çalan parça görünmeli. Ayrıca
+      // personel cihazdan başka bir liste seçmiş; atanmış kaynak (klasör)
+      // yerine çalınan liste yazılmalı.
+      sube('p1', 'Alsancak', {
+        now_title: 'Kalabalık Caddesi', now_track_id: null, now_at: snOnce(8),
+        now_playlist_id: 'l1', now_playlist_name: 'Sabah Akışı'
+      }),
       // Bağlı ama duraklatılmış: parça adı iddia edilmemeli.
       sube('p2', 'Karşıyaka', { last_seen_at: snOnce(40), is_playing: false }),
       // Çevrimdışı: bayat kayıt canlı sanılmamalı.
@@ -45,7 +50,9 @@ if (senaryo === 'canli') {
       sube('p4', 'Buca', { last_seen_at: snOnce(20), is_playing: true })
     ],
     broadcast: [{ brand_id: 'b1', folder_id: 'f1', playlist_id: null, updated_at: snOnce(600) }],
-    announcements: [], playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: []
+    announcements: [],
+    playlists: [{ id: 'l1', brand_id: 'b1', name: 'Sabah Akışı', description: null, cover_path: null, shuffle: false, created_at: snOnce(600) }],
+    playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: []
   };
   const ui = {
     cover: p => p, ses: p => p, anons: p => p,

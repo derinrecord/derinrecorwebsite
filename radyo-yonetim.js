@@ -215,12 +215,19 @@
       requests: D.requests
     };
 
-    // Çalan parça alanları sonradan eklendi (supabase/radio-calan-parca.sql).
-    // Henüz eklenmemişse bu sorgu hata döner; o zaman oynatıcı da bildirim
-    // yapmaz ve ekranda markaya atanmış kaynak adı görünür. Sorguyu ayrı ve
-    // hataya toleranslı tutarız ki ana yükleme bundan etkilenmesin.
+    // Çalan parça ve çalma listesi alanları sonradan eklendi
+    // (supabase/radio-calan-parca.sql, supabase/radio-liste-bildirimi.sql).
+    // Henüz eklenmemişse sorgu hata döner; o zaman oynatıcı da liste bildirmez
+    // ve ekranda markaya atanmış kaynak adı görünür. Sorguyu ayrı ve hataya
+    // toleranslı tutarız ki ana yükleme bundan etkilenmesin. Liste alanları
+    // eksikse parça alanlarıyla devam ederiz: sahadaki "şu an çalan parça"
+    // bilgisi yalnızca yeni SQL yüzünden kaybolmasın.
     try {
-      const calanlar = await client.from('brand_players').select('id,now_title,now_at');
+      let calanlar = await client.from('brand_players')
+        .select('id,now_title,now_at,now_playlist_id,now_playlist_name');
+      if (calanlar.error) {
+        calanlar = await client.from('brand_players').select('id,now_title,now_at');
+      }
       if (!calanlar.error && Array.isArray(calanlar.data)) {
         const harita = new Map(calanlar.data.map(x => [x.id, x]));
         D.players = D.players.map(p => Object.assign({}, p, harita.get(p.id) || {}));

@@ -152,6 +152,90 @@ test('şube çekmecesi çalan parçayı gösterir', () => {
   assert.ok(html.includes('Şu an çalıyor'), 'etiket ne olduğunu söylemeli');
 });
 
+// Personel cihazdan markanın başka bir listesini seçtiğinde panel bunu artık
+// görebiliyor: oynatıcı hangi listeyi çaldığını bildiriyor. Panelin işi bu
+// bilgiyi dürüstçe yazmak: bayatsa susmak, adı güncel listeden okumak ve
+// yönetimin atadığı kaynakla karıştırmamak.
+test('cihazın çaldığı çalma listesi panelde görünür', () => {
+  const simdi3 = Date.now();
+  const taze = new Date(simdi3 - 6000).toISOString();
+  const bayat = new Date(simdi3 - 600000).toISOString();
+  const k = { ad: 'Sabah Açılış', tip: 'klasör' };   // yönetimin atadığı kaynak
+  const canli = { is_playing: true, last_seen_at: taze };
+
+  const hucre = V.yayinHucresi({
+    ...canli, now_title: 'Kalabalık Caddesi', now_at: taze,
+    now_playlist_id: 'l1', now_playlist_name: 'Akşam Akışı'
+  }, k, simdi3, D);
+  assert.ok(hucre.includes('çalınan liste'), 'cihazın çaldığı liste yazılmalı');
+  assert.ok(hucre.includes('Akşam Akışı'));
+  assert.ok(!hucre.includes('Sabah Açılış'), 'iki farklı cevap yan yana yazılmamalı');
+
+  // Panel listeyi kendi elindeki güncel kayıttan okur: liste yeniden
+  // adlandırıldığında cihaz eski adı bildirse de doğru ad görünür.
+  const yenidenAdlandirilmis = V.yayinHucresi({
+    ...canli, now_title: 'Kalabalık Caddesi', now_at: taze,
+    now_playlist_id: 'l1', now_playlist_name: 'Eski Ad'
+  }, k, simdi3, D);
+  assert.ok(yenidenAdlandirilmis.includes('Akşam Akışı'));
+  assert.ok(!yenidenAdlandirilmis.includes('Eski Ad'));
+
+  // Panelde karşılığı olmayan bir liste (silinmiş) bildirildiyse oynatıcının
+  // dediğiyle yetiniriz; uydurmaktansa cihazın bildirdiğini yazarız.
+  const silinmis = V.yayinHucresi({
+    ...canli, now_title: 'Kalabalık Caddesi', now_at: taze,
+    now_playlist_id: 'yok-boyle-bir-liste', now_playlist_name: 'Kapanan Liste'
+  }, k, simdi3, D);
+  assert.ok(silinmis.includes('Kapanan Liste'));
+
+  // Yönetim zaten o listeyi atamışsa aynı adı iki kez yazmayız.
+  const ayni = V.yayinHucresi({
+    ...canli, now_title: 'Kalabalık Caddesi', now_at: taze,
+    now_playlist_id: 'l1', now_playlist_name: 'Akşam Akışı'
+  }, { ad: 'Akşam Akışı', tip: 'liste' }, simdi3, D);
+  assert.ok(!ayni.includes('çalınan liste'));
+  assert.ok(ayni.includes('Akşam Akışı'));
+
+  // Bildirim bayatsa (cihaz kapandı) hiçbir şey iddia edilmez.
+  const bayatHucre = V.yayinHucresi({
+    ...canli, now_title: 'Eski Parça', now_at: bayat,
+    now_playlist_id: 'l1', now_playlist_name: 'Akşam Akışı'
+  }, k, simdi3, D);
+  assert.ok(!bayatHucre.includes('çalınan liste'));
+  assert.ok(!bayatHucre.includes('Akşam Akışı'));
+  assert.equal(V.calanListe({ ...canli, now_at: bayat, now_playlist_name: 'Akşam Akışı' }, D, simdi3), null);
+
+  // Çevrimdışı cihaz için de susar.
+  assert.equal(V.calanListe({
+    is_playing: true, last_seen_at: null, now_at: taze, now_playlist_name: 'Akşam Akışı'
+  }, D, simdi3), null);
+});
+
+// Listeyi marka sayfasından ve şube çekmecesinden de görebilmek gerekir:
+// yönetici "şubeler gerçekten ne çalıyor" sorusunun cevabını tek ekranda arıyor.
+test('marka sayfası ve şube çekmecesi personelin seçtiği listeyi yazar', () => {
+  const simdi4 = Date.now();
+  const taze = new Date(simdi4 - 6000).toISOString();
+  const bildirimli = [{ ...D.players[0], is_playing: true, last_seen_at: taze,
+    now_title: 'Kalabalık Caddesi', now_at: taze,
+    now_playlist_id: 'l1', now_playlist_name: 'Akşam Akışı' }];
+
+  const marka = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }),
+    { ...D, players: bildirimli }, ui).html;
+  assert.ok(marka.includes('FARKLI LİSTE'), 'şube satırında işaret olmalı');
+  assert.ok(marka.includes('çalıyor: <b>Akşam Akışı</b>'));
+
+  const cekmece = V.subeCekmecesi('p1', { ...D, players: bildirimli }, ui);
+  assert.ok(cekmece.includes('başka bir liste seçmiş'), 'çekmece durumu açıkça söylemeli');
+  assert.ok(cekmece.includes('Akşam Akışı'));
+  assert.ok(cekmece.includes('Sabah Açılış'), 'atanmış kaynak da karşılaştırma için yazılmalı');
+
+  // Yönetim tam olarak o listeyi atadıysa işaret çıkmaz: aynı bilgi tekrar edilmez.
+  const ayniAtama = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }),
+    { ...D, players: bildirimli, broadcast: [{ brand_id: 'b1', folder_id: null, playlist_id: 'l1' }] }, ui).html;
+  assert.ok(!ayniAtama.includes('FARKLI LİSTE'));
+});
+
 // Tazelik metni kullanıcıya "bu bilgi ne kadar yeni" sorusunu yanıtlamalı.
 test('son görülme süresi okunur biçimde yazılır', () => {
   const t = Date.now();
