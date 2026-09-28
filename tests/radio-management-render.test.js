@@ -239,3 +239,15 @@ test('panel dosyaları sürüm damgasıyla yüklenir', () => {
       assert.match(sayfa, kalip, dosya + ' sürüm damgası taşımalı');
     });
 });
+
+// Kesinti uyarısı iki yere birden bağlanmalı: menüdeki kırmızı rozet ve sayfanın
+// üstündeki şerit. Yalnızca geçmiş ekranında kalan bir uyarı, kimse oraya
+// bakmadıkça işe yaramaz.
+test('panel kesinti uyarısını menüye ve üst şeride bağlar', () => {
+  const sayfa = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');
+  assert.match(sayfa, /id="uyari"/, 'şerit için kabukta bir yer olmalı');
+  assert.match(source, /sessiz: V\.sessizSayi\(D\) \|\| null/, 'menü rozeti sessiz şube sayısını okumalı');
+  assert.match(source, /V\.uyariSeridi\(D, ui\)/, 'şerit görünümü panelden gelmeli');
+  assert.match(source, /kutu\.hidden = !html/, 'sessiz şube yokken şerit gizlenmeli');
+  assert.match(source, /seritYaz\(\)/, 'şerit her çizimde tazelenmeli');
+});

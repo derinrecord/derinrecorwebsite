@@ -769,3 +769,142 @@ test('şube çekmecesi ve marka sayfası bağlantı geçmişini gösterir', () =
   assert.ok(marka.includes('Kafede cihazdan durduruldu'));
   assert.ok(marka.includes('Mokka Coffee · Nişantaşı'));
 });
+
+// ---------- HAFTALIK TREND (gün gün doluluk) ----------
+// Hafta boyu bakmak “bu şube bozuluyor mu, düzeliyor mu” sorusunu cevaplar.
+// Saat sabit kaldığı için gün sınırları da sabittir: SABIT İstanbul 26 Eyl
+// Cumartesi 15:00; gün başları İstanbul gece yarısıdır.
+const TEST_GUN = 86400000;
+// İstanbul saatiyle “geri. gün, saat:dk” anını ISO dizesine çevirir.
+const istAn = (geri, saat, dk) => new Date(
+  SABIT - geri * TEST_GUN - (900 - (saat * 60 + (dk || 0))) * 60000).toISOString();
+
+// Dün 09:00'da başladı, dün 12:00'de kafede cihazdan durduruldu, bugün 09:30'da
+// yeniden başladı ve hâlâ çalıyor.
+const TREND_OLAYLAR = [
+  { id: 'u1', player_id: 'p1', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · macOS', at: istAn(1, 8, 55) },
+  { id: 'u2', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', detail: 'Sabah Açılış', at: istAn(1, 9, 0) },
+  { id: 'u3', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: istAn(1, 12, 0) },
+  { id: 'u4', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', detail: 'Sabah Açılış', at: istAn(0, 9, 30) }
+];
+const TREND_D = { ...D, olaylar: TREND_OLAYLAR };
+
+test('gün etiketi bugünü, dünü ve tarihi ayırır', () => {
+  assert.equal(V.gunEtiketi(SABIT, SABIT), 'Bugün');
+  assert.equal(V.gunEtiketi(SABIT - TEST_GUN, SABIT), 'Dün');
+  // Altı gün önce: 20 Eylül 2026 Pazar.
+  assert.equal(V.gunEtiketi(SABIT - 6 * TEST_GUN, SABIT), 'Paz 20 Eyl');
+  assert.equal(V.sonGunler(SABIT, 7).length, 7);
+  assert.equal(V.sonGunler(SABIT, 7)[6], SABIT - 15 * 3600000, 'son sütun bugündür');
+});
+
+test('haftalık trend tek bir kesintiyi günlere böler', () => {
+  const seri = V.gunlukSeri(TREND_D, D.players[0], SABIT, 7);
+  assert.equal(seri.length, 7);
+  const dun = seri[5], bugun = seri[6];
+
+  // Dün: 09:00–12:00 çaldı, 12:00’de kafede durdu, gün kapanışına (22:00) kadar
+  // susuz kaldı. Ölçüm ilk olayla başlar: 09:00 → 22:00 = 13 sa.
+  assert.equal(dun.caldi, 3 * 3600000);
+  assert.equal(dun.kafe, 10 * 3600000);
+  assert.equal(dun.bizde, 0);
+  assert.equal(dun.beklenen, 13 * 3600000);
+  assert.equal(dun.yuzde, 23);
+
+  // Bugün: aynı kesinti 09:00’a kadar sürdü, 09:30’da yayın döndü. Kesinti
+  // ertesi güne de yazılır; yoksa “dün durdu, bugün temiz” gibi yanlış bir okuma
+  // çıkardı.
+  assert.equal(bugun.kafe, 30 * 60000);
+  assert.equal(bugun.caldi, 5.5 * 3600000);
+  assert.equal(bugun.beklenen, 6 * 3600000, 'bugün 09:00–15:00 arası ölçülür');
+  assert.equal(bugun.yuzde, 92);
+
+  // Cihazın kurulmadığı günler “kayıt yok” der; yüzde sıfır uydurulmaz.
+  assert.equal(seri[0].veriVar, false);
+  assert.equal(seri[0].yuzde, null);
+  assert.equal(seri[0].beklenen, 0);
+});
+
+test('trend tablosu gün sütunlarını ve hafta toplamını çizer', () => {
+  const html = V.gorunum(durum({ nav: 'canli', sub: 'gecmis' }), TREND_D, uiSabit).html;
+  assert.ok(html.includes('HAFTALIK TREND'));
+  assert.ok(html.includes('BUGÜN') && html.includes('DÜN'));
+  assert.ok(html.includes('PAZ 20 EYL') && html.includes('PER 24 EYL'), 'gün sütunları tarihle yazılır');
+  assert.ok(html.includes('7 GÜN'), 'hafta toplamı sütunu olmalı');
+  assert.ok(html.includes('kafede 10 sa 30 dk'), 'haftanın kesintisi tarafa yazılır');
+  assert.ok(html.includes('1 gün zayıf'), 'yüzde 90 altındaki gün sayısı okunur');
+
+  // Kayıt yoksa trend tablosu yüzde uydurmaz: yalnızca “—” ve “kesinti yok”.
+  const bos = V.gorunum(durum({ nav: 'canli', sub: 'gecmis' }), D, uiSabit).html;
+  const trend = bos.split('HAFTALIK TREND')[1].split('BAĞLANTI GEÇMİŞİ')[0];
+  assert.ok(!/%\d/.test(trend), 'geçmiş tablosu yoksa trendde yüzde yazılmaz');
+});
+
+// ---------- KESİNTİ UYARISI ----------
+// Panel kendiliğinden haber vermeli: mesai içinde yayın durmuşsa “kontrol eder
+// misin” diyen birini beklemeyiz. Ama her suskunluk uyarı değildir.
+const SESSIZ_OLAYLAR = [
+  { id: 'y1', player_id: 'p1', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · macOS', at: istAn(1, 8, 55) },
+  { id: 'y2', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', detail: 'Sabah Açılış', at: istAn(1, 9, 0) },
+  { id: 'y3', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: istAn(1, 12, 0) }
+];
+const SESSIZ_D = { ...D, olaylar: SESSIZ_OLAYLAR };
+
+test('mesai içinde susan şube uyarı üretir', () => {
+  const sessiz = V.sessizSubeler(SESSIZ_D, SABIT);
+  assert.equal(sessiz.length, 1);
+  assert.equal(sessiz[0].p.id, 'p1');
+  assert.equal(sessiz[0].taraf, 'kafe');
+  // Sessizlik mesai içinde ölçülür: dün 12:00–22:00 (10 sa) + bugün 09:00–15:00.
+  assert.equal(sessiz[0].sure, 16 * 3600000);
+  assert.equal(V.sessizSayi(SESSIZ_D, SABIT), 1);
+
+  const serit = V.uyariSeridi(SESSIZ_D, uiSabit);
+  assert.ok(serit.includes('Nişantaşı 16 saattir sessiz'), 'süre cümlesi okunur olmalı');
+  assert.ok(serit.includes('Kafede cihazdan durduruldu'), 'sebep ve taraf şeritte yazılır');
+  assert.ok(serit.includes('data-act="branch-open" data-id="p1"'), 'şubeye tek dokunuşla gidilir');
+  assert.ok(serit.includes('data-act="gecmis-ac"'), 'geçmişe geçiş düğmesi şeritte olmalı');
+
+  // Uzun süre saniye/dakika karışmasın.
+  assert.equal(V.sureCumle(45 * 1000), '45 saniyedir');
+  assert.equal(V.sureCumle(42 * 60000), '42 dakikadır');
+  assert.equal(V.sureCumle(2 * 3600000), '2 saattir');
+  assert.equal(V.sureCumle((2 * 60 + 14) * 60000), '2 saat 14 dakikadır');
+  // Günü aşan sessizlik “35 sa” diye okunmasın.
+  assert.equal(V.sureCumle(26 * 3600000), '1 gün 2 saattir');
+  assert.equal(V.sureCumle(48 * 3600000), '2 gündür');
+  assert.equal(V.sureMetni(35 * 3600000), '1 gün 11 sa');
+});
+
+test('kısa suskunluk, mesai dışı ve kayıtsız şube uyarı üretmez', () => {
+  // Yeni duran yayın: oynatıcı kendi kendine yeniden bağlanıyor olabilir.
+  const yeni = { ...D, olaylar: [
+    { id: 'n1', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', at: istAn(0, 14, 45) },
+    { id: 'n2', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: istAn(0, 14, 55) }
+  ] };
+  assert.equal(V.sessizSubeler(yeni, SABIT).length, 0, 'dakikalık suskunluk uyarı değildir');
+  assert.equal(V.uyariSeridi(yeni, uiSabit), '');
+
+  // Kapanıştan sonra susan yayın haber değildir: şerit boş kalır.
+  const gece = SABIT + 8 * 3600000; // İstanbul 23:00
+  assert.equal(V.sessizSubeler(SESSIZ_D, gece).length, 0, 'mesai kapalıysa uyarı çıkmaz');
+  assert.equal(V.sessizSubeler(SESSIZ_D, gece, 60000).length, 0);
+
+  // Elde kayıt yokken susan cihaz “yayın durdu” diye bağırmaz.
+  assert.equal(V.sessizSubeler(D, SABIT).length, 0);
+  assert.equal(V.sessizSayi(D, SABIT), 0);
+  assert.equal(V.uyariSeridi(D, uiSabit), '');
+  // Çalıyorsa da uyarı yok.
+  assert.equal(V.sessizSubeler(TREND_D, SABIT).length, 0, '09:30’da dönen yayın sessiz sayılmaz');
+});
+
+test('menüde sessiz şube rozeti kırmızı çizilir', () => {
+  const kullanici = { ad: 'Yönetici', alt: '', basHarf: 'Y' };
+  const temel = { players: 1, folders: 1, announcements: 0, brands: 1, playlists: 1, requests: 0 };
+  const uyarili = V.nav(durum({}), { ...temel, olaySorun: null, sessiz: 2, players: 3 }, kullanici);
+  assert.ok(uyarili.includes('class="say uyari">2</span>'), 'sessiz şube sayısı kırmızı rozette');
+  assert.ok(uyarili.includes('class="say">3</span>'), 'şube sayısı da yerinde kalmalı');
+
+  const sakin = V.nav(durum({}), { ...temel, olaySorun: null, sessiz: null }, kullanici);
+  assert.ok(!sakin.includes('say uyari'), 'sessiz şube yokken rozet çizilmez');
+});

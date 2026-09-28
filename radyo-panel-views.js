@@ -272,6 +272,11 @@
     return parcalar;
   }
 
+  // Bir aralığın mesaiye denk gelen süresi: kesinti hesabı da uyarı da bunu
+  // kullanır, böylece “mesai dışı suskunluk” hiçbir yerde sorun sayılmaz.
+  const mesaiSuresi = (p, bas, bitis) =>
+    mesaiParcalari(p, bas, bitis).reduce((t, [x, y]) => t + (y - x), 0);
+
   // Süreleri sahada okunur yazar: “45 sn”, “38 dk”, “2 sa 14 dk”.
   function sureMetni(ms) {
     const saniye = Math.max(0, Math.round(ms / 1000));
@@ -279,7 +284,10 @@
     const dakika = Math.round(saniye / 60);
     if (dakika < 60) return dakika + ' dk';
     const saat = Math.floor(dakika / 60), kalan = dakika % 60;
-    return saat + ' sa' + (kalan ? ' ' + kalan + ' dk' : '');
+    if (saat < 24) return saat + ' sa' + (kalan ? ' ' + kalan + ' dk' : '');
+    // Haftalık trendde üç günlük bir kesinti “89 sa” diye okunmasın.
+    const gun = Math.floor(saat / 24), saatKalan = saat % 24;
+    return gun + ' gün' + (saatKalan ? ' ' + saatKalan + ' sa' : '');
   }
 
   // Son `gun` günün çalışma tablosu. `veriVar` false ise panel hiçbir şey
@@ -291,7 +299,6 @@
       veriVar: false, caldi: 0, bizde: 0, kafe: 0, bilinmez: 0,
       beklenen: 0, yuzde: null, ilkOlay: null, olcumBas: bas
     };
-    const mesaiSuresi = (a, b) => mesaiParcalari(p, a, b).reduce((t, [x, y]) => t + (y - x), 0);
     const artan = olaylariAl(D, { playerId: p.id })
       .filter(ev => new Date(ev.at).getTime() >= bas)
       .reverse();
@@ -302,14 +309,14 @@
     const olcumBas = new Date(artan[0].at).getTime();
     sonuc.ilkOlay = artan[0].at;
     sonuc.olcumBas = olcumBas;
-    sonuc.beklenen = mesaiSuresi(olcumBas, now);
+    sonuc.beklenen = mesaiSuresi(p, olcumBas, now);
     let calmaBas = null, durmaBas = null, durmaTaraf = null;
 
     // Açık kalan aralığı kapatır: çalma süresini ve kesintiyi tarafına yazar.
     const kapat = bitis => {
-      if (calmaBas !== null) { sonuc.caldi += mesaiSuresi(calmaBas, bitis); calmaBas = null; }
+      if (calmaBas !== null) { sonuc.caldi += mesaiSuresi(p, calmaBas, bitis); calmaBas = null; }
       if (durmaBas !== null) {
-        const sure = mesaiSuresi(durmaBas, bitis);
+        const sure = mesaiSuresi(p, durmaBas, bitis);
         if (durmaTaraf === 'kafe') sonuc.kafe += sure;
         else if (durmaTaraf === 'bizde') sonuc.bizde += sure;
         else sonuc.bilinmez += sure;
@@ -390,6 +397,108 @@
       }).join('');
   }
 
+  // ---------- Haftalık trend ----------
+  // Tek bir günün doluluğu “bugün neden sessiz” sorusunu cevaplar; hafta boyunca
+  // bakmak “bu şube bozuluyor mu, düzeliyor mu” sorusunu cevaplar. Yeni bir sayım
+  // yapılmaz: aynı olay çizelgesi gün kovalarına bölünür.
+  const GUN_ADI = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+  const AY_ADI = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+
+  // Son n günün başlangıç anları, bugün en sonda.
+  const sonGunler = (now, n) => {
+    const bugun = yerelGunBasi(now), gunler = [];
+    for (let i = (n || 7) - 1; i >= 0; i--) gunler.push(bugun - i * 86400000);
+    return gunler;
+  };
+
+  // Sütun başlığı: “Bugün”, “Dün”, sonrası “Cmt 26 Eyl”.
+  function gunEtiketi(t, now) {
+    const g = yerelGunBasi(t), bugun = yerelGunBasi(now == null ? Date.now() : now);
+    if (g === bugun) return 'Bugün';
+    if (g === bugun - 86400000) return 'Dün';
+    const d = new Date(g + IST_MS);
+    return GUN_ADI[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + AY_ADI[d.getUTCMonth()];
+  }
+
+  // Şubenin gün gün geçmişi. Olay çizelgesi baştan sona bir kez yürünür, her
+  // aralık gün kovalarına dağıtılır: iki gün süren tek bir kesinti iki günün de
+  // sütununda görünür (olay yalnızca ilk gün yazılmış olsa bile). Ölçüm yine ilk
+  // olayla başlar, yani cihazın kurulmadığı günler “kayıt yok” der; %0 demez.
+  function gunlukSeri(D, p, now, gunSayisi) {
+    const gunler = sonGunler(now, gunSayisi || 7).map(bas => ({
+      bas: bas, olcumBas: bas, bitis: Math.min(bas + 86400000, now),
+      caldi: 0, bizde: 0, kafe: 0, bilinmez: 0, beklenen: 0, yuzde: null, veriVar: false
+    }));
+    const artan = olaylariAl(D, { playerId: p.id }).reverse(); // en eski → en yeni
+    if (!artan.length) return gunler;
+
+    const ilkAn = new Date(artan[0].at).getTime();
+    gunler.forEach(g => { g.olcumBas = Math.max(g.bas, ilkAn); });
+
+    const dagit = (a, b, alan) => {
+      gunler.forEach(g => {
+        const x = Math.max(a, g.olcumBas), y = Math.min(b, g.bitis);
+        if (y > x) { g.veriVar = true; g[alan] += mesaiSuresi(p, x, y); }
+      });
+    };
+    let calmaBas = null, durmaBas = null, durmaTaraf = null;
+    const kapat = bitis => {
+      if (calmaBas !== null) { dagit(calmaBas, bitis, 'caldi'); calmaBas = null; }
+      if (durmaBas !== null) {
+        dagit(durmaBas, bitis, durmaTaraf === 'kafe' ? 'kafe' : (durmaTaraf === 'bizde' ? 'bizde' : 'bilinmez'));
+        durmaBas = null; durmaTaraf = null;
+      }
+    };
+    artan.forEach(ev => {
+      const an = new Date(ev.at).getTime();
+      if (ev.kind === 'caliyor' || ev.kind === 'devam') {
+        kapat(an);
+        if (calmaBas === null) calmaBas = an;
+      } else if (ev.kind === 'durakladi' || ev.kind === 'hata' || ev.kind === 'kilitlendi') {
+        kapat(an);
+        if (durmaBas === null) { durmaBas = an; durmaTaraf = olayBilgi(ev).taraf; }
+      }
+    });
+    kapat(now);
+
+    gunler.forEach(g => {
+      g.beklenen = mesaiSuresi(p, g.olcumBas, g.bitis);
+      g.yuzde = (g.veriVar && g.beklenen > 0)
+        ? Math.min(100, Math.round(g.caldi / g.beklenen * 100)) : null;
+    });
+    return gunler;
+  }
+
+  // Trend tablosu: satır şube, sütun gün. Renkli kutu o günün doluluğu, son
+  // sütun haftanın kesintisini ve tarafını toplar.
+  function trendTablosu(D, ui, q) {
+    const now = ui.now();
+    const ara = norm(q);
+    return D.players
+      .filter(p => {
+        const b = D.brands.find(x => x.id === p.brand_id);
+        return hit(ara, p.label, b ? b.name : '');
+      })
+      .map(p => {
+        const b = D.brands.find(x => x.id === p.brand_id);
+        const seri = gunlukSeri(D, p, now, 7);
+        const topla = alan => seri.reduce((t, g) => t + g[alan], 0);
+        const kesinti = topla('bizde') + topla('kafe') + topla('bilinmez');
+        const zayif = seri.filter(g => g.yuzde != null && g.yuzde < 90).length;
+        const kim = [];
+        if (topla('bizde')) kim.push('bizde ' + sureMetni(topla('bizde')));
+        if (topla('kafe')) kim.push('kafede ' + sureMetni(topla('kafe')));
+        return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
+          <td><b>${esc(p.label)}</b><span class="sub">${esc(b ? b.name : '—')}${zayif ? ' · ' + zayif + ' gün zayıf' : ''}</span></td>
+          ${seri.map(g => `<td class="tight">${g.yuzde == null
+            ? '<span class="sub">—</span>' : dolulukChip(g.yuzde)}</td>`).join('')}
+          <td class="tight">${kesinti
+            ? `<b>${esc(sureMetni(kesinti))}</b><span class="sub">${esc(kim.join(' · '))}</span>`
+            : `<span class="sub">${seri.some(g => g.veriVar) ? 'kesinti yok' : '—'}</span>`}</td>
+        </tr>`;
+      }).join('');
+  }
+
   // Bir şubenin en son durma olayı: “şu an duraklatıldı” diyorsak sebebi de
   // yanında yazılsın, yoksa donmuş bir bayrak canlı sanılır.
   const sonDurma = (D, playerId) =>
@@ -430,9 +539,102 @@
       }).join('');
   }
 
+  // ---------- Kesinti uyarısı ----------
+  // Panel kendiliğinden haber versin: mesai içinde yayın durmuşsa “kontrol eder
+  // misin” diyen birinin olmasını beklemeyiz. Uyarı yalnızca elimizde kayıt
+  // varken ve şube mesaisi açıkken çıkar; kayıt yokken susar, çünkü susan bir
+  // cihazın bilmediğimiz hâlini “yayın durdu” diye bağırmak yanlış olurdu.
+  const UYARI_ESIK_MS = 10 * 60000;
+
+  // Mesai açık mı? Saat tanımlanmadıysa yayın her zaman beklenir.
+  function mesaideMi(p, t) {
+    const ac = saatDk(p.open_time), kp = saatDk(p.close_time);
+    if (ac === null || kp === null || ac === kp) return true;
+    const dk = (t - yerelGunBasi(t)) / 60000;
+    return ac < kp ? (dk >= ac && dk < kp) : (dk >= ac || dk < kp);
+  }
+
+  // Şubenin şu anki durumu: olay çizelgesinin son sözü. `is_playing` bayrağı
+  // bayat olabilir; “durdu” diyeceksem arkasında bir olay olmalı.
+  function suanDurum(D, p, now) {
+    const d = { biliniyor: false, caliyor: false, bas: null, taraf: null, sebep: null };
+    olaylariAl(D, { playerId: p.id }).reverse().forEach(ev => {
+      const an = new Date(ev.at).getTime();
+      if (an > now) return;
+      if (ev.kind === 'caliyor' || ev.kind === 'devam') {
+        d.biliniyor = true; d.caliyor = true; d.bas = an; d.taraf = null; d.sebep = null;
+      } else if (ev.kind === 'durakladi' || ev.kind === 'hata' || ev.kind === 'kilitlendi') {
+        const o = olayBilgi(ev);
+        d.biliniyor = true; d.caliyor = false; d.bas = an; d.taraf = o.taraf; d.sebep = o;
+      }
+    });
+    return d;
+  }
+
+  // Mesai içinde uzun süredir susan şubeler: uyarının ham verisi. Sessizlik
+  // yalnızca mesai saatleri içinde ölçülür; dün akşam kapanışta susan yayın
+  // sabah “12 saat sessiz” diye bağırmaz, sabah açılışından bu yana geçen süre
+  // kadar sessiz görünür.
+  function sessizSubeler(D, now, esikMs) {
+    const esik = esikMs || UYARI_ESIK_MS;
+    const simdi = now == null ? Date.now() : now;
+    return (D.players || []).map(p => {
+      const d = suanDurum(D, p, simdi);
+      if (!d.biliniyor || d.caliyor || d.bas === null) return null;
+      if (!mesaideMi(p, simdi)) return null;
+      const sure = mesaiSuresi(p, d.bas, simdi);
+      if (sure < esik) return null;
+      const b = D.brands.find(x => x.id === p.brand_id);
+      return { p: p, b: b || null, sure: sure, sebep: d.sebep, taraf: d.taraf };
+    }).filter(Boolean).sort((a, b) => b.sure - a.sure);
+  }
+
+  const sessizSayi = (D, now) => sessizSubeler(D, now).length;
+
+  // “42 dakikadır” gibi bir cümle kurar; “42 dk'dır” gibi türkçesi bozuk bir
+  // kısaltma okunmasın diye süreyi burada uzun yazar.
+  function sureCumle(ms) {
+    const saniye = Math.max(0, Math.round(ms / 1000));
+    if (saniye < 60) return saniye + ' saniyedir';
+    const dakika = Math.round(saniye / 60);
+    if (dakika < 60) return dakika + ' dakikadır';
+    const saat = Math.floor(dakika / 60), kalan = dakika % 60;
+    if (saat < 24) return saat + ' saat' + (kalan ? ' ' + kalan + ' dakikadır' : 'tir');
+    const gun = Math.floor(saat / 24), saatKalan = saat % 24;
+    return gun + ' gün' + (saatKalan ? ' ' + saatKalan + ' saattir' : 'dür');
+  }
+
+  // Ekranın üstünde duran şerit: hangi şube, ne zamandır ve kimin tarafında.
+  // Sessiz şube yoksa boş döner; panel hiçbir şey göstermez.
+  function uyariSeridi(D, ui) {
+    const now = ui.now();
+    const sessiz = sessizSubeler(D, now);
+    if (!sessiz.length) return '';
+    const ilk = sessiz[0];
+    const baslik = sessiz.length === 1
+      ? `${ilk.p.label} ${sureCumle(ilk.sure)} sessiz`
+      : `${sessiz.length} şubede yayın durdu · en uzunu ${ilk.p.label} (${sureMetni(ilk.sure)})`;
+    const sebep = ilk.sebep
+      ? ilk.sebep.ad + (ilk.sebep.ek ? ' · ' + ilk.sebep.ek : '')
+      : 'Sebep kaydedilmemiş';
+    const dugmeler = sessiz.slice(0, 4).map(s =>
+      `<button class="btn sm" data-act="branch-open" data-id="${esc(s.p.id)}" type="button">${esc(s.p.label)} · ${esc(sureMetni(s.sure))}</button>`).join('');
+    return `<div class="uyari-serit">
+      <span class="chip danger">YAYIN DURDU</span>
+      <div class="uyari-govde">
+        <b>${esc(baslik)}</b>
+        <span class="sub">${esc(sebep)}</span>
+      </div>
+      <div class="uyari-dugmeler">${dugmeler}
+        <button class="btn sm primary" data-act="gecmis-ac" type="button">GEÇMİŞİ AÇ</button>
+      </div>
+    </div>`;
+  }
+
   // Kafe bağlantı geçmişi ekranı: şu anki durum + son 24 saatin özeti + olay
   // çizelgesi. Sahadaki “yayın neden durdu?” sorusu tek ekranda cevaplanır.
   function gecmisView(state, D, ui) {
+    const now = ui.now();
     const ozet = gecmisOzet(D, ui, { kodlar: true });
     const satirlar = olayTablosu(D, ui, { kodlar: true, q: state.q }, 150);
     const subeler = suanTablosu(D, ui, state.q) || bos(4, D.players.length ? 'Aramayla eşleşen şube yok.' : 'Henüz şube yok.');
@@ -459,6 +661,16 @@
         <table>
           <thead><tr><th>ŞUBE</th><th>DOLULUK</th><th>ÇALIŞTI</th><th>KESİNTİ</th></tr></thead>
           <tbody>${calismaTablosu(D, ui, state.q) || bos(4, D.players.length ? 'Aramayla eşleşen şube yok.' : 'Henüz şube yok.')}</tbody>
+        </table>
+      </div>
+      <div class="panel" style="margin-bottom:18px">
+        <h3>HAFTALIK TREND <span>son 7 gün</span></h3>
+        <p class="panel-sub">Aynı olay geçmişi gün gün kesilir: hangi şube hafta içinde bozulup düzeliyor? Renkli kutu o günün
+          doluluğu, son sütun haftanın toplam kesintisi ve kimin tarafında olduğu. “—” o gün için kayıt olmadığını söyler;
+          cihazın kurulmadığı güne yüzde sıfır yazılmaz. Günler şubenin yayın saatlerine göre hesaplanır.</p>
+        <table>
+          <thead><tr><th>ŞUBE</th>${sonGunler(now, 7).map(b => `<th>${esc(gunEtiketi(b, now).toUpperCase())}</th>`).join('')}<th>7 GÜN</th></tr></thead>
+          <tbody>${trendTablosu(D, ui, state.q) || bos(9, D.players.length ? 'Aramayla eşleşen şube yok.' : 'Henüz şube yok.')}</tbody>
         </table>
       </div>
       <div class="panel">
@@ -536,10 +748,13 @@
 
   // ---------- Yan menü ----------
   function nav(state, counts, kullanici) {
-    const oge = (nav, sub, baslik, alt, sayi, ikon) => `
+    // `uyari`: mesai içinde susan şube sayısı. Rozet kırmızı çizilir; sessiz
+    // şube yokken hiç görünmez.
+    const oge = (nav, sub, baslik, alt, sayi, ikon, uyari) => `
       <button class="nav-item${state.nav === nav && state.sub === sub ? ' active' : ''}"
         data-nav="${nav}" data-sub="${sub}" type="button">
         ${ikon}<span>${esc(baslik)}<small>${esc(alt)}</small></span>
+        ${uyari ? `<span class="say uyari">${esc(uyari)}</span>` : ''}
         ${sayi != null ? `<span class="say">${esc(sayi)}</span>` : ''}
       </button>`;
     const ikonlar = {
@@ -560,7 +775,7 @@
       </div>
       <nav class="nav">
         <div class="nav-title">GÜNLÜK</div>
-        ${oge('canli', 'subeler', 'Canlı durum', 'Şubeler ve anons', counts.players, ikonlar.canli)}
+        ${oge('canli', 'subeler', 'Canlı durum', 'Şubeler ve anons', counts.players, ikonlar.canli, counts.sessiz)}
         ${oge('canli', 'saglik', 'Yayın sağlığı', 'Otomatik denetim', counts.saglik, ikonlar.saglik)}
         ${oge('canli', 'gecmis', 'Bağlantı geçmişi', 'Kim açtı, kim durdurdu', counts.olaySorun, ikonlar.gecmis)}
 
@@ -584,6 +799,7 @@
 
   const BASLIKLAR = {
     'canli/subeler': ['Canlı durum', 'Şubelerin bağlantısı, o an çalan akış ve cihaz kilidi'],
+    'canli/gecmis': ['Bağlantı geçmişi', 'Kim açtı, kim durdurdu; çalışma süresi ve haftalık trend'],
     'canli/saglik': ['Yayın sağlığı', 'Bütün şubelerin yayın zinciri tek ekranda denetlenir'],
     'icerik/klasorler': ['Yayın klasörleri', 'Parçaları yükle, sırala, kapağı değiştir'],
     'icerik/anonslar': ['Anonslar', 'Mikrofonla kaydedilen duyurular'],
@@ -1645,6 +1861,16 @@
     calismaTablosu: calismaTablosu,
     suanTablosu: suanTablosu,
     gecmisView: gecmisView,
+    sonGunler: sonGunler,
+    gunEtiketi: gunEtiketi,
+    gunlukSeri: gunlukSeri,
+    trendTablosu: trendTablosu,
+    mesaideMi: mesaideMi,
+    suanDurum: suanDurum,
+    sessizSubeler: sessizSubeler,
+    sessizSayi: sessizSayi,
+    sureCumle: sureCumle,
+    uyariSeridi: uyariSeridi,
     kapakYok: kapakYok,
     kapakPenceresi: kapakPenceresi,
     parcaDetay: parcaDetay,

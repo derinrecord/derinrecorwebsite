@@ -255,8 +255,20 @@
       saglik: D.players.length ? (V.saglikOzet(D).kotu || null) : null,
       // Son 24 saatte kaç yayın-durma olayı olduğu menüde okunsun: kullanıcı
       // geçmiş ekranını aramadan nerede iş olduğunu görsün.
-      olaySorun: V.olaySorunSayi(D) || null
+      olaySorun: V.olaySorunSayi(D) || null,
+      // Mesai içinde şu an susan şube: menüde kırmızı rozet, üstte şerit.
+      sessiz: V.sessizSayi(D) || null
     };
+  }
+
+  // Kesinti şeridi: sayfanın üstünde durur, sessiz şube yokken hiç görünmez.
+  // Zamanla kendi kendine açılan bir uyarı olduğu için her yenilemede tazelenir.
+  function seritYaz() {
+    const kutu = el('uyari');
+    if (!kutu) return;
+    const html = V.uyariSeridi(D, ui);
+    kutu.innerHTML = html;
+    kutu.hidden = !html;
   }
 
   function ciz() {
@@ -268,6 +280,7 @@
     el('page-title').textContent = g.baslik;
     el('page-sub').textContent = g.alt;
     el('view').innerHTML = g.html;
+    seritYaz();
     const now = Date.now();
     const caliyor = D.players.filter(p => p.is_playing && V.canliMi(p, now)).length;
     const bagli = D.players.filter(p => V.canliMi(p, now)).length;
@@ -331,7 +344,7 @@
   // (klasör adı, yeni marka vb.) yeniden çizimle silinmez.
   async function yenile(sessiz) {
     await veriYukle();
-    if (sessiz && state.nav !== 'canli') { el('rail').innerHTML = V.nav(state, sayimlar(), kullanici); return; }
+    if (sessiz && state.nav !== 'canli') { el('rail').innerHTML = V.nav(state, sayimlar(), kullanici); seritYaz(); return; }
     ciz();
     if (state.openBrand && !D.brands.some(b => b.id === state.openBrand)) git('#/markalar');
     if (state.openFolder && !D.folders.some(f => f.id === state.openFolder)) git('#/klasorler');

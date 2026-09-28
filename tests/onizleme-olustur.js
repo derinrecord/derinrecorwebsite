@@ -111,13 +111,21 @@ body{background:#0b0b0d;padding:26px}
   return;
 }
 
-// "gecmis" modu Bağlantı geçmişi ekranını önizler: şu anki durum, taraf özeti ve
-// olay çizelgesi yan yana gelsin ki "sorun bizde mi kafede mi" okunuşu gözle
-// doğrulanabilsin.
+// "gecmis" modu Bağlantı geçmişi ekranını önizler: şu anki durum, taraf özeti,
+// çalışma süresi, haftalık trend ve olay çizelgesi yan yana gelsin ki "sorun
+// bizde mi kafede mi" okunuşu gözle doğrulanabilsin.
 if (senaryo === 'gecmis') {
   const V = require(path.join(kok, 'radyo-panel-views.js'));
   const simdi = Date.now();
   const dkOnce = n => new Date(simdi - n * 60000).toISOString();
+  // Olaylar İstanbul gün sınırına göre kurulur ve hep geçmişe düşer: önizleme
+  // günün hangi saatinde açılırsa açılsın aynı geçmişi göstersin, gelecek saatli
+  // bir olay "0 sn önce" diye okunmasın.
+  const IST = 3 * 3600000;
+  const gunBasi = t => Math.floor((t + IST) / 86400000) * 86400000 - IST;
+  const bugun = gunBasi(simdi);
+  const gunSaat = (geri, saat, dk) =>
+    new Date(bugun - geri * 86400000 + (saat * 60 + (dk || 0)) * 60000).toISOString();
   const sube = (id, label, ek) => ({
     id, brand_id: 'b1', label, player_key: 'a1b2c3d4-e5f6-4a7b-8c9d-00000000000' + id.slice(1),
     last_seen_at: dkOnce(1), open_time: '09:00:00', close_time: '22:00:00',
@@ -133,34 +141,44 @@ if (senaryo === 'gecmis') {
     players: [
       // Çalıyor: parça bildirimi taze.
       sube('p1', 'Nişantaşı', { now_title: 'Kalabalık Caddesi', now_at: dkOnce(0.2) }),
-      // Duraklatıldı: en son durma kaydı kafe tarafında.
+      // Kafe cihazdan durdurdu ve bir daha başlamadı: kesinti şeridi bunu gösterir.
       sube('p2', 'Alsancak', { is_playing: false, last_seen_at: dkOnce(3) }),
-      // Çevrimdışı: cihaz saatlerdir kapalı.
-      sube('p3', 'Kadıköy', { is_playing: false, last_seen_at: dkOnce(400), bound_device_id: null })
+      // Çevrimdışı: zincir bizim tarafımızda kopuk.
+      sube('p3', 'Kadıköy', { is_playing: false, last_seen_at: dkOnce(400), bound_device_id: null }),
+      // Dün akşam kurulan yeni cihaz: trendde ölçüm ilk olayla başlar.
+      sube('p4', 'Zeytinli', { now_title: 'Kalabalık Caddesi', now_at: dkOnce(0.3) })
     ],
     broadcast: [{ brand_id: 'b1', folder_id: 'f1', playlist_id: null }],
     announcements: [],
     playlists: [{ id: 'l1', brand_id: 'b1', name: 'Sabah Açılış', description: null, cover_path: null, shuffle: false }],
     playlistTracks: [],
     coffeeAttempts: [
-      { id: 'c1', brand_id: 'b1', slug: 'mokka-coffee', success: false, ip: '88.240.10.9', created_at: dkOnce(210) },
-      { id: 'c2', brand_id: 'b1', slug: 'mokka-coffee', success: true, ip: '88.240.10.9', created_at: dkOnce(205) }
+      { id: 'c1', brand_id: 'b1', slug: 'mokka-coffee', success: false, ip: '88.240.10.9', created_at: gunSaat(1, 19, 35) },
+      { id: 'c2', brand_id: 'b1', slug: 'mokka-coffee', success: true, ip: '88.240.10.9', created_at: gunSaat(1, 19, 40) }
     ],
     subscriptions: [{ id: 's1', brand_id: 'b1', plan_id: 'pl1', status: 'active', trial_ends_at: null, current_end: new Date(simdi + 20 * 86400000).toISOString() }],
     plans: [{ id: 'pl1', name: 'Profesyonel', monthly_price: 1000, per_branch: true, sort_order: 1 }],
     requests: [],
     olaylar: [
-      { id: 'e1', player_id: 'p1', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · macOS', at: dkOnce(480) },
-      { id: 'e2', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', detail: 'Kalabalık Caddesi · Sabah Açılış', at: dkOnce(479) },
-      { id: 'e3', player_id: 'p1', brand_id: 'b1', kind: 'liste_degisti', detail: 'Sabah Açılış', at: dkOnce(300) },
-      { id: 'e4', player_id: 'p2', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · Windows', at: dkOnce(290) },
-      { id: 'e4b', player_id: 'p2', brand_id: 'b1', kind: 'caliyor', detail: 'Sabah Açılış', at: dkOnce(285) },
-      { id: 'e5', player_id: 'p2', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: dkOnce(60) },
-      { id: 'e6', player_id: 'p2', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz-gizli', at: dkOnce(45) },
-      { id: 'e7', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'mesai-disi', at: dkOnce(1200) },
-      { id: 'e8', player_id: 'p3', brand_id: 'b1', kind: 'hata', detail: 'anahtar-yok', at: dkOnce(700) },
-      { id: 'e9', player_id: 'p1', brand_id: 'b1', kind: 'takildi', detail: 'Kalabalık Caddesi', at: dkOnce(200) },
-      { id: 'e10', player_id: 'p3', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz-kilidi', at: dkOnce(1400) }
+      // Nişantaşı: dün açıldı, kafede bir kez durduruldu, bir saat sonra döndü; o
+      // saatten beri çalıyor. Takılma bir kez oldu ama yayın durmadı.
+      { id: 'e1', player_id: 'p1', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · macOS', at: gunSaat(1, 8, 55) },
+      { id: 'e2', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', detail: 'Kalabalık Caddesi · Sabah Açılış', at: gunSaat(1, 9, 0) },
+      { id: 'e3', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: gunSaat(1, 12, 0) },
+      { id: 'e4', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', detail: 'Kalabalık Caddesi · Sabah Açılış', at: gunSaat(1, 13, 0) },
+      { id: 'e5', player_id: 'p1', brand_id: 'b1', kind: 'takildi', detail: 'Kalabalık Caddesi', at: gunSaat(1, 14, 10) },
+      { id: 'e6', player_id: 'p1', brand_id: 'b1', kind: 'liste_degisti', detail: 'Öğleden Sonra', at: gunSaat(1, 15, 0) },
+      // Alsancak: dün 18:00'de kafede durduruldu ve bir daha başlamadı → şerit.
+      { id: 'e7', player_id: 'p2', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · Windows', at: gunSaat(1, 8, 50) },
+      { id: 'e8', player_id: 'p2', brand_id: 'b1', kind: 'caliyor', detail: 'Sabah Açılış', at: gunSaat(1, 9, 0) },
+      { id: 'e9', player_id: 'p2', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: gunSaat(1, 18, 0) },
+      // Kadıköy: üç gündür ses yok, yayın zinciri bizim tarafımızda kopuk.
+      { id: 'e10', player_id: 'p3', brand_id: 'b1', kind: 'caliyor', detail: 'Sabah Açılış', at: gunSaat(4, 10, 0) },
+      { id: 'e11', player_id: 'p3', brand_id: 'b1', kind: 'durakladi', detail: 'mesai-disi', at: gunSaat(4, 22, 0) },
+      { id: 'e12', player_id: 'p3', brand_id: 'b1', kind: 'hata', detail: 'anahtar-yok', at: gunSaat(3, 15, 0) },
+      // Zeytinli: dün akşam kuruldu, o saatten beri çalıyor.
+      { id: 'e13', player_id: 'p4', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · Android', at: gunSaat(1, 19, 55) },
+      { id: 'e14', player_id: 'p4', brand_id: 'b1', kind: 'caliyor', detail: 'Kalabalık Caddesi', at: gunSaat(1, 20, 0) }
     ]
   };
   const ui = {
@@ -184,7 +202,7 @@ body{background:#0b0b0d;padding:22px;display:block}
 .view{max-width:1080px;margin:0 auto}
 </style>
 </head>
-<body><div class="view">${gorunum.html}</div></body>
+<body>${V.uyariSeridi(D, ui)}<div class="view">${gorunum.html}</div></body>
 </html>`;
   fs.writeFileSync(ciktiYolu, sayfa);
   console.log(path.relative(kok, ciktiYolu) + ' yazıldı · bağlantı geçmişi');

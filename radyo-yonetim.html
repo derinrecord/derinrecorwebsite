@@ -8,7 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <!-- auth.css: giriş penceresi (auth.js) bu dosyanın sınıflarını kullanır. -->
 <link rel="stylesheet" href="auth.css">
-<link rel="stylesheet" href="radyo-panel.css?v=3">
+<link rel="stylesheet" href="radyo-panel.css?v=4">
 </head>
 <body>
 
@@ -28,6 +28,9 @@
     </label>
     <span class="status-dot bekliyor" id="live-dot"><i></i> <span id="live-text">bağlanıyor</span></span>
   </header>
+  <!-- Kesinti şeridi: mesai içinde susan şube olursa dolar; sessiz şube
+       yokken boş ve gizli kalır (radyo-yonetim.js · seritYaz). -->
+  <div class="uyari-serit" id="uyari" hidden></div>
   <main class="view" id="view"></main>
 </div>
 
@@ -41,8 +44,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="auth.js?v=20260926"></script>
 <script src="audio-file-types.js?v=3"></script>
-<script src="radyo-panel-views.js?v=14"></script>
-<script src="radyo-yonetim.js?v=20260928g"></script>
+<script src="radyo-panel-views.js?v=15"></script>
+<script src="radyo-yonetim.js?v=20260928h"></script>
 <!-- Dokunmatik cihazda basılı tutup sıralamayı etkinleştirir (tr[draggable]). -->
 <script src="sortable-touch.js?v=1"></script>
 </body>
