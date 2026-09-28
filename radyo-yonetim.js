@@ -28,7 +28,11 @@
     brands: [], folders: [], tracks: [], players: [], broadcast: [], announcements: [],
     playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: null
   };
-  const state = { nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '' };
+  const state = {
+    nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '',
+    // Yayın başlatma ekranının seçimleri: marka → şube → kaynak → parça.
+    yayin: { brandId: '', playerId: '', kaynak: '', parcaId: '' }
+  };
 
   let modalOnay = null, modalKapat = null;
   let toastZaman = null;
@@ -203,6 +207,7 @@
   // ---------- Yönlendirme ----------
   const ROTALAR = {
     canli: { nav: 'canli', sub: 'subeler' },
+    yayin: { nav: 'canli', sub: 'yayin' },
     subeler: { nav: 'canli', sub: 'subeler' },
     saglik: { nav: 'canli', sub: 'saglik' },
     gecmis: { nav: 'canli', sub: 'gecmis' },
@@ -234,7 +239,10 @@
     if (state.openPlaylist) return '#/listeler/' + state.openPlaylist;
     if (state.openBrand) return '#/markalar/' + state.openBrand;
     if (state.openFolder) return '#/klasorler/' + state.openFolder;
-    if (state.nav === 'canli') return state.sub === 'saglik' ? '#/saglik' : (state.sub === 'gecmis' ? '#/gecmis' : '#/canli');
+    if (state.nav === 'canli') {
+      if (state.sub === 'yayin') return '#/yayin';
+      return state.sub === 'saglik' ? '#/saglik' : (state.sub === 'gecmis' ? '#/gecmis' : '#/canli');
+    }
     if (state.nav === 'icerik') return state.sub === 'anonslar' ? '#/anons' : '#/klasorler';
     if (state.sub === 'listeler') return '#/listeler';
     if (state.sub === 'abonelikler') return '#/abonelikler';
@@ -407,7 +415,10 @@
     kullanici = {
       ad,
       alt: auth.user.email || 'Yönetici',
-      basHarf: String(ad).trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase() || 'DR'
+      basHarf: String(ad).trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase() || 'DR',
+      // Kapı zaten yalnız yöneticiyi geçirir; yayın başlatma gibi bölüm
+      // yazma işlemleri bu bayrağı bir kez daha kontrol eder.
+      adminMi: true
     };
     el('rail').hidden = false;
     hashCoz();
@@ -748,6 +759,57 @@
         return;
       }
       case 'drawer-close': return cekmeceKapat();
+
+      // Yayın başlatma ekranının kararı: seçimler buraya kadar yalnız ekranda
+      // beklemişti; yayın bu düğmeyle değişir.
+      case 'yayin-basla': {
+        if (!kullanici.adminMi) return hata('Yayın başlatmak yönetici yetkisi ister.');
+        const s = state.yayin || {};
+        const marka = D.brands.find(x => x.id === s.brandId);
+        if (!marka) return hata('Yayın için önce markayı seçin.');
+        const [tur, kaynakId] = String(s.kaynak || '').split(':');
+        if (!kaynakId) return hata('Yayın kaynağını (klasör ya da liste) seçin.');
+        const sube = s.playerId ? D.players.find(p => p.id === s.playerId) : null;
+        if (s.playerId && !sube) return hata('Seçilen şube bulunamadı.');
+        const kaynakKayit = tur === 'folder'
+          ? D.folders.find(f => f.id === kaynakId)
+          : D.playlists.find(l => l.id === kaynakId);
+        const kaynakAdi = kaynakKayit ? kaynakKayit.name : 'seçilen kaynak';
+        const parca = s.parcaId ? D.tracks.find(t => t.id === s.parcaId) : null;
+
+        if (!await onaySor({
+          baslik: 'Yayın başlatılsın mı?',
+          govde: `${sube ? sube.label : marka.name + ' · bütün şubeler'} için yayın “${kaynakAdi}” kaynağıyla başlar${parca ? ' ve “' + parca.title + '” parçasından devam eder' : ''}. Şubedeki cihazlar kendiliğinden yeni yayına geçer.`,
+          onayMetni: 'YAYINI BAŞLAT'
+        })) return;
+
+        const satir = {
+          folder_id: tur === 'folder' ? kaynakId : null,
+          playlist_id: tur === 'playlist' ? kaynakId : null,
+          updated_at: new Date().toISOString()
+        };
+        // Kolon ancak supabase/radio-yayin-baslat.sql çalıştırıldıysa vardır:
+        // parça seçilmediyse hiç göndermeyiz, tek kare başlatma çalışmaya devam eder.
+        if (s.parcaId) satir.start_track_id = s.parcaId;
+
+        const { error } = sube
+          ? await client.from('player_broadcast').upsert(Object.assign({ player_id: sube.id }, satir), { onConflict: 'player_id' })
+          : await client.from('brand_broadcast').upsert(Object.assign({ brand_id: marka.id }, satir), { onConflict: 'brand_id' });
+        if (error) {
+          if (error.code === 'PGRST204' && s.parcaId) {
+            return hata('Parçadan başlatmak için supabase/radio-yayin-baslat.sql dosyasını çalıştırın.');
+          }
+          if (error.code === 'PGRST205' && sube) {
+            return hata('Şubeye özel yayın tablosu yok: supabase/radio-subeye-ozel-yayin.sql dosyasını çalıştırın.');
+          }
+          return hata('Yayın başlatılamadı: ' + error.message);
+        }
+        await yenile(false);
+        bildir(sube
+          ? sube.label + ' şubesi yeni yayınla başladı.'
+          : marka.name + ' şubeleri yeni yayınla başladı.');
+        return;
+      }
       case 'copy':
         {
           const eski = hedef.textContent;
@@ -1474,7 +1536,10 @@
     const act = hedef.dataset ? hedef.dataset.act : null;
 
     if (act === 'live-source') {
+      // Marka geneli: bütün şubelerin varsayılanı. Şube çekmecesinden de
+      // seçilebilir, o yüzden hangi şubeden gelindiğini hatırlarız.
       const [tur, deger] = (hedef.value || ':').split(':');
+      const geriSube = hedef.dataset.player || null;
       const { error } = await client.from('brand_broadcast').upsert({
         brand_id: hedef.dataset.id,
         folder_id: tur === 'folder' ? deger : null,
@@ -1483,7 +1548,33 @@
       }, { onConflict: 'brand_id' });
       if (error) return hata('Yayın güncellenemedi: ' + error.message);
       await yenile(false);
-      bildir(deger ? 'Canlı yayın güncellendi.' : 'Yayın durduruldu.');
+      // Çekmeceden seçildiyse tazele: kaynak adı ve "bu şubeye özel" durumu
+      // yeni hâli göstersin.
+      if (geriSube && D.players.some(x => x.id === geriSube)) {
+        cekmeceAc(V.subeCekmecesi(geriSube, D, ui));
+      }
+      bildir(deger ? 'Markanın genel yayını güncellendi: bütün şubeler bu kaynağı çalar.' : 'Markanın genel yayını durduruldu.');
+      return;
+    }
+
+    // Yayın başlatma ekranı: seçimler yalnız ekranda ilerler, hiçbiri kendi
+    // başına yayına geçmez. Ekran her seçimde güncel hâliyle yeniden çizilir.
+    if (act === 'yayin-marka' || act === 'yayin-sube' || act === 'yayin-kaynak' || act === 'yayin-parca') {
+      // Yayın başlatma ekranı yalnız yöneticiye açıktır; seçim de aynı
+      // kapıdan geçer (kapı ekranındayken buraya hiç düşülmez, kemer+askı).
+      if (!kullanici.adminMi) return hata('Yayın başlatmak yönetici yetkisi ister.');
+
+      const s = state.yayin;
+      if (act === 'yayin-marka') {
+        s.brandId = hedef.value; s.playerId = ''; s.kaynak = ''; s.parcaId = '';
+      } else if (act === 'yayin-sube') {
+        s.playerId = hedef.value;
+      } else if (act === 'yayin-kaynak') {
+        s.kaynak = hedef.value; s.parcaId = '';
+      } else {
+        s.parcaId = hedef.value;
+      }
+      ciz();
       return;
     }
 

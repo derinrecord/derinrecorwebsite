@@ -775,8 +775,20 @@
   function nav(state, counts, kullanici) {
     // `uyari`: mesai içinde susan şube sayısı. Rozet kırmızı çizilir; sessiz
     // şube yokken hiç görünmez.
+    // Menüde kendi satırı olan alt bölümler. Canlı durumun dört ekranı var ama
+    // menüde tek satırı var; yayın başlatma/sağlık/geçmiş seçiliyken o satır
+    // işaretli kalır (seçimi sekmeler gösterir). İçerik ve Müşteri'de ise her
+    // sekmenin menüde kendi satırı olduğu için yalnız eşleşen satır işaretlenir;
+    // aksi halde bölümün bütün satırları birden seçili görünürdü.
+    const MENU_SATIRLARI = {
+      canli: ['subeler'],
+      icerik: ['klasorler', 'anonslar'],
+      musteri: ['markalar', 'listeler', 'abonelikler', 'talepler']
+    };
+    const aktifMi = (nav, sub) => state.nav === nav
+      && (state.sub === sub || !(MENU_SATIRLARI[nav] || []).includes(state.sub));
     const oge = (nav, sub, baslik, alt, sayi, ikon, uyari) => `
-      <button class="nav-item${state.nav === nav && state.sub === sub ? ' active' : ''}"
+      <button class="nav-item${aktifMi(nav, sub) ? ' active' : ''}"
         data-nav="${nav}" data-sub="${sub}" type="button">
         ${ikon}<span>${esc(baslik)}<small>${esc(alt)}</small></span>
         ${uyari ? `<span class="say uyari">${esc(uyari)}</span>` : ''}
@@ -791,7 +803,8 @@
       abonelik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/></svg>',
       talep: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="3"/></svg>',
       saglik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>',
-      gecmis: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>'
+      gecmis: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+      yayin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.6l6 3.4-6 3.4z"/></svg>'
     };
     return `
       <div class="brand">
@@ -800,9 +813,7 @@
       </div>
       <nav class="nav">
         <div class="nav-title">GÜNLÜK</div>
-        ${oge('canli', 'subeler', 'Canlı durum', 'Şubeler ve anons', counts.players, ikonlar.canli, counts.sessiz)}
-        ${oge('canli', 'saglik', 'Yayın sağlığı', 'Otomatik denetim', counts.saglik, ikonlar.saglik)}
-        ${oge('canli', 'gecmis', 'Bağlantı geçmişi', 'Kim açtı, kim durdurdu', counts.olaySorun, ikonlar.gecmis)}
+        ${oge('canli', 'subeler', 'Canlı durum', 'Şubeler, yayın başlat, sağlık', counts.players, ikonlar.canli, counts.sessiz)}
 
         <div class="nav-title">İÇERİK</div>
         ${oge('icerik', 'klasorler', 'Yayın klasörleri', 'Parçalar, sıra, kapak', counts.folders, ikonlar.klasor)}
@@ -823,6 +834,7 @@
   }
 
   const BASLIKLAR = {
+    'canli/yayin': ['Yayın başlat', 'Marka, şube, kaynak ve başlangıç parçasını seç, sonra yayını başlat'],
     'canli/subeler': ['Canlı durum', 'Şubelerin bağlantısı, o an çalan akış ve cihaz kilidi'],
     'canli/gecmis': ['Bağlantı geçmişi', 'Kim açtı, kim durdurdu; çalışma süresi ve haftalık trend'],
     'canli/saglik': ['Yayın sağlığı', 'Bütün şubelerin yayın zinciri tek ekranda denetlenir'],
@@ -1675,15 +1687,26 @@
   }
 
   const SEKMELER = {
+    // Canlı durum tek bölüm: şube listesi, yayın başlatma, sağlık denetimi ve
+    // bağlantı geçmişi onun alt sekmeleridir.
+    canli: [['subeler', 'Şubeler'], ['yayin', 'Yayın başlat'], ['saglik', 'Yayın sağlığı'], ['gecmis', 'Bağlantı geçmişi']],
     icerik: [['klasorler', 'Yayın klasörleri'], ['anonslar', 'Anonslar']],
     musteri: [['markalar', 'Markalar'], ['listeler', 'Çalma listeleri'], ['abonelikler', 'Abonelikler'], ['talepler', 'Talepler']]
   };
 
-  function sekmeler(state) {
+  // Canlı durum sekmelerinin başlığına, o sekmenin aciliyeti yazılır: kaç
+  // şubede yayın zinciri kopuk, son 24 saatte kaç durma oldu. Menü tek satıra
+  // inse bile "iş nerede" bilgisi ekrandan kaybolmaz.
+  function sekmeler(state, D) {
     const liste = SEKMELER[state.nav];
     if (!liste) return '';
-    return `<div class="tabs">${liste.map(([k, l]) =>
-      `<button type="button" data-sub="${k}" class="${state.sub === k ? 'active' : ''}">${esc(l)}</button>`).join('')}</div>`;
+    const sayilar = state.nav === 'canli' && D
+      ? { saglik: saglikOzet(D).kotu || null, gecmis: olaySorunSayi(D) || null }
+      : {};
+    return `<div class="tabs">${liste.map(([k, l]) => {
+      const n = sayilar[k];
+      return `<button type="button" data-sub="${k}" class="${state.sub === k ? 'active' : ''}">${esc(n ? `${l} · ${n}` : l)}</button>`;
+    }).join('')}</div>`;
   }
 
   function geriCubugu(sub, metin, cipsler) {
@@ -1696,18 +1719,136 @@
 
   // ---------- Ana giriş ----------
   // state: {nav, sub, openFolder, openBrand, openPlaylist, q}
+  // ---------- YAYIN BAŞLAT ----------
+  // Yayını tek ekrandan kurma: marka → şube (ya da bütün şubeler) → kaynak
+  // (klasör/çalma listesi) → başlangıç parçası. Hiçbir seçim kendiliğinden
+  // yayına geçmez; kararı "YAYINI BAŞLAT" düğmesi verir.
+  function yayinView(state, D, ui) {
+    const secim = state.yayin || {};
+    const marka = D.brands.find(x => x.id === secim.brandId) || null;
+    const subeler = marka ? D.players.filter(p => p.brand_id === marka.id) : [];
+    const sube = secim.playerId ? (subeler.find(p => p.id === secim.playerId) || null) : null;
+    const listeler = marka ? D.playlists.filter(p => p.brand_id === marka.id) : [];
+    const [tur, kaynakId] = String(secim.kaynak || '').split(':');
+    const kaynakKayit = kaynakId
+      ? (tur === 'folder' ? D.folders.find(f => f.id === kaynakId)
+        : listeler.find(l => l.id === kaynakId))
+      : null;
+    const parcalar = kaynakKayit ? kaynakParcalari(D, {
+      folder_id: tur === 'folder' ? kaynakId : null,
+      playlist_id: tur === 'playlist' ? kaynakId : null
+    }) : [];
+    const parca = secim.parcaId ? (parcalar.find(t => t.id === secim.parcaId) || null) : null;
+
+    // Şu an ne yayında? Kullanıcı neyi değiştirdiğini görsün.
+    const simdiki = sube ? etkinKaynak(D, sube) : (marka ? kaynak(D, marka.id) : null);
+    const hedefAd = !marka ? '—' : (sube ? sube.label : 'bütün şubeler');
+    const simdikiAd = simdiki && simdiki.ad ? simdiki.ad : 'yayın atanmamış';
+
+    const eksik = !marka ? 'Önce markayı seçin.'
+      : (!kaynakKayit ? 'Yayın kaynağını (klasör ya da liste) seçin.'
+        : (!parcalar.length ? 'Seçilen kaynakta hiç parça yok; önce parça yükleyin.' : null));
+
+    const secenek = (deger, etiket, secili) =>
+      `<option value="${esc(deger)}"${secili ? ' selected' : ''}>${esc(etiket)}</option>`;
+
+    return `
+      <div class="panel" style="margin-bottom:18px">
+        <h3>YAYINI BAŞLAT</h3>
+        <p class="panel-sub">Sırayla seçin: marka, şube, kaynak ve istersen başlangıç parçası. Hiçbir seçim kendiliğinden yayına geçmez;
+          yayın, <b>YAYINI BAŞLAT</b> düğmesine basıldığında değişir. Şube seçmezseniz kaynak markanın bütün şubelerine verilir.</p>
+        <div class="form-grid">
+          <div class="field"><label for="yayin-marka">1 · MARKA</label>
+            <select id="yayin-marka" data-act="yayin-marka">
+              ${secenek('', '— marka seçin —', !secim.brandId)}
+              ${D.brands.map(b => secenek(b.id, b.name + (b.is_active === false ? ' (pasif)' : ''), secim.brandId === b.id)).join('')}
+            </select></div>
+          <div class="field"><label for="yayin-sube">2 · ŞUBE</label>
+            <select id="yayin-sube" data-act="yayin-sube"${marka ? '' : ' disabled'}>
+              ${secenek('', '— bütün şubeler (marka geneli) —', !secim.playerId)}
+              ${subeler.map(p => secenek(p.id, p.label, secim.playerId === p.id)).join('')}
+            </select></div>
+        </div>
+        <div class="form-grid" style="margin-top:16px">
+          <div class="field"><label for="yayin-kaynak">3 · KAYNAK</label>
+            <select id="yayin-kaynak" data-act="yayin-kaynak"${marka ? '' : ' disabled'}>
+              ${secenek('', '— kaynak seçin —', !kaynakKayit)}
+              <optgroup label="Yayın klasörleri">
+                ${D.folders.map(f => secenek('folder:' + f.id, f.name, secim.kaynak === 'folder:' + f.id)).join('')}
+              </optgroup>
+              <optgroup label="${esc(marka ? marka.name : 'Marka')} listeleri">
+                ${listeler.map(pl => secenek('playlist:' + pl.id, pl.name, secim.kaynak === 'playlist:' + pl.id)).join('')}
+              </optgroup>
+            </select></div>
+          <div class="field"><label for="yayin-parca">4 · BAŞLANGIÇ PARÇASI</label>
+            <select id="yayin-parca" data-act="yayin-parca"${parcalar.length ? '' : ' disabled'}>
+              ${secenek('', '— baştan —', !secim.parcaId)}
+              ${parcalar.map((t, sira) => secenek(t.id, (sira + 1) + '. ' + t.title, secim.parcaId === t.id)).join('')}
+            </select></div>
+        </div>
+
+        <hr class="divider">
+        <div class="block"><h4>YAYINA GEÇECEK</h4>
+          <p class="sub">${marka
+            ? `<b>${esc(marka.name)}</b> · ${esc(hedefAd)} · ${kaynakKayit ? '<b>' + esc(kaynakKayit.name) + '</b>' : '<b>kaynak seçilmedi</b>'}${parca ? ' · “' + esc(parca.title) + '” parçasından başlar' : (kaynakKayit && parcalar.length ? ' · baştan başlar' : '')}`
+            : 'Henüz marka seçilmedi.'}</p>
+          <p class="sub">Şu an bu hedefte: <b>${esc(simdikiAd)}</b>${simdiki && simdiki.tip === 'liste' ? ' (çalma listesi)' : (simdiki && simdiki.tip ? ' (klasör)' : '')}</p>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" data-act="yayin-basla" type="button">YAYINI BAŞLAT</button>
+            <span class="sub">${eksik ? esc(eksik) : (parcalar.length + ' parça · yayın bu seçimle başlar')}</span>
+          </div>
+          <span class="sub" id="yayin-msg"></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>ŞU AN YAYINDA OLANLAR</h3>
+        <p class="panel-sub">Başlatmadan önce mevcut durumu görün: marka geneli kaynak ve ondan ayrılan şubeler.</p>
+        <table>
+          <thead><tr><th>HEDEF</th><th>KAYNAK</th><th>DURUM</th></tr></thead>
+          <tbody>${yayinDurumTablosu(D, ui) || bos(3, 'Henüz marka yok.')}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // Yayın başlatma ekranının altındaki özet: hangi markanın hangi şubesinde ne
+  // çalıyor. Marka geneli ve şubeye özel kaynaklar ayrı satırlarda görünür.
+  function yayinDurumTablosu(D, ui) {
+    const satirlar = [];
+    D.brands.forEach(b => {
+      const k = kaynak(D, b.id);
+      satirlar.push(`<tr>
+        <td><b>${esc(b.name)}</b><span class="sub">bütün şubeler${b.is_active === false ? ' · marka pasif' : ''}</span></td>
+        <td>${k && k.ad ? esc(k.ad) : '<span class="sub">yayın atanmadı</span>'}</td>
+        <td class="tight">${b.is_active === false ? chip('danger', 'YAYIN VERİLMEZ') : (k && k.tip ? chip('live', k.tip === 'liste' ? 'CANLI LİSTE' : 'CANLI KLASÖR', true) : chip('off', 'yayın kapalı'))}</td>
+      </tr>`);
+      D.players.filter(p => p.brand_id === b.id).forEach(p => {
+        const ozel = subeKaynagi(D, p.id);
+        if (!ozel.tip) return;
+        satirlar.push(`<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
+          <td><b>${esc(p.label)}</b><span class="sub">${esc(b.name)} · şubeye özel</span></td>
+          <td>${esc(ozel.ad)}</td>
+          <td class="tight">${chip('gold', 'ŞUBEYE ÖZEL', true)}</td>
+        </tr>`);
+      });
+    });
+    return satirlar.join('');
+  }
+
   function gorunum(state, D, ui) {
     const bas = topbar(state, D, ui.now());
     const kabuk = html => ({ baslik: bas.baslik, alt: bas.alt, html: html });
     if (state.nav === 'canli') {
-      return kabuk(state.sub === 'saglik' ? saglikView(state, D, ui)
-        : (state.sub === 'gecmis' ? gecmisView(state, D, ui) : canliView(state, D, ui)));
+      const govde = state.sub === 'yayin' ? yayinView(state, D, ui)
+        : (state.sub === 'saglik' ? saglikView(state, D, ui)
+          : (state.sub === 'gecmis' ? gecmisView(state, D, ui) : canliView(state, D, ui)));
+      return kabuk(sekmeler(state, D) + govde);
     }
     if (state.nav === 'icerik') {
       const govde = state.openFolder
         ? klasorDetay(state, D, ui)
         : (state.sub === 'anonslar' ? anonsListesi(state, D, ui) : klasorListesi(state, D, ui));
-      return kabuk(sekmeler(state) + govde);
+      return kabuk(sekmeler(state, D) + govde);
     }
     let govde;
     if (state.openPlaylist) govde = listeDetay(state, D, ui);
@@ -1716,7 +1857,7 @@
     else if (state.sub === 'abonelikler') govde = abonelikListesi(state, D, ui);
     else if (state.sub === 'talepler') govde = talepListesi(state, D, ui);
     else govde = markaListesi(state, D, ui);
-    return kabuk(sekmeler(state) + govde);
+    return kabuk(sekmeler(state, D) + govde);
   }
 
   // ---------- Çekmece (şube detayı) ----------
@@ -1732,6 +1873,9 @@
     const listeler = D.playlists.filter(x => x.brand_id === p.brand_id);
     const ozelSecim = ozel.tip === 'liste' ? 'playlist:' + ozel.kayit.playlist_id
       : (ozel.tip === 'klasör' ? 'folder:' + ozel.kayit.folder_id : '');
+    // Marka geneli de aynı ekrandan seçilebilsin: şube ile varsayılan tek yerde.
+    const genelSecim = !genel ? '' : (genel.tip === 'liste' ? 'playlist:' + genel.kayit.playlist_id
+      : (genel.tip === 'klasör' ? 'folder:' + genel.kayit.folder_id : ''));
     const link = ui.playerBase() + p.player_key;
     const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
     const kilitBilgi = [
@@ -1750,10 +1894,25 @@
         ? `<p class="sub">Personel cihazdan başka bir liste seçmiş: <b>${esc(farkli.ad)}</b> · yönetimin atadığı kaynak: <b>${esc(k && k.ad ? k.ad : 'atanmamış')}</b></p>`
         : ''}
 
-      <div class="block"><h4>CANLI YAYIN — BU ŞUBE</h4>
-        <p class="sub">Boş bırakılırsa markanın genel yayını çalar${genel && genel.ad ? ' (<b>' + esc(genel.ad) + '</b>)' : ''}. Buradan seçtiğin kaynak <b>yalnız bu şubede</b> çalar; markanın diğer şubeleri genel yayında kalır.</p>
+      <div class="block"><h4>CANLI YAYIN</h4>
+        <p class="sub">Marka geneli bütün şubelerin varsayılanıdır. Şubeye özel kaynak ise yalnız bu şubeyi genelden ayırır.</p>
         <div class="form-grid">
-          <div class="field"><label for="sube-kaynak">YAYIN KAYNAĞI</label>
+          <div class="field"><label for="marka-kaynak">MARKANIN GENEL YAYINI — BÜTÜN ŞUBELER</label>
+            <select id="marka-kaynak" data-act="live-source" data-id="${esc(p.brand_id)}" data-player="${esc(p.id)}">
+              <option value="">— yayını durdur —</option>
+              <optgroup label="Yayın klasörleri">
+                ${D.folders.map(f => `<option value="folder:${esc(f.id)}"${genelSecim === 'folder:' + f.id ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}
+              </optgroup>
+              <optgroup label="${esc(b ? b.name : 'Marka')} listeleri">
+                ${listeler.map(pl => `<option value="playlist:${esc(pl.id)}"${genelSecim === 'playlist:' + pl.id ? ' selected' : ''}>${esc(pl.name)}</option>`).join('')}
+              </optgroup>
+            </select></div>
+          <div class="row" style="align-self:end">
+            ${genel && genel.tip ? chip('gold', genel.tip === 'liste' ? 'AKTİF LİSTE' : 'AKTİF KLASÖR') : chip('off', 'YAYIN KAPALI')}
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:16px">
+          <div class="field"><label for="sube-kaynak">BU ŞUBEYE ÖZEL (${esc(p.label)})</label>
             <select id="sube-kaynak" data-act="player-source" data-id="${esc(p.id)}">
               <option value="">— markanın genel yayını —</option>
               <optgroup label="Yayın klasörleri">
@@ -1767,7 +1926,9 @@
             ${ozel.tip ? chip('gold', 'BU ŞUBEYE ÖZEL', true) : chip('off', 'GENEL YAYIN')}
           </div>
         </div>
-        <span class="sub" id="sube-kaynak-msg"></span>
+        <span class="sub" id="sube-kaynak-msg">${ozel.tip
+          ? 'Bu şube genel yayından ayrılmış: marka genelini değiştirsen bile burada seçili kaynak çalar.'
+          : ''}</span>
       </div>
 
       <div class="block"><h4>YAYIN LİNKİ</h4>
@@ -1826,14 +1987,17 @@
   // çalmayı engellediği için cihazın bir kez kiosk olarak işaretlenmesi gerekir;
   // komutu şubenin gerçek linkiyle hazır veririz ki kimse elle birleştirmesin.
   function kioskKurulum(link) {
-    const mac = 'open -a "Google Chrome" --args --autoplay-policy=no-user-gesture-required --kiosk "' + link + '"';
-    const win = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --autoplay-policy=no-user-gesture-required --kiosk "' + link + '"';
+    // Cihazın sayfa açılışında çalması bağlantıdaki kiosk işaretine bağlıdır:
+    // normal linkte yayın, biri YAYINI BAŞLAT'a basmadan başlamaz.
+    const hedef = link + (link.includes('?') ? '&' : '?') + 'kiosk=1';
+    const mac = 'open -a "Google Chrome" --args --autoplay-policy=no-user-gesture-required --kiosk "' + hedef + '"';
+    const win = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --autoplay-policy=no-user-gesture-required --kiosk "' + hedef + '"';
     const kopyala = (metin, etiket) => `<div class="key">${esc(metin)}</div>
         <div class="row" style="margin-top:10px">
           <button class="btn sm" data-act="copy" data-copy="${esc(metin)}" type="button">${etiket}</button>
         </div>`;
     return `
-      <p class="sub">Bu ayar şube cihazında <b>bir kez</b> yapılır. Sonrasında radyo, cihaz açıldığında ve mesai saatinde kimse düğmeye basmadan çalar.</p>
+      <p class="sub">Bu ayar şube cihazında <b>bir kez</b> yapılır. Komut, şube linkinin sonuna <b>kiosk=1</b> ekler: o işaret olmadan yayın sayfa açılışında başlamaz, çünkü linki açan herkesin bilgisayarında ses çalması istenmez. Bu kurulumdan sonra radyo, cihaz açıldığında ve mesai saatinde kimse düğmeye basmadan çalar.</p>
 
       <div class="block"><h4>1 · MACOS</h4>
         ${kopyala(mac, 'KOMUTU KOPYALA')}
@@ -1846,7 +2010,7 @@
       </div>
 
       <div class="block"><h4>3 · BU AYAR YAPILMAZSA</h4>
-        <p class="sub">Tarayıcılar sesli otomatik çalmayı engeller. O durumda sayfa açılınca <b>YAYINI BAŞLAT</b> düğmesine bir kez dokunmak yeterlidir. Mesai saatleri dışında düğme hiç çıkmaz; yayın açılış saatinde kendiliğinden başlar.</p>
+        <p class="sub">Yayın kendiliğinden başlamaz: sayfa açıldığında ekranda <b>YAYINI BAŞLAT</b> düğmesi çıkar ve bir kez dokunmak gerekir. Şube mesai dışındaysa bu dokunuş yayını hazırlar; çalma, açılış saatinde kendiliğinden başlar.</p>
       </div>`;
   }
 
@@ -1913,6 +2077,8 @@
     olayBilgi: olayBilgi,
     olaylariAl: olaylariAl,
     olayTablosu: olayTablosu,
+    yayinView: yayinView,
+    yayinDurumTablosu: yayinDurumTablosu,
     gecmisOzet: gecmisOzet,
     olaySorunSayi: olaySorunSayi,
     sureMetni: sureMetni,

@@ -57,22 +57,46 @@ const ui = {
 
 const durum = (ek) => Object.assign({ nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '' }, ek);
 
-test('yan menüde sekiz ayrı ekran ve sayıları görünür', () => {
+test('yan menüde bölümler ve sayıları görünür', () => {
   const html = V.nav(durum({ nav: 'musteri', sub: 'markalar' }), {
     players: 4, folders: 3, announcements: 2, brands: 1, playlists: 1, requests: 7, olaySorun: 3
   }, { ad: 'Derin Record', alt: 'yonetici@ornek.test', basHarf: 'DR' });
 
-  assert.ok(html.includes('data-nav="canli" data-sub="subeler"'), 'Canlı durum menüde olmalı');
-  assert.ok(html.includes('data-nav="canli" data-sub="gecmis"'), 'Bağlantı geçmişi menüde olmalı');
-  assert.ok(html.includes('>3</span>'), 'son 24 saatteki durma sayısı menüde görünmeli');
-  ['saglik', 'gecmis', 'klasorler', 'anonslar', 'markalar', 'listeler', 'abonelikler', 'talepler'].forEach(sub => {
+  ['subeler', 'klasorler', 'anonslar', 'markalar', 'listeler', 'abonelikler', 'talepler'].forEach(sub => {
     assert.ok(html.includes(`data-sub="${sub}"`), `${sub} menüde olmalı`);
   });
+  // Canlı durum tek satır: yayın başlatma, sağlık ve geçmiş artık o bölümün
+  // sekmeleridir, menüde ayrı satır açmaz.
+  ['yayin', 'saglik', 'gecmis'].forEach(sub => {
+    assert.ok(!html.includes(`data-nav="canli" data-sub="${sub}"`), `${sub} ayrı menü satırı olmamalı`);
+  });
+  assert.ok(html.includes('Şubeler, yayın başlat, sağlık'), 'menü satırı bölümün içeriğini söylemeli');
   assert.ok(html.includes('>4</span>'), 'şube sayısı menüde görünmeli');
   assert.ok(html.includes('>7</span>'), 'talep sayısı menüde görünmeli');
   // Aktif menü yalnızca bölüm + alt bölüm birlikte eşleşince işaretlenir.
   const aktifler = html.split('nav-item active').length - 1;
   assert.equal(aktifler, 1);
+});
+
+// Bölüm sekmeleri: Canlı durumun dört ekranı tek bölümün içinde durur.
+test('canlı durum ekranları sekmeden açılır, sayaçlar sekmede okunur', () => {
+  const sekmeli = V.gorunum(durum({}), D, ui).html;
+  assert.ok(sekmeli.includes('class="tabs"'), 'Canlı durum sekme çubuğu çizilmeli');
+  ['subeler', 'yayin', 'saglik', 'gecmis'].forEach(sub => {
+    assert.ok(sekmeli.includes(`data-sub="${sub}"`), `${sub} sekmesi olmalı`);
+  });
+  assert.ok(sekmeli.includes('Şubeler'), 'ilk sekme şube listesi');
+
+  // Sekme seçilince o ekran çizilir; çubuk yerinde kalır.
+  const yayin = V.gorunum(durum({ sub: 'yayin' }), D, ui).html;
+  assert.ok(yayin.includes('id="yayin-marka"'), 'Yayın başlat ekranı sekmeden gelir');
+  assert.ok(yayin.includes('class="tabs"'), 'sekme çubuğu her ekranda kalır');
+  assert.ok(!yayin.includes('ŞU AN ÇALAN'), 'sekmeler birbirinin içeriğini taşımaz');
+
+  const saglik = V.gorunum(durum({ sub: 'saglik' }), D, ui).html;
+  assert.ok(saglik.includes('class="tabs"'));
+  const gecmis = V.gorunum(durum({ sub: 'gecmis' }), D, ui).html;
+  assert.ok(gecmis.includes('class="tabs"'));
 });
 
 test('canlı durum şube bağlantısını, çalan akışı ve kilidi gösterir', () => {

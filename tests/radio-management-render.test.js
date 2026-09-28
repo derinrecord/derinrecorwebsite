@@ -8,6 +8,32 @@ const source = fs.readFileSync(require.resolve('../radyo-yonetim.js'), 'utf8');
 // Panel 2026-09'da yeniden düzenlendi: ana sayfadaki 6 kart yerine her işin
 // kendi menü girdisi var. Abonelikler ve Talepler ayrı ekranlar olarak kalmalı
 // (biri müşteri sözleşmeleri, diğeri gelen başvurular).
+// Yayın başlatma ekranı: marka → şube → kaynak → parça seçilir, hiçbir seçim
+// kendi başına yayına geçmez; yayın yalnız "YAYINI BAŞLAT" ile değişir. Şube
+// seçilmezse marka geneline (brand_broadcast), seçilirse o şubeye yazılır.
+test('yayın başlatma ekranı seçimleri ancak düğmeyle yayına alır', () => {
+  assert.match(source, /yayin: \{ nav: 'canli', sub: 'yayin' \}/);
+  ['yayin-marka', 'yayin-sube', 'yayin-kaynak', 'yayin-parca'].forEach(act => {
+    assert.ok(source.includes("'" + act + "'"), act + ' seçimi dinlenmeli');
+  });
+
+  const bas = source.indexOf("case 'yayin-basla'");
+  assert.ok(bas > 0, 'yayın başlatma düğmesi bağlanmalı');
+  const blok = source.slice(bas, source.indexOf("case 'branch-open'", bas));
+  assert.ok(blok.includes("from('brand_broadcast')"), 'şube seçilmezse marka geneline yazılmalı');
+  assert.ok(blok.includes("from('player_broadcast')"), 'şube seçilirse o şubeye yazılmalı');
+  assert.ok(blok.includes('start_track_id'), 'başlangıç parçası kaydedilmeli');
+  assert.match(blok, /onaySor\(/, 'yayına geçmeden önce onay alınmalı');
+
+  // Seçim dinleyicileri yalnız ekranı tazeler; sunucuya yazmaz.
+  const secim = source.slice(
+    source.indexOf("if (act === 'yayin-marka'"),
+    source.indexOf("if (act === 'player-source'")
+  );
+  assert.ok(secim.includes('ciz()'), 'seçim ekranı yeniden çizmeli');
+  assert.ok(!secim.includes('client.from('), 'seçim tek başına yayına yazmamalı');
+});
+
 test('abonelikler ve talepler ayrı menü girdileri olarak kalır', () => {
   const html = views.nav(
     { nav: 'musteri', sub: 'markalar' },

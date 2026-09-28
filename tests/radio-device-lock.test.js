@@ -59,14 +59,20 @@ async function calistir(senaryo) {
   // Oynatıcının bağladığı ses olaylarını kaydederiz: gerçek tarayıcıda bu
   // olayları tarayıcı yollar, provada test kendisi tetikler.
   const sesDinleyici = new Map();
+  // Kaç kez çalma denendi? Normal bağlantıda bu sayı açılışta sıfır kalmalı:
+  // yayını yalnız kişi başlatır.
+  let calmaDenemesi = 0;
   const audio = Object.assign(dugum(), {
     paused: true, duration: 0, currentTime: 0, volume: 1, src: '',
     addEventListener: (ad, fn) => { sesDinleyici.set(ad, fn); },
-    // 'otomatik: true' kiosk cihazı taklit eder: tarayıcı sesli otomatik
-    // çalmaya izin verir. Varsayılanda tarayıcı engeller.
-    play: () => (senaryo.otomatik
-      ? Promise.resolve()
-      : Promise.reject(new Error('provada ses çalınmaz'))),
+    // 'otomatik: true' tarayıcının sesli otomatik çalmaya izin verdiği cihazı
+    // taklit eder (kiosk kurulumundaki Chrome bayrağı). Varsayılanda engeller.
+    play: () => {
+      calmaDenemesi++;
+      return senaryo.otomatik
+        ? Promise.resolve()
+        : Promise.reject(new Error('provada ses çalınmaz'));
+    },
     pause() {}, load() {}
   });
   dugumler.set('audio', audio);
@@ -108,7 +114,12 @@ async function calistir(senaryo) {
       return [{ ok: true }];
     }
     if (ad === 'radio_now_report') return [{ ok: true }];
-    if (ad === 'radio_now_playing') return senaryo.parca ? PARCALAR : [];
+    // 'baslangicParca': yönetim yayını o parçadan başlattı (panelden seçilen
+    // başlangıç parçası sunucudan her satırla birlikte gelir).
+    if (ad === 'radio_now_playing') {
+      if (!senaryo.parca) return [];
+      return PARCALAR.map(x => Object.assign({}, x, { start_track_id: senaryo.baslangicParca || null }));
+    }
     if (ad === 'abonelik_durumu') {
       // 'bos': sunucu anahtarı hiç tanımıyor (boş dizi). 'yok': anahtar tanınıyor
       // ama abonelik kaydı yok, sunucu { gecerli:false, durum:'yok' } döner.
@@ -129,7 +140,9 @@ async function calistir(senaryo) {
     // davranışı sınadığını bilerek tetikler (tikla).
     setInterval: (fn, ms) => { sayaclar.push({ fn, ms }); return sayaclar.length; },
     clearInterval: () => {},
-    location: { search: '?key=' + (senaryo.key || PROVA_ANAHTAR) },
+    // 'kiosk: true' şube cihazının dokunuşsuz kurulumunu taklit eder: bağlantıda
+    // kiosk=1 işareti olur ve yayın sayfa açılışında başlar.
+    location: { search: '?key=' + (senaryo.key || PROVA_ANAHTAR) + (senaryo.kiosk ? '&kiosk=1' : '') },
     localStorage: {
       getItem: k => (depo.has(k) ? depo.get(k) : null),
       setItem: (k, v) => depo.set(k, v),
@@ -220,6 +233,13 @@ async function calistir(senaryo) {
       return depo.get('derin_record_liste_' + (senaryo.key || PROVA_ANAHTAR)) || null;
     },
     get calinan() { return audio.src; },
+    get calmaDenemesi() { return calmaDenemesi; },
+    // "YAYINI BAŞLAT" düğmesine dokunulmuş gibi davranır.
+    async basla() {
+      const d = dugumAl('start');
+      if (d && d.onclick) await d.onclick();
+      await new Promise(done => setTimeout(done, 20));
+    },
     // Personel seçim yapmış gibi davranır (onchange tetiklenir).
     async sec(kimlik) {
       const kutu = dugumAl('liste-sec');
@@ -247,20 +267,50 @@ test('ilk cihazdan açılışta yayın tanınır ve başlat düğmesi görünür
   assert.equal(s.pingler.length, 1);
   assert.equal(s.pingler[0].p.p_device_id, 'cihaz-test-1');
   assert.equal(s.pingler[0].p.p_player_key, PROVA_ANAHTAR);
-  // Oynatıcı açılışta kendiliğinden başlatmayı dener; tarayıcı engellediği için
-  // başlat düğmesi çıkar ve bunu açıkça söyler.
-  assert.ok(s.baslatGorunur, 'ses engellenince başlat düğmesi görünmeli');
+  // Açılışta ses hiç denenmez: sayfa açıldı diye müzik başlamaz, düğme bekler.
+  assert.equal(s.calmaDenemesi, 0, 'sayfa açılışında çalma denenmemeli');
+  assert.ok(s.baslatGorunur, 'başlat düğmesi görünmeli');
+  assert.match(s.durum, /Başlatmak için/);
+
+  // Düğmeye basılınca çalma denenir; bu senaryoda tarayıcı engellediği için
+  // düğme yerinde kalır ve sebebini söyler.
+  await s.basla();
+  assert.equal(s.calmaDenemesi, 1, 'düğmeye basınca çalma denenmeli');
+  assert.ok(s.baslatGorunur, 'tarayıcı engellediğinde düğme görünür kalmalı');
   assert.match(s.durum, /otomatik çalmayı engelledi/);
 });
 
 // Kiosk olarak işaretlenmiş cihazda (tarayıcı sesli otomatik çalmaya izin verir)
 // hiç kimse düğmeye basmak zorunda kalmaz: yayın sayfa açılır açılmaz başlar.
 test('kiosk cihazda yayın kendiliğinden başlar, başlat düğmesi hiç çıkmaz', async () => {
-  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true });
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true });
   assert.equal(s.baslatGorunur, false, 'düğme çıkmamalı');
+  assert.equal(s.calmaDenemesi, 1, 'kiosk cihazda yayın açılışta başlar');
   assert.equal(s.durum, '');
   assert.equal(s.tani, '');
   assert.ok(s.liste.includes('Sabah Işığı'));
+});
+
+// Panelden "şu parçadan başlat" denmişse yayın o parçadan başlar; listenin geri
+// kalanı kendi sırasında devam eder.
+test('yönetim bir parçadan başlattıysa kuyruk o parçadan başlar', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true,
+    baslangicParca: 't1'
+  });
+  assert.ok(s.calinan.includes('f1/p1.wav'), 'ikinci parça ilk çalınan olmalı');
+
+  const bastan = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true });
+  assert.ok(bastan.calinan.includes('f1/p0.wav'), 'başlangıç parçası yoksa kuyruk baştan başlar');
+});
+
+// Tarayıcı sesli otomatik çalmaya izin verse bile kiosk işareti olmayan bağlantı
+// ses çıkarmaz: panelden linke bakan yöneticinin bilgisayarında müzik patlamasın.
+test('tarayıcı izin verse de normal bağlantıda yayın kendiliğinden başlamaz', async () => {
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true });
+  assert.equal(s.calmaDenemesi, 0, 'izin olsa bile açılışta çalmamalı');
+  assert.ok(s.baslatGorunur, 'başlat düğmesi görünmeli');
+  assert.ok(s.liste.includes('Sabah Işığı'), 'ne çalacağı yine görünmeli');
 });
 
 test('eksik kopyalanmış bağlantı sunucuya hiç gitmeden yakalanır', async () => {
@@ -315,7 +365,7 @@ test('teşhis kodu abonelik arızasını da ayırır', async () => {
 });
 
 test('yayın çalışıyorsa ekranda teşhis kodu kalmaz', async () => {
-  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true });
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true });
   assert.equal(s.tani, '');
   assert.equal(s.durum, '');
 });
@@ -400,7 +450,7 @@ test('silinmiş liste kayıtlıysa otomatiğe düşülür', async () => {
 // Panel "şu an çalan" bilgisini yalnızca oynatıcı bildirirse gösterebilir.
 
 test('oynatıcı hangi parçayı çaldığını sunucuya bildirir', async () => {
-  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true });
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true });
   assert.equal(s.bildirimler.length, 1);
   assert.equal(s.bildirimler[0].p.p_title, 'Sabah Işığı');
   assert.equal(s.bildirimler[0].p.p_track_id, 't0');
@@ -427,7 +477,7 @@ test('personel listesinden çalınan parça ve liste adı bildirilir', async () 
 // hâlâ "personel şu listeyi seçmiş" yazar.
 test('otomatiğe dönünce liste bildirimi temizlenir', async () => {
   const s = await calistir({
-    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true,
     listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI
   });
   await s.sec('L1');
@@ -521,7 +571,7 @@ test('liste alanları sunucuda yoksa eski imzayla bildirim yapılır', async () 
 test('bildirim yapılamasa da yayın çalmaya devam eder', async () => {
   // supabase/radio-calan-parca.sql çalıştırılmadıysa sunucu hata döner; bu,
   // sahadaki yayını etkilememeli.
-  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, bildirimHatasi: true });
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true, bildirimHatasi: true });
   assert.equal(s.durum, '');
   assert.equal(s.tani, '');
   assert.equal(s.baslatGorunur, false);
@@ -576,7 +626,7 @@ test('panel bağlantı sınaması cihaz kilidini yöneticinin tarayıcısına ba
 // durdurdu, biz mi (mesai, kaynak, cihaz kilidi) durdurduk.
 
 test('oynatıcı açılışı ve çalmaya başlamayı geçmişe yazar', async () => {
-  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true });
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true });
   const acilislar = s.olayTuru('acildi');
   assert.equal(acilislar.length, 1, 'açılış bir kez yazılmalı');
   assert.equal(acilislar[0].p_player_key, PROVA_ANAHTAR);
@@ -618,7 +668,7 @@ test('parça bitişi yayın durması olarak yazılmaz', async () => {
 
 test('geçmiş tablosu kurulmadıysa oynatıcı çalmaya devam eder', async () => {
   const s = await calistir({
-    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, gecmisHatasi: true
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true, gecmisHatasi: true
   });
   assert.ok(s.liste.includes('Sabah Işığı'), 'yayın geçmişe bağlı değil');
   assert.equal(s.durum, '', 'geçmiş yazılamasa bile ekranda hata çıkmaz');

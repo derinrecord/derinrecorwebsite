@@ -1,7 +1,12 @@
 (() => {
   const byId = id => document.getElementById(id);
   const audio = byId('audio');
-  const key = new URLSearchParams(location.search).get('key');
+  const url = new URLSearchParams(location.search);
+  const key = url.get('key');
+  // Şube cihazı "dokunuşsuz kurulum" ile açılıyorsa bağlantıda kiosk=1 gelir:
+  // yalnız o zaman yayın sayfa açılışında kendiliğinden başlar. Normal açılışta
+  // ses, biri başlat düğmesine basmadan çalmaz.
+  const kioskModu = url.get('kiosk') === '1';
 
   let client = null, brandId = null, queue = [], index = 0, started = false, lastStamp = null, karistir = true;
   let bootTime = Date.now(), announcing = false;
@@ -282,6 +287,14 @@
     if (changed) {
       karistir = head.shuffle;
       queue = karistir ? shuffled(tracks) : tracks;
+      // Yönetim yayını belirli bir parçadan başlattıysa kuyruk o parçadan döner;
+      // listenin geri kalanı kendi (karıştırma açıksa karışık) sırasında devam
+      // eder. Parça listede yoksa hiçbir şey değişmez.
+      const baslangic = head.start_track_id;
+      if (baslangic) {
+        const yer = queue.findIndex(x => x.track_id === baslangic);
+        if (yer > 0) queue = queue.slice(yer).concat(queue.slice(0, yer));
+      }
       index = 0;
       if (started && !announcing && isOpen()) play();
     }
@@ -728,12 +741,21 @@
     await fetchBroadcast({ restart: true });
     if (!brandId) return;
 
-    // Kendiliğinden başlatmayı deneriz: kiosk olarak işaretlenmiş bir cihazda
-    // (--autoplay-policy=no-user-gesture-required) düğme hiç çıkmaz; tarayıcı
-    // sesi engelliyorsa düğme görünür ve tek bir dokunuş yeter.
-    // Kayıtlı liste seçimi varsa kuyruğu o kurar; sonra tek yerden başlatırız.
     await listeleriHazirla();
-    basla();
+    if (kioskModu) {
+      // Dokunuşsuz kurulum: cihaz açıldığında kimse düğmeye basmak zorunda
+      // kalmasın (Chrome --autoplay-policy=no-user-gesture-required ile açılır).
+      basla();
+    } else {
+      // Sayfa açıldı diye müzik başlamaz: linke bakan herkesin bilgisayarında
+      // ses patlamasın. Ne çalacağı görünür kalır, sesi yalnız kişi başlatır.
+      byId('start').hidden = false;
+      if (queue.length) {
+        setState(isOpen()
+          ? 'Yayın hazır. Başlatmak için “YAYINI BAŞLAT” düğmesine dokunun.'
+          : 'Şu an yayın saati dışında. Düğmeye dokunursan açılış saatinde kendiliğinden başlar.');
+      }
+    }
     subscribe();
 
     // Bildirimi dakikada bir tazeleriz: panel "8 sn önce" gibi taze bir damga

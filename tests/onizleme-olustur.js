@@ -170,6 +170,68 @@ body{background:#0b0b0d;padding:26px}
   return;
 }
 
+// "yayin" modu yayın başlatma ekranını önizler: dört adım, özet ve mevcut durum
+// tablosu bir arada görünsün.
+if (senaryo === 'yayin') {
+  const V = require(path.join(kok, 'radyo-panel-views.js'));
+  const simdi = Date.now();
+  const snOnce = n => new Date(simdi - n * 1000).toISOString();
+  const sube = (id, label, brandId) => ({
+    id, brand_id: brandId, label, player_key: 'a1b2c3d4-e5f6-4a7b-8c9d-00000000000' + id.slice(1),
+    last_seen_at: snOnce(12), open_time: '09:00:00', close_time: '22:00:00',
+    bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null, is_playing: false
+  });
+  const D = {
+    brands: [
+      { id: 'b1', name: 'Mokka Coffee', slug: 'mokka-coffee', access_code: 'K', is_active: true },
+      { id: 'b2', name: 'Roast & Co', slug: 'roast-co', access_code: 'K', is_active: true }
+    ],
+    folders: [
+      { id: 'f1', name: 'Öğleden Sonra', cover_path: null, shuffle: true },
+      { id: 'f2', name: 'Sabah Açılış', cover_path: null, shuffle: true }
+    ],
+    tracks: [
+      { id: 't0', folder_id: 'f1', title: 'Sabah Işığı', storage_path: 'f1/a.wav', sort_order: 0, cover_path: null },
+      { id: 't1', folder_id: 'f1', title: 'Yavaş Yağmur', storage_path: 'f1/b.wav', sort_order: 1, cover_path: null },
+      { id: 't2', folder_id: 'f1', title: 'Uzun Yol', storage_path: 'f1/c.wav', sort_order: 2, cover_path: null }
+    ],
+    players: [sube('p1', 'Alsancak', 'b1'), sube('p2', 'Karşıyaka', 'b1'), sube('p9', 'Merkez', 'b2')],
+    broadcast: [{ brand_id: 'b1', folder_id: 'f2', playlist_id: null, updated_at: snOnce(900) }],
+    playerBroadcast: [{ player_id: 'p1', folder_id: null, playlist_id: 'l1', updated_at: snOnce(300) }],
+    announcements: [],
+    playlists: [{ id: 'l1', brand_id: 'b1', name: 'Sabah Akışı', description: null, cover_path: null, shuffle: false, created_at: snOnce(600) }],
+    playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: []
+  };
+  const ui = {
+    cover: p => p, ses: p => p, anons: p => p,
+    playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
+    accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
+    now: () => simdi, saglikSonuc: () => null
+  };
+  const govde = V.yayinView({
+    nav: 'canli', sub: 'yayin', openFolder: null, openBrand: null, openPlaylist: null, q: '',
+    yayin: { brandId: 'b1', playerId: 'p2', kaynak: 'folder:f1', parcaId: 't1' }
+  }, D, ui);
+  const sayfa = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — yayın başlat</title>
+<style>
+${oku('radyo-panel.css')}
+body{background:#0b0b0d;padding:26px;display:block}
+.panel{max-width:1080px;margin:0 auto}
+</style>
+</head>
+<body><div class="panel">${govde}</div></body>
+</html>`;
+  fs.writeFileSync(ciktiYolu, sayfa);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · yayın başlat');
+  return;
+}
+
 // "gecmis" modu Bağlantı geçmişi ekranını önizler: şu anki durum, taraf özeti,
 // çalışma süresi, haftalık trend ve olay çizelgesi yan yana gelsin ki "sorun
 // bizde mi kafede mi" okunuşu gözle doğrulanabilsin.
@@ -328,6 +390,29 @@ body{background:#0b0b0d;padding:22px;display:block}
   return;
 }
 
+// "kabuk" modu panelin bütün kabuğunu önizler: yan menü, üst çubuk ve seçili
+// ekran birlikte. Sekmeli bölümlerin menüde tek satır mı birkaç satır mı
+// olduğu ve hangi satırın işaretlendiği yalnız burada gözle görülür. Sayfa
+// gerçek prova sayfasının kendisidir; yalnız css ve görünüm betiği satır içine
+// alınır, böylece menü ve sekmeler tıklanabilir kalır.
+if (senaryo === 'kabuk') {
+  // Önizleme tek dosya olarak sunulur ve yanındaki dosyaları yükleyemez.
+  const kacir = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const gomulu = oku('radyo-panel-prova.html')
+    .replace(/(href)="auth\.css(?:\?[^"]*)?"/, '$1="data:text/css;base64,' + Buffer.from(oku('auth.css')).toString('base64') + '"')
+    .replace(/(href)="radyo-panel\.css(?:\?[^"]*)?"/, '$1="data:text/css;base64,' + Buffer.from(oku('radyo-panel.css')).toString('base64') + '"')
+    .replace(/<script src="radyo-panel-views\.js(?:\?[^"]*)?"><\/script>/, '<script>\n' + oku('radyo-panel-views.js') + '\n</script>');
+  // Gömme sessizce boşa düşerse önizleme stilsiz/boş açılır; bunun yerine dur.
+  ['auth.css', 'radyo-panel.css', 'radyo-panel-views.js'].forEach(dis => {
+    if (new RegExp('(?:href|src)="' + kacir(dis)).test(gomulu)) {
+      throw new Error(dis + ' gömülmedi: prova sayfasının etiketi değişmiş, onizleme-olustur.js kabuk modunu güncelleyin');
+    }
+  });
+  fs.writeFileSync(ciktiYolu, gomulu);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · panel kabuğu');
+  return;
+}
+
 let sayfa = oku('radyo-cihaz-prova.html');
 const kuyruk = oku('radio-playlist-queue.js');
 // Oynatıcı anahtarı yalnızca sorgu dizesinden okur; provada sorgu dizesi
@@ -338,8 +423,15 @@ let sayfaHam = fs.readFileSync(path.join(kok, 'radyo-cihaz-prova.html'), 'utf8')
 if (!sayfaHam.includes("'" + PROVA_ANAHTAR + "'")) {
   throw new Error('prova sayfasının anahtarı değişmiş; buradaki PROVA_ANAHTAR ile eşleşmeli');
 }
-const radyo = oku('radyo.js')
-  .replace("new URLSearchParams(location.search).get('key')", "(new URLSearchParams(location.search).get('key') || '" + PROVA_ANAHTAR + "')");
+// Oynatıcının anahtar okuma satırı değişirse yama sessizce boşa düşer ve prova
+// "şubeye özel link ile açılmalıdır" der; o yüzden önce varlığını doğrularız.
+const ANAHTAR_SATIRI = "const key = url.get('key');";
+const radyoHam = oku('radyo.js');
+if (!radyoHam.includes(ANAHTAR_SATIRI)) {
+  throw new Error('oynatıcının anahtar okuma satırı değişmiş: onizleme-olustur.js yamasını güncelleyin');
+}
+const radyo = radyoHam
+  .replace(ANAHTAR_SATIRI, "const key = url.get('key') || '" + PROVA_ANAHTAR + "';");
 
 // Dış bağımlılıkları çıkar: yapılandırma satır içine gömülür, CDN'e gidilmez.
 sayfa = sayfa
