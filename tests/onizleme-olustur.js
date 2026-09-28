@@ -154,6 +154,7 @@ if (senaryo === 'gecmis') {
       { id: 'e2', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', detail: 'Kalabalık Caddesi · Sabah Açılış', at: dkOnce(479) },
       { id: 'e3', player_id: 'p1', brand_id: 'b1', kind: 'liste_degisti', detail: 'Sabah Açılış', at: dkOnce(300) },
       { id: 'e4', player_id: 'p2', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · Windows', at: dkOnce(290) },
+      { id: 'e4b', player_id: 'p2', brand_id: 'b1', kind: 'caliyor', detail: 'Sabah Açılış', at: dkOnce(285) },
       { id: 'e5', player_id: 'p2', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: dkOnce(60) },
       { id: 'e6', player_id: 'p2', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz-gizli', at: dkOnce(45) },
       { id: 'e7', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'mesai-disi', at: dkOnce(1200) },

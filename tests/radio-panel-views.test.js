@@ -663,6 +663,99 @@ test('geçmiş araması hem şubeyi hem olay satırlarını süzer', () => {
   assert.ok(bos.includes('Kayıtlı olay yok'), 'eşleşmeyen olay satırı çizilmez');
 });
 
+// ---------- ÇALIŞMA SÜRESİ (kesinti kimin yüzünden) ----------
+// Hesap şubenin yayın saatlerine bağlı olduğu için testin günün saatine göre
+// değişmemesi şart: saati sabitliyoruz (İstanbul 15:00) ve olayları bu ana göre
+// kuruyoruz.
+const SABIT = Date.UTC(2026, 8, 26, 12, 0, 0);
+const dkOnce = n => new Date(SABIT - n * 60000).toISOString();
+const uiSabit = { ...ui, now: () => SABIT };
+// Şube 11:40'ta açıldı, 12:00'de çalmaya başladı, 14:00'te cihazdan durduruldu.
+const SABIT_OLAYLAR = [
+  { id: 's1', player_id: 'p1', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · macOS', at: dkOnce(200) },
+  { id: 's2', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', detail: 'Kalabalık Caddesi', at: dkOnce(180) },
+  { id: 's3', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: dkOnce(60) }
+];
+const SABIT_D = { ...D, olaylar: SABIT_OLAYLAR };
+
+test('süreler sahada okunur biçimde yazılır', () => {
+  assert.equal(V.sureMetni(45 * 1000), '45 sn');
+  assert.equal(V.sureMetni(38 * 60000), '38 dk');
+  assert.equal(V.sureMetni((2 * 60 + 14) * 60000), '2 sa 14 dk');
+  assert.equal(V.sureMetni(120 * 60000), '2 sa');
+  assert.equal(V.sureMetni(-5000), '0 sn', 'negatif süre 0 olmalı');
+});
+
+test('yayın saatleri dışındaki süre hesaba katılmaz', () => {
+  const p = { open_time: '09:00:00', close_time: '22:00:00' };
+  // İstanbul 20:00 → ertesi gün 12:00: yalnızca 20:00–22:00 ve 09:00–12:00.
+  const toplam = V.mesaiParcalari(p, Date.UTC(2026, 8, 26, 17, 0, 0), Date.UTC(2026, 8, 27, 9, 0, 0))
+    .reduce((t, [x, y]) => t + (y - x), 0);
+  assert.equal(toplam, 5 * 3600000, 'kapanıştan sonra susan yayın kesinti sayılmaz');
+  // Saat sınırı olmayan şubede gün boyu yayın beklenir.
+  const serbest = V.mesaiParcalari({ open_time: null, close_time: null }, 0, 3600000);
+  assert.equal(serbest.length, 1);
+});
+
+test('kesinti, durdurmayı kim yaptıysa ona yazılır', () => {
+  const p = D.players[0];
+  const k = V.kesintiHesap(SABIT_D, p, SABIT, 1);
+  assert.equal(k.veriVar, true);
+  assert.equal(k.caldi, 2 * 3600000, 'çalma 12:00–14:00 arası sayılır');
+  assert.equal(k.kafe, 3600000, '14:00’te cihazdan durduruldu: 1 sa kafe tarafında');
+  assert.equal(k.bizde, 0);
+  assert.equal(k.beklenen, ((3 * 60 + 20) * 60000), 'ölçüm cihazın açıldığı andan başlar');
+  assert.equal(k.yuzde, 60);
+});
+
+test('yayın zinciri kopuksa tüm süre bizim tarafımıza yazılır', () => {
+  const p = D.players[0];
+  const kopuk = { ...D, olaylar: [
+    { id: 'k1', player_id: 'p1', brand_id: 'b1', kind: 'acildi', at: dkOnce(200) },
+    { id: 'k2', player_id: 'p1', brand_id: 'b1', kind: 'hata', detail: 'anahtar-yok', at: dkOnce(120) }
+  ] };
+  const k = V.kesintiHesap(kopuk, p, SABIT, 1);
+  assert.equal(k.caldi, 0);
+  assert.equal(k.yuzde, 0, 'hiç çalmadıysa doluluk sıfır');
+  assert.equal(k.bizde, 2 * 3600000, '13:00–15:00 arası kopukluk bizde');
+  assert.equal(k.kafe, 0);
+});
+
+test('takılma ve çalınamayan dosya kesinti sayılmaz', () => {
+  // Oynatıcı bu iki durumda hemen yeniden bağlanır; yayın durmuş değildir.
+  const p = D.players[0];
+  const takildi = { ...D, olaylar: [
+    { id: 't1', player_id: 'p1', brand_id: 'b1', kind: 'acildi', at: dkOnce(200) },
+    { id: 't2', player_id: 'p1', brand_id: 'b1', kind: 'takildi', detail: 'Kalabalık Caddesi', at: dkOnce(30) },
+    { id: 't3', player_id: 'p1', brand_id: 'b1', kind: 'yuklenemedi', detail: 'Parça', at: dkOnce(20) }
+  ] };
+  const k = V.kesintiHesap(takildi, p, SABIT, 1);
+  assert.equal(k.veriVar, false, 'çalma/durma kaydı yoksa hiçbir iddia edilmez');
+  assert.equal(k.yuzde, null);
+  assert.equal(V.kesintiHesap(D, p, SABIT, 1).veriVar, false, 'geçmiş tablosu yoksa da susar');
+});
+
+test('çalışma paneli doluluğu, kesintiyi ve tarafı yazar', () => {
+  const html = V.gorunum(durum({ nav: 'canli', sub: 'gecmis' }), SABIT_D, uiSabit).html;
+  assert.ok(html.includes('ÇALIŞMA SÜRESİ'));
+  assert.ok(html.includes('DOLULUK') && html.includes('KESİNTİ'));
+  assert.match(html, /%60/, 'doluluk yüzdesi yazılmalı');
+  assert.ok(html.includes('kafede 1 sa'), 'kesintinin tarafı yazılmalı');
+  assert.ok(html.includes('ölçüm: 3 sa 20 dk'));
+  // Kayıt yoksa yüzde uydurulmaz.
+  const bos = V.gorunum(durum({ nav: 'canli', sub: 'gecmis' }), D, uiSabit).html;
+  assert.ok(bos.includes('kayıt yok'), 'geçmiş tablosu yokken “kayıt yok” denir');
+  assert.ok(!/%\d/.test(bos.split('ÇALIŞMA SÜRESİ')[1].split('BAĞLANTI GEÇMİŞİ')[0]),
+    'kayıt yokken yüzde yazılmaz');
+});
+
+test('şube çekmecesi 24 saatlik çalışma özetini cümleyle yazar', () => {
+  const cekmece = V.subeCekmecesi('p1', SABIT_D, uiSabit);
+  assert.ok(cekmece.includes('Son 24 saat: %60 çalıştı (3 sa 20 dk ölçüldü) · 1 sa kesinti (kafede 1 sa)'),
+    'çekmecede tek cümlelik özet olmalı');
+  assert.ok(V.subeCekmecesi('p1', D, uiSabit).includes('Son 24 saat için çalışma kaydı yok.'));
+});
+
 test('şube çekmecesi ve marka sayfası bağlantı geçmişini gösterir', () => {
   const cekmece = V.subeCekmecesi('p1', DOLAY, ui);
   assert.ok(cekmece.includes('BAĞLANTI GEÇMİŞİ'), 'çekmecede geçmiş bloğu olmalı');

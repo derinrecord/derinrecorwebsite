@@ -238,6 +238,158 @@
       t - new Date(ev.at).getTime() < 86400000 && olayBilgi(ev).sorun).length;
   }
 
+  // ---------- Çalışma süresi (kesinti kimin yüzünden) ----------
+  // Olay kaydı bir zaman çizelgesidir: “çalmaya başladı” ile “durdu” arası
+  // çalışma, “durdu” ile bir sonraki “başladı” arası kesintidir ve kesinti
+  // sebebini yazan satır onu kime yazacağımızı söyler. Böylece panel “bu şube
+  // son 24 saatte %92 çalıştı, 41 dk kesinti (bizde 8 dk · kafede 33 dk)?”
+  // cümlesini kurabilir.
+  //
+  // Şubeye tanımlı yayın saatleri dışındaki süre hiç sayılmaz: kapanıştan sonra
+  // susan bir yayın “kesinti” değildir. Türkiye sabit UTC+3 kullanır, bu yüzden
+  // gün sınırını kaydırmadan hesaplayabiliriz.
+  const IST_MS = 3 * 3600000;
+  const yerelGunBasi = t => Math.floor((t + IST_MS) / 86400000) * 86400000 - IST_MS;
+
+  const saatDk = t => {
+    if (!t) return null;
+    const [s, d] = String(t).split(':');
+    const n = Number(s) * 60 + Number(d);
+    return isFinite(n) ? n : null;
+  };
+
+  // [bas, bitis] aralığının şubenin yayın saatlerine denk gelen parçaları.
+  // Kapanış açılıştan küçükse mesai gece yarısını aşar.
+  function mesaiParcalari(p, bas, bitis) {
+    const ac = saatDk(p.open_time), kp = saatDk(p.close_time);
+    if (ac === null || kp === null || ac === kp) return bitis > bas ? [[bas, bitis]] : [];
+    const parcalar = [];
+    for (let gun = yerelGunBasi(bas); gun < bitis; gun += 86400000) {
+      const x = Math.max(bas, gun + ac * 60000);
+      const y = Math.min(bitis, gun + (ac < kp ? kp : kp + 1440) * 60000);
+      if (y > x) parcalar.push([x, y]);
+    }
+    return parcalar;
+  }
+
+  // Süreleri sahada okunur yazar: “45 sn”, “38 dk”, “2 sa 14 dk”.
+  function sureMetni(ms) {
+    const saniye = Math.max(0, Math.round(ms / 1000));
+    if (saniye < 60) return saniye + ' sn';
+    const dakika = Math.round(saniye / 60);
+    if (dakika < 60) return dakika + ' dk';
+    const saat = Math.floor(dakika / 60), kalan = dakika % 60;
+    return saat + ' sa' + (kalan ? ' ' + kalan + ' dk' : '');
+  }
+
+  // Son `gun` günün çalışma tablosu. `veriVar` false ise panel hiçbir şey
+  // iddia etmez: elimizde olay yokken “çalışıyordu” demek uydurma olurdu.
+  function kesintiHesap(D, p, now, gun) {
+    const g = gun || 1;
+    const bas = now - g * 86400000;
+    const sonuc = {
+      veriVar: false, caldi: 0, bizde: 0, kafe: 0, bilinmez: 0,
+      beklenen: 0, yuzde: null, ilkOlay: null, olcumBas: bas
+    };
+    const mesaiSuresi = (a, b) => mesaiParcalari(p, a, b).reduce((t, [x, y]) => t + (y - x), 0);
+    const artan = olaylariAl(D, { playerId: p.id })
+      .filter(ev => new Date(ev.at).getTime() >= bas)
+      .reverse();
+    if (!artan.length) return sonuc;
+
+    // Ölçüm elimizde kayıt olan andan başlar: cihaz üç saat önce kurulduysa
+    // dünden beri susmuş gibi görünüp yüzdeyi düşürmesin.
+    const olcumBas = new Date(artan[0].at).getTime();
+    sonuc.ilkOlay = artan[0].at;
+    sonuc.olcumBas = olcumBas;
+    sonuc.beklenen = mesaiSuresi(olcumBas, now);
+    let calmaBas = null, durmaBas = null, durmaTaraf = null;
+
+    // Açık kalan aralığı kapatır: çalma süresini ve kesintiyi tarafına yazar.
+    const kapat = bitis => {
+      if (calmaBas !== null) { sonuc.caldi += mesaiSuresi(calmaBas, bitis); calmaBas = null; }
+      if (durmaBas !== null) {
+        const sure = mesaiSuresi(durmaBas, bitis);
+        if (durmaTaraf === 'kafe') sonuc.kafe += sure;
+        else if (durmaTaraf === 'bizde') sonuc.bizde += sure;
+        else sonuc.bilinmez += sure;
+        durmaBas = null; durmaTaraf = null;
+      }
+    };
+
+    artan.forEach(ev => {
+      const an = new Date(ev.at).getTime();
+      const o = olayBilgi(ev);
+      if (ev.kind === 'caliyor' || ev.kind === 'devam') {
+        kapat(an);
+        if (calmaBas === null) calmaBas = an;
+        sonuc.veriVar = true;
+      } else if (ev.kind === 'durakladi' || ev.kind === 'hata' || ev.kind === 'kilitlendi') {
+        // Bu üçü yayının durduğu anlardır. “Takıldı” ve “dosya çalınamadı”
+        // değildir: oynatıcı hemen yeniden bağlanır, yayın devam eder; onları
+        // kesinti saymak kesinti süresini şişirirdi.
+        kapat(an);
+        if (durmaBas === null) { durmaBas = an; durmaTaraf = o.taraf; }
+        sonuc.veriVar = true;
+      }
+    });
+    kapat(now);
+
+    // Çalma/durma kaydı yoksa yüzde yazılmaz: “%0” demek “hiç çalmadı” demek
+    // olurdu, oysa bilmediğimizi söylüyoruz.
+    sonuc.yuzde = (sonuc.veriVar && sonuc.beklenen > 0)
+      ? Math.min(100, Math.round(sonuc.caldi / sonuc.beklenen * 100)) : null;
+    return sonuc;
+  }
+
+  // "Son 24 saat: %92 çalıştı · 41 dk kesinti (bizde 8 dk · kafede 33 dk)"
+  function calismaOzeti(D, p, now) {
+    const k = kesintiHesap(D, p, now, 1);
+    if (!k.veriVar || k.yuzde == null) return 'Son 24 saat için çalışma kaydı yok.';
+    const kesinti = k.bizde + k.kafe + k.bilinmez;
+    const kim = [];
+    if (k.bizde) kim.push('bizde ' + sureMetni(k.bizde));
+    if (k.kafe) kim.push('kafede ' + sureMetni(k.kafe));
+    if (k.bilinmez) kim.push('sebebi kaydedilmemiş ' + sureMetni(k.bilinmez));
+    return 'Son 24 saat: %' + k.yuzde + ' çalıştı (' + sureMetni(k.beklenen) + ' ölçüldü)'
+      + (kesinti ? ' · ' + sureMetni(kesinti) + ' kesinti' + (kim.length ? ' (' + kim.join(' · ') + ')' : '')
+        : ' · kesinti yok');
+  }
+
+  const dolulukChip = yuzde => yuzde >= 98 ? chip('live', '%' + yuzde, true)
+    : (yuzde >= 90 ? chip('gold', '%' + yuzde) : chip('danger', '%' + yuzde));
+
+  // Şube şube çalışma süresi. Kayıt yoksa satır “kayıt yok” der; yüzde
+  // uydurulmaz.
+  function calismaTablosu(D, ui, q) {
+    const now = ui.now();
+    const ara = norm(q);
+    return D.players
+      .filter(p => {
+        const b = D.brands.find(x => x.id === p.brand_id);
+        return hit(ara, p.label, b ? b.name : '');
+      })
+      .map(p => {
+        const b = D.brands.find(x => x.id === p.brand_id);
+        const k = kesintiHesap(D, p, now, 1);
+        const kesinti = k.bizde + k.kafe + k.bilinmez;
+        const kim = [];
+        if (k.bizde) kim.push('bizde ' + sureMetni(k.bizde));
+        if (k.kafe) kim.push('kafede ' + sureMetni(k.kafe));
+        if (k.bilinmez) kim.push('sebebi kaydedilmemiş ' + sureMetni(k.bilinmez));
+        return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
+          <td><b>${esc(p.label)}</b><span class="sub">${esc(b ? b.name : '—')}</span></td>
+          <td class="tight">${k.yuzde == null ? '<span class="sub">kayıt yok</span>' : dolulukChip(k.yuzde)}</td>
+          <td class="tight">${k.veriVar
+            ? `<b>${esc(sureMetni(k.caldi))}</b><span class="sub">ölçüm: ${esc(sureMetni(k.beklenen))}</span>`
+            : '<span class="sub">—</span>'}</td>
+          <td class="tight">${k.veriVar && kesinti
+            ? `<b>${esc(sureMetni(kesinti))}</b><span class="sub">${esc(kim.join(' · '))}</span>`
+            : '<span class="sub">kesinti yok</span>'}</td>
+        </tr>`;
+      }).join('');
+  }
+
   // Bir şubenin en son durma olayı: “şu an duraklatıldı” diyorsak sebebi de
   // yanında yazılsın, yoksa donmuş bir bayrak canlı sanılır.
   const sonDurma = (D, playerId) =>
@@ -297,6 +449,16 @@
         <table>
           <thead><tr><th>ŞUBE</th><th>ŞU AN</th><th>SON DURMA</th><th>SON BAĞLANTI</th></tr></thead>
           <tbody>${subeler}</tbody>
+        </table>
+      </div>
+      <div class="panel" style="margin-bottom:18px">
+        <h3>ÇALIŞMA SÜRESİ <span>son 24 saat</span></h3>
+        <p class="panel-sub">Oynatıcının bıraktığı olaylardan hesaplanır: “çalmaya başladı” ile “durdu” arası çalışma, “durdu”
+          ile bir sonraki başlama arası kesintidir ve kesinti, durdurmayı kim yaptıysa ona yazılır. Şubeye tanımlı yayın saatleri
+          dışındaki süre hiç sayılmaz. Kayıt yoksa yüzde uydurulmaz.</p>
+        <table>
+          <thead><tr><th>ŞUBE</th><th>DOLULUK</th><th>ÇALIŞTI</th><th>KESİNTİ</th></tr></thead>
+          <tbody>${calismaTablosu(D, ui, state.q) || bos(4, D.players.length ? 'Aramayla eşleşen şube yok.' : 'Henüz şube yok.')}</tbody>
         </table>
       </div>
       <div class="panel">
@@ -1367,6 +1529,7 @@
 
       <div class="block"><h4>BAĞLANTI GEÇMİŞİ</h4>
         <p class="sub">Bu şubede son olaylar. Duraklama satırındaki taraf, yayını kimin durdurduğunu söyler.</p>
+        <p class="sub"><b>${esc(calismaOzeti(D, p, now))}</b></p>
         <table><tbody>${olayTablosu(D, ui, { playerId: p.id, yer: false }, 12)
           || bos(3, 'Bu şube için henüz olay kaydı yok.')}</tbody></table>
         <div class="row" style="margin-top:12px">
@@ -1475,6 +1638,11 @@
     olayTablosu: olayTablosu,
     gecmisOzet: gecmisOzet,
     olaySorunSayi: olaySorunSayi,
+    sureMetni: sureMetni,
+    mesaiParcalari: mesaiParcalari,
+    kesintiHesap: kesintiHesap,
+    calismaOzeti: calismaOzeti,
+    calismaTablosu: calismaTablosu,
     suanTablosu: suanTablosu,
     gecmisView: gecmisView,
     kapakYok: kapakYok,
