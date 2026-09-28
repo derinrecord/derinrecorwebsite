@@ -65,25 +65,26 @@ const secici = (html, id) => {
   return eslesme ? eslesme[0] : '';
 };
 
-test('şube çekmecesi marka genelini ve şubeye özel kaynağı aynı yerden seçtirir', () => {
+// Yayını başlatmanın tek yolu "Yayın başlat" ekranıdır; şube çekmecesi ikinci
+// bir başlatma yolu olmamalı. Çekmece yalnız bu şubede ne çaldığını gösterir ve
+// yöneticiyi o ekrana taşır.
+test('şube çekmecesi yayını başlatmaz, durumu gösterip yayın ekranına yollar', () => {
   const html = V.subeCekmecesi('p1', D, ui);
-  const genelKutu = secici(html, 'marka-kaynak');
-  const subeKutu = secici(html, 'sube-kaynak');
 
   assert.ok(html.includes('CANLI YAYIN'), 'çekmecede canlı yayın bölümü olmalı');
-  assert.ok(genelKutu, 'marka geneli seçicisi bulunmalı');
-  assert.ok(subeKutu, 'şubeye özel seçici bulunmalı');
-  assert.ok(genelKutu.includes('data-act="live-source" data-id="b1" data-player="p1"'),
-    'genel seçici markaya bağlı olmalı ve kaydedince şubeyi geri bildirmeli');
-  assert.ok(genelKutu.includes('value="folder:f2" selected'), 'markanın genel kaynağı seçili gelmeli');
-  assert.ok(subeKutu.includes('data-act="player-source" data-id="p1"'), 'özel seçici bu şubeye bağlı olmalı');
-  assert.ok(subeKutu.includes('— markanın genel yayını —'), 'genel yayına dönüş seçeneği olmalı');
-  assert.ok(subeKutu.includes('value="playlist:l1" selected'), 'şubenin mevcut özel kaynağı seçili gelmeli');
-  assert.ok(html.includes('BU ŞUBEYE ÖZEL'), 'özel yayın işareti görünmeli');
+  assert.equal(secici(html, 'marka-kaynak'), '', 'marka geneli seçicisi çekmecede olmamalı');
+  assert.equal(secici(html, 'sube-kaynak'), '', 'şubeye özel seçici çekmecede olmamalı');
+  assert.ok(!html.includes('data-act="live-source"'), 'çekmeceden marka geneli yazılmamalı');
+  assert.ok(!html.includes('data-act="player-source"'), 'çekmeceden şube yayını yazılmamalı');
+
+  assert.ok(html.includes('ŞUBEYE ÖZEL'), 'genelden ayrılan şube işaretlenmeli');
+  assert.ok(html.includes('Akşam Akışı'), 'bu şubede çalan kaynak yazılmalı');
+  assert.ok(html.includes('data-act="yayin-ac" data-id="p1"'),
+    'çekmece yayın başlat ekranına geçiş düğmesi taşımalı');
 
   const genelSube = V.subeCekmecesi('p2', D, ui);
-  assert.ok(genelSube.includes('GENEL YAYIN'), 'özel kaynağı olmayan şube genel yayında görünmeli');
-  assert.ok(!secici(genelSube, 'sube-kaynak').includes('selected'), 'genel yayındaki şubede özel kaynak seçili olmamalı');
+  assert.ok(genelSube.includes('MARKA GENELİ'), 'özel kaynağı olmayan şube genel yayında görünmeli');
+  assert.ok(genelSube.includes('Gece Kuşu'), 'genel yayındaki şube markanın kaynağını göstermeli');
 });
 
 test('canlı durumda her şube kendi yürürlükteki kaynağını gösterir', () => {

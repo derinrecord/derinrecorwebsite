@@ -1297,7 +1297,6 @@
     const denemeler = D.coffeeAttempts.filter(a => a.brand_id === b.id).slice(0, 8);
     const sonBasarisiz = D.coffeeAttempts.filter(a => a.brand_id === b.id && !a.success
       && (now - new Date(a.created_at).getTime()) < 86400000).length;
-    const secili = k.tip === 'liste' ? 'playlist:' + k.kayit.playlist_id : (k.tip === 'klasör' ? 'folder:' + k.kayit.folder_id : '');
 
     const subeSatirlari = subeler
       .filter(p => hit(q, p.label, p.player_key))
@@ -1359,7 +1358,7 @@
         k.ad || 'yayın atanmadı'])}
       <div class="panel" style="margin-bottom:18px">
         <h3>CANLI YAYIN</h3>
-        <p class="panel-sub">Markanın bütün şubeleri bu akışı çalar. Bir şubeye kendi yayınını verdiyseniz (şube satırında <b>YÖNET ›</b> → CANLI YAYIN) yalnız o şube buradan ayrılır. Marka pasifse, canlı yayın kaydı yoksa ya da kaynak seçilmemişse şubeler yayın bekler ve oynatıcı “bu link tanınmadı” der.</p>
+        <p class="panel-sub">Markanın bütün şubeleri bu akışı çalar. Bir şubeye kendi yayınını verdiyseniz (<b>Canlı durum › Yayın başlat</b> ekranında şubeyi seçerek) yalnız o şube buradan ayrılır. Marka pasifse, canlı yayın kaydı yoksa ya da kaynak seçilmemişse şubeler yayın bekler ve oynatıcı “bu link tanınmadı” der.</p>
         <div class="row" style="margin-bottom:16px">
           ${b.is_active === false ? chip('danger', 'MARKA PASİF — YAYIN VERİLMEZ') : chip('live', 'MARKA AKTİF', true)}
           <button class="btn${b.is_active === false ? ' primary' : ''}" data-act="brand-active" data-id="${esc(b.id)}" type="button">${b.is_active === false ? 'MARKAYI YAYINA AL' : 'MARKAYI DURDUR'}</button>
@@ -1367,20 +1366,13 @@
             ? 'Pasif markanın anahtarı sunucuda tanınmaz; bütün şubeler “bu link tanınmadı” görür.'
             : 'Durdurursanız bu markanın bütün yayın linkleri anında devre dışı kalır.'}</span>
         </div>
-        <div class="form-grid">
-          <div class="field"><label for="live-source">YAYIN KAYNAĞI</label>
-            <select id="live-source" data-act="live-source" data-id="${esc(b.id)}">
-              <option value="">— yayını durdur —</option>
-              <optgroup label="Yayın klasörleri">
-                ${D.folders.map(f => `<option value="folder:${esc(f.id)}"${secili === 'folder:' + f.id ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}
-              </optgroup>
-              <optgroup label="${esc(b.name)} listeleri">
-                ${listeler.map(pl => `<option value="playlist:${esc(pl.id)}"${secili === 'playlist:' + pl.id ? ' selected' : ''}>${esc(pl.name)}</option>`).join('')}
-              </optgroup>
-            </select></div>
-          <div class="row" style="align-self:end">
-            ${k.tip === 'liste' ? chip('live', 'AKTİF LİSTE', true) : (k.tip ? chip('gold', 'AKTİF KLASÖR') : chip('off', 'YAYIN KAPALI'))}
-          </div>
+        <div class="row" style="margin-top:16px">
+          ${k.tip === 'liste' ? chip('live', 'AKTİF LİSTE', true) : (k.tip ? chip('gold', 'AKTİF KLASÖR') : chip('off', 'YAYIN KAPALI'))}
+          <b>${esc(k.ad || 'yayın atanmadı')}</b>
+          <span class="sub">Kaynağı başlatmak ya da durdurmak <b>Canlı durum › Yayın başlat</b> ekranının işi.</span>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" data-act="marka-yayin-ac" data-id="${esc(b.id)}" type="button">YAYIN BAŞLAT EKRANINA GEÇ</button>
         </div>
         <span class="sub" id="live-msg"></span>
       </div>
@@ -1795,10 +1787,24 @@
           <p class="sub">Şu an bu hedefte: <b>${esc(simdikiAd)}</b>${simdiki && simdiki.tip === 'liste' ? ' (çalma listesi)' : (simdiki && simdiki.tip ? ' (klasör)' : '')}</p>
           <div class="row" style="margin-top:14px">
             <button class="btn primary" data-act="yayin-basla" type="button">YAYINI BAŞLAT</button>
+            ${marka && !sube && simdiki && simdiki.tip
+              ? `<button class="btn danger" data-act="yayin-durdur" data-id="${esc(marka.id)}" type="button">YAYINI DURDUR</button>`
+              : ''}
             <span class="sub">${eksik ? esc(eksik) : (parcalar.length + ' parça · yayın bu seçimle başlar')}</span>
           </div>
+          ${marka && !sube && simdiki && simdiki.tip
+            ? '<p class="sub">Durdurursanız bu markanın şubeleri akış bekler; yalnız şubeye özel yayını olanlar çalmaya devam eder.</p>'
+            : ''}
           <span class="sub" id="yayin-msg"></span>
         </div>
+
+        ${sube && subeKaynagi(D, sube.id).tip
+          ? `<hr class="divider">
+        <div class="block"><h4>ŞUBEYE ÖZEL YAYIN</h4>
+          <p class="sub"><b>${esc(sube.label)}</b> markanın genel yayınından ayrılmış ve kendi kaynağını çalıyor.
+            Bu atamayı kaldırırsanız şube yeniden <b>${esc(marka.name)}</b> genel yayınını çalar.</p>
+          <button class="btn sm danger" data-act="yayin-genel" data-id="${esc(sube.id)}" type="button">GENEL YAYINA DÖNDÜR</button>
+        </div>` : ''}
       </div>
 
       <div class="panel">
@@ -1870,12 +1876,6 @@
     const genel = b ? kaynak(D, b.id) : null;
     const ozel = subeKaynagi(D, p.id);
     const k = ozel.tip ? ozel : genel;
-    const listeler = D.playlists.filter(x => x.brand_id === p.brand_id);
-    const ozelSecim = ozel.tip === 'liste' ? 'playlist:' + ozel.kayit.playlist_id
-      : (ozel.tip === 'klasör' ? 'folder:' + ozel.kayit.folder_id : '');
-    // Marka geneli de aynı ekrandan seçilebilsin: şube ile varsayılan tek yerde.
-    const genelSecim = !genel ? '' : (genel.tip === 'liste' ? 'playlist:' + genel.kayit.playlist_id
-      : (genel.tip === 'klasör' ? 'folder:' + genel.kayit.folder_id : ''));
     const link = ui.playerBase() + p.player_key;
     const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
     const kilitBilgi = [
@@ -1895,51 +1895,27 @@
         : ''}
 
       <div class="block"><h4>CANLI YAYIN</h4>
-        <p class="sub">Marka geneli bütün şubelerin varsayılanıdır. Şubeye özel kaynak ise yalnız bu şubeyi genelden ayırır.</p>
-        <div class="form-grid">
-          <div class="field"><label for="marka-kaynak">MARKANIN GENEL YAYINI — BÜTÜN ŞUBELER</label>
-            <select id="marka-kaynak" data-act="live-source" data-id="${esc(p.brand_id)}" data-player="${esc(p.id)}">
-              <option value="">— yayını durdur —</option>
-              <optgroup label="Yayın klasörleri">
-                ${D.folders.map(f => `<option value="folder:${esc(f.id)}"${genelSecim === 'folder:' + f.id ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}
-              </optgroup>
-              <optgroup label="${esc(b ? b.name : 'Marka')} listeleri">
-                ${listeler.map(pl => `<option value="playlist:${esc(pl.id)}"${genelSecim === 'playlist:' + pl.id ? ' selected' : ''}>${esc(pl.name)}</option>`).join('')}
-              </optgroup>
-            </select></div>
-          <div class="row" style="align-self:end">
-            ${genel && genel.tip ? chip('gold', genel.tip === 'liste' ? 'AKTİF LİSTE' : 'AKTİF KLASÖR') : chip('off', 'YAYIN KAPALI')}
-          </div>
+        <p class="sub">Yayın seçimi tek yerden yapılır: <b>Canlı durum › Yayın başlat</b>. Burası yalnız bu şubede ne çaldığını gösterir.</p>
+        <div class="row">
+          ${ozel.tip ? chip('gold', 'ŞUBEYE ÖZEL', true) : chip('off', 'MARKA GENELİ')}
+          <b>${esc(k && k.ad ? k.ad : 'yayın atanmamış')}</b>
         </div>
-        <div class="form-grid" style="margin-top:16px">
-          <div class="field"><label for="sube-kaynak">BU ŞUBEYE ÖZEL (${esc(p.label)})</label>
-            <select id="sube-kaynak" data-act="player-source" data-id="${esc(p.id)}">
-              <option value="">— markanın genel yayını —</option>
-              <optgroup label="Yayın klasörleri">
-                ${D.folders.map(f => `<option value="folder:${esc(f.id)}"${ozelSecim === 'folder:' + f.id ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}
-              </optgroup>
-              <optgroup label="${esc(b ? b.name : 'Marka')} listeleri">
-                ${listeler.map(pl => `<option value="playlist:${esc(pl.id)}"${ozelSecim === 'playlist:' + pl.id ? ' selected' : ''}>${esc(pl.name)}</option>`).join('')}
-              </optgroup>
-            </select></div>
-          <div class="row" style="align-self:end">
-            ${ozel.tip ? chip('gold', 'BU ŞUBEYE ÖZEL', true) : chip('off', 'GENEL YAYIN')}
-          </div>
+        <p class="sub">${ozel.tip
+          ? 'Bu şube genel yayından ayrılmış: marka genelini değiştirseniz bile buradaki kaynak çalar. Ayrılığı <b>Yayın başlat</b> ekranından kaldırabilirsiniz.'
+          : (b ? 'Bu şube ' + esc(b.name) + ' markasının genel yayınını çalar; genel yayın değişince burası da değişir.' : '')}</p>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" data-act="yayin-ac" data-id="${esc(p.id)}" type="button">YAYIN BAŞLAT EKRANINA GEÇ</button>
         </div>
-        <span class="sub" id="sube-kaynak-msg">${ozel.tip
-          ? 'Bu şube genel yayından ayrılmış: marka genelini değiştirsen bile burada seçili kaynak çalar.'
-          : ''}</span>
       </div>
 
       <div class="block"><h4>YAYIN LİNKİ</h4>
         <div class="key">${esc(link)}</div>
         <div class="row" style="margin-top:12px">
           <button class="btn sm" data-act="copy" data-copy="${esc(link)}" type="button">LİNKİ KOPYALA</button>
-          <a class="btn sm" href="${esc(link)}" target="_blank" rel="noopener">YAYINI AÇ ↗</a>
           <button class="btn sm" data-act="player-check" data-id="${esc(p.id)}" type="button">BAĞLANTIYI SINA</button>
           <button class="btn sm" data-act="player-kiosk" data-id="${esc(p.id)}" type="button">DOKUNUŞSUZ KURULUM</button>
         </div>
-        <p class="sub" style="margin-top:10px">Yayın linki şubeye aittir; telefonda tarayıcıda açılır.</p>
+        <p class="sub" style="margin-top:10px">Yayın linki şubeye aittir ve yalnız şube cihazında açılır; buradan link açılmaz, kopyalayıp cihaza verirsiniz.</p>
         ${p.bound_device_id
           ? `<p class="sub">Bu şube <b>başka bir cihaza kilitli</b> (${esc(tarih(p.bound_at))}); yayın yalnızca o cihazda çalar. Başka bir cihazda açmak için önce kilidi sıfırlayın.</p>`
           : '<p class="sub">Bu şube henüz bir cihaza kilitlenmedi; bağlantı <b>ilk açıldığı cihaza kilitlenir</b>.</p>'}
@@ -2062,6 +2038,7 @@
     topbar: topbar,
     gorunum: gorunum,
     subeCekmecesi: subeCekmecesi,
+    subeKaynagi: subeKaynagi,
     anahtarGecerli: anahtarGecerli,
     kioskKurulum: kioskKurulum,
     saglikTani: saglikTani,

@@ -810,6 +810,80 @@
           : marka.name + ' şubeleri yeni yayınla başladı.');
         return;
       }
+
+      // Şube çekmecesinden yayın başlatılmaz: çekmece yalnız durumu gösterir ve
+      // yöneticiyi tek yayın ekranına taşır. Marka ile şube hazır seçili gelir,
+      // kaynağı yönetici seçer; yayın yine "YAYINI BAŞLAT" ile değişir.
+      case 'yayin-ac': {
+        if (!kullanici.adminMi) return hata('Yayın başlatmak yönetici yetkisi ister.');
+        const p = D.players.find(x => x.id === id);
+        if (!p) return hata('Şube bulunamadı.');
+        cekmeceKapat();
+        state.q = ''; el('search').value = '';
+        state.yayin = { brandId: p.brand_id, playerId: p.id, kaynak: '', parcaId: '' };
+        state.nav = 'canli'; state.sub = 'yayin';
+        git(gorunumHash());
+        return;
+      }
+
+      // Marka sayfasındaki düğme: yayın kaynağı seçimi tek yerde toplandığı
+      // için marka sayfası yalnız yayın ekranına yollar, marka hazır seçili gelir.
+      case 'marka-yayin-ac': {
+        if (!kullanici.adminMi) return hata('Yayın başlatmak yönetici yetkisi ister.');
+        if (!D.brands.some(x => x.id === id)) return hata('Marka bulunamadı.');
+        state.q = ''; el('search').value = '';
+        state.openBrand = null; state.openPlaylist = null;
+        state.yayin = { brandId: id, playerId: '', kaynak: '', parcaId: '' };
+        state.nav = 'canli'; state.sub = 'yayin';
+        git(gorunumHash());
+        return;
+      }
+
+      // Marka geneli yayının durdurulması: kayıt silinir, şubeler akış bekler.
+      // Şubeye özel yayını olan şubeler bundan etkilenmez.
+      case 'yayin-durdur': {
+        if (!kullanici.adminMi) return hata('Yayın başlatmak yönetici yetkisi ister.');
+        const b = marka(id);
+        if (!b) return hata('Marka bulunamadı.');
+        const k = V.kaynak(D, b.id);
+        if (!k || !k.tip) return hata('Bu markanın canlı yayını zaten kapalı.');
+        if (!await onaySor({
+          baslik: 'Yayın durdurulsun mu?',
+          govde: `${b.name} markasının bütün şubeleri yayınsız kalır ve oynatıcı “bu link tanınmıyor” der. Şubeye özel yayını olan şubeler çalmaya devam eder.`,
+          onayMetni: 'YAYINI DURDUR'
+        })) return;
+        const { error } = await client.from('brand_broadcast').delete().eq('brand_id', b.id);
+        if (error) return hata('Yayın durdurulamadı: ' + error.message);
+        await yenile(false);
+        bildir(b.name + ' markasının genel yayını durduruldu.');
+        return;
+      }
+
+      // Şubeye özel yayının kaldırılması: şube markanın genel yayınına döner.
+      // Bu karar da tek yayın ekranından verilir.
+      case 'yayin-genel': {
+        if (!kullanici.adminMi) return hata('Yayın başlatmak yönetici yetkisi ister.');
+        const p = D.players.find(x => x.id === id);
+        if (!p) return hata('Şube bulunamadı.');
+        const ozel = V.subeKaynagi(D, p.id);
+        if (!ozel.tip) return hata('Bu şubede özel bir yayın yok.');
+        const b = marka(p.brand_id);
+        if (!await onaySor({
+          baslik: 'Şube genel yayına dönsün mü?',
+          govde: `${p.label} için verilen “${ozel.ad}” yayını kaldırılır; şube ${b ? b.name + ' markasının' : 'markanın'} genel yayınını çalar.`,
+          onayMetni: 'GENEL YAYINA DÖNDÜR'
+        })) return;
+        const { error } = await client.from('player_broadcast').delete().eq('player_id', p.id);
+        if (error) {
+          return hata(error.code === 'PGRST205'
+            ? 'Şubeye özel yayın tablosu kurulmamış: supabase/radio-subeye-ozel-yayin.sql dosyasını çalıştırın.'
+            : 'Şube yayını kaldırılamadı: ' + error.message);
+        }
+        if (state.yayin && state.yayin.playerId === p.id) { state.yayin.kaynak = ''; state.yayin.parcaId = ''; }
+        await yenile(false);
+        bildir(p.label + ' markanın genel yayınına döndü.');
+        return;
+      }
       case 'copy':
         {
           const eski = hedef.textContent;
@@ -925,7 +999,7 @@
         setTimeout(() => { hedef.textContent = 'LİNK'; }, 1600);
         return;
       }
-      // "YAYINI AÇ bir şey yapmadı" durumunu yerinden anlamak için: oynatıcının
+      // "Şubedeki cihaz çalmıyor" durumunu yerinden anlamak için: oynatıcının
       // kullandığı iki okuma çağrısını yapar. radio_ping BİLİNÇLİ olarak
       // çağrılmaz — ping, cihazı şubeye kilitler; panelden sınarken kilidi
       // yöneticinin tarayıcısına bağlamak istemeyiz.
@@ -1535,28 +1609,6 @@
 
     const act = hedef.dataset ? hedef.dataset.act : null;
 
-    if (act === 'live-source') {
-      // Marka geneli: bütün şubelerin varsayılanı. Şube çekmecesinden de
-      // seçilebilir, o yüzden hangi şubeden gelindiğini hatırlarız.
-      const [tur, deger] = (hedef.value || ':').split(':');
-      const geriSube = hedef.dataset.player || null;
-      const { error } = await client.from('brand_broadcast').upsert({
-        brand_id: hedef.dataset.id,
-        folder_id: tur === 'folder' ? deger : null,
-        playlist_id: tur === 'playlist' ? deger : null,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'brand_id' });
-      if (error) return hata('Yayın güncellenemedi: ' + error.message);
-      await yenile(false);
-      // Çekmeceden seçildiyse tazele: kaynak adı ve "bu şubeye özel" durumu
-      // yeni hâli göstersin.
-      if (geriSube && D.players.some(x => x.id === geriSube)) {
-        cekmeceAc(V.subeCekmecesi(geriSube, D, ui));
-      }
-      bildir(deger ? 'Markanın genel yayını güncellendi: bütün şubeler bu kaynağı çalar.' : 'Markanın genel yayını durduruldu.');
-      return;
-    }
-
     // Yayın başlatma ekranı: seçimler yalnız ekranda ilerler, hiçbiri kendi
     // başına yayına geçmez. Ekran her seçimde güncel hâliyle yeniden çizilir.
     if (act === 'yayin-marka' || act === 'yayin-sube' || act === 'yayin-kaynak' || act === 'yayin-parca') {
@@ -1575,32 +1627,6 @@
         s.parcaId = hedef.value;
       }
       ciz();
-      return;
-    }
-
-    if (act === 'player-source') {
-      // Şubeye özel yayın: seçim boşaltılırsa kayıt silinir ve şube markanın
-      // genel yayınına döner. Bu kayıt yalnızca bu şubeyi etkiler; markanın
-      // diğer şubeleri genel yayında kalır.
-      const [tur, deger] = (hedef.value || ':').split(':');
-      const playerId = hedef.dataset.id;
-      if (!D.players.some(x => x.id === playerId)) return hata('Şube bulunamadı.');
-      const { error } = deger
-        ? await client.from('player_broadcast').upsert({
-            player_id: playerId,
-            folder_id: tur === 'folder' ? deger : null,
-            playlist_id: tur === 'playlist' ? deger : null,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'player_id' })
-        : await client.from('player_broadcast').delete().eq('player_id', playerId);
-      if (error) {
-        return hata(error.code === 'PGRST205'
-          ? 'Şubeye özel yayın tablosu kurulmamış: supabase/radio-subeye-ozel-yayin.sql dosyasını çalıştırın.'
-          : 'Şube yayını güncellenemedi: ' + error.message);
-      }
-      await yenile(false);
-      cekmeceAc(V.subeCekmecesi(playerId, D, ui));
-      bildir(deger ? 'Bu şube artık seçilen kaynağı çalacak.' : 'Şube markanın genel yayınına döndü.');
       return;
     }
 
@@ -1790,7 +1816,7 @@
         <div class="field"><label for="kaynak-sec">YAYIN KAYNAĞI</label>
           <select id="kaynak-sec">${secenekler.map((s, i) =>
             `<option value="${esc(s.deger)}"${i === 0 ? ' selected' : ''}>${esc(s.ad)} · ${s.adet} parça</option>`).join('')}</select></div>
-        <p class="sub">Kaynak atanınca şube anında bu akışı çalar; sonradan markanın sayfasından değiştirilebilir.</p>`,
+        <p class="sub">Kaynak atanınca şube anında bu akışı çalar; sonradan <b>Canlı durum › Yayın başlat</b> ekranından değiştirilebilir.</p>`,
       onOnay: async () => {
         const [tur, deger] = el('kaynak-sec').value.split(':');
         const { error } = await client.from('brand_broadcast').upsert({

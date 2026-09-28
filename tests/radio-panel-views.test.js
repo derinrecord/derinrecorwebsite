@@ -556,6 +556,17 @@ test('bağlantı sınaması düğmesi her şubede bulunmaz, yalnızca çekmecede
   assert.ok(V.subeCekmecesi('p1', D, ui).includes('BAĞLANTIYI SINA'));
 });
 
+// Panel cihaz sayfasını açmaz: o sayfada da "YAYINI BAŞLAT" düğmesi olduğu için
+// panelden açmak, aynı adı taşıyan ikinci bir başlatma yolu gibi görünüyordu.
+// Link yalnız kopyalanır, şube cihazında açılır.
+test('çekmece cihaz sayfasını açmaz, yayın linkini yalnız kopyalatır', () => {
+  const html = V.subeCekmecesi('p1', D, ui);
+  assert.ok(html.includes('data-act="copy"'), 'yayın linki kopyalanabilmeli');
+  assert.ok(!html.includes('YAYINI AÇ'), 'cihaz sayfasını açan düğme bulunmamalı');
+  assert.ok(!/href="[^"]*radyo\.html/.test(html), 'çekmeceden cihaz sayfasına bağlantı verilmemeli');
+  assert.ok(html.includes('DOKUNUŞSUZ KURULUM'), 'dokunuşsuz kurulum yolu kalmalı');
+});
+
 // ---------- Eksik kapak işareti ----------
 // Kapaklar sahada (oynatıcı ekranı, müşteri sunumu) görünür ve kaydın kendi
 // sayfasından elle yerleştirilir. Panel ayrı bir denetim ekranı tutmaz; yalnızca

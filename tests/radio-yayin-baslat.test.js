@@ -106,6 +106,49 @@ test('şube seçilmezse yayın marka geneline verilir ve baştan başlar', () =>
   assert.ok(html.includes('baştan başlar'), 'parça seçilmediyse baştan başlar');
 });
 
+// Şube çekmecesi yayını başlatmadığı için şubeye özel yayının kaldırılması da
+// buraya taşındı: şube seçiliyken ve genelden ayrılmışken düğme görünür.
+test('genelden ayrılan şube yayın ekranından genel yayına döndürülür', () => {
+  const ozel = V.yayinView(durum({ brandId: 'b1', playerId: 'p1' }), D, ui);
+  assert.ok(ozel.includes('data-act="yayin-genel" data-id="p1"'), 'özel atama kaldırılabilmeli');
+  assert.ok(ozel.includes('GENEL YAYINA DÖNDÜR'), 'düğme metni okunmalı');
+
+  const markaGeneli = V.yayinView(durum({ brandId: 'b1' }), D, ui);
+  assert.ok(!markaGeneli.includes('data-act="yayin-genel"'),
+    'marka geneli seçiliyken kaldırılacak özel atama yok');
+
+  const genelSube = V.yayinView(durum({ brandId: 'b1', playerId: 'p2' }), D, ui);
+  assert.ok(!genelSube.includes('data-act="yayin-genel"'),
+    'genel yayındaki şubede kaldırılacak atama yok');
+});
+
+// Durdurma da tek ekrandan: marka geneli seçiliyken yayın buradan kapatılır.
+// Şube seçiliyken bu düğme çıkmaz, çünkü o karar markanın bütün şubelerini etkiler.
+test('marka geneli yayın yayın ekranından durdurulur', () => {
+  const html = V.yayinView(durum({ brandId: 'b1' }), D, ui);
+  assert.ok(html.includes('data-act="yayin-durdur" data-id="b1"'), 'marka geneli yayın durdurulabilmeli');
+
+  const subeSecili = V.yayinView(durum({ brandId: 'b1', playerId: 'p2' }), D, ui);
+  assert.ok(!subeSecili.includes('data-act="yayin-durdur"'),
+    'şube seçiliyken durdurma düğmesi marka geneline yazmamalı');
+
+  const yayinsiz = Object.assign({}, D, { broadcast: [] });
+  assert.ok(!V.yayinView(durum({ brandId: 'b1' }), yayinsiz, ui).includes('data-act="yayin-durdur"'),
+    'yayını olmayan markada durdurma düğmesi çıkmamalı');
+});
+
+// Marka sayfası marka ayarlarını tutar; kaynak seçimi (başlat/durdur) tek yerde,
+// yayın başlat ekranında kalır.
+test('marka sayfası yayın kaynağını değiştirmez, yayın ekranına yollar', () => {
+  const { html } = V.gorunum(
+    { nav: 'musteri', sub: 'markalar', openFolder: null, openBrand: 'b1', openPlaylist: null, q: '' }, D, ui);
+
+  assert.ok(html.includes('AKTİF KLASÖR'), 'mevcut yayın durumu görünmeli');
+  assert.ok(html.includes('data-act="marka-yayin-ac" data-id="b1"'), 'yayın ekranına geçiş düğmesi olmalı');
+  assert.ok(html.includes('MARKAYI DURDUR'), 'markayı yayına al/durdur düğmesi kalmalı');
+  assert.ok(!html.includes('data-act="live-source"'), 'marka sayfasından kaynak yazılmamalı');
+});
+
 test('mevcut durum tablosu marka genelini ve şubeye özel yayını ayırır', () => {
   const html = V.yayinView(durum({ brandId: 'b1' }), D, ui);
 

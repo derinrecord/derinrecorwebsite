@@ -28,10 +28,20 @@ test('yayın başlatma ekranı seçimleri ancak düğmeyle yayına alır', () =>
   // Seçim dinleyicileri yalnız ekranı tazeler; sunucuya yazmaz.
   const secim = source.slice(
     source.indexOf("if (act === 'yayin-marka'"),
-    source.indexOf("if (act === 'player-source'")
+    source.indexOf("if (act === 'req-status'")
   );
   assert.ok(secim.includes('ciz()'), 'seçim ekranı yeniden çizmeli');
   assert.ok(!secim.includes('client.from('), 'seçim tek başına yayına yazmamalı');
+
+  // Şube çekmecesi yayın başlatmanın ikinci yolu değildir: yalnız durumu
+  // gösterip yöneticiyi yayın ekranına taşır, geri alma kararı da oradan verilir.
+  assert.match(source, /case 'yayin-ac'/);
+  assert.match(source, /case 'yayin-genel'/);
+  // Marka sayfasındaki kaynak seçicisi kaldırıldı: başlatma/durdurma da yalnız
+  // yayın ekranında. Marka sayfası oraya yollar.
+  assert.match(source, /case 'marka-yayin-ac'/);
+  assert.match(source, /case 'yayin-durdur'/);
+  assert.ok(!source.includes("'live-source'"), 'marka sayfasından kaynak yazılmamalı');
 });
 
 test('abonelikler ve talepler ayrı menü girdileri olarak kalır', () => {
