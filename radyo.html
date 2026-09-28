@@ -8,7 +8,7 @@
 <style>
   /* Kafedeki oynatıcı ekranı. Görsel dil ana sayfayla aynı: siyah zemin,
      pembe (magenta) ana renk, sarı bant, kırmızı vurgu; yarım ton nokta
-     dokusu, dönen plak ve ses dalgası. Marka işareti çizilmez: kapakta
+     dokusu ve ses dalgası. Marka işareti çizilmez: kapakta
      markanın kendi logosu (assets/logo.png) durur. Kurallar tek bir :root
      değişken setinden yönetilir. */
   :root{
@@ -52,7 +52,7 @@
         -webkit-mask-image:radial-gradient(circle 250px at 100% 0,#000,transparent 100%);
         mask-image:radial-gradient(circle 250px at 100% 0,#000,transparent 100%)}
 
-  /* ---- Kapak: arkasında dönen plak, önde yayının kapağı ---- */
+  /* ---- Kapak: yayının kapağı (varsayılan: markanın logosu) ---- */
   /* Kapak yokken (kapak_path boş) kutu çökmesin: yükseklik kare oranla sabit. */
   .kapak-alani{position:relative;z-index:1;width:200px;aspect-ratio:1;margin:6px auto 40px;
         display:flex;align-items:center;justify-content:center}
@@ -62,13 +62,6 @@
   .kapak-alani::after{content:"";position:absolute;inset:0;margin:auto;width:180px;height:180px;
         background:url('assets/logo.png') center/cover no-repeat;z-index:0;
         border:2px solid var(--line-2);box-shadow:9px 9px 0 var(--pink);pointer-events:none}
-  /* inset+auto marj: plak, dönerken de tam ortada kalsın (transform serbest). */
-  .plak{position:absolute;inset:0;margin:auto;width:118%;aspect-ratio:1;border-radius:50%;z-index:0;
-        background:
-          radial-gradient(circle,var(--yellow) 0 6%,transparent 6.4%),
-          repeating-radial-gradient(circle,rgba(244,241,233,.07) 0 1.5px,transparent 1.5px 5px),
-          radial-gradient(circle at 34% 28%,#2c2630,#0d0c10 64%);
-        animation:plakDon 7s linear infinite}
   @keyframes plakDon{to{transform:rotate(360deg)}}
   /* Saydam kapak gelse bile altındaki logo görünmesin: kutu hep dolu. */
   .cover{position:relative;z-index:1;width:180px;height:180px;object-fit:cover;display:none;
@@ -144,7 +137,7 @@
     .cover{width:150px;height:150px}
   }
   @media(prefers-reduced-motion:reduce){
-    body::before,body::after,.plak,.dalga i,.dot,
+    body::before,body::after,.dalga i,.dot,
     .playlist li.is-playing::after{animation:none}
   }
 </style>
@@ -152,7 +145,6 @@
 <body>
 <div class="wrap">
   <div class="kapak-alani">
-    <div class="plak" aria-hidden="true"></div>
     <img class="cover" id="cover" alt="">
   </div>
   <h1 id="brand">Bağlanıyor…</h1>
@@ -174,6 +166,6 @@
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="radio-playlist-queue.js?v=20260926a"></script>
-<script src="radyo.js?v=20260928d"></script>
+<script src="radyo.js?v=20260928e"></script>
 </body>
 </html>

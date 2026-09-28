@@ -111,6 +111,65 @@ body{background:#0b0b0d;padding:26px}
   return;
 }
 
+// "sube" modu şube çekmecesini önizler: şubeye özel canlı yayın seçicisi ve
+// yürürlükteki kaynağın nasıl okunduğu gözle doğrulanabilsin.
+if (senaryo === 'sube') {
+  const V = require(path.join(kok, 'radyo-panel-views.js'));
+  const simdi = Date.now();
+  const snOnce = n => new Date(simdi - n * 1000).toISOString();
+  const D = {
+    brands: [{ id: 'b1', name: 'Mokka Coffee', slug: 'mokka-coffee', access_code: 'K', is_active: true }],
+    folders: [
+      { id: 'f1', name: 'Öğleden Sonra', cover_path: null, shuffle: true },
+      { id: 'f2', name: 'Sabah Açılış', cover_path: null, shuffle: true }
+    ],
+    tracks: [],
+    // Şube kendisine liste atanmış: marka genel yayını klasör olsa da bu şube
+    // "Sabah Akışı" listesini çalar.
+    players: [{
+      id: 'p1', brand_id: 'b1', label: 'Alsancak', player_key: 'a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa',
+      last_seen_at: snOnce(8), open_time: '09:00:00', close_time: '22:00:00',
+      bound_device_id: 'cihaz-1', bound_at: snOnce(600), first_ip: null, last_ip: '88.240.10.1',
+      last_ip_at: snOnce(8), is_playing: true, now_title: 'Kalabalık Caddesi', now_at: snOnce(8),
+      now_playlist_id: 'l1', now_playlist_name: 'Sabah Akışı'
+    }],
+    broadcast: [{ brand_id: 'b1', folder_id: 'f1', playlist_id: null, updated_at: snOnce(600) }],
+    playerBroadcast: [{ player_id: 'p1', folder_id: null, playlist_id: 'l1', updated_at: snOnce(300) }],
+    announcements: [],
+    playlists: [{ id: 'l1', brand_id: 'b1', name: 'Sabah Akışı', description: null, cover_path: null, shuffle: false, created_at: snOnce(600) }],
+    playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: []
+  };
+  const ui = {
+    cover: p => p, ses: p => p, anons: p => p,
+    playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
+    accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
+    now: () => simdi, saglikSonuc: () => null
+  };
+  const sayfa = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — şube çekmecesi</title>
+<style>
+${oku('radyo-panel.css')}
+body{background:#0b0b0d;padding:26px}
+.drawer{position:static;transform:none;width:auto;max-width:560px;margin:0 auto;height:auto}
+</style>
+</head>
+<body>
+<aside class="drawer open" aria-hidden="false">
+  <button class="btn sm drawer-close" type="button">KAPAT</button>
+  ${V.subeCekmecesi('p1', D, ui)}
+</aside>
+</body>
+</html>`;
+  fs.writeFileSync(ciktiYolu, sayfa);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · şube çekmecesi');
+  return;
+}
+
 // "gecmis" modu Bağlantı geçmişi ekranını önizler: şu anki durum, taraf özeti,
 // çalışma süresi, haftalık trend ve olay çizelgesi yan yana gelsin ki "sorun
 // bizde mi kafede mi" okunuşu gözle doğrulanabilsin.

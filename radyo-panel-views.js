@@ -516,7 +516,7 @@
       })
       .map(p => {
         const b = D.brands.find(x => x.id === p.brand_id);
-        const k = b ? kaynak(D, b.id) : null;
+        const k = b ? etkinKaynak(D, p) : null;
         const bagli = canliMi(p, now);
         const calan = bagli && p.is_playing
           ? ((parcaTaze(p, now) && p.now_title) || (k && k.ad) || 'çalıyor')
@@ -732,6 +732,31 @@
     return { tip: null, ad: null, kayit: b };
   }
 
+  // Şubeye özel canlı yayın (supabase/radio-subeye-ozel-yayin.sql). Marka genel
+  // kaynağı varsayılandır; şube için ayrı kayıt varsa o şube genelden ayrılır.
+  function subeKaynagi(D, playerId) {
+    const kayit = (D.playerBroadcast || []).find(x => x.player_id === playerId);
+    if (!kayit) return { tip: null, ad: null, kayit: null };
+    if (kayit.playlist_id) {
+      const pl = D.playlists.find(p => p.id === kayit.playlist_id);
+      return { tip: 'liste', ad: pl ? pl.name : 'Silinmiş liste', kayit: kayit };
+    }
+    if (kayit.folder_id) {
+      const f = D.folders.find(x => x.id === kayit.folder_id);
+      return { tip: 'klasör', ad: f ? f.name : 'Silinmiş klasör', kayit: kayit };
+    }
+    return { tip: null, ad: null, kayit: null };
+  }
+
+  // Şubenin gerçekten çalacağı kaynak: özel atama varsa o, yoksa markanın geneli.
+  function etkinKaynak(D, p) {
+    const ozel = subeKaynagi(D, p.id);
+    return ozel.tip ? ozel : kaynak(D, p.brand_id);
+  }
+
+  const subeKullanan = (D, playlistId) => (D.playerBroadcast || [])
+    .filter(x => x.playlist_id === playlistId).length;
+
   const kapakYolu = (path, ui) => (path ? ui.cover(path) : null);
 
   function kapakHucre(path, ui, yedek, ekSinif) {
@@ -834,13 +859,13 @@
     const satirlar = D.players
       .filter(p => {
         const marka = D.brands.find(b => b.id === p.brand_id);
-        const k = kaynak(D, p.brand_id);
+        const k = etkinKaynak(D, p);
         return hit(q, p.label, marka ? marka.name : '', k.ad || '');
       })
       .sort((a, b) => (a.label || '').localeCompare(b.label || '', 'tr'))
       .map(p => {
         const marka = D.brands.find(b => b.id === p.brand_id);
-        const k = kaynak(D, p.brand_id);
+        const k = etkinKaynak(D, p);
         return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
           <td><div class="cell-main"><span class="cover">📻</span><span><b>${esc(p.label)}</b>
             <span class="sub">${esc(marka ? marka.name : '—')}</span></span></div></td>
@@ -902,11 +927,15 @@
   function saglikTani(p, D, now) {
     const t = now || Date.now();
     const b = D.brands.find(x => x.id === p.brand_id);
+    // Şubeye özel kaynak (supabase/radio-subeye-ozel-yayin.sql) marka genelini
+    // geçersiz kılar: denetim gerçekte çalınacak kaynağa bakmalı.
+    const ozel = subeKaynagi(D, p.id);
     const yayin = D.broadcast.find(x => x.brand_id === p.brand_id);
-    const parcalar = kaynakParcalari(D, yayin);
+    const etkin = ozel.kayit || yayin;
+    const parcalar = kaynakParcalari(D, etkin);
     const ab = D.subscriptions.find(s => s.brand_id === p.brand_id);
     const bitis = abonelikBitis(ab);
-    const k = kaynak(D, p.brand_id);
+    const k = ozel.tip ? ozel : kaynak(D, p.brand_id);
     const sorunlar = [];
     // Her sorunun yanında oyunda tek tıkla çözümü de taşınır (tip + etiket +
     // hedef). Böylece ekran “ne eksik” ile “nasıl düzeltilir” ayrışmasın.
@@ -923,17 +952,19 @@
         : 'Yayın anahtarı boş; kopyalanan link oynatıcıyı açmaz.');
       duzeltmeler.push({ tip: 'anahtar', etiket: 'ANAHTARI YENİLE' });
     }
-    if (!yayin) {
+    if (!etkin) {
       sorunlar.push('Canlı yayın kaydı yok: markaya hiç kaynak atanmamış.');
       duzeltmeler.push({ tip: 'kaynak', etiket: 'KAYNAK ATA' });
-    } else if (!k.tip) {
+    } else if (!ozel.kayit && !k.tip) {
       sorunlar.push('Canlı yayına kaynak seçilmemiş (klasör ya da liste).');
       duzeltmeler.push({ tip: 'kaynak', etiket: 'KAYNAK SEÇ' });
     } else if (!parcalar.length) {
-      sorunlar.push('Seçili kaynakta hiç parça yok.');
+      sorunlar.push(ozel.kayit
+        ? 'Bu şubeye özel seçilen kaynakta hiç parça yok.'
+        : 'Seçili kaynakta hiç parça yok.');
       duzeltmeler.push({
         tip: 'parca', etiket: 'PARÇA YÜKLE',
-        hedef: yayin.playlist_id ? '#/listeler/' + yayin.playlist_id : '#/klasorler/' + yayin.folder_id
+        hedef: etkin.playlist_id ? '#/listeler/' + etkin.playlist_id : '#/klasorler/' + etkin.folder_id
       });
     }
     if (!ab) {
@@ -1261,11 +1292,15 @@
       .map(p => {
         // Personel cihazdan başka bir liste seçtiyse şube satırında görünsün:
         // marka sayfası "şubeler gerçekten ne çalıyor" sorusunun cevabı olsun.
-        const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
+        // Şubeye özel yayın verildiyse karşılaştırma onun üzerinden yapılır.
+        const ozel = subeKaynagi(D, p.id);
+        const kp = ozel.tip ? ozel : k;
+        const farkli = p.is_playing ? personelListesi(p, kp, D, now) : null;
         return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
-        <td><b>${esc(p.label)}</b><span class="sub">${esc(p.player_key)}</span>${farkli
+        <td><b>${esc(p.label)}</b><span class="sub">${esc(p.player_key)}</span>${ozel.tip
+          ? `<span class="sub">özel yayın: <b>${esc(ozel.ad)}</b></span>` : ''}${farkli
           ? `<span class="sub">çalıyor: <b>${esc(farkli.ad)}</b></span>` : ''}</td>
-        <td class="tight">${bagliChip(p, now)}${farkli ? chip('gold', 'FARKLI LİSTE', true) : ''}</td>
+        <td class="tight">${bagliChip(p, now)}${ozel.tip ? chip('gold', 'ÖZEL YAYIN', true) : ''}${farkli ? chip('gold', 'FARKLI LİSTE', true) : ''}</td>
         <td class="tight">${p.last_seen_at ? esc(tarih(p.last_seen_at)) : 'hiç bağlanmadı'}</td>
         <td class="tight">${kilitChip(p)}</td>
         <td><div class="row-actions">
@@ -1279,7 +1314,7 @@
       const adet = D.playlistTracks.filter(x => x.playlist_id === pl.id).length;
       const kapaksiz = D.playlistTracks.filter(x => x.playlist_id === pl.id)
         .map(x => D.tracks.find(t => t.id === x.track_id)).filter(kapakYok).length;
-      const kullanan = D.broadcast.filter(x => x.playlist_id === pl.id).length;
+      const kullanan = D.broadcast.filter(x => x.playlist_id === pl.id).length + subeKullanan(D, pl.id);
       return `<tr class="selectable" data-act="list-open" data-id="${esc(pl.id)}">
         <td><b>${esc(pl.name)}</b><span class="sub">${esc(pl.description || 'açıklama yok')}${kapakYok(pl) ? ' · kapağı yok' : ''}</span></td>
         <td class="tight">${adet} parça${kapaksiz ? ' · ' + kapaksiz + ' kapağı yok' : ''}</td>
@@ -1312,7 +1347,7 @@
         k.ad || 'yayın atanmadı'])}
       <div class="panel" style="margin-bottom:18px">
         <h3>CANLI YAYIN</h3>
-        <p class="panel-sub">Markanın bütün şubeleri bu akışı çalar. Marka pasifse, canlı yayın kaydı yoksa ya da kaynak seçilmemişse şubeler yayın bekler ve oynatıcı “bu link tanınmadı” der.</p>
+        <p class="panel-sub">Markanın bütün şubeleri bu akışı çalar. Bir şubeye kendi yayınını verdiyseniz (şube satırında <b>YÖNET ›</b> → CANLI YAYIN) yalnız o şube buradan ayrılır. Marka pasifse, canlı yayın kaydı yoksa ya da kaynak seçilmemişse şubeler yayın bekler ve oynatıcı “bu link tanınmadı” der.</p>
         <div class="row" style="margin-bottom:16px">
           ${b.is_active === false ? chip('danger', 'MARKA PASİF — YAYIN VERİLMEZ') : chip('live', 'MARKA AKTİF', true)}
           <button class="btn${b.is_active === false ? ' primary' : ''}" data-act="brand-active" data-id="${esc(b.id)}" type="button">${b.is_active === false ? 'MARKAYI YAYINA AL' : 'MARKAYI DURDUR'}</button>
@@ -1443,7 +1478,7 @@
         const adet = D.playlistTracks.filter(x => x.playlist_id === pl.id).length;
         const kapaksiz = D.playlistTracks.filter(x => x.playlist_id === pl.id)
           .map(x => D.tracks.find(t => t.id === x.track_id)).filter(kapakYok).length;
-        const kullanan = D.broadcast.filter(x => x.playlist_id === pl.id).length;
+        const kullanan = D.broadcast.filter(x => x.playlist_id === pl.id).length + subeKullanan(D, pl.id);
         return `<tr class="selectable" data-act="list-open" data-id="${esc(pl.id)}">
           <td><div class="cell-main">${pl.cover_path
             ? `<span class="cover"><img src="${esc(kapakYolu(pl.cover_path, ui))}" alt="" loading="lazy"></span>`
@@ -1690,7 +1725,13 @@
     if (!p) return '';
     const b = D.brands.find(x => x.id === p.brand_id);
     const now = ui.now();
-    const k = b ? kaynak(D, b.id) : null;
+    // Şubenin gerçekte çalacağı kaynak: özel atama varsa o, yoksa markanın geneli.
+    const genel = b ? kaynak(D, b.id) : null;
+    const ozel = subeKaynagi(D, p.id);
+    const k = ozel.tip ? ozel : genel;
+    const listeler = D.playlists.filter(x => x.brand_id === p.brand_id);
+    const ozelSecim = ozel.tip === 'liste' ? 'playlist:' + ozel.kayit.playlist_id
+      : (ozel.tip === 'klasör' ? 'folder:' + ozel.kayit.folder_id : '');
     const link = ui.playerBase() + p.player_key;
     const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
     const kilitBilgi = [
@@ -1708,6 +1749,26 @@
       ${farkli
         ? `<p class="sub">Personel cihazdan başka bir liste seçmiş: <b>${esc(farkli.ad)}</b> · yönetimin atadığı kaynak: <b>${esc(k && k.ad ? k.ad : 'atanmamış')}</b></p>`
         : ''}
+
+      <div class="block"><h4>CANLI YAYIN — BU ŞUBE</h4>
+        <p class="sub">Boş bırakılırsa markanın genel yayını çalar${genel && genel.ad ? ' (<b>' + esc(genel.ad) + '</b>)' : ''}. Buradan seçtiğin kaynak <b>yalnız bu şubede</b> çalar; markanın diğer şubeleri genel yayında kalır.</p>
+        <div class="form-grid">
+          <div class="field"><label for="sube-kaynak">YAYIN KAYNAĞI</label>
+            <select id="sube-kaynak" data-act="player-source" data-id="${esc(p.id)}">
+              <option value="">— markanın genel yayını —</option>
+              <optgroup label="Yayın klasörleri">
+                ${D.folders.map(f => `<option value="folder:${esc(f.id)}"${ozelSecim === 'folder:' + f.id ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}
+              </optgroup>
+              <optgroup label="${esc(b ? b.name : 'Marka')} listeleri">
+                ${listeler.map(pl => `<option value="playlist:${esc(pl.id)}"${ozelSecim === 'playlist:' + pl.id ? ' selected' : ''}>${esc(pl.name)}</option>`).join('')}
+              </optgroup>
+            </select></div>
+          <div class="row" style="align-self:end">
+            ${ozel.tip ? chip('gold', 'BU ŞUBEYE ÖZEL', true) : chip('off', 'GENEL YAYIN')}
+          </div>
+        </div>
+        <span class="sub" id="sube-kaynak-msg"></span>
+      </div>
 
       <div class="block"><h4>YAYIN LİNKİ</h4>
         <div class="key">${esc(link)}</div>

@@ -292,12 +292,15 @@
 
   // ---------- Veri ----------
   async function veriYukle() {
-    const [brands, folders, tracks, players, broadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans] = await Promise.all([
+    const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec,cover_path').order('sort_order'),
       client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at,open_time,close_time,bound_device_id,bound_at,first_ip,last_ip,last_ip_at,is_playing').order('label'),
       client.from('brand_broadcast').select('brand_id,folder_id,playlist_id,shuffle,updated_at'),
+      // Şubeye özel yayın (supabase/radio-subeye-ozel-yayin.sql). Tablo henüz
+      // kurulmadıysa sorgu hata döner: bütün şubeler genel yayında sayılır.
+      client.from('player_broadcast').select('player_id,folder_id,playlist_id,updated_at'),
       client.from('radio_announcements').select('id,brand_id,storage_path,label,created_at').order('created_at', { ascending: false }).limit(50),
       client.from('brand_playlists').select('id,brand_id,name,description,cover_path,shuffle,created_at').order('created_at'),
       client.from('brand_playlist_tracks').select('id,playlist_id,track_id,sort_order').order('sort_order'),
@@ -313,7 +316,8 @@
     ]);
     D = {
       brands: brands.data || [], folders: folders.data || [], tracks: tracks.data || [],
-      players: players.data || [], broadcast: broadcast.data || [], announcements: announcements.data || [],
+      players: players.data || [], broadcast: broadcast.data || [],
+      playerBroadcast: playerBroadcast.data || [], announcements: announcements.data || [],
       playlists: playlists.data || [], playlistTracks: playlistTracks.data || [],
       coffeeAttempts: coffeeAttempts.data || [], olaylar: olaylar.data || [],
       subscriptions: subscriptions.data || [], plans: plans.data || [],
@@ -1480,6 +1484,32 @@
       if (error) return hata('Yayın güncellenemedi: ' + error.message);
       await yenile(false);
       bildir(deger ? 'Canlı yayın güncellendi.' : 'Yayın durduruldu.');
+      return;
+    }
+
+    if (act === 'player-source') {
+      // Şubeye özel yayın: seçim boşaltılırsa kayıt silinir ve şube markanın
+      // genel yayınına döner. Bu kayıt yalnızca bu şubeyi etkiler; markanın
+      // diğer şubeleri genel yayında kalır.
+      const [tur, deger] = (hedef.value || ':').split(':');
+      const playerId = hedef.dataset.id;
+      if (!D.players.some(x => x.id === playerId)) return hata('Şube bulunamadı.');
+      const { error } = deger
+        ? await client.from('player_broadcast').upsert({
+            player_id: playerId,
+            folder_id: tur === 'folder' ? deger : null,
+            playlist_id: tur === 'playlist' ? deger : null,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'player_id' })
+        : await client.from('player_broadcast').delete().eq('player_id', playerId);
+      if (error) {
+        return hata(error.code === 'PGRST205'
+          ? 'Şubeye özel yayın tablosu kurulmamış: supabase/radio-subeye-ozel-yayin.sql dosyasını çalıştırın.'
+          : 'Şube yayını güncellenemedi: ' + error.message);
+      }
+      await yenile(false);
+      cekmeceAc(V.subeCekmecesi(playerId, D, ui));
+      bildir(deger ? 'Bu şube artık seçilen kaynağı çalacak.' : 'Şube markanın genel yayınına döndü.');
       return;
     }
 

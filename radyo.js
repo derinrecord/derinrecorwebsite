@@ -636,6 +636,13 @@
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'brand_broadcast', filter: 'brand_id=eq.' + brandId },
         () => fetchBroadcast())
+      // Şubeye özel yayın (supabase/radio-subeye-ozel-yayin.sql): yönetim bu
+      // şubeye ayrı bir kaynak verdiğinde ya da geri aldığında cihaz beklemeden
+      // yürürlükteki kaynağı yeniden alır. Filtresiz dinleriz: hangi şubeye
+      // dokunulduğunu sunucu radio_now_playing ile zaten yanıtlıyor.
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'player_broadcast' },
+        () => fetchBroadcast())
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'radio_announcements', filter: 'brand_id=eq.' + brandId },
         payload => {
