@@ -17,6 +17,9 @@
     const el = byId('tani');
     if (!el) return;
     if (!kod) { el.textContent = ''; el.hidden = true; return; }
+    // Ekranda görünen teşhis kodu geçmişe de düşsün: sahadaki ekip "ne yazıyor?"
+    // diye sorduğunda panel geriye dönük olarak ne olduğunu gösterebilsin.
+    olay('hata', kod);
     el.hidden = false;
     el.textContent = 'Teşhis kodu: ' + kod;
   }
@@ -43,6 +46,14 @@
   // benim atadığımı mı çalıyor, personel başka bir liste mi seçmiş" sorusunu
   // cevaplayabilir. {id, ad} ya da liste yoksa null (klasör kaynağı).
   let calanListe = null;
+  // ---- Bağlantı geçmişi için tutulan durum ---------------------------------
+  // Yayın gerçekten akıyor muydu? Duraklatmayı biz mi istedik? Panelin
+  // "bizde mi kafede mi duraklatıldı" ayrımı bu üç değişkene dayanır.
+  let yayinAktif = false;        // ses gerçekten çalıyordu
+  let calmaBildirildi = false;   // bu oturumda "çalıyor" olayı yazıldı mı
+  let duraklamaOldu = false;     // duraklamadan sonra ilk çalma = "devam"
+  let durdurmaSebebi = null;     // koddan gelen duraklatmanın sebebi
+  let sonOlay = { kod: null, an: 0 };
 
   // Sunucu yayın anahtarını uuid olarak bekler. Paneldeki kayıtta anahtar boş
   // kalmışsa kopyalanan bağlantı "...?key=null" olur; sunucu bunu uuid sanıp
@@ -58,6 +69,57 @@
       return id;
     } catch { return null; }
   })();
+
+  // ---- Bağlantı geçmişi ---------------------------------------------------
+  // Panelde "bu kafe ne zaman bağlandı, hangi listeyi seçti, yayını kim
+  // duraklattı" sorularının cevabı olsun diye oynatıcı sunucuya olay bırakır.
+  // Yalnızca **durum değiştiğinde** yazar (nabız atmaz), aynı arızayı da yarım
+  // saatte birden çok yazmaz: geçmiş okunur kalsın. Geçmiş tablosu henüz
+  // kurulmadıysa çağrı başarısız olur; oynatıcı bunu yok sayıp çalmaya devam
+  // eder (yayın, panelin bilmesine bağlı değildir).
+  // Arıza bildirimleri seyrek yazılır: bozuk bir şube iki dakikada bir hatayı
+  // yeniden görür, takılan bir parça ise saniyeler içinde yüzlerce kez
+  // tekrarlanabilir. Sabit bir arıza günde birkaç satırla anlatılır, geçmiş de
+  // okunur kalır. Durum değişimleri (çaldı, durdu, liste seçildi) anında yazılır.
+  const SEYREK_PENCERE = { hata: 21600000, kilitlendi: 21600000, takildi: 1800000, yuklenemedi: 1800000 };
+
+  function olay(kind, detail) {
+    if (!client || !key || !gecerliAnahtar(key)) return;
+    const anahtar = kind + '|' + (detail || '');
+    const an = Date.now();
+    if (sonOlay.kod === anahtar && an - sonOlay.an < (SEYREK_PENCERE[kind] || 5000)) return;
+    sonOlay = { kod: anahtar, an };
+    try {
+      Promise.resolve(client.rpc('radio_log_event', {
+        p_player_key: key, p_kind: kind, p_detail: detail || null, p_device_id: deviceId
+      })).catch(() => {});
+    } catch { /* geçmiş "olsa iyi olur" katmanıdır: yayını etkilemez */ }
+  }
+
+  // Açılışın hangi cihazdan geldiğini okumak için kısa bir özet. IP sunucu
+  // tarafında tutuluyor; burada yalnızca tarayıcı/işletim sistemi ayrımı var.
+  function cihazOzeti() {
+    const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+    const tarayici = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome'
+      : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'tarayıcı';
+    const isletim = /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'macOS'
+      : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS'
+      : /Linux/.test(ua) ? 'Linux' : '';
+    return tarayici + (isletim ? ' · ' + isletim : '');
+  }
+
+  // Yayını biz durduruyorsak sebebini not ederiz; "pause" olayı geldiğinde bu
+  // not okunur. Not yoksa duraklatma cihazdan gelmiştir.
+  function durdur(sebep) {
+    durdurmaSebebi = sebep;
+    audio.pause();
+  }
+
+  // Geçmiş satırlarında "hangi parça, hangi liste" okunsun.
+  const parcaEtiketi = track => {
+    const ad = (track && track.title) ? track.title : 'parça';
+    return calanListe && calanListe.ad ? ad + ' · ' + calanListe.ad : ad;
+  };
 
   const audioUrl = path => client.storage.from('radio-audio').getPublicUrl(path).data.publicUrl;
   const coverUrl = path => client.storage.from('radio-covers').getPublicUrl(path).data.publicUrl;
@@ -137,7 +199,7 @@
       // Listeyi boş bırakırız: burada "henüz şarkı eklenmemiş" yazmak, yayın
       // çalışıyormuş da parça yokmuş gibi okunuyor ve ekip yanlış yere bakıyor.
       byId('playlist').innerHTML = '';
-      audio.pause();
+      durdur('yayin-yok');
       // radio_now_playing boş döndüğünde dört ayrı arıza aynı ekrana düşer:
       // anahtar hiç tanınmıyor, marka pasif, canlı yayın kaynağı atanmamış ya da
       // abonelik geçersiz. Aşağıda bunları tek tek ayırıp doğrusunu söyleriz,
@@ -211,7 +273,7 @@
 
     if (!tracks.length) {
       queue = [];
-      audio.pause();
+      durdur('parca-yok');
       byId('now').textContent = 'Yayın bekleniyor';
       setState('Bu klasörde henüz parça yok.');
       return;
@@ -234,9 +296,11 @@
     wasOpen = open;
     if (open) {
       setState('Mesai başladı — yayın açıldı.');
+      olay('mesai', 'basladi');
       if (!announcing) play();
     } else {
-      audio.pause();
+      durdur('mesai-disi');
+      olay('mesai', 'kapandi');
       byId('now').textContent = 'Yayın dışı';
       setState('Mesai saati dışında. Açılışta otomatik başlar.');
     }
@@ -258,6 +322,8 @@
         watchdogStuckCount = 0;
         setState('Yayın takıldı, yeniden bağlanılıyor…');
         const track = queue[index % queue.length];
+        olay('takildi', parcaEtiketi(track));
+        durdurmaSebebi = 'parca-degisti';
         audio.src = audioUrl(track.storage_path);
         audio.load();
         audio.play().catch(() => {});
@@ -269,6 +335,9 @@
     if (!queue.length || announcing || !isOpen()) return;
     const track = queue[index % queue.length];
     markPlaying(track.track_id);
+    // Kaynak değiştirilirken tarayıcı 'pause' olayı yollayabilir; bunu
+    // "yayın durduruldu" diye bildirmemek için sebebi burada işaretleriz.
+    durdurmaSebebi = 'parca-degisti';
     audio.src = audioUrl(track.storage_path);
     audio.volume = 1;
     audio.play().then(() => {
@@ -277,8 +346,17 @@
       byId('start').hidden = true;
       setState('');
       calaniBildir(track);
+      durdurmaSebebi = null;
+      // Geçmişe yalnızca yayın gerçekten başladığında ve oturumda bir kez
+      // yazarız: parça değişimi akışın normal seyri, olay değil.
+      if (!calmaBildirildi) {
+        calmaBildirildi = true;
+        olay(duraklamaOldu ? 'devam' : 'caliyor', parcaEtiketi(track));
+        duraklamaOldu = false;
+      }
     }).catch(() => {
       // Tarayıcı sesli otomatik çalmayı engelledi: tek bir dokunuş yeter.
+      durdurmaSebebi = null;
       byId('start').hidden = false;
       setState('Tarayıcı otomatik çalmayı engelledi. Başlatmak için butona dokunun.');
     });
@@ -294,6 +372,7 @@
     if (!isOpen()) {
       // Mesai dışında başlatılacak bir şey yok; düğme de gerekmiyor.
       byId('start').hidden = true;
+      olay('mesai', 'disi');
       checkHours();
       return;
     }
@@ -350,10 +429,35 @@
     }
     play();
   });
-  audio.addEventListener('error', () => { index++; setTimeout(play, 1200); });
+  audio.addEventListener('error', () => {
+    // Ses dosyası açılamadı: geçmişte bu, "parça çalınamadı" olarak okunur.
+    const track = queue[index % queue.length];
+    olay('yuklenemedi', parcaEtiketi(track));
+    index++;
+    setTimeout(play, 1200);
+  });
 
   audio.addEventListener('play', () => reportPlaying(true));
-  audio.addEventListener('pause', () => reportPlaying(false));
+  // Ses gerçekten akıyor mu? Duraklatmanın yayından mı cihazdan mı geldiğini
+  // ancak bu olayların sırasına bakarak ayırabiliriz.
+  audio.addEventListener('playing', () => { yayinAktif = true; durdurmaSebebi = null; });
+  audio.addEventListener('pause', () => {
+    reportPlaying(false);
+    const sebep = durdurmaSebebi || 'cihaz';
+    durdurmaSebebi = null;
+    // Parça bitişi ve parça geçişi yayının durması değildir: tarayıcı bunlarda
+    // da 'pause' yollar, geçmişe yazmayız.
+    const bitti = audio.ended === true
+      || (audio.duration > 0 && audio.currentTime >= audio.duration - 0.75);
+    if (!yayinAktif || sebep === 'parca-degisti' || bitti) return;
+    yayinAktif = false;
+    calmaBildirildi = false;
+    duraklamaOldu = true;
+    // Sekme arka plandayken durduysa bunu ayırt ederiz: personel durdurmuş gibi
+    // görünmesin.
+    const gizli = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    olay('durakladi', sebep === 'cihaz' && gizli ? 'cihaz-gizli' : sebep);
+  });
 
   function reportPlaying(playing) {
     if (!client || !key) return;
@@ -440,11 +544,14 @@
     if (!seciliListe) {
       // Otomatiğe dönüş: yönetimin atadığı kaynağı baştan kur.
       lastStamp = null;
+      // Açılıştaki geri yükleme (cal:false) bir seçim değildir: yazmayız.
+      if (cal) olay('liste_degisti', 'otomatik · yönetimin atadığı yayın');
       await fetchBroadcast({ restart: true });
       return;
     }
 
     const secilen = listeler.find(l => l.id === seciliListe);
+    if (cal) olay('liste_degisti', secilen ? secilen.name : 'seçili liste');
     const parcalar = await listeParcalariniAl(seciliListe);
     calanListe = { id: seciliListe, ad: secilen ? secilen.name : '' };
     byId('folder').textContent = (secilen ? secilen.name : 'Seçili liste')
@@ -453,7 +560,7 @@
 
     if (!parcalar.length) {
       queue = [];
-      audio.pause();
+      durdur('liste-bos');
       byId('now').textContent = 'Yayın bekleniyor';
       setState('Bu listede henüz parça yok. Başka bir liste seçin ya da parça ekletin.');
       // Boş liste seçildi: sunucuda eski parça bildirimi asılı kalmasın.
@@ -542,7 +649,8 @@
   function lockedOut() {
     queue = [];
     started = false;
-    audio.pause();
+    olay('kilitlendi', 'bu link başka bir cihaza kayıtlı');
+    durdur('cihaz-kilidi');
     byId('start').hidden = true;
     byId('brand').textContent = 'Bu cihaz yetkili değil';
     byId('now').textContent = '';
@@ -602,6 +710,10 @@
       return;
     }
     client = window.supabase.createClient(window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
+
+    // Kafe kodu/linki ne zaman açtı? Cihaz kilidi reddetse bile açılış
+    // kaydedilir: "yanlış cihazdan denendi" bilgisi panelde eksik kalmasın.
+    olay('acildi', cihazOzeti());
 
     const ilkPing = await ping();
     if (ilkPing.durum === 'kilitli') return;

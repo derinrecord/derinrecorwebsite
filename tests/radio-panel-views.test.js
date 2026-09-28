@@ -57,13 +57,15 @@ const ui = {
 
 const durum = (ek) => Object.assign({ nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '' }, ek);
 
-test('yan menüde yedi ayrı ekran ve sayıları görünür', () => {
+test('yan menüde sekiz ayrı ekran ve sayıları görünür', () => {
   const html = V.nav(durum({ nav: 'musteri', sub: 'markalar' }), {
-    players: 4, folders: 3, announcements: 2, brands: 1, playlists: 1, requests: 7
+    players: 4, folders: 3, announcements: 2, brands: 1, playlists: 1, requests: 7, olaySorun: 3
   }, { ad: 'Derin Record', alt: 'yonetici@ornek.test', basHarf: 'DR' });
 
   assert.ok(html.includes('data-nav="canli" data-sub="subeler"'), 'Canlı durum menüde olmalı');
-  ['saglik', 'klasorler', 'anonslar', 'markalar', 'listeler', 'abonelikler', 'talepler'].forEach(sub => {
+  assert.ok(html.includes('data-nav="canli" data-sub="gecmis"'), 'Bağlantı geçmişi menüde olmalı');
+  assert.ok(html.includes('>3</span>'), 'son 24 saatteki durma sayısı menüde görünmeli');
+  ['saglik', 'gecmis', 'klasorler', 'anonslar', 'markalar', 'listeler', 'abonelikler', 'talepler'].forEach(sub => {
     assert.ok(html.includes(`data-sub="${sub}"`), `${sub} menüde olmalı`);
   });
   assert.ok(html.includes('>4</span>'), 'şube sayısı menüde görünmeli');
@@ -530,11 +532,10 @@ test('bağlantı sınaması düğmesi her şubede bulunmaz, yalnızca çekmecede
   assert.ok(V.subeCekmecesi('p1', D, ui).includes('BAĞLANTIYI SINA'));
 });
 
-// ---------- KAPAK DENETİMİ ----------
-// Kapaklar (parça, liste, klasör) sahada görünür ve hepsi indirilmiş görselden
-// elle yerleştirilir. Hangi kaydın kapağının eksik kaldığını klasörleri tek tek
-// gezerek aramak yerine panel tek listede söyler ve her satırdan kapak
-// penceresini açar.
+// ---------- Eksik kapak işareti ----------
+// Kapaklar sahada (oynatıcı ekranı, müşteri sunumu) görünür ve kaydın kendi
+// sayfasından elle yerleştirilir. Panel ayrı bir denetim ekranı tutmaz; yalnızca
+// eksik kapağı olan satırı işaretler ki kullanıcı kaydı ararken gözüyle bulsun.
 const kapakVer = (kurgu, { tracks = true, playlists = true, folders = true } = {}) => ({
   ...kurgu,
   tracks: kurgu.tracks.map(t => ({ ...t, cover_path: tracks ? 'tracks/' + t.id + '.jpg' : null })),
@@ -542,42 +543,15 @@ const kapakVer = (kurgu, { tracks = true, playlists = true, folders = true } = {
   folders: kurgu.folders.map(f => ({ ...f, cover_path: folders ? 'klasorler/' + f.id + '.jpg' : null }))
 });
 
-test('kapak denetimi eksik kapakları tek listede toplar', () => {
+test('panel ayrı bir kapak denetim ekranı göstermez', () => {
   const html = V.gorunum(durum({ nav: 'icerik', sub: 'klasorler' }), D, ui).html;
-  assert.ok(html.includes('KAPAK DENETİMİ'), 'denetim klasör ekranında olmalı');
-  assert.ok(html.includes('4 EKSİK'), 'iki parça, bir liste ve bir klasörün kapağı eksik');
-  ['PARÇALAR', 'ÇALMA LİSTELERİ', 'YAYIN KLASÖRLERİ'].forEach(grup =>
-    assert.ok(html.includes(grup), `${grup} kendi grubunda listelenmeli`));
-  // Her satır kendi kaydını hedefler: kapağı olan kayıt listede yer almaz.
-  assert.ok(html.includes('data-act="track-img" data-id="t1"'));
-  assert.ok(html.includes('data-act="track-img" data-id="t2"'));
-  assert.ok(html.includes('data-act="list-img" data-id="l1"'));
-  assert.ok(html.includes('data-act="cover-open" data-id="f1"'));
-  assert.equal(html.split('KAPAK YERLEŞTİR').length - 1, 4, 'her eksik kayıt için bir düğme');
-  assert.ok(html.includes('Üsküdar &amp; Co'), 'satırda parçanın adı yazılmalı');
+  assert.ok(!html.includes('KAPAK DENETİMİ'), 'denetim paneli kaldırıldı: kapak işi kaydın kendi sayfasında');
+  assert.ok(!html.includes('KAPAK YERLEŞTİR'), 'toplu yerleştirme düğmesi çıkmaz');
+  // Kapak penceresi hâlâ kullanılabilir olmalı (parça satırındaki düğme).
+  assert.ok(V.gorunum(durum({ nav: 'icerik', openFolder: 'f1' }), D, ui).html.includes('data-act="track-img"'));
 });
 
-test('kapağı yerleştirilen kayıt denetim listesinden düşer', () => {
-  const kismi = kapakVer(D, { tracks: false, playlists: true, folders: true });
-  const html = V.gorunum(durum({ nav: 'icerik', sub: 'klasorler' }), kismi, ui).html;
-  assert.ok(html.includes('2 EKSİK'), 'kalan eksik yalnızca iki parça olmalı');
-  assert.ok(!html.includes('data-act="list-img"'), 'kapağı yerleşen liste listede kalmaz');
-  assert.ok(!html.includes('data-act="cover-open"'), 'kapağı yerleşen klasör listede kalmaz');
-  assert.equal(html.split('KAPAK YERLEŞTİR').length - 1, 2);
-});
-
-test('bütün kapaklar yerleştiyse denetim tamam der', () => {
-  const html = V.gorunum(durum({ nav: 'icerik', sub: 'klasorler' }), kapakVer(D), ui).html;
-  assert.ok(html.includes('KAPAK DENETİMİ'), 'denetim yine görünür: ne durumda olduğu okunmalı');
-  assert.ok(!html.includes('EKSİK'), 'eksik kalmadıysa sayı yazılmaz');
-  assert.ok(!html.includes('KAPAK YERLEŞTİR'), 'yerleştirme düğmesi çıkmaz');
-  assert.ok(!html.includes('KAPAK YOK'), 'satır içi uyarı çıkmaz');
-  assert.ok(html.includes('kapağı yerleştirilmiş'));
-});
-
-// Eksik kapak hem satırda hem yan menüde görünür: kullanıcı denetim panelini
-// aramak zorunda kalmadan nerede iş olduğunu okur.
-test('satırlar ve yan menü kaç kapağın eksik olduğunu söyler', () => {
+test('eksik kapak satırda işaretlenir, kapak yerleşince işaret kaybolur', () => {
   const klasorler = V.gorunum(durum({ nav: 'icerik', sub: 'klasorler' }), D, ui).html;
   assert.match(klasorler, /2 KAPAK YOK/, 'klasör satırı eksik parça sayısını yazmalı');
 
@@ -588,18 +562,117 @@ test('satırlar ve yan menü kaç kapağın eksik olduğunu söyler', () => {
   const akis = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', openPlaylist: 'l1' }), D, ui).html;
   assert.ok(akis.includes('2 KAPAK YOK'), 'liste akışı eksik kapağı sayar');
 
+  const tam = V.gorunum(durum({ nav: 'icerik', sub: 'klasorler' }), kapakVer(D), ui).html;
+  assert.ok(!tam.includes('KAPAK YOK'), 'kapağı yerleşmiş kayıt işaretlenmez');
+
   const menuler = { players: 1, folders: 1, announcements: 0, brands: 1, playlists: 1, requests: 0 };
   const kullanici = { ad: 'Yönetici', alt: '', basHarf: 'Y' };
-  const rail = V.nav(durum({ nav: 'icerik', sub: 'klasorler' }), { ...menuler, kapaksiz: 4 }, kullanici);
-  assert.ok(rail.includes('4 kapak eksik'), 'menüde eksik kapak sayısı yazılmalı');
-  const temiz = V.nav(durum({ nav: 'icerik', sub: 'klasorler' }), menuler, kullanici);
-  assert.ok(temiz.includes('Parçalar, sıra, kapak'), 'eksik yoksa normal açıklama kalmalı');
-  assert.ok(!temiz.includes('kapak eksik'));
+  const rail = V.nav(durum({ nav: 'icerik', sub: 'klasorler' }), menuler, kullanici);
+  assert.ok(rail.includes('Parçalar, sıra, kapak'), 'menü açıklaması sade kalmalı');
+  assert.ok(!rail.includes('kapak eksik'), 'menüde kapak denetimi sayacı olmaz');
 });
 
-test('kapaksizSayi parça, liste ve klasörleri birlikte sayar', () => {
-  assert.equal(V.kapaksizSayi(D), 4);
-  assert.equal(V.kapaksizSayi({ tracks: [], playlists: [], folders: [] }), 0);
-  assert.equal(V.kapaksizSayi({}), 0);
-  assert.equal(V.kapaksizSayi(kapakVer(D)), 0);
+// ---------- BAĞLANTI GEÇMİŞİ ----------
+// Kafenin oynatıcıyı açması, personelin liste seçmesi, yayının durması ve sunum
+// kodunun girilmesi tek çizelgede okunur. Panelin asıl işi “yayın durdu”
+// şikâyetini tarafa yazmak: biz mi durdurduk, kafe mi?
+const OLAYLAR = [
+  { id: 'e1', player_id: 'p1', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · macOS', at: iso(-2 * 3600000) },
+  { id: 'e2', player_id: 'p1', brand_id: 'b1', kind: 'liste_degisti', detail: 'Akşam Akışı', at: iso(-90 * 60000) },
+  { id: 'e3', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', detail: 'Kalabalık Caddesi · Akşam Akışı', at: iso(-85 * 60000) },
+  { id: 'e4', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: iso(-45 * 60000) },
+  { id: 'e5', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'mesai-disi', at: iso(-30 * 60000) },
+  { id: 'e6', player_id: 'p1', brand_id: 'b1', kind: 'hata', detail: 'anahtar-yok', at: iso(-25 * 60000) },
+  { id: 'e7', player_id: null, brand_id: 'b1', kind: 'takildi', detail: 'eski olay', at: iso(-3 * GUN) }
+];
+const DOLAY = { ...D, olaylar: OLAYLAR };
+
+test('geçmiş olayı okunur cümleye ve tarafa çevirir', () => {
+  const kafe = V.olayBilgi({ kind: 'durakladi', detail: 'cihaz' });
+  assert.equal(kafe.taraf, 'kafe');
+  assert.equal(kafe.sorun, true);
+  assert.match(kafe.ad, /cihazdan durduruldu/);
+
+  const bizde = V.olayBilgi({ kind: 'durakladi', detail: 'mesai-disi' });
+  assert.equal(bizde.taraf, 'bizde', 'mesai saati bizim ayarımız');
+  assert.match(bizde.ad, /Yayın saati bitti/);
+  assert.equal(V.olayBilgi({ kind: 'durakladi', detail: 'cihaz-kilidi' }).taraf, 'bizde');
+  assert.equal(V.olayBilgi({ kind: 'durakladi', detail: 'liste-bos' }).taraf, 'bizde');
+
+  const hata = V.olayBilgi({ kind: 'hata', detail: 'marka-pasif-veya-kaynak-yok' });
+  assert.equal(hata.taraf, 'bizde');
+  assert.match(hata.ek, /yayın kaynağı atanmamış/);
+  assert.match(hata.ek, /marka-pasif-veya-kaynak-yok/, 'teşhis kodu sahadaki ekranla eşleşmeli');
+
+  // Sebep kaydedilmemişse taraf iddia edilmez: yanlış tarafa yazmak, hiç
+  // yazmamaktan kötüdür.
+  const bilinmez = V.olayBilgi({ kind: 'durakladi', detail: 'bilinmeyen-sebep' });
+  assert.equal(bilinmez.taraf, null);
+  assert.equal(bilinmez.sorun, true);
+
+  // Açılış, liste seçimi ve normal çalma bir arıza değildir.
+  assert.equal(V.olayBilgi({ kind: 'acildi' }).sorun, false);
+  assert.equal(V.olayBilgi({ kind: 'acildi' }).taraf, 'kafe');
+  assert.equal(V.olayBilgi({ kind: 'caliyor' }).sorun, false);
+  assert.equal(V.olayBilgi({ kind: 'devam' }).sorun, false);
+});
+
+test('özet yalnızca son 24 saatteki arızaları tarafa göre sayar', () => {
+  const o = V.gecmisOzet(DOLAY, ui, { kodlar: true });
+  assert.equal(o.kafe, 1, 'cihazdan durdurma kafe tarafında');
+  assert.equal(o.bizde, 2, 'mesai ve kopuk zincir bizim tarafımızda');
+  assert.equal(o.kod, 1, 'sunum kod girişi ayrı sayılır');
+  assert.equal(o.yanlis, 1);
+  assert.equal(o.toplam, 7, '24 saatten eski olay sayılmaz (6 olay + 1 kod)');
+  assert.equal(V.olaySorunSayi(DOLAY), 3, 'menü rozeti son 24 saatteki arızayı gösterir');
+  // Geçmiş tablosu hiç kurulmadıysa sayaç sıfır kalır, patlamaz.
+  assert.equal(V.olaySorunSayi(D), 0);
+});
+
+test('bağlantı geçmişi ekranı şu anı, özeti ve çizelgeyi çizer', () => {
+  const html = V.gorunum(durum({ nav: 'canli', sub: 'gecmis' }), DOLAY, ui).html;
+  assert.ok(html.includes('BAĞLANTI GEÇMİŞİ'));
+  assert.ok(html.includes('ŞU AN'), 'şu an çalıyor mu sorusu aynı ekranda cevaplanmalı');
+  assert.ok(html.includes('BİZİM TARAF') && html.includes('KAFE TARAFI'));
+  assert.ok(html.includes('▶ ÇALIYOR'), 'bağlı ve çalan şube görünmeli');
+  assert.ok(html.includes('Kafede cihazdan durduruldu'));
+  assert.ok(html.includes('Yayın saati bitti'));
+  assert.ok(html.includes('Oynatıcı açıldı'));
+  assert.ok(html.includes('Çalma listesi seçildi'));
+  assert.ok(html.includes('Akşam Akışı'), 'personelin seçtiği liste adı geçmişte okunmalı');
+  assert.ok(html.includes('Sunum kodu yanlış girildi'), 'kod girişleri aynı çizelgede görünür');
+  assert.ok(html.includes('Mokka Coffee · Nişantaşı'), 'satır kafeyi ve şubeyi birlikte yazar');
+  assert.ok(html.includes('yayın anahtarı sistemde bulunamadı'), 'teşhis kodu insan diline çevrilir');
+});
+
+test('geçmiş tablosu kurulmamışsa ekran kod girişleriyle çalışır', () => {
+  const html = V.gorunum(durum({ nav: 'canli', sub: 'gecmis' }), D, ui).html;
+  assert.ok(html.includes('BAĞLANTI GEÇMİŞİ'));
+  assert.ok(html.includes('radio-baglanti-gecmisi.sql'), 'kurulum notu dürüstçe yazılmalı');
+  assert.ok(html.includes('Sunum kodu yanlış girildi'), 'kod girişleri yine görünür');
+  assert.ok(!html.includes('Oynatıcı açıldı'), 'oynatıcı olayı yoksa satır da olmaz');
+});
+
+test('geçmiş araması hem şubeyi hem olay satırlarını süzer', () => {
+  const nisantasi = V.gorunum(durum({ nav: 'canli', sub: 'gecmis', q: 'Nişantaşı' }), DOLAY, ui).html;
+  assert.ok(nisantasi.includes('Nişantaşı'));
+  assert.ok(nisantasi.includes('Kafede cihazdan durduruldu'));
+
+  const bos = V.gorunum(durum({ nav: 'canli', sub: 'gecmis', q: 'Kadıköy' }), DOLAY, ui).html;
+  assert.ok(!bos.includes('Nişantaşı'), 'eşleşmeyen şube çizilmez');
+  assert.ok(bos.includes('Kayıtlı olay yok'), 'eşleşmeyen olay satırı çizilmez');
+});
+
+test('şube çekmecesi ve marka sayfası bağlantı geçmişini gösterir', () => {
+  const cekmece = V.subeCekmecesi('p1', DOLAY, ui);
+  assert.ok(cekmece.includes('BAĞLANTI GEÇMİŞİ'), 'çekmecede geçmiş bloğu olmalı');
+  assert.ok(cekmece.includes('Kafede cihazdan durduruldu'));
+  assert.ok(cekmece.includes('data-act="gecmis-ac"'), 'tüm geçmişe geçiş düğmesi olmalı');
+  // Şube zaten belli: satırda “kim” sütununu tekrar etmeyiz.
+  assert.ok(!cekmece.includes('Mokka Coffee · Nişantaşı'));
+
+  const marka = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), DOLAY, ui).html;
+  assert.ok(marka.includes('ŞUBE BAĞLANTI GEÇMİŞİ'));
+  assert.ok(marka.includes('Kafede cihazdan durduruldu'));
+  assert.ok(marka.includes('Mokka Coffee · Nişantaşı'));
 });

@@ -56,8 +56,12 @@ async function calistir(senaryo) {
     }
     return dugumler.get(id);
   };
+  // Oynatıcının bağladığı ses olaylarını kaydederiz: gerçek tarayıcıda bu
+  // olayları tarayıcı yollar, provada test kendisi tetikler.
+  const sesDinleyici = new Map();
   const audio = Object.assign(dugum(), {
     paused: true, duration: 0, currentTime: 0, volume: 1, src: '',
+    addEventListener: (ad, fn) => { sesDinleyici.set(ad, fn); },
     // 'otomatik: true' kiosk cihazı taklit eder: tarayıcı sesli otomatik
     // çalmaya izin verir. Varsayılanda tarayıcı engeller.
     play: () => (senaryo.otomatik
@@ -143,6 +147,11 @@ async function calistir(senaryo) {
           }
           // 'listeAlaniYok': sunucu henüz supabase/radio-liste-bildirimi.sql ile
           // güncellenmemiş; beş parametreli çağrıyı tanımaz, eski imzayı tanır.
+          // 'gecmisHatasi': olay günlüğü tablosu henüz kurulmamış gibi davranır;
+          // oynatıcı bunu yok sayıp çalmaya devam etmeli.
+          if (senaryo.gecmisHatasi && ad === 'radio_log_event') {
+            return Promise.reject(new Error('relation "radio_player_events" does not exist'));
+          }
           if (senaryo.listeAlaniYok && ad === 'radio_now_report' && p && 'p_playlist_id' in p) {
             return Promise.resolve({ data: null, error: { message: 'PGRST202: could not find the function public.radio_now_report' } });
           }
@@ -178,6 +187,28 @@ async function calistir(senaryo) {
     get cihazKimligi() { return depo.get('derin_record_device_id') || null; },
     get pingler() { return cagrilar.filter(c => c.ad === 'radio_ping'); },
     get bildirimler() { return cagrilar.filter(c => c.ad === 'radio_now_report'); },
+    // Bağlantı geçmişi: oynatıcının sunucuya bıraktığı olaylar.
+    get olaylar() { return cagrilar.filter(c => c.ad === 'radio_log_event').map(c => c.p || {}); },
+    olayTuru(kind) { return this.olaylar.filter(o => o.p_kind === kind); },
+    // Tarayıcı sesi gerçekten çalmaya başladı ('playing' olayı).
+    async yayinda() {
+      const f = sesDinleyici.get('playing');
+      if (f) await f();
+      await new Promise(done => setTimeout(done, 20));
+    },
+    // Kafe cihazdan yayını durdurur: oynatıcı bunu kendisi istemedi.
+    async cihazdanDurdur() {
+      const f = sesDinleyici.get('pause');
+      if (f) await f();
+      await new Promise(done => setTimeout(done, 20));
+    },
+    // Parça sonuna geldi: tarayıcı 'pause' yollar ama yayın durmamıştır.
+    async parcaBitti() {
+      audio.ended = true; audio.duration = 180; audio.currentTime = 180;
+      const f = sesDinleyici.get('pause');
+      if (f) await f();
+      await new Promise(done => setTimeout(done, 20));
+    },
     // Liste seçici
     get secenekler() { return (dugumAl('liste-sec') || {}).innerHTML || ''; },
     get secili() { return (dugumAl('liste-sec') || {}).value || ''; },
@@ -537,4 +568,58 @@ test('panel bağlantı sınaması cihaz kilidini yöneticinin tarayıcısına ba
   assert.ok(!govde.slice(0, govdeSonu).includes('radio_ping'), 'sınama radio_ping çağırmamalı');
   assert.ok(govde.includes("rpc('radio_now_playing'"));
   assert.ok(govde.includes("rpc('abonelik_durumu'"));
+});
+
+// ---- Bağlantı geçmişi -------------------------------------------------------
+// Oynatıcı durum değiştirdiğinde sunucuya olay bırakır. Panelde “sorun bizde mi,
+// kafede mi” ayrımı tam olarak bu kayıtlara dayanır: yayını kafe cihazdan mı
+// durdurdu, biz mi (mesai, kaynak, cihaz kilidi) durdurduk.
+
+test('oynatıcı açılışı ve çalmaya başlamayı geçmişe yazar', async () => {
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true });
+  const acilislar = s.olayTuru('acildi');
+  assert.equal(acilislar.length, 1, 'açılış bir kez yazılmalı');
+  assert.equal(acilislar[0].p_player_key, PROVA_ANAHTAR);
+  assert.equal(acilislar[0].p_device_id, 'cihaz-test-1', 'olay cihaz kimliğiyle eşleşmeli');
+
+  const calanlar = s.olayTuru('caliyor');
+  assert.equal(calanlar.length, 1, 'yayın başladığında bir kez yazılmalı');
+  assert.match(calanlar[0].p_detail, /Sabah Işığı/);
+});
+
+test('kilitli cihazdan deneme de geçmişe düşer', async () => {
+  const s = await calistir({ ping: 'kilitli', parca: true, abonelik: 'gecerli' });
+  assert.equal(s.olayTuru('acildi').length, 1, 'yanlış cihazdan deneme kaydedilmeli');
+  const kilit = s.olayTuru('kilitlendi');
+  assert.equal(kilit.length, 1, 'cihaz kilidi kaydı düşmeli');
+  assert.match(kilit[0].p_detail, /başka bir cihaza kayıtlı/);
+});
+
+test('kafe cihazdan durdurduğunda sebep cihaz olarak yazılır', async () => {
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true });
+  await s.yayinda();
+  await s.cihazdanDurdur();
+  const duraklar = s.olayTuru('durakladi');
+  assert.equal(duraklar.length, 1);
+  assert.equal(duraklar[0].p_detail, 'cihaz',
+    'oynatıcı sebebi bilmiyorsa duraklatma cihazdan gelmiştir');
+
+  // Yayın zaten durmuşken cihaz yeniden duraklatırsa geçmiş şişmemeli.
+  await s.cihazdanDurdur();
+  assert.equal(s.olayTuru('durakladi').length, 1, 'durmuş yayın için ikinci kayıt düşmez');
+});
+
+test('parça bitişi yayın durması olarak yazılmaz', async () => {
+  const s = await calistir({ ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true });
+  await s.yayinda();
+  await s.parcaBitti();
+  assert.equal(s.olayTuru('durakladi').length, 0, 'parça bitti diye “yayın durdu” yazılmamalı');
+});
+
+test('geçmiş tablosu kurulmadıysa oynatıcı çalmaya devam eder', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, gecmisHatasi: true
+  });
+  assert.ok(s.liste.includes('Sabah Işığı'), 'yayın geçmişe bağlı değil');
+  assert.equal(s.durum, '', 'geçmiş yazılamasa bile ekranda hata çıkmaz');
 });

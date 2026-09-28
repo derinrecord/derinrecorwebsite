@@ -205,6 +205,7 @@
     canli: { nav: 'canli', sub: 'subeler' },
     subeler: { nav: 'canli', sub: 'subeler' },
     saglik: { nav: 'canli', sub: 'saglik' },
+    gecmis: { nav: 'canli', sub: 'gecmis' },
     klasorler: { nav: 'icerik', sub: 'klasorler' },
     anons: { nav: 'icerik', sub: 'anonslar' },
     markalar: { nav: 'musteri', sub: 'markalar' },
@@ -233,7 +234,7 @@
     if (state.openPlaylist) return '#/listeler/' + state.openPlaylist;
     if (state.openBrand) return '#/markalar/' + state.openBrand;
     if (state.openFolder) return '#/klasorler/' + state.openFolder;
-    if (state.nav === 'canli') return state.sub === 'saglik' ? '#/saglik' : '#/canli';
+    if (state.nav === 'canli') return state.sub === 'saglik' ? '#/saglik' : (state.sub === 'gecmis' ? '#/gecmis' : '#/canli');
     if (state.nav === 'icerik') return state.sub === 'anonslar' ? '#/anons' : '#/klasorler';
     if (state.sub === 'listeler') return '#/listeler';
     if (state.sub === 'abonelikler') return '#/abonelikler';
@@ -252,8 +253,9 @@
       requests: D.requests ? D.requests.length : null,
       // Menüde "kaç şubede yayın çalışmaz" görünsün; sorun yoksa rozet çizilmez.
       saglik: D.players.length ? (V.saglikOzet(D).kotu || null) : null,
-      // Kapaklar elle yerleştirilir; kaç görselin eksik olduğu menüde okunsun.
-      kapaksiz: V.kapaksizSayi(D) || null
+      // Son 24 saatte kaç yayın-durma olayı olduğu menüde okunsun: kullanıcı
+      // geçmiş ekranını aramadan nerede iş olduğunu görsün.
+      olaySorun: V.olaySorunSayi(D) || null
     };
   }
 
@@ -277,7 +279,7 @@
 
   // ---------- Veri ----------
   async function veriYukle() {
-    const [brands, folders, tracks, players, broadcast, announcements, playlists, playlistTracks, coffeeAttempts, subscriptions, plans] = await Promise.all([
+    const [brands, folders, tracks, players, broadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec,cover_path').order('sort_order'),
@@ -287,6 +289,12 @@
       client.from('brand_playlists').select('id,brand_id,name,description,cover_path,shuffle,created_at').order('created_at'),
       client.from('brand_playlist_tracks').select('id,playlist_id,track_id,sort_order').order('sort_order'),
       client.from('coffee_access_attempts').select('id,brand_id,slug,success,ip,created_at').order('created_at', { ascending: false }).limit(200),
+      // Bağlantı geçmişi (supabase/radio-baglanti-gecmisi.sql). Tablo henüz
+      // kurulmadıysa sorgu hata döner, data null gelir: ekran boş kalır ama
+      // panelin geri kalanı çalışmaya devam eder.
+      client.from('radio_player_events')
+        .select('id,player_key,player_id,brand_id,device_id,kind,detail,at')
+        .order('at', { ascending: false }).limit(600),
       client.from('subscriptions').select('*'),
       client.from('plans').select('*').order('sort_order')
     ]);
@@ -294,7 +302,8 @@
       brands: brands.data || [], folders: folders.data || [], tracks: tracks.data || [],
       players: players.data || [], broadcast: broadcast.data || [], announcements: announcements.data || [],
       playlists: playlists.data || [], playlistTracks: playlistTracks.data || [],
-      coffeeAttempts: coffeeAttempts.data || [], subscriptions: subscriptions.data || [], plans: plans.data || [],
+      coffeeAttempts: coffeeAttempts.data || [], olaylar: olaylar.data || [],
+      subscriptions: subscriptions.data || [], plans: plans.data || [],
       requests: D.requests
     };
 
@@ -701,6 +710,16 @@
     switch (act) {
       // --- pencere / çekmece / genel ---
       case 'modal-close': return pencereKapat();
+      case 'gecmis-ac': {
+        // Çekmecedeki "tüm geçmişi aç" düğmesi: geçmiş ekranına geçerken şubeyi
+        // arama kutusuna yazarız, böylece çizelge o şubeye odaklanır.
+        cekmeceKapat();
+        state.nav = 'canli'; state.sub = 'gecmis';
+        state.q = hedef.dataset.q || '';
+        el('search').value = state.q;
+        git('#/gecmis');
+        return;
+      }
       case 'modal-ok': {
         // Onay yolunda pencere kapanışı "vazgeç" geri çağrısını çalıştırmaz;
         // aksi hâlde söz (promise) onaylanmadan önce null ile çözülürdü.

@@ -111,8 +111,87 @@ body{background:#0b0b0d;padding:26px}
   return;
 }
 
-// "kapaklar" modu Yayın klasörleri ekranını önizler: kapak denetimi listesi ve
-// satır içi "KAPAK YOK" uyarıları gözle doğrulanabilsin.
+// "gecmis" modu Bağlantı geçmişi ekranını önizler: şu anki durum, taraf özeti ve
+// olay çizelgesi yan yana gelsin ki "sorun bizde mi kafede mi" okunuşu gözle
+// doğrulanabilsin.
+if (senaryo === 'gecmis') {
+  const V = require(path.join(kok, 'radyo-panel-views.js'));
+  const simdi = Date.now();
+  const dkOnce = n => new Date(simdi - n * 60000).toISOString();
+  const sube = (id, label, ek) => ({
+    id, brand_id: 'b1', label, player_key: 'a1b2c3d4-e5f6-4a7b-8c9d-00000000000' + id.slice(1),
+    last_seen_at: dkOnce(1), open_time: '09:00:00', close_time: '22:00:00',
+    bound_device_id: 'cihaz-' + id, bound_at: dkOnce(600), first_ip: null,
+    last_ip: '88.240.10.' + id.slice(1), last_ip_at: dkOnce(1),
+    is_playing: true, now_title: null, now_at: null, now_playlist_id: null, now_playlist_name: null,
+    ...ek
+  });
+  const D = {
+    brands: [{ id: 'b1', name: 'Mokka Coffee', slug: 'mokka-coffee', access_code: 'KOD', is_active: true }],
+    folders: [{ id: 'f1', name: 'Öğleden Sonra', cover_path: null, shuffle: true }],
+    tracks: [{ id: 't1', folder_id: 'f1', title: 'Kalabalık Caddesi', storage_path: 'f1/a.wav', sort_order: 0, duration_sec: 214, cover_path: null }],
+    players: [
+      // Çalıyor: parça bildirimi taze.
+      sube('p1', 'Nişantaşı', { now_title: 'Kalabalık Caddesi', now_at: dkOnce(0.2) }),
+      // Duraklatıldı: en son durma kaydı kafe tarafında.
+      sube('p2', 'Alsancak', { is_playing: false, last_seen_at: dkOnce(3) }),
+      // Çevrimdışı: cihaz saatlerdir kapalı.
+      sube('p3', 'Kadıköy', { is_playing: false, last_seen_at: dkOnce(400), bound_device_id: null })
+    ],
+    broadcast: [{ brand_id: 'b1', folder_id: 'f1', playlist_id: null }],
+    announcements: [],
+    playlists: [{ id: 'l1', brand_id: 'b1', name: 'Sabah Açılış', description: null, cover_path: null, shuffle: false }],
+    playlistTracks: [],
+    coffeeAttempts: [
+      { id: 'c1', brand_id: 'b1', slug: 'mokka-coffee', success: false, ip: '88.240.10.9', created_at: dkOnce(210) },
+      { id: 'c2', brand_id: 'b1', slug: 'mokka-coffee', success: true, ip: '88.240.10.9', created_at: dkOnce(205) }
+    ],
+    subscriptions: [{ id: 's1', brand_id: 'b1', plan_id: 'pl1', status: 'active', trial_ends_at: null, current_end: new Date(simdi + 20 * 86400000).toISOString() }],
+    plans: [{ id: 'pl1', name: 'Profesyonel', monthly_price: 1000, per_branch: true, sort_order: 1 }],
+    requests: [],
+    olaylar: [
+      { id: 'e1', player_id: 'p1', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · macOS', at: dkOnce(480) },
+      { id: 'e2', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', detail: 'Kalabalık Caddesi · Sabah Açılış', at: dkOnce(479) },
+      { id: 'e3', player_id: 'p1', brand_id: 'b1', kind: 'liste_degisti', detail: 'Sabah Açılış', at: dkOnce(300) },
+      { id: 'e4', player_id: 'p2', brand_id: 'b1', kind: 'acildi', detail: 'Chrome · Windows', at: dkOnce(290) },
+      { id: 'e5', player_id: 'p2', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: dkOnce(60) },
+      { id: 'e6', player_id: 'p2', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz-gizli', at: dkOnce(45) },
+      { id: 'e7', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'mesai-disi', at: dkOnce(1200) },
+      { id: 'e8', player_id: 'p3', brand_id: 'b1', kind: 'hata', detail: 'anahtar-yok', at: dkOnce(700) },
+      { id: 'e9', player_id: 'p1', brand_id: 'b1', kind: 'takildi', detail: 'Kalabalık Caddesi', at: dkOnce(200) },
+      { id: 'e10', player_id: 'p3', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz-kilidi', at: dkOnce(1400) }
+    ]
+  };
+  const ui = {
+    cover: () => null, ses: p => p, anons: p => p,
+    playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
+    accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
+    now: () => simdi, saglikSonuc: () => null
+  };
+  const durum = { nav: 'canli', sub: 'gecmis', openFolder: null, openBrand: null, openPlaylist: null, q: '' };
+  const gorunum = V.gorunum(durum, D, ui);
+  const sayfa = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — bağlantı geçmişi</title>
+<style>
+${oku('radyo-panel.css')}
+body{background:#0b0b0d;padding:22px;display:block}
+.view{max-width:1080px;margin:0 auto}
+</style>
+</head>
+<body><div class="view">${gorunum.html}</div></body>
+</html>`;
+  fs.writeFileSync(ciktiYolu, sayfa);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · bağlantı geçmişi');
+  return;
+}
+
+// "kapaklar" modu Yayın klasörleri ekranını önizler: satır içi "KAPAK YOK"
+// uyarıları ve yerleşmiş kapakların görünümü gözle doğrulanabilsin.
 if (senaryo === 'kapaklar') {
   const V = require(path.join(kok, 'radyo-panel-views.js'));
   const simdi = Date.now();
@@ -157,7 +236,7 @@ if (senaryo === 'kapaklar') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panel — kapak denetimi</title>
+<title>Panel — yayın klasörleri ve kapaklar</title>
 <style>
 ${oku('radyo-panel.css')}
 body{background:#0b0b0d;padding:22px;display:block}
@@ -167,7 +246,7 @@ body{background:#0b0b0d;padding:22px;display:block}
 <body><div class="view">${gorunum.html}</div></body>
 </html>`;
   fs.writeFileSync(ciktiYolu, sayfa4);
-  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · kapak denetimi');
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · yayın klasörleri ve kapaklar');
   return;
 }
 

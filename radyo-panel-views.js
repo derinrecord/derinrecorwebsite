@@ -93,6 +93,222 @@
     return liste;
   }
 
+  // ---------- BAĞLANTI GEÇMİŞİ ----------
+  // Oynatıcı (radyo.js) durum değiştikçe sunucuya olay bırakıyor
+  // (supabase/radio-baglanti-gecmisi.sql). Kafe sunumunun kod girişleri de aynı
+  // çizelgede okunur. Panelin buradaki asıl işi, sahada “yayın durdu” diye gelen
+  // şikâyetin kimden çıktığını ayırmak: biz mi durdurduk (mesai saati, kaynak,
+  // abonelik, cihaz kilidi) yoksa kafe mi (cihazdan durdurma, arka plan).
+  const OLAY_TARAF = { bizde: 'danger', kafe: 'gold' };
+
+  // Teşhis kodlarının insan dilindeki karşılığı: panelde kod okumak yerine ne
+  // olduğu yazsın, kod parantez içinde kalsın (sahadaki ekranla eşleşir).
+  const HATA_ACIKLAMA = {
+    'anahtar-yok': 'yayın anahtarı sistemde bulunamadı',
+    'anahtar-bozuk': 'bağlantı eksik kopyalanmış (anahtar geçersiz)',
+    'anahtar-belirsiz': 'link tanınmadı',
+    'abonelik-yok': 'şube için abonelik tanımlı değil',
+    'abonelik-bitmis': 'abonelik süresi doldu',
+    'marka-pasif-veya-kaynak-yok': 'marka yayında değil ya da yayın kaynağı atanmamış',
+    'baglanti-hatasi': 'sunucuya ulaşılamadı'
+  };
+
+  // Duraklatmanın sebebi ve tarafı. `taraf` alanı doğrudan “sorun bizde mi,
+  // kafede mi” sorusunun cevabıdır; oynatıcı sebebi bırakmadıysa (kayıt eskiyse)
+  // hiçbir taraf iddia edilmez.
+  const DURMA_SEBEBI = {
+    cihaz: { ad: 'Kafede cihazdan durduruldu', taraf: 'kafe', not: 'Yayın bizim tarafımızda çalışıyordu.' },
+    'cihaz-gizli': { ad: 'Cihaz arka plandayken durdu', taraf: 'kafe', not: 'Tarayıcı sekmesi/penceresi arka plandaydı.' },
+    'cihaz-kilidi': { ad: 'Link başka bir cihaza kayıtlı', taraf: 'bizde', not: 'Cihaz kilidi sıfırlanmadan yayın çalmaz.' },
+    'mesai-disi': { ad: 'Yayın saati bitti', taraf: 'bizde', not: 'Şubeye tanımlı açılış/kapanış saatine göre durdu.' },
+    'liste-bos': { ad: 'Seçilen listede parça yok', taraf: 'bizde', not: 'Listeye parça eklenmesi gerekiyor.' },
+    'parca-yok': { ad: 'Klasörde parça yok', taraf: 'bizde', not: 'Yayın kaynağında çalınacak parça yok.' },
+    'yayin-yok': { ad: 'Yayın kaynağı yok', taraf: 'bizde', not: 'Markaya canlı yayın kaynağı atanmamış ya da marka pasif.' }
+  };
+
+  // Bir olayı okunur hâle çevirir: ne oldu, kimin tarafında, ek bilgi ne.
+  // `sorun` alanı olayın “yayın durdu/koptu” sınıfına girip girmediğini söyler;
+  // özet sayaçları yalnızca bunları sayar (açılış bir sorun değildir).
+  function olayBilgi(ev) {
+    const kind = String(ev.kind || '');
+    const det = String(ev.detail || '').trim();
+    if (kind === 'acildi') return { ad: 'Oynatıcı açıldı', ek: det, taraf: 'kafe', sorun: false };
+    if (kind === 'liste_degisti') return { ad: 'Çalma listesi seçildi', ek: det, taraf: 'kafe', sorun: false };
+    if (kind === 'kod') {
+      const yanlis = !/doğru/.test(det);
+      return { ad: yanlis ? 'Sunum kodu yanlış girildi' : 'Sunum kodu girildi', ek: det, taraf: 'kafe', sorun: yanlis };
+    }
+    if (kind === 'caliyor') return { ad: 'Yayın çalmaya başladı', ek: det, taraf: null, sorun: false };
+    if (kind === 'devam') return { ad: 'Yayın yeniden başladı', ek: det, taraf: null, sorun: false };
+    if (kind === 'mesai') return {
+      ad: det === 'kapandi' ? 'Yayın saati bitti'
+        : (det === 'basladi' ? 'Yayın saati başladı' : 'Mesai dışında açıldı'),
+      ek: '', taraf: 'bizde', sorun: false
+    };
+    if (kind === 'durakladi') {
+      const s = DURMA_SEBEBI[det];
+      return s ? { ad: s.ad, ek: s.not, taraf: s.taraf, sorun: true }
+        : { ad: 'Yayın durdu', ek: det, taraf: null, sorun: true };
+    }
+    if (kind === 'hata') return {
+      ad: 'Yayın kurulamadı', ek: (HATA_ACIKLAMA[det] || 'sebep okunamadı') + (det ? ' (' + det + ')' : ''),
+      taraf: 'bizde', sorun: true
+    };
+    if (kind === 'kilitlendi') return { ad: 'Bu cihaz yetkili değil', ek: det, taraf: 'bizde', sorun: true };
+    if (kind === 'takildi') return { ad: 'Yayın takıldı, yeniden bağlandı', ek: det, taraf: 'bizde', sorun: true };
+    if (kind === 'yuklenemedi') return { ad: 'Parçanın ses dosyası çalınamadı', ek: det, taraf: 'bizde', sorun: true };
+    return { ad: kind || 'Bilinmeyen olay', ek: det, taraf: null, sorun: true };
+  }
+
+  // Kafe sunumunun kod girişleri de geçmişin parçası; oynatıcı olaylarıyla aynı
+  // çizelgede okunsun diye aynı biçime çevrilir (kod girişi şubeye değil markaya
+  // aittir, bu yüzden player_id boştur).
+  function kodOlaylari(D, brandId) {
+    return (D.coffeeAttempts || [])
+      .filter(a => !brandId || a.brand_id === brandId)
+      .map(a => ({
+        id: 'kod-' + a.id, brand_id: a.brand_id, player_id: null, kind: 'kod',
+        detail: (a.success ? 'doğru kod' : 'yanlış kod') + (a.ip ? ' · ' + a.ip : ''),
+        at: a.created_at
+      }));
+  }
+
+  // Olayları süzer ve en yeniden eskiye dizer.
+  function olaylariAl(D, suzgec) {
+    const f = suzgec || {};
+    const liste = (D.olaylar || []).filter(ev =>
+      (!f.brandId || ev.brand_id === f.brandId) &&
+      (!f.playerId || ev.player_id === f.playerId));
+    const tumu = f.kodlar ? liste.concat(kodOlaylari(D, f.brandId)) : liste;
+    return tumu.slice().sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  }
+
+  // Olay tablosu. Çekmecede şube zaten belli olduğu için `yer: false` ile “kim”
+  // sütunu çizilmez. Arama kutusu bu listede de çalışır.
+  function olayTablosu(D, ui, f, limit) {
+    const now = ui.now();
+    const ayar = Object.assign({ yer: true, kodlar: false, q: '' }, f || {});
+    const q = norm(ayar.q);
+    return olaylariAl(D, ayar)
+      .map(ev => {
+        const p = ev.player_id ? D.players.find(x => x.id === ev.player_id) : null;
+        const b = D.brands.find(x => x.id === ev.brand_id);
+        return {
+          ev: ev, o: olayBilgi(ev),
+          yer: [b ? b.name : null, p ? p.label : null].filter(Boolean).join(' · ') || '—',
+          zaman: tarih(ev.at), goreli: goreli(ev.at, now)
+        };
+      })
+      .filter(s => hit(q, s.yer, s.o.ad, s.o.ek, s.ev.kind, s.ev.detail))
+      .slice(0, limit || 20)
+      .map(s => `<tr>
+        ${ayar.yer ? `<td><b>${esc(s.yer)}</b></td>` : ''}
+        <td><b>${esc(s.o.ad)}</b>${s.o.ek ? `<span class="sub">${esc(s.o.ek)}</span>` : ''}</td>
+        <td class="tight">${s.o.taraf
+          ? chip(OLAY_TARAF[s.o.taraf], s.o.taraf === 'kafe' ? 'KAFE TARAFI' : 'BİZİM TARAF')
+          : '<span class="sub">—</span>'}</td>
+        <td class="tight"><span class="sub">${esc(s.zaman)}</span><span class="sub">${esc(s.goreli)}</span></td>
+      </tr>`).join('');
+  }
+
+  // “Sorun bizde mi, kafede mi”: son 24 saatteki yayın-durma olaylarını tarafa
+  // göre sayar. Kod girişleri ayrı tutulur (onlar bir arıza değil, erişim kaydı).
+  function gecmisOzet(D, ui, f) {
+    const now = ui.now();
+    let bizde = 0, kafe = 0, toplam = 0, kod = 0, yanlis = 0;
+    olaylariAl(D, f).forEach(ev => {
+      if (now - new Date(ev.at).getTime() >= 86400000) return;
+      toplam++;
+      if (ev.kind === 'kod') {
+        kod++;
+        if (!/doğru/.test(String(ev.detail || ''))) yanlis++;
+        return;
+      }
+      const o = olayBilgi(ev);
+      if (!o.sorun) return;
+      if (o.taraf === 'kafe') kafe++; else bizde++;
+    });
+    return { bizde: bizde, kafe: kafe, toplam: toplam, kod: kod, yanlis: yanlis };
+  }
+
+  // Yan menüde “son 24 saatte kaç yayın durdu” okunsun.
+  function olaySorunSayi(D, now) {
+    const t = now || Date.now();
+    return (D.olaylar || []).filter(ev =>
+      t - new Date(ev.at).getTime() < 86400000 && olayBilgi(ev).sorun).length;
+  }
+
+  // Bir şubenin en son durma olayı: “şu an duraklatıldı” diyorsak sebebi de
+  // yanında yazılsın, yoksa donmuş bir bayrak canlı sanılır.
+  const sonDurma = (D, playerId) =>
+    olaylariAl(D, { playerId: playerId }).find(ev => ev.kind === 'durakladi') || null;
+
+  // Şube şu an ne yapıyor? Geçmişin en üstünde durur: “şu an çalıyor mu”
+  // sorusu geçmişi okumadan cevaplanabilsin.
+  function suanTablosu(D, ui, q) {
+    const now = ui.now();
+    const ara = norm(q);
+    return D.players
+      .filter(p => {
+        const b = D.brands.find(x => x.id === p.brand_id);
+        return hit(ara, p.label, b ? b.name : '');
+      })
+      .map(p => {
+        const b = D.brands.find(x => x.id === p.brand_id);
+        const k = b ? kaynak(D, b.id) : null;
+        const bagli = canliMi(p, now);
+        const calan = bagli && p.is_playing
+          ? ((parcaTaze(p, now) && p.now_title) || (k && k.ad) || 'çalıyor')
+          : null;
+        const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
+        const suan = calan
+          ? chip('live', '▶ ÇALIYOR', true) + `<span class="sub">${esc(calan)}${farkli ? ' · çalınan liste: ' + esc(farkli.ad) : ''}</span>`
+          : (bagli ? chip('gold', 'DURAKLATILDI') : chip('off', 'ÇEVRİMDIŞI'));
+        const durma = sonDurma(D, p.id);
+        const o = durma ? olayBilgi(durma) : null;
+        return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
+          <td><b>${esc(p.label)}</b><span class="sub">${esc(b ? b.name : '—')}</span></td>
+          <td>${suan}</td>
+          <td class="tight">${o ? `${o.taraf
+            ? chip(OLAY_TARAF[o.taraf], o.taraf === 'kafe' ? 'KAFE TARAFI' : 'BİZİM TARAF') : ''}
+            <span class="sub">${esc(o.ad)} · ${esc(goreli(durma.at, now))}</span>`
+            : '<span class="sub">kayıtlı durma yok</span>'}</td>
+          <td class="tight"><span class="sub">${p.last_seen_at ? esc(goreli(p.last_seen_at, now)) : 'hiç bağlanmadı'}</span></td>
+        </tr>`;
+      }).join('');
+  }
+
+  // Kafe bağlantı geçmişi ekranı: şu anki durum + son 24 saatin özeti + olay
+  // çizelgesi. Sahadaki “yayın neden durdu?” sorusu tek ekranda cevaplanır.
+  function gecmisView(state, D, ui) {
+    const ozet = gecmisOzet(D, ui, { kodlar: true });
+    const satirlar = olayTablosu(D, ui, { kodlar: true, q: state.q }, 150);
+    const subeler = suanTablosu(D, ui, state.q) || bos(4, D.players.length ? 'Aramayla eşleşen şube yok.' : 'Henüz şube yok.');
+    return `
+      <div class="tiles">
+        <div class="tile ${ozet.bizde ? 'danger' : 'gold'}"><span>BİZİM TARAF</span><b>${ozet.bizde}</b><small>mesai, kaynak ya da abonelik kaynaklı durma</small></div>
+        <div class="tile${ozet.kafe ? ' gold' : ''}"><span>KAFE TARAFI</span><b>${ozet.kafe}</b><small>cihazdan durdurma, yanlış kod</small></div>
+        <div class="tile"><span>KOD GİRİŞİ</span><b>${ozet.kod}</b><small>${ozet.yanlis ? ozet.yanlis + ' tanesi yanlış kod' : 'hepsi doğru kod'}</small></div>
+        <div class="tile"><span>OLAY</span><b>${ozet.toplam}</b><small>son 24 saat · ${D.players.length} şube</small></div>
+      </div>
+      <div class="panel" style="margin-bottom:18px">
+        <h3>ŞU AN <span>${D.players.length} şube</span></h3>
+        <p class="panel-sub">Yayın gerçekten çalıyor mu, durduysa kimin tarafında durdu? Durma sebebi cihazın bıraktığı geçmişten okunur; kayıt yoksa taraf iddia edilmez.</p>
+        <table>
+          <thead><tr><th>ŞUBE</th><th>ŞU AN</th><th>SON DURMA</th><th>SON BAĞLANTI</th></tr></thead>
+          <tbody>${subeler}</tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>BAĞLANTI GEÇMİŞİ</h3>
+        <p class="panel-sub">Kafe sunumunda kod girildiğinde, oynatıcı açıldığında, personel liste değiştirdiğinde ve yayın durduğunda buraya bir satır düşer. Geçmiş tablosu henüz kurulmadıysa (supabase/radio-baglanti-gecmisi.sql) yalnızca kod girişleri görünür.</p>
+        <table>
+          <thead><tr><th>KAFE / ŞUBE</th><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>
+          <tbody>${satirlar || bos(4, 'Kayıtlı olay yok.')}</tbody>
+        </table>
+      </div>`;
+  }
+
   // Yayın hücresinin ikinci satırı: ses gerçekten akıyor mu, bu bilgi ne kadar
   // taze ve cihaz hangi listeyi çalıyor? Çevrimdışıysa susar; bağlantı durumunu
   // zaten DURUM sütunu yazıyor.
@@ -151,88 +367,10 @@
       : `<span class="cover ${ekSinif || ''}">${yedek || '♪'}</span>`;
   }
 
-  // ---------- Kapak denetimi ----------
-  // Kapaklar (parça, liste, klasör) kafedeki oynatıcı ekranında ve müşteri
-  // sunumunda görünür ve hepsi indirilmiş görselden **elle** yerleştirilir.
-  // Hangi kaydın kapağının eksik kaldığını klasörleri tek tek gezerek aramak
-  // yerine panel söyler: satırdaki düğme doğrudan kapak penceresini açar, kaydı
-  // bulmak için önce ilgili sayfaya gitmek gerekmez.
+  // Kapağı olmayan kayıt: parça, liste ve klasör satırlarında küçük bir uyarı
+  // olarak görünür. Kapak yerleştirme işi kaydın kendi sayfasından yapılır
+  // (satırdaki düğme/pencere); panel ayrıca bir denetim listesi tutmaz.
   const kapakYok = kayit => !(kayit && kayit.cover_path);
-
-  // Kapağı eksik parça, liste ve klasörlerin toplamı (yan menüde görünür).
-  function kapaksizSayi(D) {
-    return (D.tracks || []).filter(kapakYok).length
-      + (D.playlists || []).filter(kapakYok).length
-      + (D.folders || []).filter(kapakYok).length;
-  }
-
-  // Denetim satırlarının ortak çizimi: kaydın adı + hangi klasöre/markaya ait
-  // olduğu, sonra kapak penceresini açan düğme. Klasörü silinmiş parça da
-  // listelenir: kapağı hâlâ eksiktir.
-  function kapakSatirlari(satirlar) {
-    return satirlar.map(s => `<tr>
-        <td><b>${esc(s.ad)}</b><span class="sub">${esc(s.alt || '')}</span></td>
-        <td class="tight"><span class="sub">${esc(s.ek || '')}</span></td>
-        <td><div class="row-actions">
-          <button class="btn sm primary" data-act="${esc(s.islem)}" data-id="${esc(s.id)}" type="button">KAPAK YERLEŞTİR</button>
-        </div></td>
-      </tr>`).join('');
-  }
-
-  function kapakDenetimi(D, ui) {
-    const klasorAdi = t => {
-      const f = (D.folders || []).find(x => x.id === t.folder_id);
-      return f ? f.name : 'klasör silinmiş';
-    };
-    const parcalar = (D.tracks || []).filter(kapakYok)
-      .map(t => ({
-        id: t.id, ad: clean(t.title), alt: klasorAdi(t), ek: mmss(t.duration_sec), islem: 'track-img'
-      }))
-      .sort((a, b) => String(a.alt).localeCompare(String(b.alt), 'tr')
-        || String(a.ad).localeCompare(String(b.ad), 'tr'));
-    const listeler = (D.playlists || []).filter(kapakYok)
-      .map(pl => {
-        const b = (D.brands || []).find(x => x.id === pl.brand_id);
-        const adet = (D.playlistTracks || []).filter(x => x.playlist_id === pl.id).length;
-        return {
-          id: pl.id, ad: pl.name, islem: 'list-img', ek: adet + ' parça',
-          alt: b ? b.name : 'marka silinmiş'
-        };
-      })
-      .sort((a, b) => String(a.alt).localeCompare(String(b.alt), 'tr'));
-    const klasorler = (D.folders || []).filter(kapakYok)
-      .map(f => ({
-        id: f.id, ad: f.name, islem: 'cover-open',
-        ek: f.shuffle === false ? 'sırayla' : 'karışık',
-        alt: (D.tracks || []).filter(t => t.folder_id === f.id).length + ' parça'
-      }))
-      .sort((a, b) => String(a.ad).localeCompare(String(b.ad), 'tr'));
-
-    const toplam = parcalar.length + listeler.length + klasorler.length;
-    if (!toplam) {
-      return `
-      <div class="panel" style="margin-bottom:18px">
-        <h3>KAPAK DENETİMİ ${chip('live', 'TAM', true)}</h3>
-        <p class="panel-sub">${(D.tracks || []).length} parçanın, ${(D.playlists || []).length} listenin ve ${(D.folders || []).length} klasörün
-          kapağı yerleştirilmiş. Kapağı sonradan değiştirmek için kaydın kendi sayfasındaki kapak düğmesini kullanabilirsin.</p>
-      </div>`;
-    }
-
-    // Eksik olmayan grup hiç yazılmaz: liste kısa kalsın, göz yorulmasın.
-    const grup = (baslik, alt, satirlar) => !satirlar.length ? '' : `
-        <p class="panel-sub" style="margin:18px 0 8px"><b>${baslik}</b> — ${satirlar.length} eksik · ${esc(alt)}</p>
-        <table><tbody>${kapakSatirlari(satirlar)}</tbody></table>`;
-
-    return `
-      <div class="panel" style="margin-bottom:18px">
-        <h3>KAPAK DENETİMİ ${chip('gold', toplam + ' EKSİK')}</h3>
-        <p class="panel-sub">Kapaklar kafedeki oynatıcı ekranında ve müşteri sunumunda görünür. Görseli buraya yüklemek yerine
-          <b>kendi indirdiğin dosyalardan</b> seçersin: satırdaki düğme kapak penceresini açar.</p>
-        ${grup('PARÇALAR', 'oynatıcı ekranında ve sunum akışında görünür', parcalar)}
-        ${grup('ÇALMA LİSTELERİ', 'oynatıcıda ve sunumda listeyi temsil eder', listeler)}
-        ${grup('YAYIN KLASÖRLERİ', 'klasör kaynağı seçilen şubelerde oynatıcı ekranında görünür', klasorler)}
-      </div>`;
-  }
 
   // ---------- Yan menü ----------
   function nav(state, counts, kullanici) {
@@ -250,7 +388,8 @@
       liste: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg>',
       abonelik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/></svg>',
       talep: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="3"/></svg>',
-      saglik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>'
+      saglik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>',
+      gecmis: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>'
     };
     return `
       <div class="brand">
@@ -261,11 +400,10 @@
         <div class="nav-title">GÜNLÜK</div>
         ${oge('canli', 'subeler', 'Canlı durum', 'Şubeler ve anons', counts.players, ikonlar.canli)}
         ${oge('canli', 'saglik', 'Yayın sağlığı', 'Otomatik denetim', counts.saglik, ikonlar.saglik)}
+        ${oge('canli', 'gecmis', 'Bağlantı geçmişi', 'Kim açtı, kim durdurdu', counts.olaySorun, ikonlar.gecmis)}
 
         <div class="nav-title">İÇERİK</div>
-        ${oge('icerik', 'klasorler', 'Yayın klasörleri', counts.kapaksiz
-          ? counts.kapaksiz + ' kapak eksik'
-          : 'Parçalar, sıra, kapak', counts.folders, ikonlar.klasor)}
+        ${oge('icerik', 'klasorler', 'Yayın klasörleri', 'Parçalar, sıra, kapak', counts.folders, ikonlar.klasor)}
         ${oge('icerik', 'anonslar', 'Anonslar', 'Mikrofon kayıtları', counts.announcements, ikonlar.anons)}
 
         <div class="nav-title">MÜŞTERİ</div>
@@ -545,7 +683,6 @@
     }).join('');
 
     return `
-      ${kapakDenetimi(D, ui)}
       <div class="panel" style="margin-bottom:18px">
         <h3>YENİ KLASÖR</h3>
         <div class="form-grid">
@@ -896,6 +1033,16 @@
         <table><tbody>${denemeSatirlari || bos(3, 'Bu markanın sunum sayfasına giriş denemesi olmadı.')}</tbody></table>
       </div>
 
+      <div class="panel" style="margin-bottom:18px">
+        <h3>ŞUBE BAĞLANTI GEÇMİŞİ</h3>
+        <p class="panel-sub">Kafenin oynatıcıyı açması, personelin liste değiştirmesi ve yayının durması. Duraklama satırındaki taraf,
+          "sorun bizde mi, kafede mi" sorusunu cevaplar.</p>
+        <table>
+          <thead><tr><th>ŞUBE</th><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>
+          <tbody>${olayTablosu(D, ui, { brandId: b.id }, 12) || bos(4, 'Bu markanın şubeleri için henüz olay kaydı yok.')}</tbody>
+        </table>
+      </div>
+
       <div class="panel">
         <h3>BAKIM</h3>
         <div class="row">
@@ -1139,7 +1286,10 @@
   function gorunum(state, D, ui) {
     const bas = topbar(state, D, ui.now());
     const kabuk = html => ({ baslik: bas.baslik, alt: bas.alt, html: html });
-    if (state.nav === 'canli') return kabuk(state.sub === 'saglik' ? saglikView(state, D, ui) : canliView(state, D, ui));
+    if (state.nav === 'canli') {
+      return kabuk(state.sub === 'saglik' ? saglikView(state, D, ui)
+        : (state.sub === 'gecmis' ? gecmisView(state, D, ui) : canliView(state, D, ui)));
+    }
     if (state.nav === 'icerik') {
       const govde = state.openFolder
         ? klasorDetay(state, D, ui)
@@ -1213,6 +1363,15 @@
       <div class="block"><h4>ANLIK ANONS</h4>
         <p class="sub">Mikrofonla duyuru gönder; ${esc(b ? b.name : 'bu marka')} şubelerinde çalan akışın önüne girer.</p>
         <button class="btn" data-act="mic" data-id="${esc(p.brand_id)}" type="button">🎙 MİKROFONU AÇ</button>
+      </div>
+
+      <div class="block"><h4>BAĞLANTI GEÇMİŞİ</h4>
+        <p class="sub">Bu şubede son olaylar. Duraklama satırındaki taraf, yayını kimin durdurduğunu söyler.</p>
+        <table><tbody>${olayTablosu(D, ui, { playerId: p.id, yer: false }, 12)
+          || bos(3, 'Bu şube için henüz olay kaydı yok.')}</tbody></table>
+        <div class="row" style="margin-top:12px">
+          <button class="btn sm" data-act="gecmis-ac" data-q="${esc(p.label)}" type="button">TÜM GEÇMİŞİ AÇ</button>
+        </div>
       </div>
 
       <div class="block"><h4>BAKIM</h4>
@@ -1311,9 +1470,14 @@
     bildirimTaze: bildirimTaze,
     calanListe: calanListe,
     personelListesi: personelListesi,
+    olayBilgi: olayBilgi,
+    olaylariAl: olaylariAl,
+    olayTablosu: olayTablosu,
+    gecmisOzet: gecmisOzet,
+    olaySorunSayi: olaySorunSayi,
+    suanTablosu: suanTablosu,
+    gecmisView: gecmisView,
     kapakYok: kapakYok,
-    kapaksizSayi: kapaksizSayi,
-    kapakDenetimi: kapakDenetimi,
     kapakPenceresi: kapakPenceresi,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu

@@ -210,13 +210,23 @@ test('panel sayfası görünüm modülünü ve stil dosyasını yükler', () => 
   assert.ok(sayfa.trimEnd().endsWith('</html>'), 'dosya </html> ile bitmeli');
 });
 
-// Kapak denetimindeki düğme klasörü data-id ile seçer; klasör sayfasındaki
-// düğme ise açık klasörü kullanır. İkisi de aynı pencereyi açar, dolayısıyla
-// denetim listesinden yerleştirme klasörü bulmayı gerektirmez.
-test('kapak penceresi denetim listesinden de açılabilir', () => {
+// Kapak penceresi kaydı iki yerden açabilmeli: satırdaki düğme data-id ile
+// seçer, klasör sayfasındaki düğme ise açık klasörü kullanır.
+test('kapak penceresi hem satırdan hem açık klasörden açılabilir', () => {
   assert.ok(source.includes('x.id === (id || state.openFolder)'),
     'kapak penceresi data-id ile klasör seçebilmeli');
-  assert.match(source, /kapaksiz: V\.kapaksizSayi\(D\)/, 'menü eksik kapak sayısını okumalı');
+  assert.ok(!source.includes('kapaksizSayi'), 'kapak denetimi ekranı kaldırıldı: menüde sayaç olmaz');
+});
+
+// Bağlantı geçmişi: sahada "yayın durdu" diye gelen şikâyetin kimden çıktığını
+// gösterecek ekran, yönlendirmesi ve verisi panelde eksiksiz bağlı olmalı.
+test('panel bağlantı geçmişi ekranını yönlendirir ve olayları yükler', () => {
+  assert.match(source, /gecmis: \{ nav: 'canli', sub: 'gecmis' \}/);
+  assert.match(source, /'#\/gecmis'/, 'adres çubuğu geçmiş ekranını yazabilmeli');
+  assert.ok(source.includes("from('radio_player_events')"), 'olaylar panelde okunmalı');
+  assert.match(source, /olaylar: olaylar\.data \|\| \[\]/);
+  assert.match(source, /olaySorun: V\.olaySorunSayi\(D\)/, 'menü son 24 saatteki arızayı okumalı');
+  assert.match(source, /case 'gecmis-ac'/, 'çekmeceden geçmişe geçiş işlenmeli');
 });
 
 // Panel dosyaları her değişiklikte sürüm damgası taşımalı; yoksa tarayıcı eski
