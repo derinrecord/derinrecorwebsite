@@ -251,7 +251,9 @@
       playlists: D.playlists.length,
       requests: D.requests ? D.requests.length : null,
       // Menüde "kaç şubede yayın çalışmaz" görünsün; sorun yoksa rozet çizilmez.
-      saglik: D.players.length ? (V.saglikOzet(D).kotu || null) : null
+      saglik: D.players.length ? (V.saglikOzet(D).kotu || null) : null,
+      // Kapaklar elle yerleştirilir; kaç görselin eksik olduğu menüde okunsun.
+      kapaksiz: V.kapaksizSayi(D) || null
     };
   }
 
@@ -942,8 +944,10 @@
         return;
       }
       // Kapak yerleştirme: parça, liste ve klasör aynı pencereyi kullanır.
+      // data-id varsa o klasör (kapak denetimi listesinden), yoksa açık klasör
+      // (klasör sayfasındaki düğme) kastedilir.
       case 'cover-open': {
-        const f = D.folders.find(x => x.id === state.openFolder);
+        const f = D.folders.find(x => x.id === (id || state.openFolder));
         if (!f) return;
         kapakPenceresiAc({
           baslik: 'Klasör kapağı',

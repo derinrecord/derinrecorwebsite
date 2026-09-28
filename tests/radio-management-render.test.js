@@ -210,6 +210,15 @@ test('panel sayfası görünüm modülünü ve stil dosyasını yükler', () => 
   assert.ok(sayfa.trimEnd().endsWith('</html>'), 'dosya </html> ile bitmeli');
 });
 
+// Kapak denetimindeki düğme klasörü data-id ile seçer; klasör sayfasındaki
+// düğme ise açık klasörü kullanır. İkisi de aynı pencereyi açar, dolayısıyla
+// denetim listesinden yerleştirme klasörü bulmayı gerektirmez.
+test('kapak penceresi denetim listesinden de açılabilir', () => {
+  assert.ok(source.includes('x.id === (id || state.openFolder)'),
+    'kapak penceresi data-id ile klasör seçebilmeli');
+  assert.match(source, /kapaksiz: V\.kapaksizSayi\(D\)/, 'menü eksik kapak sayısını okumalı');
+});
+
 // Panel dosyaları her değişiklikte sürüm damgası taşımalı; yoksa tarayıcı eski
 // dosyayı önbellekten çalar ve sahadaki düzeltme kimseye görünmez.
 test('panel dosyaları sürüm damgasıyla yüklenir', () => {

@@ -151,6 +151,89 @@
       : `<span class="cover ${ekSinif || ''}">${yedek || '♪'}</span>`;
   }
 
+  // ---------- Kapak denetimi ----------
+  // Kapaklar (parça, liste, klasör) kafedeki oynatıcı ekranında ve müşteri
+  // sunumunda görünür ve hepsi indirilmiş görselden **elle** yerleştirilir.
+  // Hangi kaydın kapağının eksik kaldığını klasörleri tek tek gezerek aramak
+  // yerine panel söyler: satırdaki düğme doğrudan kapak penceresini açar, kaydı
+  // bulmak için önce ilgili sayfaya gitmek gerekmez.
+  const kapakYok = kayit => !(kayit && kayit.cover_path);
+
+  // Kapağı eksik parça, liste ve klasörlerin toplamı (yan menüde görünür).
+  function kapaksizSayi(D) {
+    return (D.tracks || []).filter(kapakYok).length
+      + (D.playlists || []).filter(kapakYok).length
+      + (D.folders || []).filter(kapakYok).length;
+  }
+
+  // Denetim satırlarının ortak çizimi: kaydın adı + hangi klasöre/markaya ait
+  // olduğu, sonra kapak penceresini açan düğme. Klasörü silinmiş parça da
+  // listelenir: kapağı hâlâ eksiktir.
+  function kapakSatirlari(satirlar) {
+    return satirlar.map(s => `<tr>
+        <td><b>${esc(s.ad)}</b><span class="sub">${esc(s.alt || '')}</span></td>
+        <td class="tight"><span class="sub">${esc(s.ek || '')}</span></td>
+        <td><div class="row-actions">
+          <button class="btn sm primary" data-act="${esc(s.islem)}" data-id="${esc(s.id)}" type="button">KAPAK YERLEŞTİR</button>
+        </div></td>
+      </tr>`).join('');
+  }
+
+  function kapakDenetimi(D, ui) {
+    const klasorAdi = t => {
+      const f = (D.folders || []).find(x => x.id === t.folder_id);
+      return f ? f.name : 'klasör silinmiş';
+    };
+    const parcalar = (D.tracks || []).filter(kapakYok)
+      .map(t => ({
+        id: t.id, ad: clean(t.title), alt: klasorAdi(t), ek: mmss(t.duration_sec), islem: 'track-img'
+      }))
+      .sort((a, b) => String(a.alt).localeCompare(String(b.alt), 'tr')
+        || String(a.ad).localeCompare(String(b.ad), 'tr'));
+    const listeler = (D.playlists || []).filter(kapakYok)
+      .map(pl => {
+        const b = (D.brands || []).find(x => x.id === pl.brand_id);
+        const adet = (D.playlistTracks || []).filter(x => x.playlist_id === pl.id).length;
+        return {
+          id: pl.id, ad: pl.name, islem: 'list-img', ek: adet + ' parça',
+          alt: b ? b.name : 'marka silinmiş'
+        };
+      })
+      .sort((a, b) => String(a.alt).localeCompare(String(b.alt), 'tr'));
+    const klasorler = (D.folders || []).filter(kapakYok)
+      .map(f => ({
+        id: f.id, ad: f.name, islem: 'cover-open',
+        ek: f.shuffle === false ? 'sırayla' : 'karışık',
+        alt: (D.tracks || []).filter(t => t.folder_id === f.id).length + ' parça'
+      }))
+      .sort((a, b) => String(a.ad).localeCompare(String(b.ad), 'tr'));
+
+    const toplam = parcalar.length + listeler.length + klasorler.length;
+    if (!toplam) {
+      return `
+      <div class="panel" style="margin-bottom:18px">
+        <h3>KAPAK DENETİMİ ${chip('live', 'TAM', true)}</h3>
+        <p class="panel-sub">${(D.tracks || []).length} parçanın, ${(D.playlists || []).length} listenin ve ${(D.folders || []).length} klasörün
+          kapağı yerleştirilmiş. Kapağı sonradan değiştirmek için kaydın kendi sayfasındaki kapak düğmesini kullanabilirsin.</p>
+      </div>`;
+    }
+
+    // Eksik olmayan grup hiç yazılmaz: liste kısa kalsın, göz yorulmasın.
+    const grup = (baslik, alt, satirlar) => !satirlar.length ? '' : `
+        <p class="panel-sub" style="margin:18px 0 8px"><b>${baslik}</b> — ${satirlar.length} eksik · ${esc(alt)}</p>
+        <table><tbody>${kapakSatirlari(satirlar)}</tbody></table>`;
+
+    return `
+      <div class="panel" style="margin-bottom:18px">
+        <h3>KAPAK DENETİMİ ${chip('gold', toplam + ' EKSİK')}</h3>
+        <p class="panel-sub">Kapaklar kafedeki oynatıcı ekranında ve müşteri sunumunda görünür. Görseli buraya yüklemek yerine
+          <b>kendi indirdiğin dosyalardan</b> seçersin: satırdaki düğme kapak penceresini açar.</p>
+        ${grup('PARÇALAR', 'oynatıcı ekranında ve sunum akışında görünür', parcalar)}
+        ${grup('ÇALMA LİSTELERİ', 'oynatıcıda ve sunumda listeyi temsil eder', listeler)}
+        ${grup('YAYIN KLASÖRLERİ', 'klasör kaynağı seçilen şubelerde oynatıcı ekranında görünür', klasorler)}
+      </div>`;
+  }
+
   // ---------- Yan menü ----------
   function nav(state, counts, kullanici) {
     const oge = (nav, sub, baslik, alt, sayi, ikon) => `
@@ -180,7 +263,9 @@
         ${oge('canli', 'saglik', 'Yayın sağlığı', 'Otomatik denetim', counts.saglik, ikonlar.saglik)}
 
         <div class="nav-title">İÇERİK</div>
-        ${oge('icerik', 'klasorler', 'Yayın klasörleri', 'Parçalar, sıra, kapak', counts.folders, ikonlar.klasor)}
+        ${oge('icerik', 'klasorler', 'Yayın klasörleri', counts.kapaksiz
+          ? counts.kapaksiz + ' kapak eksik'
+          : 'Parçalar, sıra, kapak', counts.folders, ikonlar.klasor)}
         ${oge('icerik', 'anonslar', 'Anonslar', 'Mikrofon kayıtları', counts.announcements, ikonlar.anons)}
 
         <div class="nav-title">MÜŞTERİ</div>
@@ -444,11 +529,12 @@
     const now = ui.now();
     const satirlar = D.folders.filter(f => hit(q, f.name, f.description)).map(f => {
       const adet = D.tracks.filter(t => t.folder_id === f.id).length;
+      const kapaksiz = D.tracks.filter(t => t.folder_id === f.id && kapakYok(t)).length;
       const yayinda = D.broadcast.some(b => b.folder_id === f.id);
       return `<tr class="selectable" data-act="folder-open" data-id="${esc(f.id)}">
         <td><div class="cell-main">${kapakHucre(f.cover_path, ui, '🎵', 'gold')}
           <span><b>${esc(f.name)}</b><span class="sub">${esc(f.description || 'açıklama yok')}</span></span></div></td>
-        <td class="tight">${adet} parça</td>
+        <td class="tight">${adet} parça${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</td>
         <td class="tight">${yayinda ? chip('live', 'YAYINDA', true) : chip('off', 'beklemede')}</td>
         <td class="tight">${f.shuffle === false ? '<span class="sub">sırayla</span>' : '<span class="sub">karışık</span>'}</td>
         <td><div class="row-actions">
@@ -459,6 +545,7 @@
     }).join('');
 
     return `
+      ${kapakDenetimi(D, ui)}
       <div class="panel" style="margin-bottom:18px">
         <h3>YENİ KLASÖR</h3>
         <div class="form-grid">
@@ -485,6 +572,7 @@
     const liste = D.tracks.filter(t => t.folder_id === f.id)
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     const toplam = liste.reduce((s, t) => s + (Number(t.duration_sec) || 0), 0);
+    const kapaksiz = liste.filter(kapakYok).length;
     const gorunen = liste.filter(t => hit(q, clean(t.title)));
 
     const satirlar = gorunen.map((t, i) => `<tr draggable="true" data-act="track-open"
@@ -493,7 +581,8 @@
       <td class="tight"><span class="drag" title="Sürükleyerek sırala">⋮⋮</span></td>
       <td><div class="cell-main"><span class="cover">${t.cover_path
         ? `<img src="${esc(kapakYolu(t.cover_path, ui))}" alt="" loading="lazy">` : '♪'}</span>
-        <span><b>${esc(clean(t.title))}</b><span class="sub">${esc(t.storage_path)}</span></span></div></td>
+        <span><b>${esc(clean(t.title))}</b><span class="sub">${esc(t.storage_path)}</span>${kapakYok(t)
+          ? ' ' + chip('gold', 'KAPAK YOK') : ''}</span></div></td>
       <td class="tight">${mmss(t.duration_sec)}</td>
       <td><div class="row-actions">
         <button class="btn sm" data-act="track-play" data-id="${esc(t.id)}" type="button">DİNLE</button>
@@ -521,7 +610,7 @@
         <div class="progress" id="up-bar" hidden><i></i></div>
       </div>
       <div class="panel" style="margin-bottom:18px">
-        <h3>PARÇALAR (${liste.length})</h3>
+        <h3>PARÇALAR (${liste.length})${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</h3>
         <table>
           <thead><tr><th>#</th><th></th><th>PARÇA</th><th>SÜRE</th><th></th></tr></thead>
           <tbody>${satirlar || bos(5, liste.length ? 'Aramayla eşleşen parça yok.' : 'Bu klasörde henüz parça yok.')}</tbody>
@@ -673,10 +762,12 @@
 
     const listeSatirlari = listeler.map(pl => {
       const adet = D.playlistTracks.filter(x => x.playlist_id === pl.id).length;
+      const kapaksiz = D.playlistTracks.filter(x => x.playlist_id === pl.id)
+        .map(x => D.tracks.find(t => t.id === x.track_id)).filter(kapakYok).length;
       const kullanan = D.broadcast.filter(x => x.playlist_id === pl.id).length;
       return `<tr class="selectable" data-act="list-open" data-id="${esc(pl.id)}">
-        <td><b>${esc(pl.name)}</b><span class="sub">${esc(pl.description || 'açıklama yok')}</span></td>
-        <td class="tight">${adet} parça</td>
+        <td><b>${esc(pl.name)}</b><span class="sub">${esc(pl.description || 'açıklama yok')}${kapakYok(pl) ? ' · kapağı yok' : ''}</span></td>
+        <td class="tight">${adet} parça${kapaksiz ? ' · ' + kapaksiz + ' kapağı yok' : ''}</td>
         <td class="tight">${kullanan ? chip('live', 'YAYINDA', true) : chip('off', 'kullanılmıyor')}</td>
         <td><div class="row-actions">
           <button class="btn sm" data-act="list-open" data-id="${esc(pl.id)}" type="button">AÇ ›</button>
@@ -825,14 +916,16 @@
       .map(pl => {
         const b = D.brands.find(x => x.id === pl.brand_id);
         const adet = D.playlistTracks.filter(x => x.playlist_id === pl.id).length;
+        const kapaksiz = D.playlistTracks.filter(x => x.playlist_id === pl.id)
+          .map(x => D.tracks.find(t => t.id === x.track_id)).filter(kapakYok).length;
         const kullanan = D.broadcast.filter(x => x.playlist_id === pl.id).length;
         return `<tr class="selectable" data-act="list-open" data-id="${esc(pl.id)}">
           <td><div class="cell-main">${pl.cover_path
             ? `<span class="cover"><img src="${esc(kapakYolu(pl.cover_path, ui))}" alt="" loading="lazy"></span>`
             : '<span class="cover">🎧</span>'}<span><b>${esc(pl.name)}</b>
-            <span class="sub">${esc(pl.description || uzunTarih(pl.created_at) + ' tarihinde oluşturuldu')}</span></span></div></td>
+            <span class="sub">${esc(pl.description || uzunTarih(pl.created_at) + ' tarihinde oluşturuldu')}${kapakYok(pl) ? ' · kapağı yok' : ''}</span></span></div></td>
           <td class="tight">${esc(b ? b.name : '—')}</td>
-          <td class="tight">${adet} parça</td>
+          <td class="tight">${adet} parça${kapaksiz ? ' · ' + kapaksiz + ' kapağı yok' : ''}</td>
           <td class="tight">${kullanan ? chip('live', kullanan + ' ŞUBEDE', true) : chip('off', 'kullanılmıyor')}</td>
           <td><div class="row-actions">
             <button class="btn sm" data-act="list-open" data-id="${esc(pl.id)}" type="button">AÇ ›</button>
@@ -863,12 +956,13 @@
       .filter(r => r.t);
     const gorunen = kayitlar.filter(r => hit(q, clean(r.t.title)));
     const kullanan = D.broadcast.filter(x => x.playlist_id === pl.id).length;
+    const kapaksiz = kayitlar.filter(r => kapakYok(r.t)).length;
 
     const satirlar = gorunen.map((r, i) => {
       const klasor = D.folders.find(f => f.id === r.t.folder_id);
       return `<tr data-idx="${i}" data-kayit="${esc(r.x.id)}">
         <td class="no">${String(kayitlar.indexOf(r) + 1).padStart(2, '0')}</td>
-        <td><b>${esc(clean(r.t.title))}</b></td>
+        <td><b>${esc(clean(r.t.title))}</b>${kapakYok(r.t) ? ' ' + chip('gold', 'KAPAK YOK') : ''}</td>
         <td class="tight">${klasor ? chip('off', klasor.name) : chip('off', 'klasör silinmiş')}</td>
         <td class="tight">${mmss(r.t.duration_sec)}</td>
         <td><div class="row-actions">
@@ -910,7 +1004,7 @@
           : 'Bu liste hiçbir şubeye atanmamış; personel cihazdan seçerse çalar.'}</span>
       </div>
       <div class="panel">
-        <h3>AKIŞ (${kayitlar.length})</h3>
+        <h3>AKIŞ (${kayitlar.length})${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</h3>
         <table>
           <thead><tr><th>#</th><th>PARÇA</th><th>KAYNAK KLASÖR</th><th>SÜRE</th><th></th></tr></thead>
           <tbody>${satirlar || bos(5, kayitlar.length ? 'Aramayla eşleşen parça yok.' : 'Liste boş. “+ ŞARKI EKLE” ile klasörlerden parça seç.')}</tbody>
@@ -1217,6 +1311,9 @@
     bildirimTaze: bildirimTaze,
     calanListe: calanListe,
     personelListesi: personelListesi,
+    kapakYok: kapakYok,
+    kapaksizSayi: kapaksizSayi,
+    kapakDenetimi: kapakDenetimi,
     kapakPenceresi: kapakPenceresi,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu

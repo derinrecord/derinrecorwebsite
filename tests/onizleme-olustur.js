@@ -111,6 +111,66 @@ body{background:#0b0b0d;padding:26px}
   return;
 }
 
+// "kapaklar" modu Yayın klasörleri ekranını önizler: kapak denetimi listesi ve
+// satır içi "KAPAK YOK" uyarıları gözle doğrulanabilsin.
+if (senaryo === 'kapaklar') {
+  const V = require(path.join(kok, 'radyo-panel-views.js'));
+  const simdi = Date.now();
+  const gunOnce = n => new Date(simdi - n * 86400000).toISOString();
+  // Gerçek bir depo yerine küçük bir SVG: önizlemede kapaklar yerinde görünsün.
+  const sahteKapak = renk => 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="' + renk + '"/></svg>');
+  const D = {
+    brands: [{ id: 'b1', name: 'Mokka Coffee', slug: 'mokka-coffee', access_code: 'K', is_active: true }],
+    folders: [
+      { id: 'f1', name: 'Sabah Açılış', description: 'Yumuşak giriş', cover_path: 'klasorler/f1.jpg', shuffle: true },
+      { id: 'f2', name: 'Öğle Molası', description: 'Kahve arası', cover_path: null, shuffle: false }
+    ],
+    tracks: [
+      { id: 't1', folder_id: 'f1', title: 'Kalabalık Caddesi', storage_path: 'f1/a.wav', sort_order: 0, duration_sec: 214, cover_path: 'tracks/t1.jpg' },
+      { id: 't2', folder_id: 'f1', title: 'Sabah Rüzgârı', storage_path: 'f1/b.wav', sort_order: 1, duration_sec: 187, cover_path: null },
+      { id: 't3', folder_id: 'f2', title: 'Öğle Molası', storage_path: 'f2/c.mp3', sort_order: 0, duration_sec: 165, cover_path: null },
+      { id: 't4', folder_id: 'f2', title: 'İkindi Kahvesi', storage_path: 'f2/d.mp3', sort_order: 1, duration_sec: 203, cover_path: null }
+    ],
+    players: [], broadcast: [], announcements: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: [],
+    playlists: [
+      { id: 'l1', brand_id: 'b1', name: 'Sabah Akışı', description: 'Açılış listesi', cover_path: null, shuffle: false, created_at: gunOnce(5) },
+      { id: 'l2', brand_id: 'b1', name: 'Akşam Akışı', description: null, cover_path: 'listeler/l2.jpg', shuffle: false, created_at: gunOnce(9) }
+    ],
+    playlistTracks: [
+      { id: 'x1', playlist_id: 'l1', track_id: 't1', sort_order: 0 },
+      { id: 'x2', playlist_id: 'l1', track_id: 't3', sort_order: 1 },
+      { id: 'x3', playlist_id: 'l2', track_id: 't2', sort_order: 0 }
+    ]
+  };
+  const ui = {
+    cover: p => (/^data:/.test(p) ? p : sahteKapak(p.includes('listeler') ? '#c98b3b' : '#3b6bc9')),
+    ses: p => p, anons: p => p,
+    playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
+    accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
+    now: () => simdi, saglikSonuc: () => null
+  };
+  const gorunum = V.gorunum({ nav: 'icerik', sub: 'klasorler', openFolder: null, openBrand: null, openPlaylist: null, q: '' }, D, ui);
+  const sayfa4 = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — kapak denetimi</title>
+<style>
+${oku('radyo-panel.css')}
+body{background:#0b0b0d;padding:22px;display:block}
+.view{max-width:1080px;margin:0 auto}
+</style>
+</head>
+<body><div class="view">${gorunum.html}</div></body>
+</html>`;
+  fs.writeFileSync(ciktiYolu, sayfa4);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · kapak denetimi');
+  return;
+}
+
 let sayfa = oku('radyo-cihaz-prova.html');
 const kuyruk = oku('radio-playlist-queue.js');
 // Oynatıcı anahtarı yalnızca sorgu dizesinden okur; provada sorgu dizesi

@@ -529,3 +529,77 @@ test('bağlantı sınaması düğmesi her şubede bulunmaz, yalnızca çekmecede
   assert.ok(!liste.includes('BAĞLANTIYI SINA'), 'tabloda yer kaplamamalı');
   assert.ok(V.subeCekmecesi('p1', D, ui).includes('BAĞLANTIYI SINA'));
 });
+
+// ---------- KAPAK DENETİMİ ----------
+// Kapaklar (parça, liste, klasör) sahada görünür ve hepsi indirilmiş görselden
+// elle yerleştirilir. Hangi kaydın kapağının eksik kaldığını klasörleri tek tek
+// gezerek aramak yerine panel tek listede söyler ve her satırdan kapak
+// penceresini açar.
+const kapakVer = (kurgu, { tracks = true, playlists = true, folders = true } = {}) => ({
+  ...kurgu,
+  tracks: kurgu.tracks.map(t => ({ ...t, cover_path: tracks ? 'tracks/' + t.id + '.jpg' : null })),
+  playlists: kurgu.playlists.map(p => ({ ...p, cover_path: playlists ? 'listeler/' + p.id + '.jpg' : null })),
+  folders: kurgu.folders.map(f => ({ ...f, cover_path: folders ? 'klasorler/' + f.id + '.jpg' : null }))
+});
+
+test('kapak denetimi eksik kapakları tek listede toplar', () => {
+  const html = V.gorunum(durum({ nav: 'icerik', sub: 'klasorler' }), D, ui).html;
+  assert.ok(html.includes('KAPAK DENETİMİ'), 'denetim klasör ekranında olmalı');
+  assert.ok(html.includes('4 EKSİK'), 'iki parça, bir liste ve bir klasörün kapağı eksik');
+  ['PARÇALAR', 'ÇALMA LİSTELERİ', 'YAYIN KLASÖRLERİ'].forEach(grup =>
+    assert.ok(html.includes(grup), `${grup} kendi grubunda listelenmeli`));
+  // Her satır kendi kaydını hedefler: kapağı olan kayıt listede yer almaz.
+  assert.ok(html.includes('data-act="track-img" data-id="t1"'));
+  assert.ok(html.includes('data-act="track-img" data-id="t2"'));
+  assert.ok(html.includes('data-act="list-img" data-id="l1"'));
+  assert.ok(html.includes('data-act="cover-open" data-id="f1"'));
+  assert.equal(html.split('KAPAK YERLEŞTİR').length - 1, 4, 'her eksik kayıt için bir düğme');
+  assert.ok(html.includes('Üsküdar &amp; Co'), 'satırda parçanın adı yazılmalı');
+});
+
+test('kapağı yerleştirilen kayıt denetim listesinden düşer', () => {
+  const kismi = kapakVer(D, { tracks: false, playlists: true, folders: true });
+  const html = V.gorunum(durum({ nav: 'icerik', sub: 'klasorler' }), kismi, ui).html;
+  assert.ok(html.includes('2 EKSİK'), 'kalan eksik yalnızca iki parça olmalı');
+  assert.ok(!html.includes('data-act="list-img"'), 'kapağı yerleşen liste listede kalmaz');
+  assert.ok(!html.includes('data-act="cover-open"'), 'kapağı yerleşen klasör listede kalmaz');
+  assert.equal(html.split('KAPAK YERLEŞTİR').length - 1, 2);
+});
+
+test('bütün kapaklar yerleştiyse denetim tamam der', () => {
+  const html = V.gorunum(durum({ nav: 'icerik', sub: 'klasorler' }), kapakVer(D), ui).html;
+  assert.ok(html.includes('KAPAK DENETİMİ'), 'denetim yine görünür: ne durumda olduğu okunmalı');
+  assert.ok(!html.includes('EKSİK'), 'eksik kalmadıysa sayı yazılmaz');
+  assert.ok(!html.includes('KAPAK YERLEŞTİR'), 'yerleştirme düğmesi çıkmaz');
+  assert.ok(!html.includes('KAPAK YOK'), 'satır içi uyarı çıkmaz');
+  assert.ok(html.includes('kapağı yerleştirilmiş'));
+});
+
+// Eksik kapak hem satırda hem yan menüde görünür: kullanıcı denetim panelini
+// aramak zorunda kalmadan nerede iş olduğunu okur.
+test('satırlar ve yan menü kaç kapağın eksik olduğunu söyler', () => {
+  const klasorler = V.gorunum(durum({ nav: 'icerik', sub: 'klasorler' }), D, ui).html;
+  assert.match(klasorler, /2 KAPAK YOK/, 'klasör satırı eksik parça sayısını yazmalı');
+
+  const listeler = V.gorunum(durum({ nav: 'musteri', sub: 'listeler' }), D, ui).html;
+  assert.match(listeler, /2 parça · 2 kapağı yok/, 'liste satırı eksik kapağı söylemeli');
+  assert.match(listeler, /· kapağı yok/, 'kapağı olmayan liste kendini belli etmeli');
+
+  const akis = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', openPlaylist: 'l1' }), D, ui).html;
+  assert.ok(akis.includes('2 KAPAK YOK'), 'liste akışı eksik kapağı sayar');
+
+  const menuler = { players: 1, folders: 1, announcements: 0, brands: 1, playlists: 1, requests: 0 };
+  const kullanici = { ad: 'Yönetici', alt: '', basHarf: 'Y' };
+  const rail = V.nav(durum({ nav: 'icerik', sub: 'klasorler' }), { ...menuler, kapaksiz: 4 }, kullanici);
+  assert.ok(rail.includes('4 kapak eksik'), 'menüde eksik kapak sayısı yazılmalı');
+  const temiz = V.nav(durum({ nav: 'icerik', sub: 'klasorler' }), menuler, kullanici);
+  assert.ok(temiz.includes('Parçalar, sıra, kapak'), 'eksik yoksa normal açıklama kalmalı');
+  assert.ok(!temiz.includes('kapak eksik'));
+});
+
+test('kapaksizSayi parça, liste ve klasörleri birlikte sayar', () => {
+  assert.equal(V.kapaksizSayi(D), 4);
+  assert.equal(V.kapaksizSayi({ tracks: [], playlists: [], folders: [] }), 0);
+  assert.equal(V.kapaksizSayi({}), 0);
+  assert.equal(V.kapaksizSayi(kapakVer(D)), 0);
+});
