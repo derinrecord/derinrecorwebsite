@@ -297,9 +297,21 @@ sayfa = sayfa.replace(
   '<script>window.DERIN_CONFIG = { supabaseUrl: \'https://prova.test\', supabasePublishableKey: \'prova\' };</script>\n<script>\n// ---- Sunucu taklidi'
 );
 
+// Önizleme tek dosya olarak servis edilir, yanındaki varlıkları yükleyemez;
+// oynatıcının varsayılan kapak logosu bu yüzden satır içine alınır.
+const LOGO_YOLU = 'assets/logo.png';
+const LOGO_URL = "url('" + LOGO_YOLU + "')";
+if (sayfa.includes(LOGO_URL)) {
+  const logo = fs.readFileSync(path.join(kok, LOGO_YOLU)).toString('base64');
+  sayfa = sayfa.split(LOGO_URL).join("url('data:image/png;base64," + logo + "')");
+}
+
 fs.writeFileSync(ciktiYolu, sayfa);
 console.log(path.relative(kok, ciktiYolu) + ' yazıldı · senaryo=' + senaryo + ' · ' + sayfa.length + ' bayt');
 ['radyo.js', 'radio-playlist-queue.js', 'config.js'].forEach(dis => {
   if (sayfa.includes('src="' + dis)) throw new Error(dis + ' hâlâ dışarıdan yükleniyor');
 });
 if (!sayfa.includes('window.DERIN_CONFIG')) throw new Error('DERIN_CONFIG gömülmedi');
+if (sayfaHam.includes('assets/logo.png') && !sayfa.includes('data:image/png;base64,')) {
+  throw new Error('kapak logosu satır içine alınmadı');
+}
