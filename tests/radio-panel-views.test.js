@@ -1080,3 +1080,40 @@ test('menüde sessiz şube rozeti kırmızı çizilir', () => {
   const sakin = V.nav(durum({}), { ...temel, olaySorun: null, sessiz: null }, kullanici);
   assert.ok(!sakin.includes('say uyari'), 'sessiz şube yokken rozet çizilmez');
 });
+
+// ---------- KATLANMA TERCİHİNİN SAKLANMASI ----------
+// Katlanabilir bölümlerin açık/kapalı seçimi tarayıcıda saklanır; sayfa
+// yenilendiğinde yönetici kendi düzenini bulur. Saklama biçimi panelin
+// (radyo-yonetim.js) ve testin ortak konusudur, bu yüzden saf yardımcılar
+// görünüm katmanındadır: bozuk kayıt paneli çökertmez.
+test('katlanma tercihi yalnız açık işaretleri saklar ve geri okur', () => {
+  const metin = V.katliDurumYaz({ acik: { 'gecmis:olaylar': true, 'gecmis:trend': false }, kapali: { 'gecmis:suan': true } });
+  const kayit = JSON.parse(metin);
+  assert.deepEqual(kayit, { acik: { 'gecmis:olaylar': true }, kapali: { 'gecmis:suan': true } },
+    'varsayılanı tekrarlayan `false` işaretleri yazılmaz');
+
+  const geri = V.katliDurumOku(metin);
+  assert.deepEqual(geri, { acik: { 'gecmis:olaylar': true }, kapali: { 'gecmis:suan': true } });
+});
+
+test('katlanma tercihi bozuk veya eski kayıtta boş duruma düşer', () => {
+  const bos = { acik: {}, kapali: {} };
+  assert.deepEqual(V.katliDurumOku(''), bos, 'kayıt yoksa');
+  assert.deepEqual(V.katliDurumOku('{bu json degil'), bos, 'bozuk JSON');
+  assert.deepEqual(V.katliDurumOku('"metin"'), bos, 'nesne olmayan kayıt');
+  assert.deepEqual(V.katliDurumOku('{}'), bos, 'eksik alanlar');
+  // Eski sürümden kalan sayı/dize işaretleri açık sayılmaz.
+  assert.deepEqual(V.katliDurumOku('{"acik":{"x":1,"y":"evet"},"kapali":null}'), bos);
+  assert.deepEqual(V.katliDurumYaz(null), '{"acik":{},"kapali":{}}');
+  assert.deepEqual(V.katliDurumYaz({}), '{"acik":{},"kapali":{}}');
+});
+
+test('saklanan tercih ekranı doğrudan etkiler', () => {
+  // Ekran kapalı gelir, ama kayıttan okunan işaret bölümü açık çizer.
+  const acik = V.gorunum(durum({
+    nav: 'canli', sub: 'gecmis',
+    ...V.katliDurumOku('{"kapali":{"gecmis:trend":true}}')
+  }), DOLAY, ui).html;
+  assert.ok(!acik.includes('data-katli="gecmis:trend"'), 'saklanan "kapalı" işareti uygulanır');
+  assert.ok(acik.includes('data-katli="gecmis:olaylar"'), 'diğer bölümler varsayılanda kalır');
+});

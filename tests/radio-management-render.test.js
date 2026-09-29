@@ -274,6 +274,28 @@ test('çekmecedeki katlama yerinde işlenir, paneli yeniden çizmez', () => {
   assert.ok(!blok.includes('ciz()'), 'çekmece katlaması paneli yeniden çizmemeli');
 });
 
+// Katlanma tercihi tarayıcıda saklanır: yönetici canlı durum ekranında uzun bir
+// tabloyu kapattıysa, sayfayı yenilediğinde (ya da canlı veri ekranı yeniden
+// çizdiğinde) onu kapalı bulmalı. Aksi hâlde her açılışta dört uzun tabloyu
+// yeniden kapatmak zorunda kalırdı.
+test('katlanma tercihi tarayıcıda saklanır ve açılışta geri okunur', () => {
+  assert.match(source, /'derin:katli-radyo'/);
+  assert.match(source, /V\.katliDurumOku\(localStorage\.getItem/, 'açılışta kayıttan okunmalı');
+  assert.match(source, /V\.katliDurumYaz\(state\)/, 'tercih görünüm katmanının saf yardımcısıyla yazılmalı');
+
+  // İki katlama yolu da kaydı güncellemeli; biri atlarsa tercih yarı yarıya
+  // hatırlanır (bölüm ekran değişince eski hâline döner).
+  ["case 'katla'", "case 'katla-alt'"].forEach(etiket => {
+    const blok = source.slice(source.indexOf(etiket), source.indexOf('return;', source.indexOf(etiket)));
+    assert.ok(blok.includes('katliYaz()'), etiket + ' tercihi kaydetmeli');
+  });
+
+  // Depo kapalı/bozuk olduğunda panel çalışmaya devam etmeli; kayıt okuma ve
+  // yazma try/catch içinde olmalı (gizli sekme, kota dolu).
+  assert.match(source, /try \{ localStorage\.setItem\(KATLI_ANAHTARI/);
+  assert.match(source, /try \{\s*const kayit = V\.katliDurumOku/);
+});
+
 // Panel dosyaları her değişiklikte sürüm damgası taşımalı; yoksa tarayıcı eski
 // dosyayı önbellekten çalar ve sahadaki düzeltme kimseye görünmez.
 test('panel dosyaları sürüm damgasıyla yüklenir', () => {

@@ -39,6 +39,21 @@
     kapali: {}
   };
 
+  // Katlanabilir bölümlerin açık/kapalı tercihi tarayıcıda saklanır. Bir tabloyu
+  // kapatan yönetici sayfayı yenilediğinde (ya da canlı veri ekranı yeniden
+  // çizdiğinde) aynı düzeni bulmalı; tercih her oturumda baştan kurulmaz.
+  // Çözümleme/üretme işi görünüm katmanında (saf), burada yalnız depo var:
+  // depo kapalıysa (gizli sekme, kota) panel eskisi gibi çalışır, yalnız hatırlamaz.
+  const KATLI_ANAHTARI = 'derin:katli-radyo';
+  const katliYaz = () => {
+    try { localStorage.setItem(KATLI_ANAHTARI, V.katliDurumYaz(state)); } catch {}
+  };
+  try {
+    const kayit = V.katliDurumOku(localStorage.getItem(KATLI_ANAHTARI));
+    state.acik = kayit.acik;
+    state.kapali = kayit.kapali;
+  } catch {}
+
   let modalOnay = null, modalKapat = null;
   let toastZaman = null;
   let recorder = null, recParcalari = [], recAkis = null, recZaman = null, recBaslangic = 0;
@@ -771,6 +786,7 @@
       case 'katla':
         state.acik = state.acik || {};
         state.acik[id] = !state.acik[id];
+        katliYaz();
         ciz();
         return;
 
@@ -779,6 +795,7 @@
       case 'katla-alt':
         state.kapali = state.kapali || {};
         state.kapali[id] = !state.kapali[id];
+        katliYaz();
         ciz();
         return;
 

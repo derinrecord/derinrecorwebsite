@@ -1296,6 +1296,29 @@
   }
 
   // ---------- Katlanabilir bölüm ----------
+  // Katlanma tercihini tarayıcıda saklamak için kullanılan saf yardımcılar.
+  // Yalnız `true` işaretleri saklanır: kapatılmış bir bölümü "açık değil" diye
+  // yazmak varsayılanı tekrarlar ve kaydı şişirirdi. Bozuk/eski kayıt paneli
+  // çökertmez, boş durum döner (bölümler varsayılan hâliyle gelir).
+  function katliIsaretler(v) {
+    const out = {};
+    if (v && typeof v === 'object') for (const k in v) if (v[k] === true) out[k] = true;
+    return out;
+  }
+  function katliDurumOku(metin) {
+    if (!metin) return { acik: {}, kapali: {} };
+    let kayit = null;
+    try { kayit = JSON.parse(metin); } catch { return { acik: {}, kapali: {} }; }
+    if (!kayit || typeof kayit !== 'object') return { acik: {}, kapali: {} };
+    return { acik: katliIsaretler(kayit.acik), kapali: katliIsaretler(kayit.kapali) };
+  }
+  function katliDurumYaz(durum) {
+    return JSON.stringify({
+      acik: katliIsaretler(durum && durum.acik),
+      kapali: katliIsaretler(durum && durum.kapali)
+    });
+  }
+
   // Kayıt listeleri (anons geçmişi, giriş denemeleri, olay geçmişi) sayfanın
   // altında birikip asıl işi aşağı itiyordu. Bu bölümler kapalı gelir: başlık ve
   // tek satır özet yerinde kalır, liste istenince açılır. Açık bölümler
@@ -2184,7 +2207,9 @@
     kapakYok: kapakYok,
     kapakPenceresi: kapakPenceresi,
     parcaDetay: parcaDetay,
-    geriCubugu: geriCubugu
+    geriCubugu: geriCubugu,
+    katliDurumOku: katliDurumOku,
+    katliDurumYaz: katliDurumYaz
   };
 
   if (typeof window !== 'undefined') window.DerinRadyoViews = api;

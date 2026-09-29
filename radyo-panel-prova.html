@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Radyo Paneli — Canlı Prova</title>
+<!--
+  CANLI PROVA — üretim koduyla aynı görünüm.
+  Bu sayfa radyo-panel.css ve radyo-panel-views.js dosyalarını doğrudan yükler,
+  yalnızca veriyi örnek olarak verir. Yani burada gördüğünüz HTML ve stiller
+  radyo-yonetim.html'in birebir aynısıdır; sadece Supabase yerine örnek veri var.
+  .vercelignore sayesinde yayına girmez (*-prova.html).
+-->
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="radyo-panel.css?v=5">
+</head>
+<body>
+
+<aside class="rail" id="rail"></aside>
+
+<div class="app">
+  <header class="topbar">
+    <div class="title">
+      <h1 id="page-title">Radyo kontrolü</h1>
+      <p id="page-sub">Canlı prova — örnek veri</p>
+    </div>
+    <label class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+      <input id="search" placeholder="Ara… (şube, marka, parça)" autocomplete="off">
+    </label>
+    <span class="status-dot" id="live-dot"><i></i> <span id="live-text">canlı</span></span>
+  </header>
+  <main class="view" id="view"></main>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+<aside class="drawer" id="drawer" aria-hidden="true"></aside>
+<div class="modal-wrap" id="modal-wrap"><div class="modal" id="modal"></div></div>
+<div class="player" id="player"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="radyo-panel-views.js?v=27"></script>
+<script>
+(() => {
+  const V = window.DerinRadyoViews;
+  const el = id => document.getElementById(id);
+  const GUN = 86400000, saat = Date.now(), iso = ms => new Date(saat + ms).toISOString();
+
+  // Örnek veri — Supabase tablolarının kolon adlarıyla aynı.
+  const D = {
+    brands: [
+      { id: 'b1', name: 'Mokka Coffee', slug: 'mokka-coffee', access_code: 'MOKKA2026', is_active: true },
+      { id: 'b2', name: 'Brew Lab', slug: 'brew-lab', access_code: 'BREW2026', is_active: true },
+      { id: 'b3', name: 'Kahve Durağı', slug: 'kahve-duragi', access_code: null, is_active: true }
+    ],
+    folders: [
+      { id: 'f1', name: 'Sabah Açılış — Ambient', description: 'Yumuşak giriş, düşük tempo', cover_path: null, shuffle: true },
+      { id: 'f2', name: 'Gün Ortası — Indie', description: 'Orta tempo, canlı davul', cover_path: null, shuffle: false },
+      { id: 'f3', name: 'Akşam Kapanış — Lo-fi', description: 'Sakin kapanış akışı', cover_path: null, shuffle: true }
+    ],
+    tracks: [
+      { id: 't1', folder_id: 'f1', title: 'Ambient Opening 01', storage_path: 'f1/ambient-01.wav', sort_order: 0, duration_sec: 222, cover_path: null },
+      { id: 't2', folder_id: 'f1', title: 'Ambient Opening 02', storage_path: 'f1/ambient-02.wav', sort_order: 1, duration_sec: 245, cover_path: null },
+      { id: 't3', folder_id: 'f1', title: 'Morning Pulse', storage_path: 'f1/morning-pulse.wav', sort_order: 2, duration_sec: 198, cover_path: null },
+      { id: 't4', folder_id: 'f2', title: 'Indie Drive 01', storage_path: 'f2/indie-01.wav', sort_order: 0, duration_sec: 230, cover_path: null },
+      { id: 't5', folder_id: 'f2', title: 'Indie Drive 02', storage_path: 'f2/indie-02.wav', sort_order: 1, duration_sec: 252, cover_path: null },
+      { id: 't6', folder_id: 'f3', title: 'Lo-fi Closing 01', storage_path: 'f3/lofi-01.wav', sort_order: 0, duration_sec: 270, cover_path: null },
+      { id: 't7', folder_id: 'f3', title: 'Lo-fi Closing 02', storage_path: 'f3/lofi-02.wav', sort_order: 1, duration_sec: 302, cover_path: null }
+    ],
+    players: [
+      { id: 'p1', brand_id: 'b1', label: 'Mokka — Nişantaşı', player_key: 'dr-8f21c4', last_seen_at: new Date().toISOString(), open_time: '09:00:00', close_time: '22:00:00', bound_device_id: 'cihaz-a', bound_at: iso(-3 * GUN), first_ip: '1.2.3.4', last_ip: '1.2.3.4', last_ip_at: iso(-240000), is_playing: true },
+      { id: 'p2', brand_id: 'b1', label: 'Mokka — Kadıköy', player_key: 'dr-2be907', last_seen_at: new Date().toISOString(), open_time: '10:00:00', close_time: '23:00:00', bound_device_id: 'cihaz-b', bound_at: iso(-9 * GUN), first_ip: '5.6.7.8', last_ip: '5.6.7.8', last_ip_at: iso(-420000), is_playing: true },
+      { id: 'p3', brand_id: 'b3', label: 'Kahve Durağı — Bebek', player_key: 'dr-a41f55', last_seen_at: iso(-26 * 3600000), open_time: '08:30:00', close_time: '21:00:00', bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null, is_playing: false },
+      { id: 'p4', brand_id: 'b2', label: 'Brew Lab — Alsancak', player_key: 'dr-77c010', last_seen_at: new Date().toISOString(), open_time: '09:00:00', close_time: '20:00:00', bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null, is_playing: false }
+    ],
+    broadcast: [
+      { brand_id: 'b1', folder_id: null, playlist_id: 'l1' },
+      { brand_id: 'b2', folder_id: 'f2', playlist_id: null }
+    ],
+    // Şubeye özel yayın: p1 markanın genelinden ayrılmış, p2 genel yayında.
+    playerBroadcast: [
+      { player_id: 'p1', folder_id: 'f3', playlist_id: null, updated_at: iso(-3600000) }
+    ],
+    announcements: [
+      { id: 'a1', brand_id: 'b1', storage_path: 'b1/1.webm', label: 'Bugün 18:00 kapanış anonsu', created_at: iso(-2 * GUN) },
+      { id: 'a2', brand_id: 'b1', storage_path: 'b1/2.webm', label: 'Yeni kampanya duyurusu', created_at: iso(-7 * GUN) }
+    ],
+    playlists: [
+      { id: 'l1', brand_id: 'b1', name: 'Mokka — Gündüz Akışı', description: null, cover_path: null, shuffle: false, created_at: iso(-30 * GUN) },
+      { id: 'l2', brand_id: 'b3', name: 'Kahve Durağı — Klasik', description: null, cover_path: null, shuffle: false, created_at: iso(-12 * GUN) }
+    ],
+    playlistTracks: [
+      { id: 'x1', playlist_id: 'l1', track_id: 't1', sort_order: 0 },
+      { id: 'x2', playlist_id: 'l1', track_id: 't4', sort_order: 1 },
+      { id: 'x3', playlist_id: 'l1', track_id: 't3', sort_order: 2 },
+      { id: 'x4', playlist_id: 'l2', track_id: 't6', sort_order: 0 }
+    ],
+    // Bağlantı geçmişi: kafenin açması/durdurması, mesai ve liste değişimi.
+    olaylar: [
+      { id: 'y1', player_id: 'p1', brand_id: 'b1', player_key: 'dr-8f21c4', device_id: 'cihaz-a', kind: 'caliyor', detail: 'Akşam Kapanış — Lo-fi', at: iso(-4 * 60000) },
+      { id: 'y2', player_id: 'p1', brand_id: 'b1', player_key: 'dr-8f21c4', device_id: 'cihaz-a', kind: 'acildi', detail: 'cihaz-a', at: iso(-7 * 60000) },
+      { id: 'y3', player_id: 'p2', brand_id: 'b1', player_key: 'dr-2be907', device_id: 'cihaz-b', kind: 'durakladi', detail: 'cihaz', at: iso(-95 * 60000) },
+      { id: 'y4', player_id: 'p2', brand_id: 'b1', player_key: 'dr-2be907', device_id: 'cihaz-b', kind: 'devam', detail: '', at: iso(-80 * 60000) },
+      { id: 'y5', player_id: 'p4', brand_id: 'b2', player_key: 'dr-77c010', device_id: 'cihaz-d', kind: 'liste_degisti', detail: 'Gün Ortası — Indie', at: iso(-3 * 3600000) },
+      { id: 'y6', player_id: 'p3', brand_id: 'b3', player_key: 'dr-a41f55', device_id: 'cihaz-c', kind: 'mesai', detail: 'kapandi', at: iso(-26 * 3600000) }
+    ],
+    coffeeAttempts: [
+      { id: 'c1', brand_id: 'b1', slug: 'mokka-coffee', success: true, ip: '88.1.1.1', created_at: iso(-600000) },
+      { id: 'c2', brand_id: 'b1', slug: 'mokka-coffee', success: false, ip: '88.1.1.9', created_at: iso(-5400000) },
+      { id: 'c3', brand_id: 'b1', slug: 'mokka-coffee', success: false, ip: '88.1.1.9', created_at: iso(-10800000) }
+    ],
+    subscriptions: [
+      { id: 's1', brand_id: 'b1', plan_id: 'pl2', branch_count: 2, status: 'active', trial_ends_at: null, current_start: iso(-40 * GUN), current_end: iso(128 * GUN) },
+      { id: 's2', brand_id: 'b2', plan_id: 'pl1', branch_count: 1, status: 'trial', trial_ends_at: iso(14 * GUN), current_start: iso(-1 * GUN), current_end: null },
+      { id: 's3', brand_id: 'b3', plan_id: 'pl2', branch_count: 1, status: 'past_due', trial_ends_at: null, current_start: iso(-60 * GUN), current_end: iso(-2 * GUN) }
+    ],
+    plans: [
+      { id: 'pl1', name: 'Deneme', monthly_price: 0, per_branch: false, sort_order: 0 },
+      { id: 'pl2', name: 'Profesyonel', monthly_price: 1500, per_branch: true, sort_order: 1 },
+      { id: 'pl3', name: 'Kurumsal', monthly_price: 4000, per_branch: false, sort_order: 2 }
+    ],
+    requests: [
+      { id: 'r1', company: 'Kahve Durağı — Bursa', contact_name: 'Elif Yılmaz', email: 'merhaba@kahveduragi.com', phone: '0532 000 00 00', branch_count: 4, message: '4 şube için kurumsal radyo', status: 'new', created_at: iso(-5400000) },
+      { id: 'r2', company: 'Roast & Co.', contact_name: 'Deniz Ak', email: 'info@roastco.com', phone: null, branch_count: 2, message: 'Deneme yayını istiyor', status: 'contacted', created_at: iso(-2 * GUN) }
+    ]
+  };
+
+  const ui = {
+    cover: p => 'assets/covers/' + p,
+    ses: p => 'assets/' + p,
+    anons: p => 'assets/' + p,
+    playerBase: () => location.origin + '/radyo.html?key=',
+    brandUrl: slug => location.origin + '/coffee/' + slug,
+    accept: () => '.mp3,.wav,.flac',
+    desteklenenler: () => 'mp3, wav, flac, m4a, ogg',
+    parcaNotu: () => '45 MB üzeri dosyalar kayıpsız parçalara bölünerek yüklenir',
+    now: () => Date.now()
+  };
+
+  const sayimlar = () => ({
+    players: D.players.length, folders: D.folders.length, announcements: D.announcements.length,
+    brands: D.brands.length, playlists: D.playlists.length, requests: D.requests.length
+  });
+
+  const state = {
+    nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '',
+    yayin: { brandId: '', playerId: '', kaynak: '', parcaId: '' },
+    acik: {},
+    // İkinci seviye (marka sayfasındaki şube geçmişleri) açık gelir.
+    kapali: {}
+  };
+  // Katlanma tercihi gerçek panelde tarayıcıda saklanır (radyo-yonetim.js);
+  // prova da aynı davranışı göstersin ki sayfa yenilenince ne olacağı görülsün.
+  const KATLI_ANAHTARI = 'derin:katli-radyo';
+  try {
+    const kayit = V.katliDurumOku(localStorage.getItem(KATLI_ANAHTARI));
+    state.acik = kayit.acik; state.kapali = kayit.kapali;
+  } catch {}
+  const katliYaz = () => {
+    try { localStorage.setItem(KATLI_ANAHTARI, V.katliDurumYaz(state)); } catch {}
+  };
+  let modalOnay = null;
+
+  function bildir(mesaj) {
+    const t = el('toast');
+    t.className = 'toast show ok';
+    t.textContent = mesaj;
+    clearTimeout(bildir.z);
+    bildir.z = setTimeout(() => { t.className = 'toast ok'; }, 2600);
+  }
+
+  function pencere(s) {
+    modalOnay = s.onOnay || (() => bildir('Bu bir prova: gerçek panelde kaydedilir.'));
+    el('modal').innerHTML = `
+      <h3>${V.esc(s.baslik || '')}</h3>
+      ${s.govde ? `<div class="modal-body">${s.govde}</div>` : ''}
+      <div class="modal-actions">
+        <button class="btn" data-act="modal-close" type="button">${V.esc(s.gizleOnay ? 'KAPAT' : 'VAZGEÇ')}</button>
+        ${s.gizleOnay ? '' : `<button class="btn ${s.tehlike ? 'danger' : 'primary'}" data-act="modal-ok" type="button">${V.esc(s.onayMetni || 'ONAYLA')}</button>`}
+      </div>`;
+    el('modal-wrap').classList.add('open');
+  }
+  const pencereKapat = () => { el('modal-wrap').classList.remove('open'); modalOnay = null; };
+
+  function cekmeceAc(html) {
+    el('drawer').innerHTML = `<button class="btn sm drawer-close" data-act="drawer-close" type="button">KAPAT</button>${html}`;
+    el('drawer').classList.add('open');
+    el('backdrop').classList.add('open');
+  }
+  const cekmeceKapat = () => { el('drawer').classList.remove('open'); el('backdrop').classList.remove('open'); };
+
+  function ciz() {
+    el('rail').innerHTML = V.nav(state, sayimlar(), { ad: 'Derin Record', alt: 'yonetici@derinrecord.com', basHarf: 'DR' });
+    const g = V.gorunum(state, D, ui);
+    el('page-title').textContent = g.baslik;
+    el('page-sub').textContent = g.alt;
+    el('view').innerHTML = g.html;
+    const bagli = D.players.filter(p => V.canliMi(p, Date.now())).length;
+    el('live-text').textContent = bagli + ' şube bağlı';
+  }
+
+  const HASH = () => {
+    if (state.openPlaylist) return '#/listeler/' + state.openPlaylist;
+    if (state.openBrand) return '#/markalar/' + state.openBrand;
+    if (state.openFolder) return '#/klasorler/' + state.openFolder;
+    if (state.nav === 'canli') return '#/canli';
+    if (state.nav === 'icerik') return state.sub === 'anonslar' ? '#/anons' : '#/klasorler';
+    if (state.sub === 'listeler') return '#/listeler';
+    if (state.sub === 'abonelikler') return '#/abonelikler';
+    if (state.sub === 'talepler') return '#/talepler';
+    return '#/markalar';
+  };
+
+  document.addEventListener('click', e => {
+    const nav = e.target.closest('.nav-item');
+    if (nav) {
+      state.nav = nav.dataset.nav; state.sub = nav.dataset.sub;
+      state.openFolder = state.openBrand = state.openPlaylist = null;
+      state.q = ''; el('search').value = '';
+      return ciz();
+    }
+    const sekme = e.target.closest('.tabs button');
+    if (sekme) {
+      state.sub = sekme.dataset.sub;
+      state.openFolder = state.openBrand = state.openPlaylist = null;
+      return ciz();
+    }
+    const t = e.target.closest('[data-act]');
+    if (!t) return;
+    const act = t.dataset.act, id = t.dataset.id;
+
+    if (act === 'modal-close') return pencereKapat();
+    if (act === 'modal-ok') { const f = modalOnay; pencereKapat(); if (f) f(); return; }
+    if (act === 'drawer-close') return cekmeceKapat();
+    if (act === 'katla') {
+      state.acik[id] = !state.acik[id];
+      katliYaz();
+      return ciz();
+    }
+    if (act === 'katla-alt') {
+      state.kapali[id] = !state.kapali[id];
+      katliYaz();
+      return ciz();
+    }
+    if (act === 'katla-yerel') {
+      const govde = t.closest('.block').querySelector('[data-yerel-katli]');
+      govde.hidden = !govde.hidden;
+      t.textContent = govde.hidden ? 'AÇ ▾' : 'KAPAT ▴';
+      return;
+    }
+    if (act === 'cikis') return bildir('Prova: çıkış yapıldı.');
+    if (act === 'branch-open') return cekmeceAc(V.subeCekmecesi(id, D, ui));
+    if (act === 'yayin-ac') {
+      const sube = D.players.find(x => x.id === id);
+      cekmeceKapat();
+      state.yayin = { brandId: sube ? sube.brand_id : '', playerId: id, kaynak: '', parcaId: '' };
+      state.nav = 'canli'; state.sub = 'yayin';
+      return ciz();
+    }
+    if (act === 'marka-yayin-ac') {
+      state.yayin = { brandId: id, playerId: '', kaynak: '', parcaId: '' };
+      state.openBrand = null; state.openPlaylist = null;
+      state.nav = 'canli'; state.sub = 'yayin';
+      return ciz();
+    }
+    if (act === 'copy' || act === 'player-copy') {
+      navigator.clipboard && navigator.clipboard.writeText(t.dataset.copy || 'link').catch(() => {});
+      t.textContent = 'KOPYALANDI';
+      const eski = act === 'player-copy' ? 'LİNK' : 'KOPYALA';
+      setTimeout(() => { t.textContent = eski; }, 1500);
+      return bildir('Prova: bağlantı kopyalandı.');
+    }
+    if (act === 'geri') {
+      if (t.dataset.hedef === 'klasorler') { state.sub = 'klasorler'; state.openFolder = null; }
+      else if (t.dataset.hedef === 'markalar') { state.sub = 'markalar'; state.openBrand = null; state.openPlaylist = null; }
+      else { state.sub = 'listeler'; state.openBrand = null; state.openPlaylist = null; }
+      return ciz();
+    }
+    if (act === 'folder-open') { state.openFolder = id; return ciz(); }
+    if (act === 'folder-del' || act === 'track-del' || act === 'list-del' || act === 'ptrack-del'
+      || act === 'anons-del' || act === 'brand-del' || act === 'player-del' || act === 'req-del'
+      || act === 'yayin-durdur' || act === 'yayin-genel'
+      || act === 'gecmis-del' || act === 'marka-gecmis-del') {
+      return pencere({ baslik: 'Silinsin mi?', govde: 'Bu kayıt kalıcı olarak silinir.', tehlike: true, onayMetni: 'SİL' });
+    }
+    if (act === 'folder-add' || act === 'brand-add' || act === 'ab-brand-add' || act === 'playlist-add'
+      || act === 'player-add' || act === 'folder-rename'
+      || act === 'brand-slug-set' || act === 'brand-code-set' || act === 'folder-shuffle'
+      || act === 'track-upload' || act === 'cover-open' || act === 'track-rename' || act === 'track-img'
+      || act === 'list-img' || act === 'list-rename' || act === 'kapak-sil'
+      || act === 'player-lock' || act === 'ab-cancel' || act === 'track-move') {
+      return bildir('Prova: bu işlem gerçek panelde Supabase’e kaydedilir.');
+    }
+    if (act === 'track-open' || act === 'track-play' || act === 'ptrack-play' || act === 'anons-play') {
+      const tr = e.target.closest('tr');
+      el('player').classList.add('open');
+      el('player').innerHTML = `
+        <div class="p-now" id="p-now"><span class="cover" id="p-img">♪</span>
+          <div style="min-width:0"><b>${V.esc((tr && tr.dataset.act) === 'anons-play' ? 'Anons' : 'Ambient Opening 01')}</b>
+            <small>Sabah Açılış — Ambient · prova</small></div></div>
+        <div class="p-ctr"><div class="p-btns">
+          <button type="button">⏮</button><button class="main" type="button">▶</button><button type="button">⏭</button>
+        </div>
+        <div class="p-seek"><span class="p-time">0:00</span><input type="range" min="0" max="1000" value="120" aria-label="İlerleme"><span class="p-time">3:42</span></div></div>
+        <div class="p-vol">🔊<input type="range" min="0" max="100" value="100" aria-label="Ses"></div>
+        <button class="btn sm" data-act="player-close" type="button">KAPAT</button>`;
+      return;
+    }
+    if (act === 'player-close') return el('player').classList.remove('open');
+    if (act === 'mic') return mikrofon(id || (el('anons-brand') ? el('anons-brand').value : ''));
+    if (act === 'list-open') { state.openPlaylist = id; return ciz(); }
+    if (act === 'brand-open') { state.openBrand = id; state.openPlaylist = null; return ciz(); }
+    if (act === 'list-addtrack') {
+      const uygun = D.tracks.slice(0, 5);
+      return pencere({
+        baslik: 'Listeye parça ekle', onayMetni: 'SEÇİLENLERİ EKLE',
+        govde: `<div class="field" style="margin-bottom:12px"><label for="sarki-ara">KLASÖRLERDE ARA</label>
+            <input id="sarki-ara" placeholder="Parça adı…"></div>
+          <div class="tick-list">${uygun.map(x => `<label><input type="checkbox"><span><b>${V.esc(x.title)}</b>
+            <span class="sub">${V.esc((D.folders.find(f => f.id === x.folder_id) || {}).name || '')} · ${V.mmss(x.duration_sec)}</span></span></label>`).join('')}</div>`
+      });
+    }
+    if (act === 'ab-extend') {
+      return pencere({
+        baslik: 'Abonelik süresi', onayMetni: 'KAYDET',
+        govde: `<p>Süre eklenecek. Şube sayısı ve paket marka sayfasından seçilir.</p>
+          <div class="radio-row">
+            <label><input type="radio" name="ab-tur" checked> Aktif / uzat</label>
+            <label><input type="radio" name="ab-tur"> Deneme</label>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label for="ab-miktar">MİKTAR</label><input id="ab-miktar" type="number" value="1"></div>
+            <div class="field"><label for="ab-birim">BİRİM</label>
+              <select id="ab-birim"><option>ay</option><option>gün</option><option>yıl</option></select></div>
+          </div>`
+      });
+    }
+    if (act === 'req-convert') return pencere({ baslik: 'Markaya çevrilsin mi?', govde: 'Başvuru için marka kaydı açılacak ve durum “iletişime geçildi” olacak.', onayMetni: 'MARKA OLUŞTUR' });
+    if (act === 'req-close') return pencere({ baslik: 'Kapat', onayMetni: 'TAMAM' });
+    if (act === 'req-status') return pencere({ baslik: 'Talep durumu', onayMetni: 'KAYDET' });
+    bildir('Prova: bu düğme gerçek panelde çalışır.');
+  });
+
+  function mikrofon(brandId) {
+    const b = D.brands.find(x => x.id === brandId) || D.brands[0];
+    pencere({
+      baslik: 'Mikrofonla anons', gizleOnay: true,
+      govde: `<p>${V.esc(b ? b.name : '')} şubelerinde çalan akışın önüne girer.</p>
+        <div class="field" style="margin-bottom:14px"><label for="mik-label">NOT (isteğe bağlı)</label>
+          <input id="mik-label" placeholder="Örn. Kampanya duyurusu"></div>
+        <div class="mic">
+          <div class="bars">${Array.from({ length: 22 }, (_, i) => `<i style="animation-delay:${(i % 7) * 0.09}s"></i>`).join('')}</div>
+          <span class="chip gold">00:07</span>
+          <button class="btn primary rec" type="button">⏹ DURDUR VE GÖNDER</button>
+          <span class="sub">Kayıt sürüyor… Konuşun, bitince durdurun.</span>
+        </div>`
+    });
+  }
+
+  // Yayın ekranının seçimleri: prova sunucuya yazmaz, yalnız ekranı tazeler.
+  document.addEventListener('change', e => {
+    const act = e.target.dataset ? e.target.dataset.act : null;
+    if (act !== 'yayin-marka' && act !== 'yayin-sube' && act !== 'yayin-kaynak' && act !== 'yayin-parca') return;
+    const s = state.yayin;
+    if (act === 'yayin-marka') { s.brandId = e.target.value; s.playerId = ''; s.kaynak = ''; s.parcaId = ''; }
+    else if (act === 'yayin-sube') s.playerId = e.target.value;
+    else if (act === 'yayin-kaynak') { s.kaynak = e.target.value; s.parcaId = ''; }
+    else s.parcaId = e.target.value;
+    ciz();
+  });
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { pencereKapat(); cekmeceKapat(); } });
+  el('backdrop').onclick = cekmeceKapat;
+  el('search').addEventListener('input', e => {
+    state.q = e.target.value;
+    const g = V.gorunum(state, D, ui);
+    el('view').innerHTML = g.html;
+  });
+
+  // Ekran görselleri / paylaşılabilir bağlantılar: ?v=... ve &ek=...
+  const ON_AYARLAR = {
+    canli: { nav: 'canli', sub: 'subeler' },
+    yayin: { nav: 'canli', sub: 'yayin' },
+    saglik: { nav: 'canli', sub: 'saglik' },
+    gecmis: { nav: 'canli', sub: 'gecmis' },
+    klasorler: { nav: 'icerik', sub: 'klasorler' },
+    'klasor-detay': { nav: 'icerik', sub: 'klasorler', openFolder: 'f1' },
+    anonslar: { nav: 'icerik', sub: 'anonslar' },
+    markalar: { nav: 'musteri', sub: 'markalar' },
+    'marka-detay': { nav: 'musteri', sub: 'markalar', openBrand: 'b1' },
+    listeler: { nav: 'musteri', sub: 'listeler' },
+    'liste-detay': { nav: 'musteri', sub: 'listeler', openPlaylist: 'l1' },
+    abonelikler: { nav: 'musteri', sub: 'abonelikler' },
+    talepler: { nav: 'musteri', sub: 'talepler' }
+  };
+  const p = new URLSearchParams(location.search);
+  const istenen = p.get('v');
+  if (istenen && ON_AYARLAR[istenen]) Object.assign(state, ON_AYARLAR[istenen]);
+  ciz();
+  const ek = p.get('ek');
+  if (ek === 'cekmece') cekmeceAc(V.subeCekmecesi('p1', D, ui));
+  if (ek === 'mic') mikrofon('b1');
+  if (ek === 'sarki') el('view').innerHTML = V.gorunum(Object.assign(state, { nav: 'musteri', sub: 'listeler', openPlaylist: 'l1' }), D, ui).html;
+  if (ek === 'onay') pencere({ baslik: 'Liste silinsin mi?', govde: '“Mokka — Gündüz Akışı” silinir ve bu listeyi kullanan şubeler yayın bekler duruma geçer.', tehlike: true, onayMetni: 'LİSTEYİ SİL' });
+  window.__durum = { state, D, ciz, HASH };
+})();
+</script>
+</body>
+</html>
