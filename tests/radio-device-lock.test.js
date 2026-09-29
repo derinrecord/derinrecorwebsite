@@ -15,6 +15,11 @@ const kuyrukKaynak = fs.readFileSync(path.join(KOK, 'radio-playlist-queue.js'), 
 // Sunucu yayın anahtarını uuid olarak bekler; prova da gerçekçi olsun.
 const PROVA_ANAHTAR = 'a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa';
 
+// Supabase'de kurulmamış bir fonksiyonu çağırmak hata döndürür (PGRST202).
+// Provada da "bu fonksiyon sunucuda yok" hâlini bu işaretle taklit ederiz ki
+// oynatıcının eski yola düşmesi gerçekte olduğu gibi sınansın.
+const FONKSIYON_YOK = Symbol('fonksiyon-yok');
+
 const MARKA = {
   brand_id: 'b-prova-0001', brand_name: 'Mokka Coffee', player_label: 'Alsancak',
   open_time: '09:00:00', close_time: '22:00:00', folder_id: 'f1',
@@ -79,6 +84,9 @@ async function calistir(senaryo) {
 
   const cagrilar = [];
   const sayaclar = [];
+  // Anons sesleri: gerçek sayfada <audio> açılır; provada yalnız hangi dosyanın
+  // çalınmak istendiğini kaydederiz.
+  const anonsSesleri = [];
   const depo = new Map(Object.entries(senaryo.depoBaslangic || {}));
 
   // Personelin liste seçimi, üç tabloyu okur (liste başlıkları, listenin
@@ -116,9 +124,14 @@ async function calistir(senaryo) {
     if (ad === 'radio_now_report') return [{ ok: true }];
     // 'baslangicParca': yönetim yayını o parçadan başlattı (panelden seçilen
     // başlangıç parçası sunucudan her satırla birlikte gelir).
+    // 'yayinDamgasi': yönetim yayını yeniden atadığında damga ilerler; cihaz
+    // yalnız damga değiştiğinde kuyruğu baştan kurar.
     if (ad === 'radio_now_playing') {
       if (!senaryo.parca) return [];
-      return PARCALAR.map(x => Object.assign({}, x, { start_track_id: senaryo.baslangicParca || null }));
+      return PARCALAR.map(x => Object.assign({}, x, {
+        start_track_id: senaryo.baslangicParca || null,
+        updated_at: senaryo.yayinDamgasi || x.updated_at
+      }));
     }
     if (ad === 'abonelik_durumu') {
       // 'bos': sunucu anahtarı hiç tanımıyor (boş dizi). 'yok': anahtar tanınıyor
@@ -127,6 +140,27 @@ async function calistir(senaryo) {
       if (senaryo.abonelik === 'yok') return [{ gecerli: false, durum: 'yok' }];
       if (senaryo.abonelik === 'bitti') return [{ gecerli: false, durum: 'bitti' }];
       return [{ gecerli: true, durum: 'aktif' }];
+    }
+    // 'listelerRpc': marka listeleri sunucudan gelir (supabase/radio-erisim.sql).
+    // Verilmezse fonksiyon kurulmamış sayılır ve oynatıcı eski tablo okumasına düşer.
+    if (ad === 'radio_listeler') return senaryo.listelerRpc || FONKSIYON_YOK;
+    // 'anonslar': yoklamayla gelen anonslar. Sunucu yalnız p_since'ten sonrasını
+    // döndürür; aynı süzgeci burada da uygularız ki cihazın damgayı ilerlettiği
+    // (aynı anonu iki kez çalmadığı) gerçekten sınansın.
+    if (ad === 'radio_anonslar') {
+      if (!senaryo.anonslar) return FONKSIYON_YOK;
+      return senaryo.anonslar.filter(a => !p.p_since || a.created_at > p.p_since);
+    }
+    // 'yayinDurumu' (supabase/radio-yayin-durdurma.sql): boş cevabın sebebini
+    // ayırır. 'kaynak-yok' yönetim "YAYINI DURDUR"a bastı demektir ve cihaz
+    // susmamalıdır; diğer hâllerde yayın kesilir. Senaryo verilmezse fonksiyon
+    // sunucuda yokmuş gibi davranılır (boş dizi).
+    if (ad === 'radio_yayin_durumu') {
+      if (senaryo.yayinDurumu === 'yok') return [];
+      if (senaryo.yayinDurumu === 'marka-pasif') return [{ marka_aktif: false, gecerli: true, kaynak_var: false }];
+      if (senaryo.yayinDurumu === 'abonelik-yok') return [{ marka_aktif: true, gecerli: false, kaynak_var: false }];
+      if (senaryo.yayinDurumu === 'kaynak-yok') return [{ marka_aktif: true, gecerli: true, kaynak_var: false }];
+      return [{ marka_aktif: true, gecerli: true, kaynak_var: true }];
     }
     return [];
   };
@@ -168,12 +202,21 @@ async function calistir(senaryo) {
           if (senaryo.listeAlaniYok && ad === 'radio_now_report' && p && 'p_playlist_id' in p) {
             return Promise.resolve({ data: null, error: { message: 'PGRST202: could not find the function public.radio_now_report' } });
           }
-          return Promise.resolve({ data: rpc(ad, p || {}), error: null });
+          const sonuc = rpc(ad, p || {});
+          if (sonuc === FONKSIYON_YOK) {
+            return Promise.resolve({ data: null, error: { message: 'PGRST202: could not find the function' } });
+          }
+          return Promise.resolve({ data: sonuc, error: null });
         },
         from: tablo,
         storage: { from: () => ({ getPublicUrl: p => ({ data: { publicUrl: 'prova://' + p } }) }) },
         channel: () => kanal
       })
+    },
+    // Anonslar sunucudan yoklamayla gelir; sesi gerçek sayfada tarayıcı çalar.
+    Audio: function (src) {
+      anonsSesleri.push(src);
+      return { play: () => Promise.resolve(), pause() {}, onended: null, onerror: null };
     },
     DERIN_CONFIG: { supabaseUrl: 'https://prova.test', supabasePublishableKey: 'prova' }
   };
@@ -233,6 +276,8 @@ async function calistir(senaryo) {
       return depo.get('derin_record_liste_' + (senaryo.key || PROVA_ANAHTAR)) || null;
     },
     get calinan() { return audio.src; },
+    // Yoklamayla gelip çalınan anons dosyaları.
+    get anonsSesleri() { return anonsSesleri.slice(); },
     get calmaDenemesi() { return calmaDenemesi; },
     // "YAYINI BAŞLAT" düğmesine dokunulmuş gibi davranır.
     async basla() {
@@ -672,4 +717,192 @@ test('geçmiş tablosu kurulmadıysa oynatıcı çalmaya devam eder', async () =
   });
   assert.ok(s.liste.includes('Sabah Işığı'), 'yayın geçmişe bağlı değil');
   assert.equal(s.durum, '', 'geçmiş yazılamasa bile ekranda hata çıkmaz');
+});
+
+// ---- Yayını durdurmak müziği kesmez -----------------------------------------
+// Panelde "YAYINI DURDUR" yalnız canlı yayın kaynağını kaldırır. Kafede çalmakta
+// olan müzik bundan etkilenmemeli: cihaz yüklü listesini çalmaya devam eder ve
+// yönetim yeni bir kaynak atadığında kendiliğinden ona geçer. Yoksa her kaynak
+// değişiminde mekân sessiz kalıyordu.
+
+test('yayın kaynağı durdurulunca kafede çalan şarkı kesilmez', async () => {
+  const senaryo = { ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true };
+  const s = await calistir(senaryo);
+  assert.ok(s.calinan.includes('f1/p0.wav'), 'yayın çalıyor olmalı');
+  // Cihaz bir süredir çalıyor: mesai kontrolü bir kez çalışmış olsun ki aşağıdaki
+  // turda durum satırını kendiliğinden tazelemesin (gerçekte de öyle olur).
+  await s.tikla(30000);
+  const calan = s.calinan;
+
+  // Yönetim panelde "YAYINI DURDUR"a bastı: yayın kaynağı satırı silindi.
+  senaryo.parca = false;
+  senaryo.yayinDurumu = 'kaynak-yok';
+  await s.tikla(30000);
+
+  assert.equal(s.calinan, calan, 'çalan parça değişmemeli');
+  assert.ok(s.liste.includes('Sabah Işığı'), 'yüklü liste ekranda kalmalı');
+  assert.equal(s.marka, 'Mokka Coffee', 'marka adı silinmemeli');
+  assert.match(s.durum, /çalmaya devam ediyor/);
+  assert.equal(s.tani, '', 'yayın sürdüğü için teşhis kodu çıkmaz');
+  const kayit = s.olayTuru('serbest');
+  assert.equal(kayit.length, 1, 'geçmişe bir kez yazılmalı');
+  assert.match(kayit[0].p_detail, /Sabah Işığı/);
+});
+
+// MARKAYI DURDUR müziği kesmelidir: "yayını durdurdum ama cihaz çalıyor"
+// gevşemesi bu kararın önüne geçemez, yoksa yayın vermeyi kesmek işe yaramaz.
+test('marka kapatıldığında yayın yine durur', async () => {
+  const senaryo = { ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true };
+  const s = await calistir(senaryo);
+  await s.tikla(30000);   // cihaz bir süredir çalıyor (mesai kontrolü çalışmış)
+  senaryo.parca = false;
+  senaryo.yayinDurumu = 'marka-pasif';
+  await s.tikla(30000);
+
+  assert.equal(s.marka, 'Yayın zinciri kopuk');
+  assert.equal(s.liste, '', 'liste ekrandan kalkmalı');
+  assert.equal(s.tani, 'Teşhis kodu: marka-pasif-veya-kaynak-yok');
+  assert.equal(s.olayTuru('serbest').length, 0, 'kapatılan markada serbest mod olmaz');
+});
+
+test('abonelik geçersizse yayın yine durur', async () => {
+  const senaryo = { ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true };
+  const s = await calistir(senaryo);
+  await s.tikla(30000);   // cihaz bir süredir çalıyor (mesai kontrolü çalışmış)
+  senaryo.parca = false;
+  senaryo.abonelik = 'bitti';
+  senaryo.yayinDurumu = 'abonelik-yok';
+  await s.tikla(30000);
+
+  assert.equal(s.marka, 'Yayın duraklatıldı');
+  assert.match(s.durum, /süresi doldu/);
+  assert.equal(s.olayTuru('serbest').length, 0, 'abonelik durduysa serbest mod olmaz');
+});
+
+// Ayrımı veren sunucu fonksiyonu kurulmadıysa oynatıcı eski davranışını korur:
+// kaynak kalkınca yayın durur. Böylece SQL çalıştırılmadan da panel güvenli kalır.
+test('ayrım fonksiyonu sunucuda yoksa eski davranış korunur', async () => {
+  const senaryo = {
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true, yayinDurumu: 'yok'
+  };
+  const s = await calistir(senaryo);
+  senaryo.parca = false;
+  await s.tikla(30000);
+
+  assert.equal(s.marka, 'Yayın zinciri kopuk');
+  assert.equal(s.liste, '');
+});
+
+// Yönetim markanın listesinden bir parça seçip yayını yeniden başlattığında cihaz
+// kendiliğinden yeni kaynağa geçmeli; serbest mod notu ekrandan silinmeli.
+test('yeni kaynak atanınca cihaz kendiliğinden yeni yayına geçer', async () => {
+  const senaryo = { ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true };
+  const s = await calistir(senaryo);
+  await s.tikla(30000);   // cihaz bir süredir çalıyor (mesai kontrolü çalışmış)
+
+  senaryo.parca = false;
+  senaryo.yayinDurumu = 'kaynak-yok';
+  await s.tikla(30000);
+  assert.match(s.durum, /çalmaya devam ediyor/);
+
+  senaryo.parca = true;
+  senaryo.yayinDurumu = 'kaynak-var';
+  senaryo.yayinDamgasi = '2026-09-27T12:00:00.000Z';
+  await s.tikla(30000);
+
+  assert.equal(s.durum, '', 'yeni yayın gelince uyarı silinmeli');
+  assert.ok(s.calinan.includes('f1/p0.wav'), 'yeni kaynak çalınmalı');
+  assert.ok(s.liste.includes('Sabah Işığı'));
+  assert.equal(s.tani, '');
+});
+
+// ---- Katalog dışarıya kapandığında cihaz sunucudan okur ----------------------
+// Liste ve parçalar eskiden tablolardan doğrudan okunuyordu; o tablolar artık
+// girişsiz ziyaretçiye kapalı (supabase/radio-erisim-kapat.sql). Cihaz veriyi
+// şube anahtarını doğrulayan radio_listeler'den alır; seçici ve çalma aynı kalır.
+
+const LISTE_RPC = [
+  { playlist_id: 'L1', name: 'Sabah Kahve', shuffle: false, track_id: 't9',
+    title: 'Filtre Kahve', storage_path: 'listeler/filtre.wav', sort_order: 0 },
+  // Parçası olmayan liste de seçicide görünür (seçilince boş liste uyarısı verir).
+  { playlist_id: 'L2', name: 'Akşam Sesi', shuffle: true, track_id: null,
+    title: null, storage_path: null, sort_order: 0 }
+];
+
+test('tablolar kapalıyken liste ve parçalar sunucudan alınır', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    listelerRpc: LISTE_RPC,
+    listeler: []   // tablo okuması kapalı: boş döner
+  });
+  assert.ok(s.listeGorunur, 'seçici sunucudan gelen listelerle görünmeli');
+  assert.ok(s.secenekler.includes('Sabah Kahve') && s.secenekler.includes('Akşam Sesi'),
+    'parçasız liste de seçicide olmalı');
+
+  await s.sec('L1');
+  assert.ok(s.calinan.includes('listeler/filtre.wav'), 'seçilen listenin parçası çalınmalı');
+  assert.ok(s.liste.includes('Filtre Kahve'));
+});
+
+test('liste fonksiyonu sunucuda yoksa eski tablo okuması çalışır', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI
+  });
+  assert.ok(s.listeGorunur);
+  await s.sec('L1');
+  assert.ok(s.calinan.includes('listeler/filtre.wav'));
+});
+
+test('anonslar yoklamayla gelir ve aynı anons iki kez çalınmaz', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true,
+    anonslar: [{
+      id: 'a1', storage_path: 'b1/anons.webm', label: 'Kapanış',
+      created_at: '2026-09-27T07:00:30.000Z'
+    }]
+  });
+  await s.tikla(15000);
+  assert.equal(s.anonsSesleri.length, 1, 'anons bir kez çalınmalı');
+  assert.ok(s.anonsSesleri[0].includes('b1/anons.webm'));
+
+  await s.tikla(15000);
+  assert.equal(s.anonsSesleri.length, 1, 'aynı anons ikinci turda tekrarlanmamalı');
+  assert.equal(s.durum, '', 'anons yayının durumunu bozmamalı');
+});
+
+test('anons fonksiyonu sunucuda yoksa oynatıcı sessizce devam eder', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true
+  });
+  await s.tikla(15000);
+  assert.equal(s.anonsSesleri.length, 0);
+  assert.equal(s.durum, '');
+  assert.ok(s.liste.includes('Sabah Işığı'), 'yayın etkilenmemeli');
+});
+
+// Katalog okuması önce sunucu fonksiyonundan geçmeli; eski doğrudan tablo okuması
+// yalnız yedek olarak durmalı. İleride biri fonksiyonu kaldırıp eski yola dönerse
+// kapı kapandığında sahada liste/duyuru sessizce kaybolur; bu test onu hatırlatır.
+test('oynatıcı ve sunum sayfası katalog verisini sunucu fonksiyonundan ister', () => {
+  const radyo = fs.readFileSync(path.join(KOK, 'radyo.js'), 'utf8');
+  assert.match(radyo, /rpc\('radio_listeler'/);
+  assert.match(radyo, /rpc\('radio_anonslar'/);
+  assert.match(radyo, /from\('brand_playlists'\)/, 'yedek yol durmalı');
+
+  const sunum = fs.readFileSync(path.join(KOK, 'coffee-marka.js'), 'utf8');
+  assert.match(sunum, /rpc\('coffee_brand_liste'/);
+  assert.match(sunum, /from\('brand_playlists'\)/, 'yedek yol durmalı');
+});
+
+// Kapıyı kapatan dosya, katalog verisini taşıyan bütün tabloları kapatmalı: yeni
+// bir radyo tablosu eklenip buraya yazılmazsa liste yine dışarıdan okunabilir.
+test('kapatma dosyası katalog tablolarının hepsini dışarıya kapatır', () => {
+  const sql = fs.readFileSync(path.join(KOK, 'supabase', 'radio-erisim-kapat.sql'), 'utf8');
+  ['radio_folders', 'radio_tracks', 'brand_playlists', 'brand_playlist_tracks',
+    'brand_broadcast', 'player_broadcast', 'radio_announcements'].forEach(tablo => {
+    assert.ok(sql.includes('revoke select on public.' + tablo),
+      tablo + ' dışarıya kapatılmalı');
+  });
+  assert.match(sql, /to anon/, 'kapı girişsiz ziyaretçi rolüne kapanmalı');
 });

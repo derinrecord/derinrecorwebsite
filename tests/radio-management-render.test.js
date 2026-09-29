@@ -265,6 +265,15 @@ test('panel bağlantı geçmişi ekranını yönlendirir ve olayları yükler', 
   assert.match(source, /case 'gecmis-ac'/, 'çekmeceden geçmişe geçiş işlenmeli');
 });
 
+// Çekmece içeriği tek seferlik HTML olarak yazılır (panel gibi yeniden çizilmez),
+// bu yüzden çekmecedeki katlama durum tutmaz; gövdeyi yerinde açar/kapatır.
+test('çekmecedeki katlama yerinde işlenir, paneli yeniden çizmez', () => {
+  assert.match(source, /case 'katla-yerel'/);
+  const blok = source.slice(source.indexOf("case 'katla-yerel'"), source.indexOf("case 'cikis'"));
+  assert.ok(blok.includes('data-yerel-katli'), 'gövde yerinde bulunmalı');
+  assert.ok(!blok.includes('ciz()'), 'çekmece katlaması paneli yeniden çizmemeli');
+});
+
 // Panel dosyaları her değişiklikte sürüm damgası taşımalı; yoksa tarayıcı eski
 // dosyayı önbellekten çalar ve sahadaki düzeltme kimseye görünmez.
 test('panel dosyaları sürüm damgasıyla yüklenir', () => {
@@ -286,4 +295,29 @@ test('panel kesinti uyarısını menüye ve üst şeride bağlar', () => {
   assert.match(source, /V\.uyariSeridi\(D, ui\)/, 'şerit görünümü panelden gelmeli');
   assert.match(source, /kutu\.hidden = !html/, 'sessiz şube yokken şerit gizlenmeli');
   assert.match(source, /seritYaz\(\)/, 'şerit her çizimde tazelenmeli');
+});
+
+// Geçmişi silme yalnız yöneticiye açık ve yalnız oynatıcı olaylarını kapsar.
+// Sunum kodu denemeleri (coffee_access_attempts) ayrı bir güvenlik kaydıdır;
+// "geçmişi sil" onlara dokunmaz.
+test('geçmişi silme yalnız yöneticiye açık ve yalnız olay tablosunu kapsar', () => {
+  assert.match(source, /case 'gecmis-del'/, 'şube geçmişi silinebilmeli');
+  assert.match(source, /case 'marka-gecmis-del'/, 'marka geneli geçmiş silinebilmeli');
+  assert.match(source, /from\('radio_player_events'\)\.delete\(\)/);
+  assert.ok((source.match(/!kullanici\.adminMi\) return hata\('Geçmişi silmek/g) || []).length >= 2,
+    'iki silme yolu da yönetici kapısından geçmeli');
+  assert.ok(!/coffee_access_attempts'\)\.delete\(\)/.test(source),
+    'sunum kodu denemeleri silinmemeli');
+  // Silme geri alınamaz: kaç kaydın silineceği onay penceresinde yazılmalı.
+  assert.match(source, /bağlantı geçmişi kayıtları silinir/);
+});
+
+// Veritabanı tarafı: silme izni yalnız yönetici oturumuna verilir; oynatıcı
+// (anon) ne okur ne siler.
+test('geçmiş silme izni veritabanında yalnız yöneticide', () => {
+  const sql = fs.readFileSync(require.resolve('../supabase/radio-baglanti-gecmisi.sql'), 'utf8');
+  assert.match(sql, /radio_player_events_admin_delete/);
+  assert.match(sql, /for delete to authenticated using \(public\.is_admin\(\)\)/);
+  assert.match(sql, /grant delete on table public\.radio_player_events to authenticated/);
+  assert.ok(!/grant delete[^;]*to anon/.test(sql), 'anon silememeli');
 });

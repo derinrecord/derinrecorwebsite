@@ -33,7 +33,10 @@
     // Yayın başlatma ekranının seçimleri: marka → şube → kaynak → parça.
     yayin: { brandId: '', playerId: '', kaynak: '', parcaId: '' },
     // Açık bırakılan katlanabilir bölümler (marka sayfasındaki geçmiş listeleri).
-    acik: {}
+    acik: {},
+    // İkinci seviyede kapatılan bölümler: marka sayfasındaki şube geçmişleri açık
+    // gelir, yönetici kalabalık yapan şubeleri burada işaretler.
+    kapali: {}
   };
 
   let modalOnay = null, modalKapat = null;
@@ -771,6 +774,73 @@
         ciz();
         return;
 
+      // İkinci seviye katlama (marka sayfasındaki şube geçmişleri). Bu bölümler
+      // açık gelir; burada yalnız "kapatıldı" işareti tutulur.
+      case 'katla-alt':
+        state.kapali = state.kapali || {};
+        state.kapali[id] = !state.kapali[id];
+        ciz();
+        return;
+
+      // Çekmecedeki katlanabilir blok. Çekmece içeriği tek seferlik HTML olarak
+      // yazılır (panel gibi yeniden çizilmez), bu yüzden durum tutmayız: gövdeyi
+      // yerinde açar/kapatırız.
+      case 'katla-yerel': {
+        const govde = hedef.closest('.block')?.querySelector('[data-yerel-katli]');
+        if (!govde) return;
+        const acilacak = govde.hidden;
+        govde.hidden = !acilacak;
+        hedef.textContent = acilacak ? 'KAPAT ▴' : 'AÇ ▾';
+        hedef.setAttribute('aria-expanded', acilacak ? 'true' : 'false');
+        return;
+      }
+
+      // Şube bağlantı geçmişini silme. Geçmiş, "sorun bizde mi, kafede mi"
+      // sorusunu cevaplar; yönetici eski gürültüyü temizleyip güncel durumu
+      // okuyabilsin. Silme geri alınamaz, bu yüzden kaç kaydın silineceği onay
+      // penceresinde yazılıdır. Metin yalnız oynatıcı olaylarını kapsar; sunum
+      // kodu denemeleri (kod geçmişi) ayrı bir kayıttır ve silinmez.
+      case 'gecmis-del': {
+        if (!kullanici.adminMi) return hata('Geçmişi silmek yönetici yetkisi ister.');
+        const p = D.players.find(x => x.id === id);
+        if (!p) return hata('Şube bulunamadı.');
+        const adet = V.olaylariAl(D, { playerId: p.id }).length;
+        if (!adet) return hata('Bu şubenin silinecek geçmiş kaydı yok.');
+        const b = marka(p.brand_id);
+        // Panel geçmişin en yeni 600 kaydını yükler; silme ise şubenin bütün
+        // kayıtlarını kapsar. Bu yüzden sayıyı "listede" diye söyleriz.
+        if (!await onaySor({
+          baslik: 'Şube geçmişi silinsin mi?',
+          govde: `${p.label}${b ? ' (' + b.name + ')' : ''} şubesinin bağlantı geçmişi kayıtları silinir; listede ${adet} kayıt var.
+            Bu kayıtlardan hesaplanan canlı durum özetleri de sıfırlanır. Geri alınamaz.`,
+          onayMetni: 'GEÇMİŞİ SİL'
+        })) return;
+        const { error } = await client.from('radio_player_events').delete().eq('player_id', p.id);
+        if (error) return hata('Geçmiş silinemedi: ' + error.message);
+        await yenile(false);
+        bildir(p.label + ' şubesinin bağlantı geçmişi silindi.');
+        return;
+      }
+
+      // Marka geneli: bütün şubelerin geçmişi birlikte silinir.
+      case 'marka-gecmis-del': {
+        if (!kullanici.adminMi) return hata('Geçmişi silmek yönetici yetkisi ister.');
+        const b = marka(id);
+        if (!b) return hata('Marka bulunamadı.');
+        const adet = V.olaylariAl(D, { brandId: b.id }).length;
+        if (!adet) return hata('Bu markanın silinecek geçmiş kaydı yok.');
+        if (!await onaySor({
+          baslik: 'Marka geçmişi silinsin mi?',
+          govde: `${b.name} markasının bütün şubeleri için bağlantı geçmişi kayıtları silinir; listede ${adet} kayıt var. Geri alınamaz.`,
+          onayMetni: 'TÜM GEÇMİŞİ SİL'
+        })) return;
+        const { error } = await client.from('radio_player_events').delete().eq('brand_id', b.id);
+        if (error) return hata('Geçmiş silinemedi: ' + error.message);
+        await yenile(false);
+        bildir(b.name + ' markasının bağlantı geçmişi silindi.');
+        return;
+      }
+
       // Yayın başlatma ekranının kararı: seçimler buraya kadar yalnız ekranda
       // beklemişti; yayın bu düğmeyle değişir.
       case 'yayin-basla': {
@@ -850,8 +920,11 @@
         return;
       }
 
-      // Marka geneli yayının durdurulması: kayıt silinir, şubeler akış bekler.
-      // Şubeye özel yayını olan şubeler bundan etkilenmez.
+      // Marka geneli yayının durdurulması: yalnız canlı yayın kaynağı kaydı
+      // silinir. Şubelerde o an çalan şarkı kesilmez; cihazlar yüklü listelerini
+      // çalmaya devam eder ve yeni bir kaynak atandığında kendiliğinden ona
+      // geçerler. Aboneliği geçersiz ya da markası kapatılmış şubeler yine durur:
+      // oynatıcı bu ayrımı radio_yayin_durumu ile yapar.
       case 'yayin-durdur': {
         if (!kullanici.adminMi) return hata('Yayın başlatmak yönetici yetkisi ister.');
         const b = marka(id);
@@ -860,13 +933,13 @@
         if (!k || !k.tip) return hata('Bu markanın canlı yayını zaten kapalı.');
         if (!await onaySor({
           baslik: 'Yayın durdurulsun mu?',
-          govde: `${b.name} markasının bütün şubeleri yayınsız kalır ve oynatıcı “bu link tanınmıyor” der. Şubeye özel yayını olan şubeler çalmaya devam eder.`,
+          govde: `${b.name} markasının canlı yayın kaynağı kaldırılır. Şubelerde çalmakta olan şarkı kesilmez: cihazlar yüklü listelerini çalmaya devam eder ve yeni bir kaynak atadığınızda kendiliğinden ona geçerler. Markası kapatılan ya da aboneliği biten şubeler yine durur.`,
           onayMetni: 'YAYINI DURDUR'
         })) return;
         const { error } = await client.from('brand_broadcast').delete().eq('brand_id', b.id);
         if (error) return hata('Yayın durdurulamadı: ' + error.message);
         await yenile(false);
-        bildir(b.name + ' markasının genel yayını durduruldu.');
+        bildir(b.name + ' markasının yayın kaynağı kaldırıldı; şubeler çalmaya devam ediyor.');
         return;
       }
 

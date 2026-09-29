@@ -583,6 +583,27 @@ test('marka sayfasındaki geçmiş bölümleri katlanır', () => {
   assert.ok(!acik.includes('data-katli="marka:b1:olay"'), 'diğer bölümler kapalı kalmalı');
 });
 
+// Yönetim yayın kaynağını durdurduğunda cihaz çalmaya devam eder. Bu, geçmişte
+// okunur bir cümle olmalı; ham olay kodu ekrana düşmemeli ve yayın sürdüğü için
+// "sorun" sayacına girmemeli.
+test('kaynak durdurma olayı geçmişte okunur cümleyle görünür ve sorun sayılmaz', () => {
+  const D2 = Object.assign({}, D, {
+    olaylar: [{
+      id: 'ev9', brand_id: 'b1', player_id: 'p1', kind: 'serbest',
+      detail: 'Sabah Açılış', at: iso(-600000)
+    }]
+  });
+  const html = V.gorunum(durum({ nav: 'canli', sub: 'gecmis' }), D2, ui).html;
+  assert.ok(html.includes('Yayın kaynağı durduruldu, cihaz çalmaya devam ediyor'),
+    'olay okunur cümleyle gösterilmeli');
+  assert.ok(!html.includes('>serbest<'), 'ham olay kodu ekrana düşmemeli');
+
+  const ozet = V.gecmisOzet(D2, ui, {});
+  assert.equal(ozet.toplam, 1, 'olay özete girmeli');
+  assert.equal(ozet.bizde + ozet.kafe, 0, 'yayın sürdüğü için sorun sayılmamalı');
+  assert.equal(V.olaySorunSayi(D2), 0);
+});
+
 test('bağlantı sınaması düğmesi her şubede bulunmaz, yalnızca çekmecede olur', () => {
   const liste = V.gorunum(durum({}), D, ui).html;
   assert.ok(!liste.includes('BAĞLANTIYI SINA'), 'tabloda yer kaplamamalı');
@@ -827,6 +848,10 @@ test('şube çekmecesi 24 saatlik çalışma özetini cümleyle yazar', () => {
 test('şube çekmecesi ve marka sayfası bağlantı geçmişini gösterir', () => {
   const cekmece = V.subeCekmecesi('p1', DOLAY, ui);
   assert.ok(cekmece.includes('BAĞLANTI GEÇMİŞİ'), 'çekmecede geçmiş bloğu olmalı');
+  assert.ok(cekmece.includes('data-act="katla-yerel"'), 'çekmecede katlama seçeneği olmalı');
+  // Geçmiş çekmecede kapalı gelir: satırlar HTML'de durur ama gizlidir, özet
+  // satırı görünür kalır. Çekmece uzayıp şubenin asıl işini aşağı itmesin.
+  assert.ok(cekmece.includes('<div data-yerel-katli hidden>'), 'geçmiş kapalı gelmeli');
   assert.ok(cekmece.includes('Kafede cihazdan durduruldu'));
   assert.ok(cekmece.includes('data-act="gecmis-ac"'), 'tüm geçmişe geçiş düğmesi olmalı');
   // Şube zaten belli: satırda “kim” sütununu tekrar etmeyiz.
@@ -843,7 +868,58 @@ test('şube çekmecesi ve marka sayfası bağlantı geçmişini gösterir', () =
   }), DOLAY, ui).html;
   assert.ok(marka.includes('data-katli="marka:b1:olay"'), 'açılan bölüm çizilmeli');
   assert.ok(marka.includes('Kafede cihazdan durduruldu'));
-  assert.ok(marka.includes('Mokka Coffee · Nişantaşı'));
+  // Şube geçmişi şube başına ayrı tabloda durur ve o tablolar kendi başlığını taşır.
+  assert.ok(marka.includes('data-katli="marka:b1:sube:p1"'), 'şube geçmişi kendi tablosunda');
+});
+
+// Marka sayfasındaki şube geçmişi şube başına ayrı ve açılıp kapanabilir tablolara
+// bölündü: tek uzun listede bütün şubelerin kayıtları karışıyordu. Kaydı olmayan
+// şube de görünür (boş tablo), ama orada silinecek bir geçmiş yoktur.
+test('marka geçmişi şube şube ayrı tablolarda açılıp kapanır', () => {
+  const ikiSube = {
+    ...DOLAY,
+    players: [
+      D.players[0],
+      { ...D.players[0], id: 'p2', label: 'Kadıköy', player_key: ANAHTAR(9) }
+    ]
+  };
+  const disAcik = durum({
+    nav: 'musteri', sub: 'markalar', openBrand: 'b1', acik: { 'marka:b1:olay': true }
+  });
+
+  const html = V.gorunum(disAcik, ikiSube, ui).html;
+  assert.ok(html.includes('data-katli="marka:b1:sube:p1"'), 'Nişantaşı tablosu çizilmeli');
+  assert.ok(html.includes('data-katli="marka:b1:sube:p2"'), 'Kadıköy tablosu çizilmeli');
+  // Şube adı tablonun başlığında; satırda bir de “kim” sütunu tekrar etmez.
+  assert.ok(html.includes('<thead><tr><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>'),
+    'şube geçmişi satırlarında şube sütunu tekrarlanmamalı');
+  assert.ok(html.includes('data-act="gecmis-del" data-id="p1"'), 'şube geçmişi silinebilmeli');
+  assert.ok(!html.includes('data-act="gecmis-del" data-id="p2"'),
+    'kaydı olmayan şubede silinecek geçmiş yok');
+  assert.ok(html.includes('Bu şube için kayıt yok.'), 'boş şube boş görünmeli');
+  assert.ok(html.includes('data-act="marka-gecmis-del" data-id="b1"'),
+    'marka geneli geçmiş silinebilmeli');
+
+  // Bir şube kapatılınca yalnız o tablo çizilmez; diğerleri açık kalır.
+  const kapali = V.gorunum(Object.assign({}, disAcik, { kapali: { 'marka:b1:sube:p1': true } }), ikiSube, ui).html;
+  assert.ok(!kapali.includes('data-katli="marka:b1:sube:p1"'), 'kapatılan tablo çizilmez');
+  assert.ok(kapali.includes('data-katli="marka:b1:sube:p2"'), 'diğer tablo açık kalmalı');
+});
+
+// "Bağlantı geçmişi" sekmesindeki olay tablosu da katlanabilir. Ama burada tablo
+// ekranın asıl içeriğidir: açık gelir, istenirse kapatılır (marka sayfasındaki
+// bölümlerin tersine).
+test('bağlantı geçmişi sekmesindeki tablo katlanabilir ve açık gelir', () => {
+  const acik = V.gorunum(durum({ nav: 'canli', sub: 'gecmis' }), DOLAY, ui).html;
+  assert.ok(acik.includes('data-act="katla-alt" data-id="gecmis:olaylar"'), 'katlama düğmesi olmalı');
+  assert.ok(acik.includes('data-katli="gecmis:olaylar"'), 'tablo varsayılan açık gelmeli');
+  assert.ok(acik.includes('Kafede cihazdan durduruldu'));
+
+  const kapali = V.gorunum(durum({
+    nav: 'canli', sub: 'gecmis', kapali: { 'gecmis:olaylar': true }
+  }), DOLAY, ui).html;
+  assert.ok(!kapali.includes('data-katli="gecmis:olaylar"'), 'kapatılınca tablo çizilmez');
+  assert.ok(kapali.includes('data-act="katla-alt" data-id="gecmis:olaylar"'), 'düğme yerinde kalmalı');
 });
 
 // ---------- HAFTALIK TREND (gün gün doluluk) ----------

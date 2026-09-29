@@ -27,6 +27,10 @@
 --   mesai         yayın saati sınırı (detay: basladi / kapandi / disi)
 --   takildi       yayın takıldı, oynatıcı yeniden bağlandı
 --   yuklenemedi   parçanın ses dosyası çalınamadı
+--   serbest       yönetim canlı yayın kaynağını durdurdu ("YAYINI DURDUR");
+--                 cihaz susmadı, elindeki listeyi çalmaya devam etti
+--                 (detay: parça · liste). Yayın sürdüğü için sorun sayılmaz.
+--                 Ayrımı supabase/radio-yayin-durdurma.sql sağlar.
 
 create table if not exists public.radio_player_events (
   id          bigserial primary key,
@@ -56,6 +60,16 @@ create policy radio_player_events_read on public.radio_player_events
   for select to authenticated using (true);
 
 grant select on table public.radio_player_events to authenticated;
+
+-- Yönetici geçmişi temizleyebilir: marka sayfasındaki "GEÇMİŞİ SİL" düğmeleri.
+-- Geçmiş 90 günden sonra zaten kendiliğinden süpürülür; bu izin, güncel durumu
+-- okumak isteyen yöneticinin eski gürültüyü elle temizlemesi içindir. Silme
+-- yalnız yönetici oturumuna açıktır; oynatıcı (anon) ne okur ne siler.
+drop policy if exists radio_player_events_admin_delete on public.radio_player_events;
+create policy radio_player_events_admin_delete on public.radio_player_events
+  for delete to authenticated using (public.is_admin());
+
+grant delete on table public.radio_player_events to authenticated;
 
 -- Oynatıcının olay bırakma yolu. Anahtar tanınmıyorsa hiçbir şey yazılmaz:
 -- silinmiş bir şubenin olayları sahipsiz birikmesin.

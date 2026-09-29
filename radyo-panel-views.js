@@ -139,6 +139,10 @@
       return { ad: yanlis ? 'Sunum kodu yanlış girildi' : 'Sunum kodu girildi', ek: det, taraf: 'kafe', sorun: yanlis };
     }
     if (kind === 'caliyor') return { ad: 'Yayın çalmaya başladı', ek: det, taraf: null, sorun: false };
+    // Yönetim canlı yayın kaynağını durdurdu; cihaz elindeki listeyi çalmaya
+    // devam etti. Yayın sürdüğü için "sorun" sayılmaz, ama panelde "kaynak yok"
+    // satırının neden hâlâ müzik çaldığını bu kayıt açıklar.
+    if (kind === 'serbest') return { ad: 'Yayın kaynağı durduruldu, cihaz çalmaya devam ediyor', ek: det, taraf: 'bizde', sorun: false };
     if (kind === 'devam') return { ad: 'Yayın yeniden başladı', ek: det, taraf: null, sorun: false };
     if (kind === 'mesai') return {
       ad: det === 'kapandi' ? 'Yayın saati bitti'
@@ -673,14 +677,17 @@
           <tbody>${trendTablosu(D, ui, state.q) || bos(9, D.players.length ? 'Aramayla eşleşen şube yok.' : 'Henüz şube yok.')}</tbody>
         </table>
       </div>
-      <div class="panel">
-        <h3>BAĞLANTI GEÇMİŞİ</h3>
-        <p class="panel-sub">Kafe sunumunda kod girildiğinde, oynatıcı açıldığında, personel liste değiştirdiğinde ve yayın durduğunda buraya bir satır düşer. Geçmiş tablosu henüz kurulmadıysa (supabase/radio-baglanti-gecmisi.sql) yalnızca kod girişleri görünür.</p>
-        <table>
+      ${katliBolum({
+        state: state, anahtar: 'gecmis:olaylar', varsayilanAcik: true,
+        baslik: `BAĞLANTI GEÇMİŞİ (${olaylariAl(D, { kodlar: true }).length})`,
+        ozet: 'Kafe sunumunda kod girildiğinde, oynatıcı açıldığında, personel liste değiştirdiğinde ve yayın '
+          + 'durduğunda buraya bir satır düşer. Geçmiş tablosu henüz kurulmadıysa '
+          + '(supabase/radio-baglanti-gecmisi.sql) yalnızca kod girişleri görünür.',
+        icerik: `<table>
           <thead><tr><th>KAFE / ŞUBE</th><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>
           <tbody>${satirlar || bos(4, 'Kayıtlı olay yok.')}</tbody>
-        </table>
-      </div>`;
+        </table>`
+      })}`;
   }
 
   // Yayın hücresinin ikinci satırı: ses gerçekten akıyor mu, bu bilgi ne kadar
@@ -1293,15 +1300,41 @@
   // sonrası tazeleme) kendiliğinden kapanmaz. `alt` her zaman görünür: kimi
   // bölümde liste değil, altındaki düğme (mikrofon, tüm geçmiş) asıl iştir.
   function katliBolum(a) {
-    const acik = !!(a.state.acik || {})[a.anahtar];
+    // `varsayilanAcik`: bölüm ekranın asıl içeriği olduğunda açık gelir ve
+    // kapatma işareti `state.kapali` içinde tutulur (Bağlantı geçmişi sekmesi
+    // gibi). Aksi hâlde bölüm kapalı gelir ve `state.acik` içinde tutulur.
+    const acik = a.varsayilanAcik
+      ? !(a.state.kapali || {})[a.anahtar]
+      : !!(a.state.acik || {})[a.anahtar];
+    const act = a.varsayilanAcik ? 'katla-alt' : 'katla';
     return `
       <div class="panel" style="margin-bottom:18px">
         <div class="panel-head">
           <h3>${esc(a.baslik)}</h3>
-          <button class="btn sm" data-act="katla" data-id="${esc(a.anahtar)}" type="button"
+          <button class="btn sm" data-act="${act}" data-id="${esc(a.anahtar)}" type="button"
             aria-expanded="${acik ? 'true' : 'false'}">${acik ? 'KAPAT ▴' : 'AÇ ▾'}</button>
         </div>
         ${a.ozet ? `<p class="panel-sub">${a.ozet}</p>` : ''}
+        ${acik ? `<div class="katli-govde" data-katli="${esc(a.anahtar)}">${a.icerik}</div>` : ''}
+        ${a.alt || ''}
+      </div>`;
+  }
+
+  // Katlanabilir bölümün ikinci seviyesi: marka sayfasında her şubenin bağlantı
+  // geçmişi kendi tablosunda durur. Dış bölümle aynı fikri paylaşır ama iki
+  // farkı var: panel yerine hafif bir başlık kullanır (iç içe paneller sayfayı
+  // ağırlaştırıyordu) ve **açık gelir**. Bölümü açan yönetici kayıtları hemen
+  // görmeli; kalabalık yapan şubeleri tek tek kapatabilir.
+  function katliAlt(a) {
+    const acik = !(a.state.kapali || {})[a.anahtar];
+    return `
+      <div class="katli-alt">
+        <div class="katli-alt-head">
+          <span class="katli-alt-ad">${esc(a.baslik)}</span>
+          <span class="sub">${a.ozet || ''}</span>
+          <button class="btn sm" data-act="katla-alt" data-id="${esc(a.anahtar)}" type="button"
+            aria-expanded="${acik ? 'true' : 'false'}">${acik ? 'KAPAT ▴' : 'AÇ ▾'}</button>
+        </div>
         ${acik ? `<div class="katli-govde" data-katli="${esc(a.anahtar)}">${a.icerik}</div>` : ''}
         ${a.alt || ''}
       </div>`;
@@ -1323,6 +1356,30 @@
     // oldu” okunsun.
     const ozetOlay = gecmisOzet(D, ui, { brandId: b.id });
     const olaySayi = olaylariAl(D, { brandId: b.id }).length;
+    // Şube bağlantı geçmişi şube şube ayrılır: tek uzun tabloda bütün şubelerin
+    // kayıtları karışıyordu, "hangi kafe ne yapıyor" sorusu kayboluyordu. Her
+    // şube kendi tablosunda ve kendi silme düğmesiyle durur.
+    const subeGecmisleri = subeler.map(p => {
+      const kayitlar = olaylariAl(D, { playerId: p.id });
+      const son = kayitlar[0];
+      return katliAlt({
+        state: state, anahtar: 'marka:' + b.id + ':sube:' + p.id, baslik: p.label,
+        ozet: son
+          ? `${kayitlar.length} kayıt · son ${esc(goreli(son.at, now))}`
+          : 'Bu şube için kayıt yok.',
+        icerik: `<table>
+            <thead><tr><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>
+            <tbody>${olayTablosu(D, ui, { playerId: p.id, yer: false }, 12)
+              || bos(3, 'Bu şube için henüz olay kaydı yok.')}</tbody>
+          </table>`,
+        alt: kayitlar.length
+          ? `<div class="row" style="margin-top:10px">
+              <button class="btn sm danger" data-act="gecmis-del" data-id="${esc(p.id)}" type="button">GEÇMİŞİ SİL</button>
+              <span class="sub">Yalnız bu şubenin kayıtları silinir; geri alınamaz.</span>
+            </div>`
+          : ''
+      });
+    }).join('');
 
     const subeSatirlari = subeler
       .filter(p => hit(q, p.label, p.player_key))
@@ -1488,14 +1545,12 @@
         ozet: ozetOlay.toplam
           ? `<b>Son 24 saat:</b> ${ozetOlay.toplam} olay · bizim tarafta ${ozetOlay.bizde} · kafede ${ozetOlay.kafe}`
           : 'Son 24 saatte kayıtlı olay yok.',
-        icerik: `<p class="panel-sub">Kafenin oynatıcıyı açması, personelin liste değiştirmesi ve yayının durması. Duraklama satırındaki taraf,
-            “sorun bizde mi, kafede mi” sorusunu cevaplar.</p>
-          <table>
-            <thead><tr><th>ŞUBE</th><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>
-            <tbody>${olayTablosu(D, ui, { brandId: b.id }, 12) || bos(4, 'Bu markanın şubeleri için henüz olay kaydı yok.')}</tbody>
-          </table>`,
+        icerik: `<p class="panel-sub">Kafenin oynatıcıyı açması, personelin liste değiştirmesi ve yayının durması. Her şube kendi tablosunda:
+            açtığınızda yalnız o şubenin kayıtları görünür, kalabalık yapan şubeleri kapatabilirsiniz.</p>
+          ${subeGecmisleri || bos(3, 'Bu markanın henüz şubesi yok.')}`,
         alt: `<div class="row" style="margin-top:12px">
           <button class="btn sm" data-act="gecmis-ac" data-q="${esc(b.name)}" type="button">TÜM GEÇMİŞİ GEÇMİŞ EKRANINDA AÇ</button>
+          ${olaySayi ? `<button class="btn sm danger" data-act="marka-gecmis-del" data-id="${esc(b.id)}" type="button">TÜM GEÇMİŞİ SİL</button>` : ''}
           <span class="sub">Geçmiş ekranı bu markanın şubelerine göre süzülür.</span>
         </div>`
       })}
@@ -1833,7 +1888,7 @@
             <span class="sub">${eksik ? esc(eksik) : (parcalar.length + ' parça · yayın bu seçimle başlar')}</span>
           </div>
           ${marka && !sube && simdiki && simdiki.tip
-            ? '<p class="sub">Durdurursanız bu markanın şubeleri akış bekler; yalnız şubeye özel yayını olanlar çalmaya devam eder.</p>'
+            ? '<p class="sub">Durdurursanız markanın yayın kaynağı kaldırılır; şubelerde çalmakta olan şarkı kesilmez, cihazlar yüklü listelerini çalmaya devam eder. Yeni bir kaynak atadığınızda kendiliğinden ona geçerler. Markası kapatılan ya da aboneliği biten şubeler yine durur.</p>'
             : ''}
           <span class="sub" id="yayin-msg"></span>
         </div>
@@ -1981,13 +2036,19 @@
         <button class="btn" data-act="mic" data-id="${esc(p.brand_id)}" type="button">🎙 MİKROFONU AÇ</button>
       </div>
 
-      <div class="block"><h4>BAĞLANTI GEÇMİŞİ</h4>
+      <div class="block">
+        <div class="block-head">
+          <h4>BAĞLANTI GEÇMİŞİ</h4>
+          <button class="btn sm" data-act="katla-yerel" type="button" aria-expanded="false">AÇ ▾</button>
+        </div>
         <p class="sub">Bu şubede son olaylar. Duraklama satırındaki taraf, yayını kimin durdurduğunu söyler.</p>
         <p class="sub"><b>${esc(calismaOzeti(D, p, now))}</b></p>
-        <table><tbody>${olayTablosu(D, ui, { playerId: p.id, yer: false }, 12)
-          || bos(3, 'Bu şube için henüz olay kaydı yok.')}</tbody></table>
-        <div class="row" style="margin-top:12px">
-          <button class="btn sm" data-act="gecmis-ac" data-q="${esc(p.label)}" type="button">TÜM GEÇMİŞİ AÇ</button>
+        <div data-yerel-katli hidden>
+          <table><tbody>${olayTablosu(D, ui, { playerId: p.id, yer: false }, 12)
+            || bos(3, 'Bu şube için henüz olay kaydı yok.')}</tbody></table>
+          <div class="row" style="margin-top:12px">
+            <button class="btn sm" data-act="gecmis-ac" data-q="${esc(p.label)}" type="button">TÜM GEÇMİŞİ AÇ</button>
+          </div>
         </div>
       </div>
 

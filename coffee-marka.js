@@ -408,23 +408,57 @@ async function ac(kod) {
   }
   const brand = data[0];
 
-  const { data: plistRaw } = await client.from('brand_playlists')
-    .select('id,name,cover_path,created_at').eq('brand_id', brand.brand_id).order('created_at');
-  listeler = plistRaw || [];
-  const idler = listeler.map(p => p.id);
-  const { data: pt } = idler.length
-    ? await client.from('brand_playlist_tracks').select('id,playlist_id,track_id,sort_order').in('playlist_id', idler).order('sort_order')
-    : { data: [] };
-  const trackIds = [...new Set((pt || []).map(x => x.track_id))];
-  const { data: parcalar } = trackIds.length
-    ? await client.from('radio_tracks').select('id,title,storage_path,cover_path,duration_sec').in('id', trackIds)
-    : { data: [] };
-  const trackById = Object.fromEntries((parcalar || []).map(t => [t.id, t]));
+  // Listeler ve parçalar: katalog tabloları dışarıya (girişsiz ziyaretçiye)
+  // kapatıldığı için sunum sayfası veriyi, erişim kodunu sunucuda doğrulayan
+  // coffee_brand_liste'den alır (supabase/radio-erisim.sql). Fonksiyon henüz
+  // kurulmadıysa aşağıdaki eski doğrudan okumaya düşülür, yani geçiş sırasında
+  // müşterinin gördüğü sayfa bozulmaz.
+  let satirlar = null;
+  try {
+    const r = await client.rpc('coffee_brand_liste', { p_slug: slug, p_code: kod });
+    if (r && !r.error && Array.isArray(r.data)) satirlar = r.data;
+  } catch { /* fonksiyon yok: eski yola düşülür */ }
+
+  if (satirlar) {
+    const gorulen = new Map();
+    satirlar.forEach(x => {
+      if (!gorulen.has(x.playlist_id)) {
+        gorulen.set(x.playlist_id, {
+          id: x.playlist_id, name: x.name, cover_path: x.cover_path,
+          created_at: x.created_at, _tracks: []
+        });
+      }
+      if (x.track_id) {
+        gorulen.get(x.playlist_id)._tracks.push({
+          id: x.track_id, title: x.title, storage_path: x.storage_path,
+          cover_path: x.track_cover, duration_sec: x.duration_sec,
+          _playlistId: x.playlist_id, _playlistName: x.name, _playlistCover: x.cover_path
+        });
+      }
+    });
+    listeler = [...gorulen.values()];
+  } else {
+    const { data: plistRaw } = await client.from('brand_playlists')
+      .select('id,name,cover_path,created_at').eq('brand_id', brand.brand_id).order('created_at');
+    listeler = plistRaw || [];
+    const idler = listeler.map(p => p.id);
+    const { data: pt } = idler.length
+      ? await client.from('brand_playlist_tracks').select('id,playlist_id,track_id,sort_order').in('playlist_id', idler).order('sort_order')
+      : { data: [] };
+    const trackIds = [...new Set((pt || []).map(x => x.track_id))];
+    const { data: parcalar } = trackIds.length
+      ? await client.from('radio_tracks').select('id,title,storage_path,cover_path,duration_sec').in('id', trackIds)
+      : { data: [] };
+    const trackById = Object.fromEntries((parcalar || []).map(t => [t.id, t]));
+
+    listeler.forEach(pl => {
+      pl._tracks = (pt || []).filter(x => x.playlist_id === pl.id)
+        .map(x => trackById[x.track_id]).filter(Boolean)
+        .map(t => ({ ...t, _playlistId: pl.id, _playlistName: pl.name, _playlistCover: pl.cover_path }));
+    });
+  }
 
   listeler.forEach(pl => {
-    pl._tracks = (pt || []).filter(x => x.playlist_id === pl.id)
-      .map(x => trackById[x.track_id]).filter(Boolean)
-      .map(t => ({ ...t, _playlistId: pl.id, _playlistName: pl.name, _playlistCover: pl.cover_path }));
     pl._sure = pl._tracks.reduce((n, t) => n + (Number(t.duration_sec) || 0), 0);
   });
 

@@ -127,6 +127,10 @@ test('genelden ayrılan şube yayın ekranından genel yayına döndürülür', 
 test('marka geneli yayın yayın ekranından durdurulur', () => {
   const html = V.yayinView(durum({ brandId: 'b1' }), D, ui);
   assert.ok(html.includes('data-act="yayin-durdur" data-id="b1"'), 'marka geneli yayın durdurulabilmeli');
+  // Durdurmak kafeyi susturmaz: yönetici, düğmenin yanında şubelerin çalmaya
+  // devam edeceğini okumalı. Yoksa "durdurdum, müzik kesildi" şaşkınlığı doğar.
+  assert.ok(html.includes('kesilmez'), 'şarkının kesilmeyeceği yazılmalı');
+  assert.ok(html.includes('çalmaya devam eder'), 'cihazların çalmaya devam edeceği yazılmalı');
 
   const subeSecili = V.yayinView(durum({ brandId: 'b1', playerId: 'p2' }), D, ui);
   assert.ok(!subeSecili.includes('data-act="yayin-durdur"'),
