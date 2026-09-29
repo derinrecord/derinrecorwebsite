@@ -550,6 +550,39 @@ test('marka detayı markayı yayına alıp durdurmayı gösterir', () => {
   assert.ok(pasif.includes('MARKAYI YAYINA AL'));
 });
 
+// Marka sayfasının altındaki kayıt listeleri (anons geçmişi, sunum giriş
+// denemeleri, şube bağlantı geçmişi) sayfayı uzatıyordu. Bölümler kapalı gelir;
+// başlık ve tek satır özet yerinde kalır, liste istenince açılır ve açık kalan
+// bölüm yeniden çizimde kapanmaz.
+test('marka sayfasındaki geçmiş bölümleri katlanır', () => {
+  const dolu = {
+    ...D,
+    announcements: [{
+      id: 'an1', brand_id: 'b1', storage_path: 'b1/anons.webm',
+      label: 'Kapanış anonsu', created_at: iso(-2 * GUN)
+    }],
+    olaylar: [{ id: 'ev1', brand_id: 'b1', player_id: 'p1', kind: 'durakladi', detail: 'yok-boyle-sebep', at: iso(-3600000) }]
+  };
+  const marka = ek => V.gorunum(
+    durum(Object.assign({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }, ek)), dolu, ui).html;
+  const kapali = marka({});
+
+  ['anons', 'giris', 'olay'].forEach(k => assert.ok(
+    kapali.includes(`data-act="katla" data-id="marka:b1:${k}"`), k + ' bölümü katlanabilmeli'));
+  assert.ok(kapali.includes('>AÇ ▾<'), 'kapalı bölüm açma düğmesi taşımalı');
+  assert.ok(!kapali.includes('data-katli="marka:b1:anons"'), 'kapalı bölümün tablosu çizilmemeli');
+  assert.ok(!kapali.includes('data-act="anons-del"'), 'kapalı bölümün satırları görünmemeli');
+  assert.ok(kapali.includes('MİKROFONU AÇ'), 'anons düğmesi katlıyken de erişilebilir kalmalı');
+  assert.ok(kapali.includes('TÜM GEÇMİŞİ GEÇMİŞ EKRANINDA AÇ'), 'tüm geçmiş düğmesi katlıyken de durmalı');
+  assert.ok(kapali.includes('Son anons'), 'katlıyken tek satır özet görünmeli');
+
+  const acik = marka({ acik: { 'marka:b1:anons': true } });
+  assert.ok(acik.includes('data-katli="marka:b1:anons"'), 'açılan bölümün tablosu çizilmeli');
+  assert.ok(acik.includes('>KAPAT ▴<'), 'açık bölüm kapatma düğmesi taşımalı');
+  assert.ok(acik.includes('data-act="anons-del"'), 'açık bölümde satırlar görünmeli');
+  assert.ok(!acik.includes('data-katli="marka:b1:olay"'), 'diğer bölümler kapalı kalmalı');
+});
+
 test('bağlantı sınaması düğmesi her şubede bulunmaz, yalnızca çekmecede olur', () => {
   const liste = V.gorunum(durum({}), D, ui).html;
   assert.ok(!liste.includes('BAĞLANTIYI SINA'), 'tabloda yer kaplamamalı');
@@ -799,8 +832,16 @@ test('şube çekmecesi ve marka sayfası bağlantı geçmişini gösterir', () =
   // Şube zaten belli: satırda “kim” sütununu tekrar etmeyiz.
   assert.ok(!cekmece.includes('Mokka Coffee · Nişantaşı'));
 
-  const marka = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), DOLAY, ui).html;
-  assert.ok(marka.includes('ŞUBE BAĞLANTI GEÇMİŞİ'));
+  // Marka sayfasında geçmiş bölümü kapalı gelir; satırlar bölüm açılınca çizilir
+  // (özet satırı kapalıyken de “son 24 saatte ne oldu” bilgisini verir).
+  const markaKapali = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), DOLAY, ui).html;
+  assert.ok(markaKapali.includes('ŞUBE BAĞLANTI GEÇMİŞİ'));
+  assert.ok(!markaKapali.includes('Kafede cihazdan durduruldu'), 'katlı bölümün satırları çizilmez');
+
+  const marka = V.gorunum(durum({
+    nav: 'musteri', sub: 'markalar', openBrand: 'b1', acik: { 'marka:b1:olay': true }
+  }), DOLAY, ui).html;
+  assert.ok(marka.includes('data-katli="marka:b1:olay"'), 'açılan bölüm çizilmeli');
   assert.ok(marka.includes('Kafede cihazdan durduruldu'));
   assert.ok(marka.includes('Mokka Coffee · Nişantaşı'));
 });

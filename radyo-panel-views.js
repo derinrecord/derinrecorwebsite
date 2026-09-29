@@ -1285,6 +1285,28 @@
       </div>`;
   }
 
+  // ---------- Katlanabilir bölüm ----------
+  // Kayıt listeleri (anons geçmişi, giriş denemeleri, olay geçmişi) sayfanın
+  // altında birikip asıl işi aşağı itiyordu. Bu bölümler kapalı gelir: başlık ve
+  // tek satır özet yerinde kalır, liste istenince açılır. Açık bölümler
+  // `state.acik` içinde tutulur; panel yeniden çizildiğinde (arama, kayıt
+  // sonrası tazeleme) kendiliğinden kapanmaz. `alt` her zaman görünür: kimi
+  // bölümde liste değil, altındaki düğme (mikrofon, tüm geçmiş) asıl iştir.
+  function katliBolum(a) {
+    const acik = !!(a.state.acik || {})[a.anahtar];
+    return `
+      <div class="panel" style="margin-bottom:18px">
+        <div class="panel-head">
+          <h3>${esc(a.baslik)}</h3>
+          <button class="btn sm" data-act="katla" data-id="${esc(a.anahtar)}" type="button"
+            aria-expanded="${acik ? 'true' : 'false'}">${acik ? 'KAPAT ▴' : 'AÇ ▾'}</button>
+        </div>
+        ${a.ozet ? `<p class="panel-sub">${a.ozet}</p>` : ''}
+        ${acik ? `<div class="katli-govde" data-katli="${esc(a.anahtar)}">${a.icerik}</div>` : ''}
+        ${a.alt || ''}
+      </div>`;
+  }
+
   function markaDetay(state, D, ui) {
     const b = D.brands.find(x => x.id === state.openBrand);
     if (!b) return markaListesi(state, D, ui);
@@ -1297,6 +1319,10 @@
     const denemeler = D.coffeeAttempts.filter(a => a.brand_id === b.id).slice(0, 8);
     const sonBasarisiz = D.coffeeAttempts.filter(a => a.brand_id === b.id && !a.success
       && (now - new Date(a.created_at).getTime()) < 86400000).length;
+    // Bağlantı geçmişi bölümünün özeti: bölüm kapalıyken de “son 24 saatte ne
+    // oldu” okunsun.
+    const ozetOlay = gecmisOzet(D, ui, { brandId: b.id });
+    const olaySayi = olaylariAl(D, { brandId: b.id }).length;
 
     const subeSatirlari = subeler
       .filter(p => hit(q, p.label, p.player_key))
@@ -1436,29 +1462,43 @@
         <span class="sub" id="playlist-msg">Kaynak klasör seçilirse parçalar bu markaya özel sırayla kopyalanır.</span>
       </div>
 
-      <div class="panel" style="margin-bottom:18px">
-        <h3>ANONS GEÇMİŞİ (${anonslar.length})</h3>
-        <table><tbody>${anonsSatirlari || bos(2, 'Bu markaya henüz anons gönderilmedi.')}</tbody></table>
-        <div class="row" style="margin-top:14px">
+      ${katliBolum({
+        state: state, anahtar: 'marka:' + b.id + ':anons', baslik: `ANONS GEÇMİŞİ (${anonslar.length})`,
+        ozet: anonslar.length
+          ? `Son anons ${esc(goreli(anonslar[0].created_at, now))} · “${esc(anonslar[0].label || 'Anons')}”`
+          : 'Bu markaya henüz anons gönderilmedi.',
+        icerik: `<table><tbody>${anonsSatirlari || bos(2, 'Bu markaya henüz anons gönderilmedi.')}</tbody></table>`,
+        alt: `<div class="row" style="margin-top:14px">
           <button class="btn" data-act="mic" data-id="${esc(b.id)}" type="button">🎙 MİKROFONU AÇ</button>
           <span class="sub">Anons, markanın bütün şubelerinde çalan akışın önüne girer.</span>
-        </div>
-      </div>
+        </div>`
+      })}
 
-      <div class="panel" style="margin-bottom:18px">
-        <h3>SUNUM GİRİŞ DENEMELERİ${sonBasarisiz ? ` · son 24 saatte ${sonBasarisiz} başarısız` : ''}</h3>
-        <table><tbody>${denemeSatirlari || bos(3, 'Bu markanın sunum sayfasına giriş denemesi olmadı.')}</tbody></table>
-      </div>
+      ${katliBolum({
+        state: state, anahtar: 'marka:' + b.id + ':giris', baslik: `SUNUM GİRİŞ DENEMELERİ (${denemeler.length})`,
+        ozet: denemeler.length
+          ? `Son deneme ${esc(goreli(denemeler[0].created_at, now))} · ${sonBasarisiz
+            ? sonBasarisiz + ' başarısız (son 24 saat)' : 'son 24 saatte başarısız deneme yok'}`
+          : 'Bu markanın sunum sayfasına giriş denemesi olmadı.',
+        icerik: `<table><tbody>${denemeSatirlari || bos(3, 'Bu markanın sunum sayfasına giriş denemesi olmadı.')}</tbody></table>`
+      })}
 
-      <div class="panel" style="margin-bottom:18px">
-        <h3>ŞUBE BAĞLANTI GEÇMİŞİ</h3>
-        <p class="panel-sub">Kafenin oynatıcıyı açması, personelin liste değiştirmesi ve yayının durması. Duraklama satırındaki taraf,
-          "sorun bizde mi, kafede mi" sorusunu cevaplar.</p>
-        <table>
-          <thead><tr><th>ŞUBE</th><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>
-          <tbody>${olayTablosu(D, ui, { brandId: b.id }, 12) || bos(4, 'Bu markanın şubeleri için henüz olay kaydı yok.')}</tbody>
-        </table>
-      </div>
+      ${katliBolum({
+        state: state, anahtar: 'marka:' + b.id + ':olay', baslik: `ŞUBE BAĞLANTI GEÇMİŞİ (${olaySayi})`,
+        ozet: ozetOlay.toplam
+          ? `<b>Son 24 saat:</b> ${ozetOlay.toplam} olay · bizim tarafta ${ozetOlay.bizde} · kafede ${ozetOlay.kafe}`
+          : 'Son 24 saatte kayıtlı olay yok.',
+        icerik: `<p class="panel-sub">Kafenin oynatıcıyı açması, personelin liste değiştirmesi ve yayının durması. Duraklama satırındaki taraf,
+            “sorun bizde mi, kafede mi” sorusunu cevaplar.</p>
+          <table>
+            <thead><tr><th>ŞUBE</th><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>
+            <tbody>${olayTablosu(D, ui, { brandId: b.id }, 12) || bos(4, 'Bu markanın şubeleri için henüz olay kaydı yok.')}</tbody>
+          </table>`,
+        alt: `<div class="row" style="margin-top:12px">
+          <button class="btn sm" data-act="gecmis-ac" data-q="${esc(b.name)}" type="button">TÜM GEÇMİŞİ GEÇMİŞ EKRANINDA AÇ</button>
+          <span class="sub">Geçmiş ekranı bu markanın şubelerine göre süzülür.</span>
+        </div>`
+      })}
 
       <div class="panel">
         <h3>BAKIM</h3>

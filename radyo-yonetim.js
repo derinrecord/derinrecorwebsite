@@ -31,7 +31,9 @@
   const state = {
     nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '',
     // Yayın başlatma ekranının seçimleri: marka → şube → kaynak → parça.
-    yayin: { brandId: '', playerId: '', kaynak: '', parcaId: '' }
+    yayin: { brandId: '', playerId: '', kaynak: '', parcaId: '' },
+    // Açık bırakılan katlanabilir bölümler (marka sayfasındaki geçmiş listeleri).
+    acik: {}
   };
 
   let modalOnay = null, modalKapat = null;
@@ -759,6 +761,15 @@
         return;
       }
       case 'drawer-close': return cekmeceKapat();
+
+      // Katlanabilir bölüm (marka sayfasındaki geçmiş listeleri): açık kalan
+      // bölümler `state.acik` içinde tutulur, böylece tazeleme/açma sırasında
+      // bölüm kendiliğinden kapanmaz.
+      case 'katla':
+        state.acik = state.acik || {};
+        state.acik[id] = !state.acik[id];
+        ciz();
+        return;
 
       // Yayın başlatma ekranının kararı: seçimler buraya kadar yalnız ekranda
       // beklemişti; yayın bu düğmeyle değişir.
