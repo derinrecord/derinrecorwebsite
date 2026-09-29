@@ -922,6 +922,26 @@ test('bağlantı geçmişi sekmesindeki tablo katlanabilir ve açık gelir', () 
   assert.ok(kapali.includes('data-act="katla-alt" data-id="gecmis:olaylar"'), 'düğme yerinde kalmalı');
 });
 
+// Aynı ekrandaki dört bölüm de katlanır: yönetici “iş nerede” sorusunu cevaplayan
+// tabloyu açık tutup kalan uzun tabloları kapatabilsin. Hepsi açık gelir, çünkü
+// bu ekranı açan kişi zaten geçmişe bakmaya gelmiştir; istediğini kapatır.
+test('bağlantı geçmişi ekranındaki bölümler ayrı ayrı katlanır', () => {
+  const acik = V.gorunum(durum({ nav: 'canli', sub: 'gecmis' }), DOLAY, ui).html;
+  ['gecmis:suan', 'gecmis:calisma', 'gecmis:trend', 'gecmis:olaylar'].forEach(k => {
+    assert.ok(acik.includes(`data-act="katla-alt" data-id="${k}"`), k + ' katlanabilmeli');
+    assert.ok(acik.includes(`data-katli="${k}"`), k + ' varsayılan açık gelmeli');
+  });
+  // Başlığın yanındaki kapsam etiketi (ör. “son 24 saat”) korunmalı.
+  assert.ok(acik.includes('<h3>ÇALIŞMA SÜRESİ <span>son 24 saat</span></h3>'),
+    'başlık ek etiketiyle birlikte yazılmalı');
+
+  const kapali = V.gorunum(durum({
+    nav: 'canli', sub: 'gecmis', kapali: { 'gecmis:trend': true }
+  }), DOLAY, ui).html;
+  assert.ok(!kapali.includes('data-katli="gecmis:trend"'), 'kapatılan tablo çizilmez');
+  assert.ok(kapali.includes('data-katli="gecmis:calisma"'), 'diğer bölümler açık kalmalı');
+});
+
 // ---------- HAFTALIK TREND (gün gün doluluk) ----------
 // Hafta boyu bakmak “bu şube bozuluyor mu, düzeliyor mu” sorusunu cevaplar.
 // Saat sabit kaldığı için gün sınırları da sabittir: SABIT İstanbul 26 Eyl

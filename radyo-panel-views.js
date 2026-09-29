@@ -649,34 +649,37 @@
         <div class="tile"><span>KOD GİRİŞİ</span><b>${ozet.kod}</b><small>${ozet.yanlis ? ozet.yanlis + ' tanesi yanlış kod' : 'hepsi doğru kod'}</small></div>
         <div class="tile"><span>OLAY</span><b>${ozet.toplam}</b><small>son 24 saat · ${D.players.length} şube</small></div>
       </div>
-      <div class="panel" style="margin-bottom:18px">
-        <h3>ŞU AN <span>${D.players.length} şube</span></h3>
-        <p class="panel-sub">Yayın gerçekten çalıyor mu, durduysa kimin tarafında durdu? Durma sebebi cihazın bıraktığı geçmişten okunur; kayıt yoksa taraf iddia edilmez.</p>
-        <table>
+      ${katliBolum({
+        state: state, anahtar: 'gecmis:suan', varsayilanAcik: true,
+        baslik: 'ŞU AN', baslikEk: ` <span>${D.players.length} şube</span>`,
+        ozet: 'Yayın gerçekten çalıyor mu, durduysa kimin tarafında durdu? Durma sebebi cihazın bıraktığı geçmişten okunur; kayıt yoksa taraf iddia edilmez.',
+        icerik: `<table>
           <thead><tr><th>ŞUBE</th><th>ŞU AN</th><th>SON DURMA</th><th>SON BAĞLANTI</th></tr></thead>
           <tbody>${subeler}</tbody>
-        </table>
-      </div>
-      <div class="panel" style="margin-bottom:18px">
-        <h3>ÇALIŞMA SÜRESİ <span>son 24 saat</span></h3>
-        <p class="panel-sub">Oynatıcının bıraktığı olaylardan hesaplanır: “çalmaya başladı” ile “durdu” arası çalışma, “durdu”
-          ile bir sonraki başlama arası kesintidir ve kesinti, durdurmayı kim yaptıysa ona yazılır. Şubeye tanımlı yayın saatleri
-          dışındaki süre hiç sayılmaz. Kayıt yoksa yüzde uydurulmaz.</p>
-        <table>
+        </table>`
+      })}
+      ${katliBolum({
+        state: state, anahtar: 'gecmis:calisma', varsayilanAcik: true,
+        baslik: 'ÇALIŞMA SÜRESİ', baslikEk: ' <span>son 24 saat</span>',
+        ozet: 'Oynatıcının bıraktığı olaylardan hesaplanır: “çalmaya başladı” ile “durdu” arası çalışma, “durdu” '
+          + 'ile bir sonraki başlama arası kesintidir ve kesinti, durdurmayı kim yaptıysa ona yazılır. Şubeye tanımlı yayın saatleri '
+          + 'dışındaki süre hiç sayılmaz. Kayıt yoksa yüzde uydurulmaz.',
+        icerik: `<table>
           <thead><tr><th>ŞUBE</th><th>DOLULUK</th><th>ÇALIŞTI</th><th>KESİNTİ</th></tr></thead>
           <tbody>${calismaTablosu(D, ui, state.q) || bos(4, D.players.length ? 'Aramayla eşleşen şube yok.' : 'Henüz şube yok.')}</tbody>
-        </table>
-      </div>
-      <div class="panel" style="margin-bottom:18px">
-        <h3>HAFTALIK TREND <span>son 7 gün</span></h3>
-        <p class="panel-sub">Aynı olay geçmişi gün gün kesilir: hangi şube hafta içinde bozulup düzeliyor? Renkli kutu o günün
-          doluluğu, son sütun haftanın toplam kesintisi ve kimin tarafında olduğu. “—” o gün için kayıt olmadığını söyler;
-          cihazın kurulmadığı güne yüzde sıfır yazılmaz. Günler şubenin yayın saatlerine göre hesaplanır.</p>
-        <table>
+        </table>`
+      })}
+      ${katliBolum({
+        state: state, anahtar: 'gecmis:trend', varsayilanAcik: true,
+        baslik: 'HAFTALIK TREND', baslikEk: ' <span>son 7 gün</span>',
+        ozet: 'Aynı olay geçmişi gün gün kesilir: hangi şube hafta içinde bozulup düzeliyor? Renkli kutu o günün '
+          + 'doluluğu, son sütun haftanın toplam kesintisi ve kimin tarafında olduğu. “—” o gün için kayıt olmadığını söyler; '
+          + 'cihazın kurulmadığı güne yüzde sıfır yazılmaz. Günler şubenin yayın saatlerine göre hesaplanır.',
+        icerik: `<table>
           <thead><tr><th>ŞUBE</th>${sonGunler(now, 7).map(b => `<th>${esc(gunEtiketi(b, now).toUpperCase())}</th>`).join('')}<th>7 GÜN</th></tr></thead>
           <tbody>${trendTablosu(D, ui, state.q) || bos(9, D.players.length ? 'Aramayla eşleşen şube yok.' : 'Henüz şube yok.')}</tbody>
-        </table>
-      </div>
+        </table>`
+      })}
       ${katliBolum({
         state: state, anahtar: 'gecmis:olaylar', varsayilanAcik: true,
         baslik: `BAĞLANTI GEÇMİŞİ (${olaylariAl(D, { kodlar: true }).length})`,
@@ -1299,6 +1302,8 @@
   // `state.acik` içinde tutulur; panel yeniden çizildiğinde (arama, kayıt
   // sonrası tazeleme) kendiliğinden kapanmaz. `alt` her zaman görünür: kimi
   // bölümde liste değil, altındaki düğme (mikrofon, tüm geçmiş) asıl iştir.
+  // `baslikEk`: başlığın yanına küçük punto ile yazılan kapsam etiketi (ör.
+  // “son 24 saat”); kaçışlanmamış HTML olarak geçer.
   function katliBolum(a) {
     // `varsayilanAcik`: bölüm ekranın asıl içeriği olduğunda açık gelir ve
     // kapatma işareti `state.kapali` içinde tutulur (Bağlantı geçmişi sekmesi
@@ -1310,7 +1315,7 @@
     return `
       <div class="panel" style="margin-bottom:18px">
         <div class="panel-head">
-          <h3>${esc(a.baslik)}</h3>
+          <h3>${esc(a.baslik)}${a.baslikEk || ''}</h3>
           <button class="btn sm" data-act="${act}" data-id="${esc(a.anahtar)}" type="button"
             aria-expanded="${acik ? 'true' : 'false'}">${acik ? 'KAPAT ▴' : 'AÇ ▾'}</button>
         </div>
