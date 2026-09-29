@@ -1239,14 +1239,26 @@ test('elle atama penceresi parçaları seçilen listeden getirir', () => {
   assert.ok(bos.includes('id="ata-parca"'), 'parça adımı olmalı');
   assert.ok(bos.includes('önce çalma listesi seçin'), 'kaynak yokken parça seçtirilmemeli');
 
+  assert.ok(!bos.includes('data-act="ata-dinle"'), 'kaynak yokken dinleme düğmesi olmamalı');
+
   const liste = V.ataPenceresi(LISTE_D, ui, { brandId: 'b1', kaynak: 'playlist:l1' });
   assert.ok(liste.includes('İkinci Parça'), 'seçili listenin parçaları gelmeli');
   assert.ok(liste.includes('ilk parçadan başla'), 'varsayılan başlangıç yazılmalı');
   assert.ok(liste.includes('2 parça var'), 'parça sayısı yazılmalı');
+  assert.ok(liste.includes('data-act="ata-dinle"'), 'parça varken dinleme düğmesi olmalı');
 
   // Yayın klasörü de kaynaktır: parçaları klasörden gelir.
   const klasor = V.ataPenceresi(LISTE_D, ui, { brandId: 'b1', kaynak: 'folder:f1' });
   assert.ok(klasor.includes('İkinci Parça'), 'klasörün parçaları gelmeli');
+
+  // Etiket dengesi: fazladan kapanış etiketi (ör. düğme eklerken) pencere
+  // düzenini sessizce bozar. Her durumda div'ler dengeli olmalı.
+  [[], ['playlist:l1'], ['folder:f1'], ['']].forEach(kaynak => {
+    const govde = V.ataPenceresi(LISTE_D, ui, { brandId: 'b1', kaynak: kaynak[0] });
+    const acik = (govde.match(/<div\b/g) || []).length;
+    const kapali = (govde.match(/<\/div>/g) || []).length;
+    assert.equal(acik, kapali, 'div etiketleri dengeli olmalı (' + (kaynak[0] || 'varsayılan') + ')');
+  });
 });
 
 // Klasör tablosu kurulmadıysa ekran bozulmaz: listeler tek tabloda görünür ve

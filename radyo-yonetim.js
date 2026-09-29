@@ -1745,6 +1745,37 @@
         return;
       }
 
+      // Elle atama penceresindeki "DİNLE": seçili parçayı (seçim yoksa kaynağın
+      // ilk parçasını) panelin alt oynatıcısında çalar. Kaynak seçili değilse
+      // çalınacak bir şey yok. Pencere açık kalır ki yönetici dinleyip atamaya
+      // devam edebilsin (oynatıcı pencerenin üstünde durur).
+      case 'ata-dinle': {
+        const md = el('modal');
+        if (!md) return;
+        const kaynakKutusu = md.querySelector('#ata-kaynak');
+        const parcaKutusu = md.querySelector('#ata-parca');
+        const [tur, kaynakId] = String((kaynakKutusu && kaynakKutusu.value) || '').split(':');
+        if (!kaynakId) return hata('Dinlemek için önce bir çalma listesi seç.');
+        let kayitlar, baslik;
+        if (tur === 'playlist') {
+          const pl = D.playlists.find(x => x.id === kaynakId);
+          kayitlar = D.playlistTracks.filter(x => x.playlist_id === kaynakId)
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+            .map(x => D.tracks.find(t => t.id === x.track_id)).filter(Boolean);
+          baslik = pl ? pl.name : 'Çalma listesi';
+        } else {
+          kayitlar = D.tracks.filter(t => t.folder_id === kaynakId)
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          baslik = (D.folders.find(f => f.id === kaynakId) || {}).name || 'Yayın klasörü';
+        }
+        if (!kayitlar.length) return hata('Bu kaynakta çalınacak parça yok.');
+        calmaListesi = kayitlar;
+        calmaBaslik = baslik;
+        const secili = parcaKutusu && parcaKutusu.value;
+        cal(secili ? Math.max(0, kayitlar.findIndex(t => t.id === secili)) : 0);
+        return;
+      }
+
       // Yayını elle atama: çalma listeleri ekranındaki şube satırından açılır.
       // data-id marka, data-sube şube (boşsa marka geneli). Kaynağı yönetici
       // pencerede seçer; seçim kendiliğinden uygulanmaz.

@@ -1764,6 +1764,12 @@
             ${parcalar.map((t, i) => secenek(t.id, (i + 1) + '. ' + clean(t.title), seciliParca === t.id)).join('')}
           </select></div>
       </div>
+      ${parcalar.length
+        ? `<div class="row" style="margin-top:10px">
+          <button class="btn sm" data-act="ata-dinle" type="button">▶ SEÇİLİ PARÇAYI DİNLE</button>
+          <span class="sub">Seçtiğin parçayı atamadan önce dinleyebilirsin; pencere açık kalır.</span>
+        </div>`
+        : ''}
       <p class="sub" style="margin-top:14px">Hedef: <b>${esc(hedefAd)}</b> · şu an burada <b>${esc(mevcut && mevcut.ad ? mevcut.ad : 'yayın atanmamış')}</b> çalıyor.</p>
       <p class="sub">${parcalar.length
         ? `Seçilen kaynakta ${parcalar.length} parça var; seçersen o parçadan başlar.`

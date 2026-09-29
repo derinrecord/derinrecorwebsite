@@ -12,7 +12,7 @@
   .vercelignore sayesinde yayına girmez (*-prova.html).
 -->
 <link rel="stylesheet" href="auth.css">
-<link rel="stylesheet" href="radyo-panel.css?v=5">
+<link rel="stylesheet" href="radyo-panel.css?v=6">
 </head>
 <body>
 
@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=32"></script>
+<script src="radyo-panel-views.js?v=33"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -357,6 +357,28 @@
         <div class="p-now" id="p-now"><span class="cover" id="p-img">♪</span>
           <div style="min-width:0"><b>${V.esc((tr && tr.dataset.act) === 'anons-play' ? 'Anons' : 'Ambient Opening 01')}</b>
             <small>Sabah Açılış — Ambient · prova</small></div></div>
+        <div class="p-ctr"><div class="p-btns">
+          <button type="button">⏮</button><button class="main" type="button">▶</button><button type="button">⏭</button>
+        </div>
+        <div class="p-seek"><span class="p-time">0:00</span><input type="range" min="0" max="1000" value="120" aria-label="İlerleme"><span class="p-time">3:42</span></div></div>
+        <div class="p-vol">🔊<input type="range" min="0" max="100" value="100" aria-label="Ses"></div>
+        <button class="btn sm" data-act="player-close" type="button">KAPAT</button>`;
+      return;
+    }
+    // Elle atama penceresinden parça dinleme: gerçek panelde alt oynatıcı
+    // kullanılır (radyo-yonetim.js · case 'ata-dinle'); provada temsil edilir.
+    if (act === 'ata-dinle') {
+      const md = el('modal');
+      const kk = md.querySelector('#ata-kaynak');
+      const pr = md.querySelector('#ata-parca');
+      if (!kk || !kk.value) return bildir('Prova: önce bir çalma listesi seç.');
+      const parcaAd = pr && pr.value && pr.selectedIndex >= 0
+        ? pr.options[pr.selectedIndex].textContent.trim() : 'İlk parça';
+      el('player').classList.add('open');
+      el('player').innerHTML = `
+        <div class="p-now" id="p-now"><span class="cover" id="p-img">♪</span>
+          <div style="min-width:0"><b>${V.esc(parcaAd)}</b>
+            <small>${V.esc(kk.options[kk.selectedIndex].textContent.trim())} · prova</small></div></div>
         <div class="p-ctr"><div class="p-btns">
           <button type="button">⏮</button><button class="main" type="button">▶</button><button type="button">⏭</button>
         </div>

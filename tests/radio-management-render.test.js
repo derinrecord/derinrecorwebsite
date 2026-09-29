@@ -352,6 +352,22 @@ test('panel elle yayın atamayı bağlar', () => {
   // baştan açılmaz (yoksa odak başa döner ve modalOnay sıfırlanır).
   assert.match(source, /kutu\.innerHTML = V\.ataPenceresi\(D, ui, secim\)/);
   assert.match(source, /kutu = el\('modal'\)\.querySelector\('\.modal-body'\)/);
+
+  // Pencereden parça dinlenebilir: panelin alt oynatıcısı kullanılır.
+  assert.match(source, /case 'ata-dinle'/);
+  assert.match(source, /calmaListesi = kayitlar/);
+  assert.match(source, /calmaBaslik = baslik/);
+});
+
+// Pencere açıkken parça dinlenebilmeli: oynatıcı pencerenin üstünde durur ve
+// pencerenin altında boşluk kalır, yoksa düğmeler oynatıcının altında kalır.
+test('oynatıcı atama penceresinin üstünde durur', () => {
+  const css = fs.readFileSync(require.resolve('../radyo-panel.css'), 'utf8');
+  const zIndex = sec => Number((css.match(new RegExp('\\.' + sec + '\\{[^}]*z-index:(\\d+)')) || [])[1]);
+  const oynatici = zIndex('player');
+  assert.ok(oynatici > zIndex('modal-wrap'), 'oynatıcı pencere katmanının üstünde olmalı');
+  assert.ok(zIndex('toast') > oynatici, 'bildirim oynatıcının üstünde kalmalı');
+  assert.match(css, /padding:24px 24px 112px/, 'pencerenin altında oynatıcı için yer bırakılmalı');
 });
 
 // Veritabanı tarafı: klasörler yalnız yöneticiye açık; liste klasörü silinince
