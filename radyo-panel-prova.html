@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=30"></script>
+<script src="radyo-panel-views.js?v=31"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -263,6 +263,25 @@
     }
     if (act === 'cikis') return bildir('Prova: çıkış yapıldı.');
     if (act === 'branch-open') return cekmeceAc(V.subeCekmecesi(id, D, ui));
+    // Elle yayın atama penceresi: gerçek panelde yazma yapar
+    // (radyo-yonetim.js · ataKaydet); provada yalnız önizlenir.
+    if (act === 'ata-ac') {
+      let markaId = id || (D.brands[0] && D.brands[0].id) || '';
+      let subeId = t.dataset.sube || '';
+      const cizAta = () => {
+        pencere({
+          baslik: 'Yayını elle ata',
+          govde: V.ataPenceresi(D, ui, { brandId: markaId, playerId: subeId }),
+          onayMetni: 'YAYINI ATA',
+          onOnay: () => pencereKapat()
+        });
+        const mk = el('modal').querySelector('#ata-marka');
+        if (mk) mk.onchange = () => { markaId = mk.value; subeId = ''; cizAta(); };
+        const sb = el('modal').querySelector('#ata-sube');
+        if (sb) sb.onchange = () => { subeId = sb.value; };
+      };
+      return cizAta();
+    }
     if (act === 'yayin-ac') {
       const sube = D.players.find(x => x.id === id);
       cekmeceKapat();

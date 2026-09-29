@@ -211,6 +211,82 @@
     });
   }
 
+  // ---------- Elle yayın atama (çalma listeleri ekranı) ----------
+  // Yönetici markayı, şubesini ve kaynağı kendisi seçer. Kaynak seçimi markaya
+  // bağlıdır: marka değişince şube ve liste seçenekleri yeniden çizilir. Yazma
+  // yalnız "YAYINI ATA" ile olur (radyo-panel-views.js · ataPenceresi).
+  function ataPenceresiAc(brandId, playerId) {
+    let markaId = brandId || (D.brands[0] && D.brands[0].id) || '';
+    let subeId = playerId || '';
+    const cizPencere = () => {
+      pencere({
+        baslik: 'Yayını elle ata',
+        govde: V.ataPenceresi(D, ui, { brandId: markaId, playerId: subeId }),
+        onayMetni: 'YAYINI ATA',
+        onOnay: () => ataKaydet()
+      });
+      const mk = el('modal').querySelector('#ata-marka');
+      if (mk) mk.onchange = () => { markaId = mk.value; subeId = ''; cizPencere(); };
+      const sb = el('modal').querySelector('#ata-sube');
+      if (sb) sb.onchange = () => { subeId = sb.value; };
+    };
+    cizPencere();
+  }
+
+  async function ataKaydet() {
+    const md = el('modal');
+    if (!kullanici.adminMi) return hata('Yayın atamak yönetici yetkisi ister.');
+    const markaId = md.querySelector('#ata-marka').value;
+    const playerId = md.querySelector('#ata-sube').value;
+    const kaynak = md.querySelector('#ata-kaynak').value;
+    const b = D.brands.find(x => x.id === markaId);
+    if (!b) return hata('Marka bulunamadı.');
+    const p = playerId ? D.players.find(x => x.id === playerId) : null;
+    if (playerId && !p) return hata('Şube bulunamadı.');
+    const hedefAd = p ? p.label : b.name + ' · bütün şubeler';
+    const [tur, kaynakId] = String(kaynak || '').split(':');
+
+    // "Kaynağı kaldır": şube ataması ya da marka geneli yayını silinir. Şubede
+    // özel atama yoksa zaten genel yayını çalar; boşa silme isteği göndermeyiz.
+    if (!kaynakId) {
+      if (p && !V.subeKaynagi(D, p.id).tip) return bildir(p.label + ' zaten marka genelini çalıyor.');
+      const { error } = p
+        ? await client.from('player_broadcast').delete().eq('player_id', p.id)
+        : await client.from('brand_broadcast').delete().eq('brand_id', b.id);
+      if (error) return hata('Yayın kaldırılamadı: ' + error.message);
+      pencereKapat();
+      await yenile(false);
+      bildir(p ? p.label + ' yeniden ' + b.name + ' genel yayınını çalıyor.' : b.name + ' markasının yayın kaynağı kaldırıldı.');
+      return;
+    }
+
+    const kaynakKayit = tur === 'folder'
+      ? D.folders.find(f => f.id === kaynakId)
+      : D.playlists.find(l => l.id === kaynakId);
+    if (!kaynakKayit) return hata('Seçilen kaynak bulunamadı.');
+    // Çalma listesi markaya özeldir: başka markanın listesi atanamaz.
+    if (tur === 'playlist' && kaynakKayit.brand_id !== b.id) {
+      return hata('Bu çalma listesi başka bir markaya ait.');
+    }
+    const satir = {
+      folder_id: tur === 'folder' ? kaynakId : null,
+      playlist_id: tur === 'playlist' ? kaynakId : null,
+      updated_at: new Date().toISOString()
+    };
+    const { error } = p
+      ? await client.from('player_broadcast').upsert(Object.assign({ player_id: p.id }, satir), { onConflict: 'player_id' })
+      : await client.from('brand_broadcast').upsert(Object.assign({ brand_id: b.id }, satir), { onConflict: 'brand_id' });
+    if (error) {
+      if (error.code === 'PGRST205' && p) {
+        return hata('Şubeye özel yayın tablosu yok: supabase/radio-subeye-ozel-yayin.sql dosyasını çalıştırın.');
+      }
+      return hata('Yayın atanamadı: ' + error.message);
+    }
+    pencereKapat();
+    await yenile(false);
+    bildir(hedefAd + ' artık “' + kaynakKayit.name + '” çalıyor.');
+  }
+
   // ---------- Çekmece ----------
   function cekmeceAc(html) {
     el('drawer').innerHTML = `<button class="btn sm drawer-close" data-act="drawer-close" type="button">KAPAT</button>${html}`;
@@ -1626,6 +1702,16 @@
             bildir(secim ? 'Liste klasöre taşındı.' : 'Liste “Klasörsüz” grubuna alındı.');
           }
         });
+        return;
+      }
+
+      // Yayını elle atama: çalma listeleri ekranındaki şube satırından açılır.
+      // data-id marka, data-sube şube (boşsa marka geneli). Kaynağı yönetici
+      // pencerede seçer; seçim kendiliğinden uygulanmaz.
+      case 'ata-ac': {
+        if (!kullanici.adminMi) return hata('Yayın atamak yönetici yetkisi ister.');
+        if (!D.brands.length) return hata('Önce bir marka oluşturun.');
+        ataPenceresiAc(id || '', hedef.dataset.sube || '');
         return;
       }
       case 'list-del': {

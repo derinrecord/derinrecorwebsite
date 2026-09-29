@@ -1192,6 +1192,45 @@ test('çalma listesi satırı kullanımı ve klasörü ayırt ettirir', () => {
   assert.ok(html.includes('data-act="liste-klasor-ekle" data-id="b1"'), 'klasör açılabilmeli');
 });
 
+// Her satır kendi yayınını elle atayabilir: marka ve şube satırdan gelir, kaynağı
+// (çalma listesi/klasör) yönetici pencerede seçer. Satırda ATA düğmesi olmalı.
+test('şube satırları yayını elle atamaya izin verir', () => {
+  const html = V.gorunum(durum({ nav: 'musteri', sub: 'listeler' }), LISTE_D, ui).html;
+
+  assert.ok(html.includes('data-act="ata-ac" data-id="b1" data-sube=""'), 'marka geneli atanabilmeli');
+  ['p1', 'p2'].forEach(pid => {
+    assert.ok(html.includes(`data-act="ata-ac" data-id="b1" data-sube="${pid}"`), pid + ' atanabilmeli');
+  });
+
+  // Marka geneli satırının "kaynağı veren" hücresi "varsayılan" der: orada
+  // "MARKA GENELİ" yazmak totolojik olurdu (o chip şube satırında anlamlı).
+  const genel = html.slice(html.indexOf('BÜTÜN ŞUBELER'), html.indexOf('data-act="branch-open"'));
+  assert.ok(genel.includes('varsayılan'), 'marka geneli satırı varsayılan demeli');
+  assert.ok(!genel.includes('MARKA GENELİ'), 'marka geneli satırında totolojik chip olmamalı');
+});
+
+// Elle atama penceresi: üç alan da açık gelir ve kaynak listesi markaya bağlıdır;
+// yönetici markayı değiştirebilir, o zaman şube ve liste seçenekleri ona uyar.
+test('elle atama penceresi markayı, şubeyi ve kaynağı birlikte sunar', () => {
+  const govde = V.ataPenceresi(LISTE_D, ui, { brandId: 'b1', playerId: 'p2' });
+  assert.ok(govde.includes('id="ata-marka"'), 'marka seçilmeli');
+  assert.ok(govde.includes('id="ata-sube"'), 'şube seçilmeli');
+  assert.ok(govde.includes('id="ata-kaynak"'), 'kaynak seçilmeli');
+  assert.ok(govde.includes('value="b1"') && govde.includes('value="b2"'), 'bütün markalar seçilebilmeli');
+
+  // Yalnız seçili markanın şubeleri ve listeleri gelir.
+  assert.ok(govde.includes('Alsancak'), 'seçili markanın şubesi gelmeli');
+  assert.ok(!govde.includes('Bebek'), 'başka markanın şubesi gelmemeli');
+  assert.ok(govde.includes('Sabah Akışı') && govde.includes('Akşam Akışı'), 'markanın listeleri gelmeli');
+  assert.ok(!govde.includes('Brew Gündüz'), 'başka markanın listesi gelmemeli');
+
+  // Klasör de kaynak olabilir; kaynağı kaldırma yolu da bulunur.
+  assert.ok(govde.includes('Yayın klasörleri'), 'klasörler kaynak olabilmeli');
+  assert.ok(govde.includes('kaynağı kaldır'), 'kaynak kaldırılabilmeli');
+  assert.ok(govde.includes('şu an burada'), 'mevcut kaynak yazılmalı');
+  assert.ok(govde.includes('kendiliğinden uygulanmaz'), 'otomatik uygulanmadığı yazılmalı');
+});
+
 // Klasör tablosu kurulmadıysa ekran bozulmaz: listeler tek tabloda görünür ve
 // klasör düğmeleri yerine ne yapılacağı yazılır.
 test('klasör tablosu yokken listeler tek tabloda görünür', () => {

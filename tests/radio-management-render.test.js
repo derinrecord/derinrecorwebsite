@@ -329,6 +329,23 @@ test('panel liste klasörlerini yükler ve klasör işlerini bağlar', () => {
   assert.match(sil, /from\('brand_playlist_folders'\)\.delete\(\)/);
 });
 
+// Elle atama: çalma listeleri ekranından marka+şube+kaynak seçilip yayın
+// yazılabilmeli; aynı yola kaynağı kaldırma da bağlı olmalı.
+test('panel elle yayın atamayı bağlar', () => {
+  assert.match(source, /case 'ata-ac'/);
+  assert.match(source, /if \(!kullanici\.adminMi\) return hata\('Yayın atamak/,
+    'atama yönetici kapısından geçmeli');
+  assert.match(source, /V\.ataPenceresi\(D, ui,/);
+
+  const blok = source.slice(source.indexOf('async function ataKaydet'), source.indexOf('// ---------- Çekmece'));
+  assert.ok(blok.includes("from('player_broadcast')"), "şube ataması player_broadcast'a yazılmalı");
+  assert.ok(blok.includes("from('brand_broadcast')"), "marka geneli brand_broadcast'a yazılmalı");
+  assert.match(blok, /\.delete\(\)\.eq\('player_id'/, 'şube ataması kaldırılabilmeli');
+  assert.match(blok, /\.delete\(\)\.eq\('brand_id'/, 'marka geneli kaldırılabilmeli');
+  // Çalma listesi markaya özel: başka markanın listesi atanamaz.
+  assert.match(blok, /kaynakKayit\.brand_id !== b\.id/, 'yabancı liste reddedilmeli');
+});
+
 // Veritabanı tarafı: klasörler yalnız yöneticiye açık; liste klasörü silinince
 // liste kaybolmaz, klasörsüz kalır.
 test('liste klasörü SQL\'i yöneticiye açık ve listeyi silmiyor', () => {

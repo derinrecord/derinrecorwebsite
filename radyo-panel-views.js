@@ -1658,12 +1658,16 @@
   function subeKaynakTablosu(D, ui, b) {
     const subeler = D.players.filter(p => p.brand_id === b.id);
     const genel = kaynak(D, b.id);
+    // Her satır kendi yayınını elle atayabilir: marka ve şube hazır gelir,
+    // kaynağı (çalma listesi ya da yayın klasörü) yönetici seçer.
+    const ataDugmesi = playerId => `<button class="btn sm" data-act="ata-ac" data-id="${esc(b.id)}" data-sube="${esc(playerId)}" type="button">YAYIN ATA</button>`;
     const satirlar = [`<tr>
-        <td><b>BÜTÜN ŞUBELER</b><span class="sub">marka geneli</span></td>
+        <td><b>BÜTÜN ŞUBELER</b><span class="sub">marka geneli · şube seçilmemiş hedefi</span></td>
         <td>${genel.ad ? esc(genel.ad) : '<span class="sub">yayın atanmadı</span>'}
           ${genel.tip ? `<span class="sub">${genel.tip === 'liste' ? 'çalma listesi' : 'yayın klasörü'}</span>` : ''}</td>
         <td class="tight">${b.is_active === false ? chip('danger', 'YAYIN VERİLMEZ')
-          : (genel.tip ? chip('live', 'MARKA GENELİ', true) : chip('off', 'yayın kapalı'))}</td>
+          : (genel.tip ? chip('live', 'varsayılan', true) : chip('off', 'yayın kapalı'))}</td>
+        <td class="tight">${ataDugmesi('')}</td>
       </tr>`];
     subeler.forEach(p => {
       const ozel = subeKaynagi(D, p.id);
@@ -1677,14 +1681,65 @@
         <td class="tight">${b.is_active === false ? chip('danger', 'YAYIN VERİLMEZ')
           : (ozel.tip ? chip('gold', 'ŞUBEYE ÖZEL', true)
             : (genel.tip ? chip('off', 'MARKA GENELİ') : chip('off', 'yayın atanmadı')))}</td>
+        <td class="tight">${ataDugmesi(p.id)}</td>
       </tr>`);
     });
     const govde = satirlar.join('');
     return `
       <table>
-        <thead><tr><th>ŞUBE</th><th>ÇALDIĞI KAYNAK</th><th>KAYNAĞI VEREN</th></tr></thead>
-        <tbody>${subeler.length ? govde : bos(3, 'Bu markanın henüz şubesi yok.')}</tbody>
+        <thead><tr><th>ŞUBE</th><th>ÇALDIĞI KAYNAK</th><th>KAYNAĞI VEREN</th><th></th></tr></thead>
+        <tbody>${subeler.length ? govde : bos(4, 'Bu markanın henüz şubesi yok.')}</tbody>
       </table>`;
+  }
+
+  // Elle yayın atama penceresi: marka, şube ve kaynağı yönetici kendisi seçer.
+  // Hiçbir alan gizlenmez ve hiçbir seçim kendiliğinden uygulanmaz; yayın yalnız
+  // "YAYINI ATA" düğmesiyle değişir. Çalma listeleri ekranı açar
+  // (radyo-yonetim.js · ataPenceresiAc).
+  function ataPenceresi(D, ui, s) {
+    const secenek = (deger, etiket, secili) =>
+      `<option value="${esc(deger)}"${secili ? ' selected' : ''}>${esc(etiket)}</option>`;
+    const marka = D.brands.find(b => b.id === s.brandId) || D.brands[0];
+    if (!marka) return '<p class="sub">Önce bir marka oluşturun.</p>';
+    const subeler = D.players.filter(p => p.brand_id === marka.id);
+    const listeler = (D.playlists || []).filter(pl => pl.brand_id === marka.id);
+    const sube = s.playerId ? subeler.find(p => p.id === s.playerId) : null;
+    const hedefAd = sube ? sube.label : marka.name + ' · bütün şubeler';
+    const mevcut = sube ? subeKaynagi(D, sube.id) : kaynak(D, marka.id);
+    const mevcutKaynak = mevcut && mevcut.tip && mevcut.kayit
+      ? (mevcut.kayit.playlist_id ? 'playlist:' + mevcut.kayit.playlist_id
+        : (mevcut.kayit.folder_id ? 'folder:' + mevcut.kayit.folder_id : ''))
+      : '';
+    const secili = (s.kaynak === undefined || s.kaynak === null) ? mevcutKaynak : s.kaynak;
+
+    return `
+      <div class="form-grid">
+        <div class="field"><label for="ata-marka">1 · MARKA</label>
+          <select id="ata-marka">
+            ${D.brands.map(b => secenek(b.id, b.name + (b.is_active === false ? ' (pasif)' : ''), b.id === marka.id)).join('')}
+          </select></div>
+        <div class="field"><label for="ata-sube">2 · ŞUBE</label>
+          <select id="ata-sube">
+            ${secenek('', '— bütün şubeler (marka geneli) —', !sube)}
+            ${subeler.map(p => secenek(p.id, p.label, !!sube && sube.id === p.id)).join('')}
+          </select></div>
+      </div>
+      <div class="form-grid" style="margin-top:14px">
+        <div class="field" style="grid-column:1/-1"><label for="ata-kaynak">3 · ÇALMA LİSTESİ / YAYIN KLASÖRÜ</label>
+          <select id="ata-kaynak">
+            ${secenek('', '— kaynağı kaldır (bu hedefe yayın atanmaz) —', !secili)}
+            <optgroup label="Yayın klasörleri">
+              ${D.folders.map(f => secenek('folder:' + f.id, f.name, secili === 'folder:' + f.id)).join('')}
+            </optgroup>
+            <optgroup label="${esc(marka.name)} listeleri">
+              ${listeler.length
+                ? listeler.map(pl => secenek('playlist:' + pl.id, pl.name, secili === 'playlist:' + pl.id)).join('')
+                : '<option value="" disabled>Bu markanın çalma listesi yok</option>'}
+            </optgroup>
+          </select></div>
+      </div>
+      <p class="sub" style="margin-top:14px">Hedef: <b>${esc(hedefAd)}</b> · şu an burada <b>${esc(mevcut && mevcut.ad ? mevcut.ad : 'yayın atanmamış')}</b> çalıyor.</p>
+      <p class="sub">Marka değiştirdiğinde şube ve liste seçenekleri ona göre yenilenir. Hiçbir seçim kendiliğinden uygulanmaz: yayın, <b>YAYINI ATA</b> düğmesine basıldığında değişir.</p>`;
   }
 
   // Bir markanın bölümü: şube tablosu + listeler (alt klasörlere göre).
@@ -1772,7 +1827,8 @@
       <div class="panel" style="margin-bottom:18px">
         <h3>ÇALMA LİSTELERİ (${(D.playlists || []).length})</h3>
         <p class="panel-sub">Her marka kendi bölümünde durur: önce şubeleri ve çaldıkları kaynak, sonra listeleri klasörlere göre.
-          Listeler markaya özeldir; yayın kaynağı olarak <b>Canlı durum › Yayın başlat</b> ekranından seçilir.</p>
+          Yayını satırdaki <b>YAYIN ATA</b> ile elle atarsın: marka ve şube hazır gelir, kaynağı (çalma listesi ya da yayın klasörü) sen seçersin.
+          Seçim, düğmeye basılana kadar hiçbir şeyi değiştirmez.</p>
         <div class="row">
           <span class="sub">${D.brands.length} marka · ${D.players.length} şube · ${(D.playlists || []).length} liste · ${(D.playlistFolders || []).length} klasör</span>
           ${atanmamis ? chip('gold', atanmamis + ' MARKADA YAYIN ATANMADI') : chip('live', 'BÜTÜN MARKALARDA YAYIN ATANMIŞ', true)}
@@ -2364,6 +2420,7 @@
     uyariSeridi: uyariSeridi,
     kapakYok: kapakYok,
     kapakPenceresi: kapakPenceresi,
+    ataPenceresi: ataPenceresi,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu,
     katliDurumOku: katliDurumOku,
