@@ -296,6 +296,52 @@ test('katlanma tercihi tarayıcıda saklanır ve açılışta geri okunur', () =
   assert.match(source, /try \{\s*const kayit = V\.katliDurumOku/);
 });
 
+// Çalma listesi klasörleri: ekranda "hangi şubede hangi liste var" okunacağı
+// için listeler marka içinde klasörlere ayrılır. Klasör tablosu kurulmadan da
+// panel çalışmalı; o yüzden sorgu hataya toleranslı okunur.
+test('panel liste klasörlerini yükler ve klasör işlerini bağlar', () => {
+  assert.match(source, /from\('brand_playlist_folders'\)\.select\('id,brand_id,name,sort_order,created_at'\)/);
+  assert.match(source, /listeKlasorleriVar: !playlistFolders\.error/,
+    'tablo yoksa ekran klasörsüz hâle düşmeli');
+
+  // Gruplama kolonu ana liste sorgusunda istenmez: kolon henüz eklenmemişse
+  // bütün liste sorgusu düşer ve ekranda hiç liste kalmaz. Onun yerine ayrı ve
+  // hataya toleranslı çekilir (radyo-yonetim.js · veriYukle).
+  assert.ok(source.includes("select('id,brand_id,name,description,cover_path,shuffle,created_at')"),
+    'ana liste sorgusu playlist_folder_id istememeli');
+  assert.match(source, /from\('brand_playlists'\)\.select\('id,playlist_folder_id'\)/,
+    'gruplama kolonu ayrı ve toleranslı çekilmeli');
+  assert.match(source, /harita\.get\(pl\.id\)/, 'okunan klasör listelere birleştirilmeli');
+  ['liste-yeni', 'liste-klasor-ekle', 'liste-klasor-ad', 'liste-klasor-sil', 'liste-tasi']
+    .forEach(act => assert.ok(source.includes("'" + act + "'"), act + ' işlenmeli'));
+
+  // Yeni liste markaya ve seçilen klasöre yazılmalı; kaynak klasör seçilirse
+  // parçalar kopyalanır (boş liste de geçerli).
+  const blok = source.slice(source.indexOf("case 'liste-yeni'"), source.indexOf("case 'liste-klasor-ekle'"));
+  assert.ok(blok.includes('from(\'brand_playlists\')'), 'liste brand_playlists tablosuna yazılmalı');
+  assert.ok(blok.includes('playlist_folder_id'), 'seçilen klasör kaydedilmeli');
+  assert.ok(blok.includes("from('brand_playlist_tracks')"), 'kaynak klasörün parçaları kopyalanmalı');
+
+  // Klasörü silmek liste silmez: kayıtlar klasörsüz kalır (SQL tarafında
+  // on delete set null).
+  const sil = source.slice(source.indexOf("case 'liste-klasor-sil'"), source.indexOf("case 'liste-tasi'"));
+  assert.ok(!sil.includes("from('brand_playlists')"), 'klasör silmek listeleri silmemeli');
+  assert.match(sil, /from\('brand_playlist_folders'\)\.delete\(\)/);
+});
+
+// Veritabanı tarafı: klasörler yalnız yöneticiye açık; liste klasörü silinince
+// liste kaybolmaz, klasörsüz kalır.
+test('liste klasörü SQL\'i yöneticiye açık ve listeyi silmiyor', () => {
+  const sql = fs.readFileSync(require.resolve('../supabase/radio-liste-klasorleri.sql'), 'utf8');
+  assert.match(sql, /create table if not exists public\.brand_playlist_folders/);
+  assert.match(sql, /add column if not exists playlist_folder_id uuid/);
+  assert.match(sql, /references public\.brand_playlist_folders\(id\) on delete set null/,
+    'klasör silinince liste klasörsüz kalmalı');
+  assert.match(sql, /create policy brand_playlist_folders_admin/);
+  assert.match(sql, /for all to authenticated using \(public\.is_admin\(\)\) with check \(public\.is_admin\(\)\)/);
+  assert.ok(!/to anon/.test(sql), 'klasörler oynatıcıya (anon) açılmamalı');
+});
+
 // Panel dosyaları her değişiklikte sürüm damgası taşımalı; yoksa tarayıcı eski
 // dosyayı önbellekten çalar ve sahadaki düzeltme kimseye görünmez.
 test('panel dosyaları sürüm damgasıyla yüklenir', () => {

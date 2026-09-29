@@ -320,7 +320,7 @@
 
   // ---------- Veri ----------
   async function veriYukle() {
-    const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans] = await Promise.all([
+    const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans, playlistFolders] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec,cover_path').order('sort_order'),
@@ -340,7 +340,11 @@
         .select('id,player_key,player_id,brand_id,device_id,kind,detail,at')
         .order('at', { ascending: false }).limit(600),
       client.from('subscriptions').select('*'),
-      client.from('plans').select('*').order('sort_order')
+      client.from('plans').select('*').order('sort_order'),
+      // Liste klasörleri (supabase/radio-liste-klasorleri.sql). Tablo henüz
+      // kurulmadıysa sorgu hata döner: bütün listeler "Klasörsüz" kabul edilir
+      // ve ekran klasörsüz hâlini çizer, hiçbir liste kaybolmaz.
+      client.from('brand_playlist_folders').select('id,brand_id,name,sort_order,created_at').order('sort_order')
     ]);
     D = {
       brands: brands.data || [], folders: folders.data || [], tracks: tracks.data || [],
@@ -349,6 +353,9 @@
       playlists: playlists.data || [], playlistTracks: playlistTracks.data || [],
       coffeeAttempts: coffeeAttempts.data || [], olaylar: olaylar.data || [],
       subscriptions: subscriptions.data || [], plans: plans.data || [],
+      // Klasör tablosu kurulmadıysa ekran klasör düğmelerini gizler ve
+      // listeleri tek tabloda gösterir (radyo-panel-views.js · listeListesi).
+      playlistFolders: playlistFolders.data || [], listeKlasorleriVar: !playlistFolders.error,
       requests: D.requests
     };
 
@@ -370,6 +377,19 @@
         D.players = D.players.map(p => Object.assign({}, p, harita.get(p.id) || {}));
       }
     } catch { /* alanlar daha eklenmemiş: sorun değil */ }
+
+    // Liste klasörü bağlantısı (supabase/radio-liste-klasorleri.sql). Kolon
+    // henüz eklenmemişse sorgu hata döner: o zaman her liste "Klasörsüz"
+    // sayılır ve ekran bozulmadan çalışır. Bu yüzden kolonu ana sorguya
+    // koymayız; kolon yokken bütün liste sorgusu düşerdi.
+    try {
+      const klasorlu = await client.from('brand_playlists').select('id,playlist_folder_id');
+      if (!klasorlu.error && Array.isArray(klasorlu.data)) {
+        const harita = new Map(klasorlu.data.map(x => [x.id, x.playlist_folder_id]));
+        D.playlists = D.playlists.map(pl =>
+          Object.assign({}, pl, { playlist_folder_id: harita.get(pl.id) || null }));
+      }
+    } catch { /* kolon daha eklenmemiş: listeler klasörsüz kalır */ }
   }
 
   // sessiz: yalnızca Canlı durum ekranı kendini tazeler; form girdileriniz
@@ -1485,6 +1505,129 @@
 
       // --- çalma listeleri ---
       case 'list-open': git('#/listeler/' + id); return;
+
+      // --- liste klasörleri (supabase/radio-liste-klasorleri.sql) ---
+      // Ekranda "hangi şubede hangi liste var" okunacağı için listeler marka
+      // içinde klasörlere ayrılır. Klasör yalnız düzen bilgisidir: yayını
+      // değiştirmez, silinirse listeler "Klasörsüz" grubuna düşer.
+      case 'liste-yeni': {
+        const b = marka(id);
+        if (!b) return hata('Marka bulunamadı.');
+        const varsayilan = hedef.dataset.klasor || '';
+        const klasorler = (D.playlistFolders || []).filter(k => k.brand_id === b.id);
+        pencere({
+          baslik: 'Yeni çalma listesi',
+          onayMetni: 'LİSTE OLUŞTUR',
+          govde: `
+            <div class="form-grid">
+              <div class="field"><label for="yeni-liste-ad">LİSTE ADI</label>
+                <input id="yeni-liste-ad" placeholder="Örn. Öğle Molası" autocomplete="off"></div>
+              <div class="field"><label for="yeni-liste-kaynak">KAYNAK KLASÖR (isteğe bağlı)</label>
+                <select id="yeni-liste-kaynak">
+                  <option value="">— boş liste —</option>
+                  ${D.folders.map(f => `<option value="${esc(f.id)}">${esc(f.name)} · ${D.tracks.filter(t => t.folder_id === f.id).length} parça</option>`).join('')}
+                </select></div>
+              ${klasorler.length ? `<div class="field"><label for="yeni-liste-klasor">KLASÖR</label>
+                <select id="yeni-liste-klasor">
+                  <option value="">— klasörsüz —</option>
+                  ${klasorler.map(k => `<option value="${esc(k.id)}"${k.id === varsayilan ? ' selected' : ''}>${esc(k.name)}</option>`).join('')}
+                </select></div>` : ''}
+            </div>
+            <p class="sub">Kaynak klasör seçersen parçalar ve sıraları listeye kopyalanır; sonra listede değiştirebilirsin. Liste ${esc(b.name)} markasına bağlanır.</p>`,
+          onOnay: async () => {
+            const ad = el('yeni-liste-ad').value.trim().replace(/\s+/g, ' ');
+            if (!ad) return hata('Liste adı gerekli.');
+            const kaynak = el('yeni-liste-kaynak').value;
+            const klasorSecim = el('yeni-liste-klasor');
+            const kayit = { brand_id: b.id, name: ad };
+            if (klasorSecim && klasorSecim.value) kayit.playlist_folder_id = klasorSecim.value;
+            const { data: liste, error } = await client.from('brand_playlists').insert(kayit).select('id').single();
+            if (error) return hata('Liste oluşturulamadı: ' + error.message);
+            if (kaynak) {
+              const parcalar = D.tracks.filter(t => t.folder_id === kaynak);
+              if (parcalar.length) {
+                await client.from('brand_playlist_tracks').insert(
+                  parcalar.map((t, i) => ({ playlist_id: liste.id, track_id: t.id, sort_order: i })));
+              }
+            }
+            await yenile(false);
+            bildir(kaynak ? 'Liste oluşturuldu ve parça sırası kopyalandı.' : 'Boş liste oluşturuldu.');
+          }
+        });
+        return;
+      }
+      case 'liste-klasor-ekle': {
+        if (!D.listeKlasorleriVar) return hata('Klasörler için önce supabase/radio-liste-klasorleri.sql çalıştırılmalı.');
+        const b = marka(id);
+        if (!b) return hata('Marka bulunamadı.');
+        const ad = await soruSor({
+          baslik: 'Yeni liste klasörü',
+          govde: `<div class="field"><label for="soru-deger">KLASÖR ADI</label>
+            <input id="soru-deger" placeholder="Örn. Sabah" autocomplete="off"></div>
+            <p class="sub">Klasör ${esc(b.name)} markasında açılır. Klasör yayını değiştirmez: yalnız listeleri düzenli tutar.</p>`
+        });
+        if (!ad) return;
+        const sira = (D.playlistFolders || []).filter(k => k.brand_id === b.id).length;
+        const { error } = await client.from('brand_playlist_folders')
+          .insert({ brand_id: b.id, name: ad, sort_order: sira });
+        if (error) return hata('Klasör açılamadı: ' + error.message);
+        await yenile(false); bildir(`“${ad}” klasörü açıldı.`);
+        return;
+      }
+      case 'liste-klasor-ad': {
+        const k = (D.playlistFolders || []).find(x => x.id === id);
+        if (!k) return hata('Klasör bulunamadı.');
+        const ad = await soruSor({
+          baslik: 'Klasör adı',
+          govde: `<div class="field"><label for="soru-deger">YENİ AD</label>
+            <input id="soru-deger" value="${esc(k.name)}" autocomplete="off"></div>`
+        });
+        if (!ad || ad === k.name) return;
+        const { error } = await client.from('brand_playlist_folders').update({ name: ad }).eq('id', k.id);
+        if (error) return hata('Ad kaydedilemedi: ' + error.message);
+        await yenile(false); bildir('Klasör adı güncellendi.');
+        return;
+      }
+      case 'liste-klasor-sil': {
+        const k = (D.playlistFolders || []).find(x => x.id === id);
+        if (!k) return hata('Klasör bulunamadı.');
+        const icindeki = D.playlists.filter(pl => pl.playlist_folder_id === k.id).length;
+        if (!await onaySor({
+          baslik: 'Klasör silinsin mi?',
+          govde: `“${k.name}” klasörü silinir${icindeki ? '; içindeki ' + icindeki + ' liste “Klasörsüz” grubuna düşer' : ''}. Hiçbir liste silinmez ve yayınlar değişmez.`,
+          onayMetni: 'KLASÖRÜ SİL'
+        })) return;
+        const { error } = await client.from('brand_playlist_folders').delete().eq('id', k.id);
+        if (error) return hata('Klasör silinemedi: ' + error.message);
+        await yenile(false); bildir('Klasör silindi.');
+        return;
+      }
+      case 'liste-tasi': {
+        const pl = D.playlists.find(x => x.id === id);
+        if (!pl) return hata('Liste bulunamadı.');
+        const klasorler = (D.playlistFolders || []).filter(k => k.brand_id === pl.brand_id);
+        if (!klasorler.length) return hata('Bu markada klasör yok. Önce “+ KLASÖR” ile bir klasör aç.');
+        pencere({
+          baslik: 'Liste hangi klasöre taşınsın?',
+          onayMetni: 'TAŞI',
+          govde: `<div class="field"><label for="tasi-klasor">KLASÖR</label>
+              <select id="tasi-klasor">
+                <option value="">— klasörsüz —</option>
+                ${klasorler.map(k => `<option value="${esc(k.id)}"${k.id === pl.playlist_folder_id ? ' selected' : ''}>${esc(k.name)}</option>`).join('')}
+              </select></div>
+            <p class="sub">“${esc(pl.name)}” listesi seçilen klasöre geçer. Yayın ve parçalar değişmez.</p>`,
+          onOnay: async () => {
+            const secim = el('tasi-klasor').value;
+            if (secim === (pl.playlist_folder_id || '')) return bildir('Liste zaten bu klasörde.');
+            const { error } = await client.from('brand_playlists')
+              .update({ playlist_folder_id: secim || null }).eq('id', pl.id);
+            if (error) return hata('Liste taşınamadı: ' + error.message);
+            await yenile(false);
+            bildir(secim ? 'Liste klasöre taşındı.' : 'Liste “Klasörsüz” grubuna alındı.');
+          }
+        });
+        return;
+      }
       case 'list-del': {
         const pl = D.playlists.find(x => x.id === id);
         if (!await onaySor({

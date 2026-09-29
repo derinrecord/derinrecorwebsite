@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=27"></script>
+<script src="radyo-panel-views.js?v=30"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -77,23 +77,36 @@
       { brand_id: 'b1', folder_id: null, playlist_id: 'l1' },
       { brand_id: 'b2', folder_id: 'f2', playlist_id: null }
     ],
-    // Şubeye özel yayın: p1 markanın genelinden ayrılmış, p2 genel yayında.
+    // Şubeye özel yayın: p1 bir klasöre, p2 bir listeye ayrılmış; marka geneli
+    // yine de durur. Ekranda "kim marka genelini çalar, kim ayrı" görünsün.
     playerBroadcast: [
-      { player_id: 'p1', folder_id: 'f3', playlist_id: null, updated_at: iso(-3600000) }
+      { player_id: 'p1', folder_id: 'f3', playlist_id: null, updated_at: iso(-3600000) },
+      { player_id: 'p2', folder_id: null, playlist_id: 'l3', updated_at: iso(-7200000) }
     ],
     announcements: [
       { id: 'a1', brand_id: 'b1', storage_path: 'b1/1.webm', label: 'Bugün 18:00 kapanış anonsu', created_at: iso(-2 * GUN) },
       { id: 'a2', brand_id: 'b1', storage_path: 'b1/2.webm', label: 'Yeni kampanya duyurusu', created_at: iso(-7 * GUN) }
     ],
     playlists: [
-      { id: 'l1', brand_id: 'b1', name: 'Mokka — Gündüz Akışı', description: null, cover_path: null, shuffle: false, created_at: iso(-30 * GUN) },
-      { id: 'l2', brand_id: 'b3', name: 'Kahve Durağı — Klasik', description: null, cover_path: null, shuffle: false, created_at: iso(-12 * GUN) }
+      { id: 'l1', brand_id: 'b1', name: 'Mokka — Gündüz Akışı', description: null, cover_path: null, shuffle: false, created_at: iso(-30 * GUN), playlist_folder_id: 'lk1' },
+      { id: 'l3', brand_id: 'b1', name: 'Mokka — Akşam Kuşağı', description: 'Kapanışa doğru sakinleşen akış', cover_path: null, shuffle: false, created_at: iso(-18 * GUN), playlist_folder_id: 'lk2' },
+      { id: 'l2', brand_id: 'b3', name: 'Kahve Durağı — Klasik', description: null, cover_path: null, shuffle: false, created_at: iso(-12 * GUN), playlist_folder_id: null },
+      { id: 'l4', brand_id: 'b2', name: 'Brew Lab — Açılış', description: null, cover_path: null, shuffle: false, created_at: iso(-6 * GUN), playlist_folder_id: null }
     ],
+    // Liste klasörleri (supabase/radio-liste-klasorleri.sql): ekranda listeleri
+    // marka içinde gruplar, yayını değiştirmez.
+    playlistFolders: [
+      { id: 'lk1', brand_id: 'b1', name: 'Gündüz', sort_order: 0 },
+      { id: 'lk2', brand_id: 'b1', name: 'Akşam', sort_order: 1 }
+    ],
+    listeKlasorleriVar: true,
     playlistTracks: [
       { id: 'x1', playlist_id: 'l1', track_id: 't1', sort_order: 0 },
       { id: 'x2', playlist_id: 'l1', track_id: 't4', sort_order: 1 },
       { id: 'x3', playlist_id: 'l1', track_id: 't3', sort_order: 2 },
-      { id: 'x4', playlist_id: 'l2', track_id: 't6', sort_order: 0 }
+      { id: 'x4', playlist_id: 'l2', track_id: 't6', sort_order: 0 },
+      { id: 'x5', playlist_id: 'l3', track_id: 't7', sort_order: 0 },
+      { id: 'x6', playlist_id: 'l4', track_id: 't2', sort_order: 0 }
     ],
     // Bağlantı geçmişi: kafenin açması/durdurması, mesai ve liste değişimi.
     olaylar: [
