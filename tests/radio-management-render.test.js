@@ -296,72 +296,48 @@ test('katlanma tercihi tarayıcıda saklanır ve açılışta geri okunur', () =
   assert.match(source, /try \{\s*const kayit = V\.katliDurumOku/);
 });
 
-// Çalma listesi klasörleri: ekranda "hangi şubede hangi liste var" okunacağı
-// için listeler marka içinde klasörlere ayrılır. Klasör tablosu kurulmadan da
-// panel çalışmalı; o yüzden sorgu hataya toleranslı okunur.
-test('panel liste klasörlerini yükler ve klasör işlerini bağlar', () => {
-  assert.match(source, /from\('brand_playlist_folders'\)\.select\('id,brand_id,name,sort_order,created_at'\)/);
-  assert.match(source, /listeKlasorleriVar: !playlistFolders\.error/,
-    'tablo yoksa ekran klasörsüz hâle düşmeli');
+// Çalma listeleri tek yerde yönetilir: marka sayfası. Ayrı liste indeksi ekranı
+// (marka klasörleri + kendi şube tablosu + elle atama penceresi) menüden ve
+// rotalardan kaldırıldı; böylece aynı iş iki ekranda iki farklı dille
+// anlatılmıyor. Bu test o kararın sessizce geri gelmemesini sağlar.
+test('liste indeksi ekranı ve rotası kaldırıldı', () => {
+  const views = fs.readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
+  ['listeListesi', 'markaListePaneli', 'subeKaynakTablosu', 'ataPenceresi', 'genelOzet', 'listeKlasorleri']
+    .forEach(ad => assert.ok(!views.includes(ad), ad + ' kaldırılmalı'));
+  assert.ok(!views.includes('Çalma listeleri'), 'menüde liste indeksi satırı olmamalı');
+  assert.match(views,
+    /musteri: \[\['markalar', 'Markalar'\], \['abonelikler', 'Abonelikler'\], \['talepler', 'Talepler'\]\]/,
+    'Müşteri bölümü üç ekrandan oluşmalı');
 
-  // Gruplama kolonu ana liste sorgusunda istenmez: kolon henüz eklenmemişse
-  // bütün liste sorgusu düşer ve ekranda hiç liste kalmaz. Onun yerine ayrı ve
-  // hataya toleranslı çekilir (radyo-yonetim.js · veriYukle).
-  assert.ok(source.includes("select('id,brand_id,name,description,cover_path,shuffle,created_at')"),
-    'ana liste sorgusu playlist_folder_id istememeli');
-  assert.match(source, /from\('brand_playlists'\)\.select\('id,playlist_folder_id'\)/,
-    'gruplama kolonu ayrı ve toleranslı çekilmeli');
-  assert.match(source, /harita\.get\(pl\.id\)/, 'okunan klasör listelere birleştirilmeli');
-  ['liste-yeni', 'liste-klasor-ekle', 'liste-klasor-ad', 'liste-klasor-sil', 'liste-tasi']
-    .forEach(act => assert.ok(source.includes("'" + act + "'"), act + ' işlenmeli'));
-
-  // Yeni liste markaya ve seçilen klasöre yazılmalı; kaynak klasör seçilirse
-  // parçalar kopyalanır (boş liste de geçerli).
-  const blok = source.slice(source.indexOf("case 'liste-yeni'"), source.indexOf("case 'liste-klasor-ekle'"));
-  assert.ok(blok.includes('from(\'brand_playlists\')'), 'liste brand_playlists tablosuna yazılmalı');
-  assert.ok(blok.includes('playlist_folder_id'), 'seçilen klasör kaydedilmeli');
-  assert.ok(blok.includes("from('brand_playlist_tracks')"), 'kaynak klasörün parçaları kopyalanmalı');
-
-  // Klasörü silmek liste silmez: kayıtlar klasörsüz kalır (SQL tarafında
-  // on delete set null).
-  const sil = source.slice(source.indexOf("case 'liste-klasor-sil'"), source.indexOf("case 'liste-tasi'"));
-  assert.ok(!sil.includes("from('brand_playlists')"), 'klasör silmek listeleri silmemeli');
-  assert.match(sil, /from\('brand_playlist_folders'\)\.delete\(\)/);
+  // Yönetim tarafı: rota, klasör olayları ve elle atama penceresi de gitmeli.
+  assert.ok(!source.includes("listeler: { nav: 'musteri', sub: 'listeler' }"), 'rota kaldırılmalı');
+  ['liste-yeni', 'liste-klasor-ekle', 'liste-klasor-ad', 'liste-klasor-sil', 'liste-tasi', 'ata-ac', 'ata-dinle']
+    .forEach(act => assert.ok(!source.includes("'" + act + "'"), act + ' olayı kalmamalı'));
+  assert.ok(!source.includes('brand_playlist_folders'), 'klasör tablosu okunmamalı');
+  assert.ok(!source.includes("from('brand_playlists').select('id,playlist_folder_id')"),
+    'gruplama kolonu artık çekilmemeli');
 });
 
-// Elle atama: çalma listeleri ekranından marka+şube+kaynak seçilip yayın
-// yazılabilmeli; aynı yola kaynağı kaldırma da bağlı olmalı.
-test('panel elle yayın atamayı bağlar', () => {
-  assert.match(source, /case 'ata-ac'/);
-  assert.match(source, /if \(!kullanici\.adminMi\) return hata\('Yayın atamak/,
-    'atama yönetici kapısından geçmeli');
-  assert.match(source, /V\.ataPenceresi\(D, ui,/);
+// Liste detayı marka sayfasının altında yaşar: adres markayı taşır, geri dönüş
+// marka sayfasına olur; liste silinmişse boş ekran yerine marka listesine düşülür.
+test('liste detayı marka sayfası altında rotalanır', () => {
+  assert.match(source, /'#\/markalar\/' \+ pl\.brand_id \+ '\/listeler\/' \+ id/,
+    'liste açılışı markalı adres üretmeli');
+  assert.match(source, /'#\/markalar\/' \+ state\.openBrand \+ '\/listeler\/' \+ state\.openPlaylist/,
+    'görünüm adresi markayı taşımalı');
+  assert.ok(!source.includes("git('#/listeler/' + id)"), 'eski liste adresi üretilmemeli');
+  assert.match(source, /else if \(sayfa === 'listeler' && id\)/,
+    'eski yer imi marka sayfasına çevrilmeli');
 
-  const blok = source.slice(source.indexOf('async function ataKaydet'), source.indexOf('// ---------- Çekmece'));
-  assert.ok(blok.includes("from('player_broadcast')"), "şube ataması player_broadcast'a yazılmalı");
-  assert.ok(blok.includes("from('brand_broadcast')"), "marka geneli brand_broadcast'a yazılmalı");
-  assert.match(blok, /\.delete\(\)\.eq\('player_id'/, 'şube ataması kaldırılabilmeli');
-  assert.match(blok, /\.delete\(\)\.eq\('brand_id'/, 'marka geneli kaldırılabilmeli');
-  // Çalma listesi markaya özel: başka markanın listesi atanamaz.
-  assert.match(blok, /kaynakKayit\.brand_id !== b\.id/, 'yabancı liste reddedilmeli');
-  // Parça seçilirse başlangıç parçası da yazılır; kolon yoksa kullanıcı uyarılır.
-  assert.match(blok, /start_track_id = parca\.id/, 'başlangıç parçası yazılmalı');
-  assert.match(blok, /PGRST204/, 'eksik kolonda anlaşılır hata verilmeli');
-
-  // Zincir genelden özele: seçim değişince yalnız gövde yeniden yazılır, pencere
-  // baştan açılmaz (yoksa odak başa döner ve modalOnay sıfırlanır).
-  assert.match(source, /kutu\.innerHTML = V\.ataPenceresi\(D, ui, secim\)/);
-  assert.match(source, /kutu = el\('modal'\)\.querySelector\('\.modal-body'\)/);
-
-  // Pencereden parça dinlenebilir: panelin alt oynatıcısı kullanılır.
-  assert.match(source, /case 'ata-dinle'/);
-  assert.match(source, /calmaListesi = kayitlar/);
-  assert.match(source, /calmaBaslik = baslik/);
+  const views = fs.readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
+  assert.match(views, /geriCubugu\('markalar', b \? b\.name \+ ' SAYFASINA DÖN' : 'MARKALARA DÖN'/);
+  assert.match(views, /if \(!pl\) return markaListesi\(state, D, ui\)/,
+    'silinmiş listede marka listesine düşülmeli');
 });
 
-// Pencere açıkken parça dinlenebilmeli: oynatıcı pencerenin üstünde durur ve
-// pencerenin altında boşluk kalır, yoksa düğmeler oynatıcının altında kalır.
-test('oynatıcı atama penceresinin üstünde durur', () => {
+// Oynatıcı pencere katmanının üstünde durur: bir pencere açıkken de parça
+// dinlenebilmeli. Bildirim ise her şeyin üstünde kalır ki kaydın sonucu görünsün.
+test('oynatıcı pencere katmanının üstünde durur', () => {
   const css = fs.readFileSync(require.resolve('../radyo-panel.css'), 'utf8');
   const zIndex = sec => Number((css.match(new RegExp('\\.' + sec + '\\{[^}]*z-index:(\\d+)')) || [])[1]);
   const oynatici = zIndex('player');
@@ -369,20 +345,6 @@ test('oynatıcı atama penceresinin üstünde durur', () => {
   assert.ok(zIndex('toast') > oynatici, 'bildirim oynatıcının üstünde kalmalı');
   assert.match(css, /padding:24px 24px 112px/, 'pencerenin altında oynatıcı için yer bırakılmalı');
 });
-
-// Veritabanı tarafı: klasörler yalnız yöneticiye açık; liste klasörü silinince
-// liste kaybolmaz, klasörsüz kalır.
-test('liste klasörü SQL\'i yöneticiye açık ve listeyi silmiyor', () => {
-  const sql = fs.readFileSync(require.resolve('../supabase/radio-liste-klasorleri.sql'), 'utf8');
-  assert.match(sql, /create table if not exists public\.brand_playlist_folders/);
-  assert.match(sql, /add column if not exists playlist_folder_id uuid/);
-  assert.match(sql, /references public\.brand_playlist_folders\(id\) on delete set null/,
-    'klasör silinince liste klasörsüz kalmalı');
-  assert.match(sql, /create policy brand_playlist_folders_admin/);
-  assert.match(sql, /for all to authenticated using \(public\.is_admin\(\)\) with check \(public\.is_admin\(\)\)/);
-  assert.ok(!/to anon/.test(sql), 'klasörler oynatıcıya (anon) açılmamalı');
-});
-
 // Panel dosyaları her değişiklikte sürüm damgası taşımalı; yoksa tarayıcı eski
 // dosyayı önbellekten çalar ve sahadaki düzeltme kimseye görünmez.
 test('panel dosyaları sürüm damgasıyla yüklenir', () => {

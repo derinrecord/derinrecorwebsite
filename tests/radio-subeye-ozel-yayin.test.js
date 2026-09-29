@@ -124,7 +124,4 @@ test('marka sayfası özel yayınlı şubeyi işaretler ve listeyi kullanımda s
   assert.ok(html.includes('özel yayın: <b>Akşam Akışı</b>'), 'hangi kaynağın çaldığı yazılmalı');
   assert.ok(/data-act="list-open" data-id="l1"[\s\S]{0,700}YAYINDA/.test(html),
     'yalnız şubeye özel verilen liste de marka sayfasında yayında sayılmalı');
-
-  const listeler = V.gorunum(durum({ nav: 'musteri', sub: 'listeler' }), D, ui).html;
-  assert.ok(listeler.includes('1 ŞUBEDE'), 'liste ekranı kaç şubede çaldığını saymalı');
 });
