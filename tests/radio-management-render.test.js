@@ -344,6 +344,14 @@ test('panel elle yayın atamayı bağlar', () => {
   assert.match(blok, /\.delete\(\)\.eq\('brand_id'/, 'marka geneli kaldırılabilmeli');
   // Çalma listesi markaya özel: başka markanın listesi atanamaz.
   assert.match(blok, /kaynakKayit\.brand_id !== b\.id/, 'yabancı liste reddedilmeli');
+  // Parça seçilirse başlangıç parçası da yazılır; kolon yoksa kullanıcı uyarılır.
+  assert.match(blok, /start_track_id = parca\.id/, 'başlangıç parçası yazılmalı');
+  assert.match(blok, /PGRST204/, 'eksik kolonda anlaşılır hata verilmeli');
+
+  // Zincir genelden özele: seçim değişince yalnız gövde yeniden yazılır, pencere
+  // baştan açılmaz (yoksa odak başa döner ve modalOnay sıfırlanır).
+  assert.match(source, /kutu\.innerHTML = V\.ataPenceresi\(D, ui, secim\)/);
+  assert.match(source, /kutu = el\('modal'\)\.querySelector\('\.modal-body'\)/);
 });
 
 // Veritabanı tarafı: klasörler yalnız yöneticiye açık; liste klasörü silinince

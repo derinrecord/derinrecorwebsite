@@ -1692,9 +1692,11 @@
       </table>`;
   }
 
-  // Elle yayın atama penceresi: marka, şube ve kaynağı yönetici kendisi seçer.
-  // Hiçbir alan gizlenmez ve hiçbir seçim kendiliğinden uygulanmaz; yayın yalnız
-  // "YAYINI ATA" düğmesiyle değişir. Çalma listeleri ekranı açar
+  // Elle yayın atama penceresi: marka → şube → çalma listesi → parçalar
+  // sırasıyla genelden özele iner. Her adımın seçenekleri bir öncekinden gelir:
+  // şube ve liste markaya, parçalar seçilen listeye (ya da yayın klasörüne)
+  // bağlıdır. Hiçbir seçim kendiliğinden uygulanmaz; yayın yalnız
+  // "YAYINI ATA" ile değişir. Çalma listeleri ekranı açar
   // (radyo-yonetim.js · ataPenceresiAc).
   function ataPenceresi(D, ui, s) {
     const secenek = (deger, etiket, secili) =>
@@ -1704,13 +1706,30 @@
     const subeler = D.players.filter(p => p.brand_id === marka.id);
     const listeler = (D.playlists || []).filter(pl => pl.brand_id === marka.id);
     const sube = s.playerId ? subeler.find(p => p.id === s.playerId) : null;
-    const hedefAd = sube ? sube.label : marka.name + ' · bütün şubeler';
+
+    // Hedefin şu an çaldığı kaynak: kaynak henüz seçilmediyse bu hazır gelir.
     const mevcut = sube ? subeKaynagi(D, sube.id) : kaynak(D, marka.id);
     const mevcutKaynak = mevcut && mevcut.tip && mevcut.kayit
       ? (mevcut.kayit.playlist_id ? 'playlist:' + mevcut.kayit.playlist_id
         : (mevcut.kayit.folder_id ? 'folder:' + mevcut.kayit.folder_id : ''))
       : '';
-    const secili = (s.kaynak === undefined || s.kaynak === null) ? mevcutKaynak : s.kaynak;
+    const seciliKaynak = (s.kaynak === undefined || s.kaynak === null) ? mevcutKaynak : s.kaynak;
+    const seciliParca = s.parcaId || '';
+
+    // 4 · PARÇALAR: seçili kaynağın parçaları. Çalma listesinde sıra liste
+    // sırası, yayın klasöründe klasör sırasıdır.
+    const [tur, kaynakId] = String(seciliKaynak || '').split(':');
+    let parcalar = [];
+    if (tur === 'playlist' && kaynakId) {
+      parcalar = (D.playlistTracks || [])
+        .filter(x => x.playlist_id === kaynakId)
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+        .map(x => D.tracks.find(t => t.id === x.track_id)).filter(Boolean);
+    } else if (tur === 'folder' && kaynakId) {
+      parcalar = D.tracks.filter(t => t.folder_id === kaynakId)
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    }
+    const hedefAd = sube ? sube.label : marka.name + ' · bütün şubeler';
 
     return `
       <div class="form-grid">
@@ -1721,25 +1740,34 @@
         <div class="field"><label for="ata-sube">2 · ŞUBE</label>
           <select id="ata-sube">
             ${secenek('', '— bütün şubeler (marka geneli) —', !sube)}
-            ${subeler.map(p => secenek(p.id, p.label, !!sube && sube.id === p.id)).join('')}
+            ${subeler.length
+              ? subeler.map(p => secenek(p.id, p.label, !!sube && sube.id === p.id)).join('')
+              : '<option value="" disabled>Bu markanın şubesi yok</option>'}
           </select></div>
       </div>
       <div class="form-grid" style="margin-top:14px">
-        <div class="field" style="grid-column:1/-1"><label for="ata-kaynak">3 · ÇALMA LİSTESİ / YAYIN KLASÖRÜ</label>
+        <div class="field"><label for="ata-kaynak">3 · ÇALMA LİSTESİ</label>
           <select id="ata-kaynak">
-            ${secenek('', '— kaynağı kaldır (bu hedefe yayın atanmaz) —', !secili)}
-            <optgroup label="Yayın klasörleri">
-              ${D.folders.map(f => secenek('folder:' + f.id, f.name, secili === 'folder:' + f.id)).join('')}
-            </optgroup>
+            ${secenek('', '— kaynağı kaldır (bu hedefe yayın atanmaz) —', !seciliKaynak)}
             <optgroup label="${esc(marka.name)} listeleri">
               ${listeler.length
-                ? listeler.map(pl => secenek('playlist:' + pl.id, pl.name, secili === 'playlist:' + pl.id)).join('')
+                ? listeler.map(pl => secenek('playlist:' + pl.id, pl.name, seciliKaynak === 'playlist:' + pl.id)).join('')
                 : '<option value="" disabled>Bu markanın çalma listesi yok</option>'}
             </optgroup>
+            <optgroup label="Yayın klasörleri">
+              ${D.folders.map(f => secenek('folder:' + f.id, f.name, seciliKaynak === 'folder:' + f.id)).join('')}
+            </optgroup>
+          </select></div>
+        <div class="field"><label for="ata-parca">4 · PARÇALAR</label>
+          <select id="ata-parca"${parcalar.length ? '' : ' disabled'}>
+            ${secenek('', parcalar.length ? '— ilk parçadan başla —' : '— önce çalma listesi seçin —', !seciliParca)}
+            ${parcalar.map((t, i) => secenek(t.id, (i + 1) + '. ' + clean(t.title), seciliParca === t.id)).join('')}
           </select></div>
       </div>
       <p class="sub" style="margin-top:14px">Hedef: <b>${esc(hedefAd)}</b> · şu an burada <b>${esc(mevcut && mevcut.ad ? mevcut.ad : 'yayın atanmamış')}</b> çalıyor.</p>
-      <p class="sub">Marka değiştirdiğinde şube ve liste seçenekleri ona göre yenilenir. Hiçbir seçim kendiliğinden uygulanmaz: yayın, <b>YAYINI ATA</b> düğmesine basıldığında değişir.</p>`;
+      <p class="sub">${parcalar.length
+        ? `Seçilen kaynakta ${parcalar.length} parça var; seçersen o parçadan başlar.`
+        : 'Parça listesi seçilen çalma listesine göre gelir.'} Marka değiştirdiğinde aşağıdaki seçenekler ona göre yenilenir. Hiçbir seçim kendiliğinden uygulanmaz: yayın, <b>YAYINI ATA</b> düğmesine basıldığında değişir.</p>`;
   }
 
   // Bir markanın bölümü: şube tablosu + listeler (alt klasörlere göre).

@@ -1231,6 +1231,24 @@ test('elle atama penceresi markayı, şubeyi ve kaynağı birlikte sunar', () =>
   assert.ok(govde.includes('kendiliğinden uygulanmaz'), 'otomatik uygulanmadığı yazılmalı');
 });
 
+// Zincir genelden özele: parça adımı seçilen çalma listesinden (ya da yayın
+// klasöründen) gelir; kaynak seçilmeden parça seçilemez.
+test('elle atama penceresi parçaları seçilen listeden getirir', () => {
+  // Hiç yayın atanmamış hedefte kaynak boş gelir: parça seçtirilmez.
+  const bos = V.ataPenceresi({ ...LISTE_D, broadcast: [], playerBroadcast: [] }, ui, { brandId: 'b1' });
+  assert.ok(bos.includes('id="ata-parca"'), 'parça adımı olmalı');
+  assert.ok(bos.includes('önce çalma listesi seçin'), 'kaynak yokken parça seçtirilmemeli');
+
+  const liste = V.ataPenceresi(LISTE_D, ui, { brandId: 'b1', kaynak: 'playlist:l1' });
+  assert.ok(liste.includes('İkinci Parça'), 'seçili listenin parçaları gelmeli');
+  assert.ok(liste.includes('ilk parçadan başla'), 'varsayılan başlangıç yazılmalı');
+  assert.ok(liste.includes('2 parça var'), 'parça sayısı yazılmalı');
+
+  // Yayın klasörü de kaynaktır: parçaları klasörden gelir.
+  const klasor = V.ataPenceresi(LISTE_D, ui, { brandId: 'b1', kaynak: 'folder:f1' });
+  assert.ok(klasor.includes('İkinci Parça'), 'klasörün parçaları gelmeli');
+});
+
 // Klasör tablosu kurulmadıysa ekran bozulmaz: listeler tek tabloda görünür ve
 // klasör düğmeleri yerine ne yapılacağı yazılır.
 test('klasör tablosu yokken listeler tek tabloda görünür', () => {

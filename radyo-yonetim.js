@@ -212,25 +212,54 @@
   }
 
   // ---------- Elle yayın atama (çalma listeleri ekranı) ----------
-  // Yönetici markayı, şubesini ve kaynağı kendisi seçer. Kaynak seçimi markaya
-  // bağlıdır: marka değişince şube ve liste seçenekleri yeniden çizilir. Yazma
-  // yalnız "YAYINI ATA" ile olur (radyo-panel-views.js · ataPenceresi).
+  // Zincir genelden özele: marka → şube → çalma listesi → parça. Her adımın
+  // seçenekleri bir öncekinden gelir; seçim değişince gövde yeniden yazılır.
+  // Yalnız gövde tazelenir (pencereyi yeniden açmak odağı başa alırdı), bu
+  // yüzden modalOnay korunur: yazma yine "YAYINI ATA" ile olur
+  // (radyo-panel-views.js · ataPenceresi).
   function ataPenceresiAc(brandId, playerId) {
-    let markaId = brandId || (D.brands[0] && D.brands[0].id) || '';
-    let subeId = playerId || '';
-    const cizPencere = () => {
-      pencere({
-        baslik: 'Yayını elle ata',
-        govde: V.ataPenceresi(D, ui, { brandId: markaId, playerId: subeId }),
-        onayMetni: 'YAYINI ATA',
-        onOnay: () => ataKaydet()
-      });
-      const mk = el('modal').querySelector('#ata-marka');
-      if (mk) mk.onchange = () => { markaId = mk.value; subeId = ''; cizPencere(); };
-      const sb = el('modal').querySelector('#ata-sube');
-      if (sb) sb.onchange = () => { subeId = sb.value; };
+    const secim = {
+      brandId: brandId || (D.brands[0] && D.brands[0].id) || '',
+      playerId: playerId || '',
+      kaynak: undefined,
+      parcaId: ''
     };
-    cizPencere();
+    const bagla = () => {
+      const md = el('modal');
+      const mk = md.querySelector('#ata-marka');
+      if (mk) mk.onchange = e => {
+        secim.brandId = e.target.value;
+        secim.playerId = ''; secim.kaynak = undefined; secim.parcaId = '';
+        govdeYaz();
+      };
+      const sb = md.querySelector('#ata-sube');
+      if (sb) sb.onchange = e => {
+        // Şube hedefi değişir: seçili hedefin kendi kaynağı baştan okunur.
+        secim.playerId = e.target.value;
+        secim.kaynak = undefined; secim.parcaId = '';
+        govdeYaz();
+      };
+      const kk = md.querySelector('#ata-kaynak');
+      if (kk) kk.onchange = e => {
+        secim.kaynak = e.target.value; secim.parcaId = '';
+        govdeYaz();
+      };
+      const pr = md.querySelector('#ata-parca');
+      if (pr) pr.onchange = e => { secim.parcaId = e.target.value; };
+    };
+    const govdeYaz = () => {
+      const kutu = el('modal').querySelector('.modal-body');
+      if (!kutu) return;
+      kutu.innerHTML = V.ataPenceresi(D, ui, secim);
+      bagla();
+    };
+    pencere({
+      baslik: 'Yayını elle ata',
+      govde: V.ataPenceresi(D, ui, secim),
+      onayMetni: 'YAYINI ATA',
+      onOnay: () => ataKaydet()
+    });
+    bagla();
   }
 
   async function ataKaydet() {
@@ -239,6 +268,8 @@
     const markaId = md.querySelector('#ata-marka').value;
     const playerId = md.querySelector('#ata-sube').value;
     const kaynak = md.querySelector('#ata-kaynak').value;
+    const parcaKutusu = md.querySelector('#ata-parca');
+    const parcaId = parcaKutusu ? parcaKutusu.value : '';
     const b = D.brands.find(x => x.id === markaId);
     if (!b) return hata('Marka bulunamadı.');
     const p = playerId ? D.players.find(x => x.id === playerId) : null;
@@ -268,11 +299,16 @@
     if (tur === 'playlist' && kaynakKayit.brand_id !== b.id) {
       return hata('Bu çalma listesi başka bir markaya ait.');
     }
+    const parca = parcaId ? D.tracks.find(t => t.id === parcaId) : null;
     const satir = {
       folder_id: tur === 'folder' ? kaynakId : null,
       playlist_id: tur === 'playlist' ? kaynakId : null,
       updated_at: new Date().toISOString()
     };
+    // Parça seçildiyse başlangıç parçası da yazılır. Kolon ancak
+    // supabase/radio-yayin-baslat.sql çalıştırıldıysa vardır: seçilmediyse hiç
+    // göndermeyiz, kaynak atama çalışmaya devam eder.
+    if (parca) satir.start_track_id = parca.id;
     const { error } = p
       ? await client.from('player_broadcast').upsert(Object.assign({ player_id: p.id }, satir), { onConflict: 'player_id' })
       : await client.from('brand_broadcast').upsert(Object.assign({ brand_id: b.id }, satir), { onConflict: 'brand_id' });
@@ -280,11 +316,15 @@
       if (error.code === 'PGRST205' && p) {
         return hata('Şubeye özel yayın tablosu yok: supabase/radio-subeye-ozel-yayin.sql dosyasını çalıştırın.');
       }
+      if (error.code === 'PGRST204' && parca) {
+        return hata('Parçadan başlatmak için supabase/radio-yayin-baslat.sql dosyasını çalıştırın.');
+      }
       return hata('Yayın atanamadı: ' + error.message);
     }
     pencereKapat();
     await yenile(false);
-    bildir(hedefAd + ' artık “' + kaynakKayit.name + '” çalıyor.');
+    bildir(hedefAd + ' artık “' + kaynakKayit.name + '” çalıyor'
+      + (parca ? ' ve “' + V.clean(parca.title) + '” ile başlıyor.' : '.'));
   }
 
   // ---------- Çekmece ----------
