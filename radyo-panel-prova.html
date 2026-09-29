@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=37"></script>
+<script src="radyo-panel-views.js?v=38"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -85,6 +85,7 @@
     playerPlaylists: [
       { player_id: 'p1', playlist_id: 'l1', sort_order: 0 },
       { player_id: 'p1', playlist_id: 'l3', sort_order: 1 },
+      { player_id: 'p1', playlist_id: 'l5', sort_order: 2 },
       { player_id: 'p2', playlist_id: 'l3', sort_order: 0 },
       { player_id: 'p4', playlist_id: 'l4', sort_order: 0 }
     ],
@@ -101,7 +102,8 @@
       { id: 'l1', brand_id: 'b1', name: 'Mokka — Gündüz Akışı', description: null, cover_path: null, shuffle: false, created_at: iso(-30 * GUN) },
       { id: 'l3', brand_id: 'b1', name: 'Mokka — Akşam Kuşağı', description: 'Kapanışa doğru sakinleşen akış', cover_path: null, shuffle: false, created_at: iso(-18 * GUN) },
       { id: 'l2', brand_id: 'b3', name: 'Kahve Durağı — Klasik', description: null, cover_path: null, shuffle: false, created_at: iso(-12 * GUN) },
-      { id: 'l4', brand_id: 'b2', name: 'Brew Lab — Açılış', description: null, cover_path: null, shuffle: false, created_at: iso(-6 * GUN) }
+      { id: 'l4', brand_id: 'b2', name: 'Brew Lab — Açılış', description: null, cover_path: null, shuffle: false, created_at: iso(-6 * GUN) },
+      { id: 'l5', brand_id: 'b1', name: 'Mokka — Berber Kuşağı', description: 'Berber tarafı için tempolu akış', cover_path: null, shuffle: false, created_at: iso(-2 * GUN) }
     ],
     playlistTracks: [
       { id: 'x1', playlist_id: 'l1', track_id: 't1', sort_order: 0 },

@@ -1620,12 +1620,20 @@
       const k = ozel.tip ? ozel : genel;
       // Şubeye yüklenen listeler cihazdaki seçicide görünür. Hiç liste
       // yüklenmemişse şube çalmaz; bu bilinçli bir durum, kırmızı işaretlenir.
-      const yuklu = subeYukluListeleri(D, p.id).length;
+      const yukluKayitlar = subeYukluListeleri(D, p.id);
+      const yukluAdlar = yukluKayitlar
+        .map(x => (D.playlists || []).find(pl => pl.id === x.playlist_id))
+        .filter(Boolean).map(pl => pl.name);
+      // Şubeye bağlı listeler adlarıyla yazılır: "kaç liste" değil "hangileri".
+      // Uzun listede ilk ikisi + kalan sayısı okunur kalır.
       const listeDurumu = !D.subeListeleriVar
         ? ''
-        : (yuklu ? chip('live', yuklu + ' LİSTE', true) : chip('danger', 'LİSTE YÜKLENMEDİ'));
+        : (yukluAdlar.length
+          ? chip('live', yukluAdlar.length + ' LİSTE', true)
+            + `<span class="sub">${esc(yukluAdlar.slice(0, 2).join(', '))}${yukluAdlar.length > 2 ? ' +' + (yukluAdlar.length - 2) + ' liste' : ''}</span>`
+          : chip('danger', 'LİSTE ATANMADI'));
       const dugme = D.subeListeleriVar
-        ? `<button class="btn sm" data-act="sube-listeler" data-id="${esc(p.id)}" type="button">LİSTELER</button>`
+        ? `<button class="btn sm primary" data-act="sube-listeler" data-id="${esc(p.id)}" type="button">LİSTE ATA</button>`
         : '';
       satirlar.push(`<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
         <td><b>${esc(p.label)}</b><span class="sub">${esc(ozel.tip
@@ -1639,11 +1647,13 @@
       </tr>`);
     });
     return `<table>
-        <thead><tr><th>ŞUBE</th><th>ÇALDIĞI KAYNAK</th><th>ATAMA</th><th>YÜKLENEN LİSTE</th></tr></thead>
+        <thead><tr><th>ŞUBE</th><th>ÇALDIĞI KAYNAK</th><th>ATAMA</th><th>ATANMIŞ ÇALMA LİSTELERİ</th></tr></thead>
         <tbody>${subeler.length ? satirlar.join('') : bos(4, 'Bu markanın henüz şubesi yok.')}</tbody>
       </table>
-      ${D.subeListeleriVar ? ''
-        : '<p class="sub">Şubenin kendi listelerini taşıması için supabase/radio-sube-listeleri.sql çalıştırılmalı. O zamana kadar her şube markanın bütün listelerini görür.</p>'}`;
+      ${D.subeListeleriVar
+        ? `<p class="sub">Bir şubeye istediğin kadar çalma listesi atayabilirsin: satırdaki <b>LİSTE ATA</b> ile seçtiğin listeler o şubenin cihazında görünür.
+          Şubeye hiç liste atanmazsa o şube çalmaz.</p>`
+        : '<p class="sub">Şubeye birden çok çalma listesi atamak için supabase/radio-sube-listeleri.sql çalıştırılmalı. O zamana kadar her şube markanın bütün listelerini görür.</p>'}`;
   }
 
   // Şubeye liste yükleme penceresi: markanın listeleri onay kutularıyla
@@ -1661,7 +1671,8 @@
       </label>`;
     }).join('');
     return `
-      <p class="sub">${esc(b ? b.name : 'Marka')} · <b>${esc(p.label)}</b> şubesine hangi çalma listeleri yüklensin?\n        Kafedeki personel seçicisi yalnız burada işaretlediklerini görür.</p>
+      <p class="sub">${esc(b ? b.name : 'Marka')} · <b>${esc(p.label)}</b> şubesine hangi çalma listelerini atıyorsun?
+        <b>Birden çok liste seçebilirsin.</b> Kafedeki personel seçicisi yalnız burada işaretlediklerini görür.</p>
       <div class="row" style="margin:12px 0">
         <button class="btn sm" data-act="sube-liste-hepsi" type="button">TÜMÜNÜ SEÇ</button>
         <button class="btn sm" data-act="sube-liste-hicbiri" type="button">HİÇBİRİNİ SEÇ</button>

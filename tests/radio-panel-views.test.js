@@ -1199,10 +1199,20 @@ test('şube satırı yüklenen listeleri gösterir ve yükleme penceresini açar
   };
   const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), Dsiz, ui);
 
-  assert.ok(html.includes('data-act="sube-listeler" data-id="p1"'), 'yükleme düğmesi olmalı');
-  assert.ok(html.includes('LİSTE YÜKLENMEDİ'), 'liste taşımayan şube işaretlenmeli');
-  assert.ok(html.includes('1 LİSTE'), 'yüklü şube kaç liste taşıdığını yazmalı');
-  assert.ok(html.includes('şube çalmıyor'), 'klasör özeti yüklemesi eksik şubeyi söylemeli');
+  assert.ok(html.includes('data-act="sube-listeler" data-id="p1"'), 'atama düğmesi olmalı');
+  assert.ok(html.includes('>LİSTE ATA<'), 'düğme ne yaptığını söylemeli');
+  assert.ok(html.includes('LİSTE ATANMADI'), 'listesi olmayan şube işaretlenmeli');
+  assert.ok(html.includes('1 LİSTE'), 'şube kaç liste taşıdığını yazmalı');
+  assert.ok(html.includes('Sabah Akışı'), 'atanmış listeler adlarıyla yazılmalı');
+  assert.ok(html.includes('şube çalmıyor'), 'klasör özeti ataması eksik şubeyi söylemeli');
+  // Şube başına liste sayısında sınır yok: iki liste atanmış şube ikisini de yazar.
+  const iki = { ...Dsiz, playerPlaylists: [
+    { player_id: 'p1', playlist_id: 'l1', sort_order: 0 },
+    { player_id: 'p1', playlist_id: 'l2', sort_order: 1 }
+  ] };
+  const ikili = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), iki, ui).html;
+  assert.ok(ikili.includes('2 LİSTE'), 'iki liste atanmış şube ikisini saymalı');
+  assert.ok(ikili.includes('Sabah Akışı, Akşam Akışı'), 'iki listenin adı da yazılmalı');
 
   const pencere = V.subeListePenceresi(Dsiz, ui, Dsiz.players[0]);
   assert.ok(pencere.includes('data-sube-liste'), 'liste kutuları olmalı');
