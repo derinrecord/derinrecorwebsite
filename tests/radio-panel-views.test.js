@@ -1219,6 +1219,9 @@ test('şube satırı yüklenen listeleri gösterir ve yükleme penceresini açar
   const kapali = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), LISTE_D, ui).html;
   assert.ok(!kapali.includes('data-act="sube-listeler"'), 'tablo yokken yükleme düğmesi çıkmamalı');
   assert.ok(!kapali.includes('şube çalmıyor'), 'tablo yokken uyarı da çıkmamalı');
+  // Sessizce eksik kalmasın: özellik kurulmadan ne yapılacağı yazılır.
+  assert.ok(kapali.includes('radio-sube-listeleri.sql'), 'eksik SQL yazılmalı');
+  assert.ok(!html.includes('radio-sube-listeleri.sql'), 'özellik kuruluyken bu yazı çıkmamalı');
 });
 
 // Listeler klasörde yönetilmez: oluşturma/silme ve detay marka sayfasında kalır.

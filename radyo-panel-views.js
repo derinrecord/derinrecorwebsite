@@ -1641,7 +1641,9 @@
     return `<table>
         <thead><tr><th>ŞUBE</th><th>ÇALDIĞI KAYNAK</th><th>ATAMA</th><th>YÜKLENEN LİSTE</th></tr></thead>
         <tbody>${subeler.length ? satirlar.join('') : bos(4, 'Bu markanın henüz şubesi yok.')}</tbody>
-      </table>`;
+      </table>
+      ${D.subeListeleriVar ? ''
+        : '<p class="sub">Şubenin kendi listelerini taşıması için supabase/radio-sube-listeleri.sql çalıştırılmalı. O zamana kadar her şube markanın bütün listelerini görür.</p>'}`;
   }
 
   // Şubeye liste yükleme penceresi: markanın listeleri onay kutularıyla
