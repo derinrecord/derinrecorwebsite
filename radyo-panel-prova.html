@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=35"></script>
+<script src="radyo-panel-views.js?v=36"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -79,6 +79,16 @@
     ],
     // Şubeye özel yayın: p1 bir klasöre, p2 bir listeye ayrılmış; marka geneli
     // yine de durur. Ekranda "kim marka genelini çalar, kim ayrı" görünsün.
+    // Şubeye yüklenen listeler (supabase/radio-sube-listeleri.sql): cihazın
+    // seçicisi yalnız burada işaretli listeleri gösterir. p3'e hiç liste
+    // yüklenmemiş: o şube çalmaz, ekran bunu işaretler.
+    playerPlaylists: [
+      { player_id: 'p1', playlist_id: 'l1', sort_order: 0 },
+      { player_id: 'p1', playlist_id: 'l3', sort_order: 1 },
+      { player_id: 'p2', playlist_id: 'l3', sort_order: 0 },
+      { player_id: 'p4', playlist_id: 'l4', sort_order: 0 }
+    ],
+    subeListeleriVar: true,
     playerBroadcast: [
       { player_id: 'p1', folder_id: 'f3', playlist_id: null, updated_at: iso(-3600000) },
       { player_id: 'p2', folder_id: null, playlist_id: 'l3', updated_at: iso(-7200000) }
@@ -257,6 +267,25 @@
     }
     if (act === 'cikis') return bildir('Prova: çıkış yapıldı.');
     if (act === 'branch-open') return cekmeceAc(V.subeCekmecesi(id, D, ui));
+    // Şubeye liste yükleme: gerçek panelde player_playlists tablosuna yazılır
+    // (radyo-yonetim.js · subeListeleriKaydet); provada yalnız önizlenir.
+    if (act === 'sube-listeler') {
+      const p = D.players.find(x => x.id === id);
+      if (!p) return;
+      return pencere({
+        baslik: p.label + ' · çalma listeleri',
+        govde: V.subeListePenceresi(D, ui, p),
+        onayMetni: 'KAYDET',
+        onOnay: () => bildir('Prova: ' + p.label + ' şubesinin listeleri kaydedilir.')
+      });
+    }
+    if (act === 'sube-liste-hepsi' || act === 'sube-liste-hicbiri') {
+      const md = el('modal');
+      if (!md) return;
+      const acik = act === 'sube-liste-hepsi';
+      md.querySelectorAll('[data-sube-liste]').forEach(k => { k.checked = acik; });
+      return;
+    }
     // Elle yayın atama: gerçek panelde hedef+kaynak yazılır
     // (radyo-yonetim.js · case 'liste-ata'); provada yalnız önizlenir.
     if (act === 'liste-ata') {

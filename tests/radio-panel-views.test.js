@@ -1189,6 +1189,38 @@ test('klasör içinde şube ve liste seçenekleri elle sunulur', () => {
   assert.ok(html.includes('ÇALMA LİSTELERİ (2)'), 'markanın listeleri klasörde listelenmeli');
 });
 
+// Şubeye liste yükleme: markanın bütün listeleri her şubeye ait değildir. Satır
+// kaç liste yüklü olduğunu yazar, yükleme penceresi işaret kutularıyla seçtirir.
+test('şube satırı yüklenen listeleri gösterir ve yükleme penceresini açar', () => {
+  const Dsiz = {
+    ...LISTE_D,
+    playerPlaylists: [{ player_id: 'p1', playlist_id: 'l1', sort_order: 0 }],
+    subeListeleriVar: true
+  };
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), Dsiz, ui);
+
+  assert.ok(html.includes('data-act="sube-listeler" data-id="p1"'), 'yükleme düğmesi olmalı');
+  assert.ok(html.includes('LİSTE YÜKLENMEDİ'), 'liste taşımayan şube işaretlenmeli');
+  assert.ok(html.includes('1 LİSTE'), 'yüklü şube kaç liste taşıdığını yazmalı');
+  assert.ok(html.includes('şube çalmıyor'), 'klasör özeti yüklemesi eksik şubeyi söylemeli');
+
+  const pencere = V.subeListePenceresi(Dsiz, ui, Dsiz.players[0]);
+  assert.ok(pencere.includes('data-sube-liste'), 'liste kutuları olmalı');
+  assert.ok(pencere.includes('data-act="sube-liste-hepsi"') && pencere.includes('data-act="sube-liste-hicbiri"'),
+    'toplu seçim düğmeleri olmalı');
+  // Yüklü liste işaretli, yüklenmemiş olan boş gelir.
+  const l1 = pencere.slice(pencere.indexOf('value="l1"'), pencere.indexOf('value="l2"'));
+  assert.ok(l1.includes('checked'), 'yüklü liste işaretli gelmeli');
+  const l2 = pencere.slice(pencere.indexOf('value="l2"'));
+  assert.ok(!l2.slice(0, 200).includes('checked'), 'yüklenmemiş liste boş gelmeli');
+  assert.ok(!pencere.includes('Brew Gündüz'), 'başka markanın listesi sunulmamalı');
+
+  // Özellik kurulmadan (SQL çalışmadan) sütun ve düğme çizilmez.
+  const kapali = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), LISTE_D, ui).html;
+  assert.ok(!kapali.includes('data-act="sube-listeler"'), 'tablo yokken yükleme düğmesi çıkmamalı');
+  assert.ok(!kapali.includes('şube çalmıyor'), 'tablo yokken uyarı da çıkmamalı');
+});
+
 // Listeler klasörde yönetilmez: oluşturma/silme ve detay marka sayfasında kalır.
 test('klasör listeleri yalnız okur, yönetim marka sayfasına yollar', () => {
   const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), LISTE_D, ui);

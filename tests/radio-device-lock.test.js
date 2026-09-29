@@ -144,6 +144,13 @@ async function calistir(senaryo) {
     // 'listelerRpc': marka listeleri sunucudan gelir (supabase/radio-erisim.sql).
     // Verilmezse fonksiyon kurulmamış sayılır ve oynatıcı eski tablo okumasına düşer.
     if (ad === 'radio_listeler') return senaryo.listelerRpc || FONKSIYON_YOK;
+    // 'subeListeleri' (supabase/radio-sube-listeleri.sql): şubeye yüklenen
+    // listeler. Boş dizi "yönetim bu şubeye liste yüklemedi" demektir ve şube
+    // susar; senaryo hiç verilmezse fonksiyon sunucuda yokmuş gibi davranılır.
+    if (ad === 'radio_sube_listeler') {
+      if (senaryo.subeListeleri === undefined) return FONKSIYON_YOK;
+      return senaryo.subeListeleri;
+    }
     // 'anonslar': yoklamayla gelen anonslar. Sunucu yalnız p_since'ten sonrasını
     // döndürür; aynı süzgeci burada da uygularız ki cihazın damgayı ilerlettiği
     // (aynı anonu iki kez çalmadığı) gerçekten sınansın.
@@ -844,6 +851,70 @@ test('tablolar kapalıyken liste ve parçalar sunucudan alınır', async () => {
   assert.ok(s.liste.includes('Filtre Kahve'));
 });
 
+// ---- Şubeye yüklenen listeler (supabase/radio-sube-listeleri.sql) ---------
+// Markanın her listesi her şubeye ait değildir: Alsancak'a yüklenen listeler
+// onun cihazında görünür, Colmar'daki berber listesi görünmez. Şubeye hiç liste
+// yüklenmemişse cihaz çalmaz ve bunu yönetime söyler.
+const SUBE_RPC = [
+  { playlist_id: 'L1', name: 'Sabah Kahve', shuffle: false, track_id: 'p1',
+    title: 'Filtre Kahve', storage_path: 'listeler/filtre.wav', sort_order: 0 },
+  { playlist_id: 'L4', name: 'Spor Salonu', shuffle: true, track_id: 'p9',
+    title: 'Tempolu Set', storage_path: 'listeler/tempolu.wav', sort_order: 1 }
+];
+
+test('seçici yalnız şubeye yüklenen listeleri gösterir', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    subeListeleri: SUBE_RPC,
+    listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI
+  });
+  assert.ok(s.listeGorunur, 'yüklü liste varsa seçici görünmeli');
+  assert.ok(s.secenekler.includes('Sabah Kahve') && s.secenekler.includes('Spor Salonu'));
+  assert.ok(!s.secenekler.includes('Akşam Sesi'), 'yüklenmemiş marka listesi seçicide olmamalı');
+
+  await s.sec('L4');
+  assert.ok(s.calinan.includes('listeler/tempolu.wav'), 'yüklenen liste çalınabilmeli');
+});
+
+test('şubeye liste yüklenmemişse cihaz çalmaz ve ne yapılacağını söyler', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    subeListeleri: [],   // yönetim bu şubeye liste yüklemedi
+    listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI
+  });
+  assert.equal(s.listeGorunur, false, 'liste yokken seçici çıkmamalı');
+  assert.equal(s.calmaDenemesi, 0, 'yayın kaynağı atanmış olsa bile çalınmamalı');
+  assert.match(s.durum, /çalma listesi yüklenmedi/, 'yönetime ne yapılacağı söylenmeli');
+  assert.ok(!s.liste.includes('Sabah Işığı'), 'marka geneli kaynağı kuyruğa alınmamalı');
+});
+
+test('yükleme sonradan gelirse cihaz kendiliğinden çalmaya başlar', async () => {
+  // Yönetim listeyi yükleyene kadar cihaz susar; yükleme geldiğinde elle
+  // dokunmak gerekmez (kafede kimse panele bakmıyor).
+  const yuklu = [];
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true, kiosk: true,
+    subeListeleri: yuklu,
+    listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI
+  });
+  assert.equal(s.calmaDenemesi, 0);
+
+  yuklu.push(SUBE_RPC[0]);
+  await s.tikla(60000);
+  await s.tikla(30000);
+  assert.ok(s.listeGorunur, 'yükleme gelince seçici çıkmalı');
+  assert.ok(s.liste.includes('Sabah Işığı'), 'otomatik yayın yeniden kurulmalı');
+});
+
+test('şube listeleri fonksiyonu yoksa markanın bütün listeleri gösterilir', async () => {
+  const s = await calistir({
+    ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
+    listeler: LISTELER, listeParcalari: LISTE_PARCALARI, studioParcalari: STUDIO_PARCALARI
+  });
+  assert.ok(s.listeGorunur, 'eski davranış korunmalı');
+  assert.ok(s.secenekler.includes('Sabah Kahve') && s.secenekler.includes('Akşam Sesi'));
+});
+
 test('liste fonksiyonu sunucuda yoksa eski tablo okuması çalışır', async () => {
   const s = await calistir({
     ping: 'ok', parca: true, abonelik: 'gecerli', otomatik: true,
@@ -886,8 +957,12 @@ test('anons fonksiyonu sunucuda yoksa oynatıcı sessizce devam eder', async () 
 // kapı kapandığında sahada liste/duyuru sessizce kaybolur; bu test onu hatırlatır.
 test('oynatıcı ve sunum sayfası katalog verisini sunucu fonksiyonundan ister', () => {
   const radyo = fs.readFileSync(path.join(KOK, 'radyo.js'), 'utf8');
-  assert.match(radyo, /rpc\('radio_listeler'/);
-  assert.match(radyo, /rpc\('radio_anonslar'/);
+  // Önce şubeye yüklenen listeler, sonra markanın listeleri: ikisi de sunucu
+  // fonksiyonundan gelir, tablo doğrudan okunmaz (kapı kapalıyken çalışsın).
+  assert.match(radyo, /rpcListeler\('radio_sube_listeler'\)/);
+  assert.match(radyo, /rpcListeler\('radio_listeler'\)/);
+  assert.match(radyo, /rpcListeler\('radio_anonslar'\)|rpc\('radio_anonslar'/);
+  assert.match(radyo, /client\.rpc\(ad, \{ p_player_key: key \}\)/);
   assert.match(radyo, /from\('brand_playlists'\)/, 'yedek yol durmalı');
 
   const sunum = fs.readFileSync(path.join(KOK, 'coffee-marka.js'), 'utf8');

@@ -26,7 +26,11 @@
   let kullanici = { ad: 'Yönetici', alt: '', basHarf: 'DR' };
   let D = {
     brands: [], folders: [], tracks: [], players: [], broadcast: [], announcements: [],
-    playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: null
+    playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: null,
+    // Şubeye yüklenen listeler (supabase/radio-sube-listeleri.sql). Tablo
+    // kurulmadıysa özellik kapalı kalır: panel sütunu çizmez, cihaz bugünkü gibi
+    // markanın bütün listelerini gösterir.
+    playerPlaylists: [], subeListeleriVar: false
   };
   const state = {
     nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '',
@@ -212,6 +216,42 @@
   }
 
 
+  // ---------- Şube listeleri ----------
+  // Penceredeki işaretli listeler o şubenin yükledikleridir. Yükleme sırası,
+  // markanın liste sırasına değil işaretleme sırasına göre eklenir: sonradan
+  // işaretlenenler listenin sonuna düşer, mevcutların sırası bozulmaz.
+  async function subeListeleriKaydet(playerId) {
+    if (!kullanici.adminMi) return hata('Şube listesi yüklemek yönetici yetkisi ister.');
+    const p = D.players.find(x => x.id === playerId);
+    if (!p) return hata('Şube bulunamadı.');
+    const md = el('modal');
+    if (!md) return;
+    const secilen = [...md.querySelectorAll('[data-sube-liste]')]
+      .filter(k => k.checked).map(k => k.value);
+    const yuklu = (D.playerPlaylists || []).filter(x => x.player_id === playerId)
+      .map(x => x.playlist_id);
+    const eklenecek = secilen.filter(x => !yuklu.includes(x));
+    const kaldirilacak = yuklu.filter(x => !secilen.includes(x));
+
+    if (eklenecek.length) {
+      const { error } = await client.from('player_playlists').insert(
+        eklenecek.map((playlistId, i) => ({
+          player_id: p.id, playlist_id: playlistId, sort_order: yuklu.length + i
+        })));
+      if (error) return hata('Listeler yüklenemedi: ' + error.message);
+    }
+    if (kaldirilacak.length) {
+      const { error } = await client.from('player_playlists').delete()
+        .eq('player_id', p.id).in('playlist_id', kaldirilacak);
+      if (error) return hata('Listeler kaldırılamadı: ' + error.message);
+    }
+    pencereKapat();
+    await yenile(false);
+    bildir(!secilen.length
+      ? p.label + ' şubesinde liste kalmadı; bu şube çalmayacak.'
+      : p.label + ' şubesine ' + secilen.length + ' liste yüklendi.');
+  }
+
   // ---------- Çekmece ----------
   function cekmeceAc(html) {
     el('drawer').innerHTML = `<button class="btn sm drawer-close" data-act="drawer-close" type="button">KAPAT</button>${html}`;
@@ -383,6 +423,19 @@
         D.players = D.players.map(p => Object.assign({}, p, harita.get(p.id) || {}));
       }
     } catch { /* alanlar daha eklenmemiş: sorun değil */ }
+
+    // Şubeye yüklenen listeler (supabase/radio-sube-listeleri.sql). Tablo henüz
+    // kurulmadıysa sorgu hata döner: o zaman şube satırında yükleme sütunu
+    // çizilmez ve cihaz bugünkü davranışını korur. Ayrı ve hataya toleranslı
+    // tutulur ki ana yükleme bundan etkilenmesin.
+    try {
+      const yuklu = await client.from('player_playlists')
+        .select('player_id,playlist_id,sort_order').order('sort_order');
+      if (!yuklu.error && Array.isArray(yuklu.data)) {
+        D.playerPlaylists = yuklu.data;
+        D.subeListeleriVar = true;
+      }
+    } catch { /* tablo kurulmamış: yükleme özelliği kapalı kalır */ }
   }
 
   // sessiz: yalnızca Canlı durum ekranı kendini tazeler; form girdileriniz
@@ -1493,6 +1546,31 @@
         }
         await yenile(false);
         bildir(kaynak ? 'Liste oluşturuldu ve parça sırası kopyalandı.' : 'Boş liste oluşturuldu.');
+        return;
+      }
+
+      // --- şube listeleri (supabase/radio-sube-listeleri.sql) ---
+      // Şubeye liste yüklemek yayını değiştirmez: yalnız o şubenin cihazındaki
+      // personel seçicisini belirler. Hiçbiri yüklenmezse şube çalmaz.
+      case 'sube-listeler': {
+        const p = D.players.find(x => x.id === id);
+        if (!p) return hata('Şube bulunamadı.');
+        if (!D.subeListeleriVar) return hata('Şube listeleri için supabase/radio-sube-listeleri.sql çalıştırılmalı.');
+        pencere({
+          baslik: p.label + ' · çalma listeleri',
+          govde: V.subeListePenceresi(D, ui, p),
+          onayMetni: 'KAYDET',
+          onOnay: () => subeListeleriKaydet(p.id)
+        });
+        return;
+      }
+      // Penceredeki kutuları topluca işaretle/temizle: kayıt yine KAYDET ile.
+      case 'sube-liste-hepsi':
+      case 'sube-liste-hicbiri': {
+        const md = el('modal');
+        if (!md) return;
+        const acik = act === 'sube-liste-hepsi';
+        md.querySelectorAll('[data-sube-liste]').forEach(k => { k.checked = acik; });
         return;
       }
 

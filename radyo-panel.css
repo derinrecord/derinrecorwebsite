@@ -347,4 +347,13 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
   .player{left:18px;right:18px;bottom:14px;flex-wrap:wrap;gap:10px}
   .player .p-vol{display:none}
 }
+/* Şubeye liste yükleme penceresi: markanın listeleri onay kutularıyla sunulur.
+   Satırın tamamı tıklanabilir olsun (küçük kutuyu nişan almak zorunda kalma). */
+.sube-liste-kutu{display:grid;gap:8px;margin-top:4px;max-height:52vh;overflow:auto}
+.sube-liste{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;cursor:pointer}
+.sube-liste:hover{border-color:rgba(255,255,255,.2)}
+.sube-liste input{width:17px;height:17px;flex:0 0 auto;accent-color:var(--gold,#d8b25a)}
+.sube-liste b{display:block;font-size:13.5px}
+.sube-liste .sub{display:block}
+
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

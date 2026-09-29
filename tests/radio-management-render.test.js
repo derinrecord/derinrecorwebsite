@@ -327,6 +327,43 @@ test('panel marka klasöründen elle yayın atamayı bağlar', () => {
     assert.ok(!source.includes("'" + act + "'"), act + ' olayı olmamalı'));
 });
 
+// Şubeye liste yükleme: markanın her listesi her şubeye ait değildir. Panel
+// şubeye yüklenenleri yazar; cihaz yalnız bunları gösterir, hiçbiri yoksa susar.
+test('panel şubeye liste yüklemeyi bağlar', () => {
+  // Özellik tablosu kurulmadan panel çalışmaya devam etmeli: sorgu hataya
+  // toleranslı okunur ve tablo yokken yükleme sütunu hiç çizilmez.
+  assert.match(source,
+    /from\('player_playlists'\)\s*\.select\('player_id,playlist_id,sort_order'\)/);
+  assert.match(source, /D\.subeListeleriVar = true/, 'tablo varsa özellik açılmalı');
+  assert.match(source, /case 'sube-listeler'/);
+  assert.match(source, /V\.subeListePenceresi\(D, ui, p\)/);
+  assert.match(source, /case 'sube-liste-hepsi'/, 'toplu işaretleme bağlanmalı');
+
+  const blok = source.slice(source.indexOf('async function subeListeleriKaydet'), source.indexOf('// ---------- Çekmece'));
+  assert.match(blok, /if \(!kullanici\.adminMi\) return hata\('Şube listesi yüklemek/,
+    'yükleme yönetici kapısından geçmeli');
+  assert.match(blok, /querySelectorAll\('\[data-sube-liste\]'\)/, 'işaretli kutular okunmalı');
+  assert.ok(blok.includes("from('player_playlists').insert("), 'işaretlenenler yazılmalı');
+  assert.match(blok, /\.delete\(\)[\s\S]*?\.in\('playlist_id'/, 'işareti kaldırılanlar silinmeli');
+});
+
+// Veritabanı tarafı: tablo yalnız yöneticiye açık, cihaz listeleri şube
+// anahtarını doğrulayan fonksiyondan alır; ilk kurulum mevcut davranışı yazar.
+test('şube listeleri SQL\'i yöneticiye kapalı cihaza fonksiyonla açık', () => {
+  const sql = fs.readFileSync(require.resolve('../supabase/radio-sube-listeleri.sql'), 'utf8');
+  assert.match(sql, /create table if not exists public\.player_playlists/);
+  assert.match(sql, /unique \(player_id, playlist_id\)/);
+  assert.match(sql, /create policy "player playlists: admin manages"/);
+  assert.match(sql, /for all using \(public\.is_admin\(\)\) with check \(public\.is_admin\(\)\)/);
+  assert.ok(!/to anon/.test(sql), 'tablo cihaza doğrudan açılmamalı');
+
+  assert.match(sql, /create or replace function public\.radio_sube_listeler/);
+  assert.match(sql, /join public\.player_playlists pp on pp\.player_id = h\.player_id/,
+    'cihaz yalnız şubeye yüklenen listeleri görmeli');
+  assert.match(sql, /on conflict \(player_id, playlist_id\) do nothing/,
+    'geçiş tohumu idempotent olmalı');
+});
+
 // Liste detayı marka sayfasının altında yaşar: adres markayı taşır, geri dönüş
 // marka sayfasına olur; liste silinmişse boş ekran yerine marka listesine düşülür.
 test('liste detayı marka sayfası altında rotalanır', () => {

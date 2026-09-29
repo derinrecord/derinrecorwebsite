@@ -42,6 +42,19 @@
   // atadığı kaynak ("otomatik") çalınır. Seçim cihazda saklanır.
   let seciliListe = null;
   let listeler = [];
+
+  // Şubeye liste yüklenmemişse cihaz susar. Sessiz kalmak bilinçli: yanlış
+  // şubenin listesi çalınmasın. Ekran da ne yapılacağını yönetime söyler.
+  function listesizDurdur() {
+    queue = [];
+    index = 0;
+    durdur('liste-yuklenmedi');
+    byId('folder').textContent = '';
+    byId('playlist').innerHTML = '';
+    calanListe = null;
+    calaniBildir(null);
+    setState('Bu şubeye henüz çalma listesi yüklenmedi. Yönetim panelden bu şubeye liste yüklemeli.');
+  }
   const LISTE_ANAHTARI = 'derin_record_liste' + (key ? '_' + key : '');
   // Şu an çalan parça: sunucuya bildiririz ki panelde gerçekten hangi parçanın
   // çaldığı görünsün (eskiden yalnızca "ses çalıyor mu" biliniyordu).
@@ -59,6 +72,13 @@
   let duraklamaOldu = false;     // duraklamadan sonra ilk çalma = "devam"
   let durdurmaSebebi = null;     // koddan gelen duraklatmanın sebebi
   let sonOlay = { kod: null, an: 0 };
+  // Yönetim canlı yayın kaynağını kaldırdığında cihazın susmaması için geçilen
+  // "serbest mod": yüklü liste çalınmaya devam eder, kaynak yeniden atanınca
+  // kendiliğinden çıkılır. Abonelik ve marka kapısı bu modda gevşemez.
+  let serbestMod = false;
+  // Son görülen anonsun damgası: anonslar kapı kapanınca gerçek zamanlı akış
+  // yerine yoklamayla geldiği için tekrar tekrar çalınmasınlar.
+  let sonAnonsAni = null;
 
   // Sunucu yayın anahtarını uuid olarak bekler. Paneldeki kayıtta anahtar boş
   // kalmışsa kopyalanan bağlantı "...?key=null" olur; sunucu bunu uuid sanıp
@@ -181,7 +201,26 @@
     return copy;
   }
 
+  // Kaynak gerçekten "kaldırıldı mı", yoksa cihazın susması mı gerekiyor?
+  // Sunucu "marka aktif + abonelik geçerli + kaynak yok" diyorsa kaynağı yönetim
+  // durdurmuştur ve kafe susmaz. Marka kapatıldıysa (MARKAYI DURDUR) ya da
+  // abonelik geçersizse false döner, oynatıcı eski davranışını korur. Fonksiyon
+  // kurulmadıysa (supabase/radio-yayin-durdurma.sql) yine false döner.
+  async function serbestModaGecilirMi() {
+    let yd = null;
+    try {
+      const r = await withTimeout(client.rpc('radio_yayin_durumu', { p_player_key: key }), 8000);
+      yd = r && r.data && r.data[0];
+    } catch { /* fonksiyon yoksa serbest moda geçilmez */ }
+    return !!(yd && yd.marka_aktif && yd.gecerli && !yd.kaynak_var);
+  }
+
   async function fetchBroadcast({ restart = false } = {}) {
+    // Şubeye liste yüklenmemişse yayın kaynağı atanmış olsa bile çalmaz.
+    if (subeListeleriVar) {
+      if (!listeler.length) listeler = await listeleriGetir();
+      if (!listeler.length) return listesizDurdur();
+    }
     let data, error;
     try {
       ({ data, error } = await withTimeout(client.rpc('radio_now_playing', { p_player_key: key }), 10000));
@@ -197,14 +236,6 @@
     }
     fetchAttempts = 0;
     if (!data || !data.length) {
-      byId('brand').textContent = 'Geçersiz yayın anahtarı';
-      byId('now').textContent = '';
-      byId('folder').textContent = '';
-      byId('cover').style.display = 'none';
-      // Listeyi boş bırakırız: burada "henüz şarkı eklenmemiş" yazmak, yayın
-      // çalışıyormuş da parça yokmuş gibi okunuyor ve ekip yanlış yere bakıyor.
-      byId('playlist').innerHTML = '';
-      durdur('yayin-yok');
       // radio_now_playing boş döndüğünde dört ayrı arıza aynı ekrana düşer:
       // anahtar hiç tanınmıyor, marka pasif, canlı yayın kaynağı atanmamış ya da
       // abonelik geçersiz. Aşağıda bunları tek tek ayırıp doğrusunu söyleriz,
@@ -214,6 +245,34 @@
         const ab = await client.rpc('abonelik_durumu', { p_player_key: key });
         d = ab && ab.data && ab.data[0];
       } catch { /* abonelik okunamazsa d=null kalır */ }
+
+      // Yönetim canlı yayın kaynağını kaldırdıysa kafede çalmakta olan müzik
+      // kesilmez: cihaz yüklü listesini çalmaya devam eder ve yönetim yeni bir
+      // kaynak atadığında kendiliğinden ona geçer. Yayın hiç başlamamışsa
+      // (started/queue boş) aşağıdaki teşhis ekranı aynen kalır.
+      if (anahtarDurumu !== 'yok' && started && queue.length) {
+        if (await serbestModaGecilirMi()) {
+          if (!serbestMod) {
+            serbestMod = true;
+            tani('');
+            setState('Yayın kaynağı kaldırıldı. Cihaz yüklü listesini çalmaya devam ediyor.');
+            // Geçmişe bir kez yazılır: panel "kaynak yok ama cihaz çalıyor"
+            // tablosunu bu kayıtla açıklar, sorun sayacına girmez.
+            olay('serbest', parcaEtiketi(queue[index % queue.length]));
+          }
+          return;
+        }
+      }
+      serbestMod = false;
+
+      byId('brand').textContent = 'Geçersiz yayın anahtarı';
+      byId('now').textContent = '';
+      byId('folder').textContent = '';
+      byId('cover').style.display = 'none';
+      // Listeyi boş bırakırız: burada "henüz şarkı eklenmemiş" yazmak, yayın
+      // çalışıyormuş da parça yokmuş gibi okunuyor ve ekip yanlış yere bakıyor.
+      byId('playlist').innerHTML = '';
+      durdur('yayin-yok');
 
       if (anahtarDurumu === 'yok') {
         // radio_ping bu anahtarla bir şube bulamadı.
@@ -238,8 +297,10 @@
       return;
     }
 
-    // Yayın geldi: geride kalmış bir teşhis kodu varsa temizle.
+    // Yayın geldi: geride kalmış bir teşhis kodu varsa temizle ve serbest moddan
+    // çık (cihaz artık yönetimin verdiği kaynağı çalar).
     tani('');
+    serbestMod = false;
 
     const view = window.DerinRadioPlaylistQueue.fromRpcRows(data);
     const head = view.head;
@@ -520,7 +581,75 @@
   // personel cihazdan markanın kendi listelerinden birini seçip onu çaldırabilir.
   // Seçim cihazda saklanır, yani her sabah yeniden seçmek gerekmez.
 
+  // Katalog tabloları dışarıya (girişsiz ziyaretçiye) kapatıldığı için liste ve
+  // parçaları, şube anahtarını sunucuda doğrulayan fonksiyonlardan alırız
+  // (supabase/radio-erisim.sql, supabase/radio-sube-listeleri.sql). Fonksiyonlar
+  // henüz kurulmadıysa kapı da açıktır: o zaman aşağıdaki eski doğrudan okumaya
+  // düşeriz, yani cihaz iki durumda da çalışır ve geçiş sahada kesinti yaratmaz.
+  let listelerSatirlari = null;
+  // Şubeye liste yükleme özelliği kurulu mu (radio_sube_listeler cevap verdi mi)?
+  // Kuruluysa cihaz YALNIZ o şubeye yüklenen listeleri gösterir; hiç liste
+  // yüklenmemişse şube çalmaz: yönetim o şubeye ne çalacağını söylememiştir.
+  let subeListeleriVar = false;
+
+  // Aynı liste her parçasıyla ayrı satırda gelir: adları tekilleştiririz.
+  const tekille = satirlar => {
+    const gorulen = new Map();
+    satirlar.forEach(x => {
+      if (!gorulen.has(x.playlist_id)) {
+        gorulen.set(x.playlist_id, { id: x.playlist_id, name: x.name, shuffle: !!x.shuffle });
+      }
+    });
+    return [...gorulen.values()];
+  };
+
+  // Şube anahtarını sunucuda doğrulayan fonksiyonlardan liste satırlarını okur.
+  // Fonksiyon kurulmadıysa null döner; çağıran eski yola düşer.
+  async function rpcListeler(ad) {
+    try {
+      const r = await withTimeout(client.rpc(ad, { p_player_key: key }), 10000);
+      if (r && !r.error && Array.isArray(r.data)) return r.data;
+    } catch { /* fonksiyon yok: eski yola düşülür */ }
+    return null;
+  }
+
+  async function listeleriGetir() {
+    if (gecerliAnahtar(key)) {
+      // 1) Şubeye yüklenen listeler (supabase/radio-sube-listeleri.sql). Boş
+      //    dizi de anlamlıdır: "bu şubeye liste yüklenmedi" demektir.
+      const sube = await rpcListeler('radio_sube_listeler');
+      if (sube) {
+        subeListeleriVar = true;
+        listelerSatirlari = sube;
+        return tekille(sube);
+      }
+      // 2) Eski yol: markanın bütün listeleri (yükleme özelliği kurulmadan önceki
+      //    davranış; şubeler boş kalmasın diye korunur).
+      const marka = await rpcListeler('radio_listeler');
+      if (marka) {
+        listelerSatirlari = marka;
+        return tekille(marka);
+      }
+    }
+    listelerSatirlari = null;
+    // Yönetim bu tabloyu oynatıcıya açmadıysa liste boş döner; seçici hiç
+    // görünmez ve oynatıcı eskisi gibi yönetimin atadığı kaynağı çalar.
+    try {
+      const sonuc = await client.from('brand_playlists')
+        .select('id,name,shuffle').eq('brand_id', brandId).order('name');
+      const data = sonuc && sonuc.data;
+      return Array.isArray(data) ? data : [];
+    } catch { return []; }
+  }
+
   async function listeParcalariniAl(id) {
+    // Sunucudan gelen satırlar elimizdeyse parçalar oradan gelir; kapalı
+    // tabloları boşuna okumayız.
+    if (listelerSatirlari) {
+      return listelerSatirlari
+        .filter(x => x.playlist_id === id && x.track_id)
+        .map(x => ({ track_id: x.track_id, title: x.title, storage_path: x.storage_path }));
+    }
     try {
       const bag = await client.from('brand_playlist_tracks')
         .select('track_id,sort_order').eq('playlist_id', id).order('sort_order');
@@ -591,16 +720,9 @@
   }
 
   async function listeleriHazirla() {
-    if (!brandId || typeof client.from !== 'function') return;
-    let data = null;
-    try {
-      const sonuc = await client.from('brand_playlists')
-        .select('id,name,shuffle').eq('brand_id', brandId).order('name');
-      data = sonuc && sonuc.data;
-    } catch { data = null; }
-    // Yönetim bu tabloyu dışarıya açmadıysa liste boş döner; seçici hiç
-    // görünmez ve oynatıcı eskisi gibi yönetimin atadığı kaynağı çalar.
-    listeler = Array.isArray(data) ? data : [];
+    if (!brandId) return;
+    listeler = await listeleriGetir();
+    if (subeListeleriVar && !listeler.length) return listesizDurdur();
     if (!listeler.length) return;
     try {
       const kayitli = localStorage.getItem(LISTE_ANAHTARI);
@@ -615,15 +737,13 @@
   // tazeleriz. Kuyruğa, çalan parçaya ve personelin seçimine dokunmayız: ekranda
   // başka bir listeye atlayan bir yayın olmasın.
   async function listeAdlariniTazele() {
-    if (!brandId || typeof client.from !== 'function') return;
-    let data = null;
-    try {
-      const sonuc = await client.from('brand_playlists')
-        .select('id,name,shuffle').eq('brand_id', brandId).order('name');
-      data = sonuc && sonuc.data;
-    } catch { data = null; }
-    if (!Array.isArray(data) || !data.length) return;
-    listeler = data;
+    if (!brandId) return;
+    const yeni = await listeleriGetir();
+    // Yüklü listeler sonradan boşaltıldıysa (yönetim hepsini kaldırdı) şube
+    // susar: yükleme listesi bu şubenin ne çalacağını söyleyen tek kaynaktır.
+    if (subeListeleriVar && !yeni.length) return listesizDurdur();
+    if (!yeni.length) return;
+    listeler = yeni;
     // Seçili liste artık yoksa otomatiğe döneriz: silinmiş bir listeyi çalmaya
     // çalışmak yerine yönetimin atadığı yayına dönmek doğru davranıştır.
     if (seciliListe && !listeler.some(l => l.id === seciliListe)) {
@@ -643,6 +763,28 @@
 
   const listeKutusu = byId('liste-sec');
   if (listeKutusu) listeKutusu.onchange = () => listeSec(listeKutusu.value);
+
+  // Anonslar: gerçek zamanlı akış tabloyu okuma yetkisine bağlıdır. Kapı
+  // kapatıldığında anonslar kaybolmasın diye cihaz sunucuyu yoklar
+  // (supabase/radio-erisim.sql). Akış hâlâ çalışıyorsa bu yoklama boş döner.
+  async function anonslariYokla() {
+    if (!gecerliAnahtar(key)) return;
+    let data = null;
+    try {
+      const r = await withTimeout(client.rpc('radio_anonslar', {
+        p_player_key: key,
+        // Açılıştan önceki anonsları yeniden çalmayız (gerçek zamanlı akışta da
+        // aynı sınır var): ilk yoklama yalnız son bir dakikayı sorar.
+        p_since: sonAnonsAni || new Date(bootTime - 60000).toISOString()
+      }), 10000);
+      data = r && r.data;
+    } catch { return; }
+    if (!Array.isArray(data) || !data.length) return;
+    data.forEach(a => {
+      sonAnonsAni = a.created_at;
+      playAnnouncement(a.storage_path, a.label);
+    });
+  }
 
   function subscribe() {
     client.channel('radio-' + key)
@@ -763,9 +905,16 @@
     // Çalan bir şey yokken bildirim göndermeyiz: boş bildirim sunucudaki parça
     // bilgisini siler, panel de dürüst davranıp atanmış kaynağı gösterir.
     setInterval(() => { ping(); if (calanParca) calaniBildir(calanParca); }, 60000);
-    setInterval(() => fetchBroadcast(), 120000);
+    // Kaynak değişikliği eskiden gerçek zamanlı akışla anında geliyordu; o akış
+    // tabloyu okuma yetkisine bağlı. Dışarıya kapandığında cihaz 30 sn'de bir
+    // yoklar, yönetim yayını değiştirdiğinde en geç yarım dakikada uygulanır.
+    setInterval(() => fetchBroadcast(), 30000);
+    setInterval(anonslariYokla, 15000);
     // Yönetim liste adını değiştirdiyse cihazı elle yenilemek gerekmesin.
     setInterval(listeAdlariniTazele, 600000);
+    // Şubeye liste yüklenmişse cihazı elle yenilemek gerekmesin: sustuğu sürece
+    // bir dakikada bir kontrol eder, yükleme gelince kendiliğinden çalmaya başlar.
+    setInterval(() => { if (subeListeleriVar && !listeler.length) listeleriHazirla(); }, 60000);
     setInterval(checkHours, 30000);
   }
 
