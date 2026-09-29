@@ -235,6 +235,7 @@
     klasorler: { nav: 'icerik', sub: 'klasorler' },
     anons: { nav: 'icerik', sub: 'anonslar' },
     markalar: { nav: 'musteri', sub: 'markalar' },
+    listeler: { nav: 'musteri', sub: 'listeler' },
     abonelikler: { nav: 'musteri', sub: 'abonelikler' },
     talepler: { nav: 'musteri', sub: 'talepler' }
   };
@@ -276,6 +277,7 @@
       return state.sub === 'saglik' ? '#/saglik' : (state.sub === 'gecmis' ? '#/gecmis' : '#/canli');
     }
     if (state.nav === 'icerik') return state.sub === 'anonslar' ? '#/anons' : '#/klasorler';
+    if (state.sub === 'listeler') return '#/listeler';
     if (state.sub === 'abonelikler') return '#/abonelikler';
     if (state.sub === 'talepler') return '#/talepler';
     return '#/markalar';
@@ -288,6 +290,7 @@
       folders: D.folders.length,
       announcements: D.announcements.length,
       brands: D.brands.length,
+      playlists: D.playlists.length,
       requests: D.requests ? D.requests.length : null,
       // Menüde "kaç şubede yayın çalışmaz" görünsün; sorun yoksa rozet çizilmez.
       saglik: D.players.length ? (V.saglikOzet(D).kotu || null) : null,
@@ -1494,6 +1497,65 @@
       }
 
       // --- çalma listeleri ---
+      // Elle yayın atama: marka klasöründeki kutulardan hedef (bütün şubeler ya
+      // da tek şube) ve kaynak (markanın listesi ya da bir yayın klasörü)
+      // seçilir. Kutular boş gelir ve hiçbir şey kendiliğinden uygulanmaz; kayıt
+      // yalnız bu düğmeyle yazılır. "kaldir" seçilirse atama silinir, liste ya
+      // da şube silinmez.
+      case 'liste-ata': {
+        if (!kullanici.adminMi) return hata('Yayın atamak yönetici yetkisi ister.');
+        const b = marka(id);
+        if (!b) return hata('Marka bulunamadı.');
+        const hedefKutusu = el('ata-hedef-' + b.id);
+        const kaynakKutusu = el('ata-kaynak-' + b.id);
+        const hedefDeger = hedefKutusu ? hedefKutusu.value : '';
+        const kaynakDeger = kaynakKutusu ? kaynakKutusu.value : '';
+        if (!hedefDeger) return hata('Önce hedefi seç: bütün şubeler ya da tek bir şube.');
+        if (!kaynakDeger) return hata('Önce bir çalma listesi seç.');
+        const p = hedefDeger === 'genel' ? null : D.players.find(x => x.id === hedefDeger);
+        if (hedefDeger !== 'genel' && !p) return hata('Seçilen şube bulunamadı.');
+        if (p && p.brand_id !== b.id) return hata('Bu şube başka bir markaya ait.');
+        const hedefAd = p ? p.label : b.name + ' · bütün şubeler';
+
+        // Kaynağı kaldırma: yalnız atama silinir, listeye ya da şubeye dokunulmaz.
+        if (kaynakDeger === 'kaldir') {
+          if (p && !V.subeKaynagi(D, p.id).tip) return bildir(p.label + ' zaten marka genelini çalıyor.');
+          const { error } = p
+            ? await client.from('player_broadcast').delete().eq('player_id', p.id)
+            : await client.from('brand_broadcast').delete().eq('brand_id', b.id);
+          if (error) return hata('Kaynak kaldırılamadı: ' + error.message);
+          await yenile(false);
+          bildir(hedefAd + ' artık marka genelini çalıyor');
+          return;
+        }
+
+        const [tur, kaynakId] = kaynakDeger.split(':');
+        const kaynakKayit = tur === 'folder' ? D.folders.find(f => f.id === kaynakId)
+          : D.playlists.find(x => x.id === kaynakId);
+        if (!kaynakKayit) return hata('Seçilen kaynak bulunamadı.');
+        // Çalma listesi markaya özeldir: başka markanın listesi atanamaz.
+        if (tur === 'playlist' && kaynakKayit.brand_id !== b.id) {
+          return hata('Bu çalma listesi başka bir markaya ait.');
+        }
+        const satir = {
+          folder_id: tur === 'folder' ? kaynakId : null,
+          playlist_id: tur === 'playlist' ? kaynakId : null,
+          updated_at: new Date().toISOString()
+        };
+        const { error } = p
+          ? await client.from('player_broadcast').upsert(Object.assign({ player_id: p.id }, satir), { onConflict: 'player_id' })
+          : await client.from('brand_broadcast').upsert(Object.assign({ brand_id: b.id }, satir), { onConflict: 'brand_id' });
+        if (error) {
+          if (error.code === 'PGRST205' && p) {
+            return hata('Şubeye özel yayın tablosu yok: supabase/radio-subeye-ozel-yayin.sql dosyasını çalıştırın.');
+          }
+          return hata('Yayın atanamadı: ' + error.message);
+        }
+        await yenile(false);
+        bildir(hedefAd + ' artık “' + kaynakKayit.name + '” çalıyor.');
+        return;
+      }
+
       // Liste detayı marka sayfasından açılır; liste yönetimi tek yerde
       // (marka sayfası) kalsın diye adres markayı da taşır.
       case 'list-open': {

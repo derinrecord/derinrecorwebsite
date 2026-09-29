@@ -296,26 +296,35 @@ test('katlanma tercihi tarayıcıda saklanır ve açılışta geri okunur', () =
   assert.match(source, /try \{\s*const kayit = V\.katliDurumOku/);
 });
 
-// Çalma listeleri tek yerde yönetilir: marka sayfası. Ayrı liste indeksi ekranı
-// (marka klasörleri + kendi şube tablosu + elle atama penceresi) menüden ve
-// rotalardan kaldırıldı; böylece aynı iş iki ekranda iki farklı dille
-// anlatılmıyor. Bu test o kararın sessizce geri gelmemesini sağlar.
-test('liste indeksi ekranı ve rotası kaldırıldı', () => {
-  const views = fs.readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
-  ['listeListesi', 'markaListePaneli', 'subeKaynakTablosu', 'ataPenceresi', 'genelOzet', 'listeKlasorleri']
-    .forEach(ad => assert.ok(!views.includes(ad), ad + ' kaldırılmalı'));
-  assert.ok(!views.includes('Çalma listeleri'), 'menüde liste indeksi satırı olmamalı');
-  assert.match(views,
-    /musteri: \[\['markalar', 'Markalar'\], \['abonelikler', 'Abonelikler'\], \['talepler', 'Talepler'\]\]/,
-    'Müşteri bölümü üç ekrandan oluşmalı');
+// Çalma listeleri bölümü marka klasörlerinden oluşur ve yayın ataması tamamen
+// elle yapılır: hedef (bütün şubeler/şube) ile kaynak (markanın listesi/yayın
+// klasörü) kutulardan okunur, kayıt yalnız UYGULA düğmesiyle yazılır. Panel
+// kendiliğinden atama yapmaz; liste oluşturmak şube eklemez, listeyi bağlamaz.
+test('panel marka klasöründen elle yayın atamayı bağlar', () => {
+  assert.match(source, /listeler: \{ nav: 'musteri', sub: 'listeler' \}/, 'rota olmalı');
+  assert.match(source, /if \(state\.sub === 'listeler'\) return '#\/listeler';/);
 
-  // Yönetim tarafı: rota, klasör olayları ve elle atama penceresi de gitmeli.
-  assert.ok(!source.includes("listeler: { nav: 'musteri', sub: 'listeler' }"), 'rota kaldırılmalı');
-  ['liste-yeni', 'liste-klasor-ekle', 'liste-klasor-ad', 'liste-klasor-sil', 'liste-tasi', 'ata-ac', 'ata-dinle']
-    .forEach(act => assert.ok(!source.includes("'" + act + "'"), act + ' olayı kalmamalı'));
+  assert.match(source, /case 'liste-ata'/);
+  assert.match(source, /if \(!kullanici\.adminMi\) return hata\('Yayın atamak/,
+    'atama yönetici kapısından geçmeli');
+  const blok = source.slice(source.indexOf("case 'liste-ata'"), source.indexOf("case 'list-open'"));
+  assert.match(blok, /el\('ata-hedef-' \+ b\.id\)/, 'hedef kutusu okunmalı');
+  assert.match(blok, /el\('ata-kaynak-' \+ b\.id\)/, 'kaynak kutusu okunmalı');
+  assert.ok(blok.includes("from('player_broadcast')"), "şube ataması player_broadcast'a yazılmalı");
+  assert.ok(blok.includes("from('brand_broadcast')"), "marka geneli brand_broadcast'a yazılmalı");
+  assert.match(blok, /\.delete\(\)\.eq\('player_id'/, 'şube ataması kaldırılabilmeli');
+  assert.match(blok, /\.delete\(\)\.eq\('brand_id'/, 'marka geneli kaldırılabilmeli');
+
+  // Hedef ya da kaynak seçilmeden yazma yok: ekran kendiliğinden atama yapmaz.
+  assert.match(blok, /if \(!hedefDeger\) return hata/, 'hedef seçilmeden yazılmamalı');
+  assert.match(blok, /if \(!kaynakDeger\) return hata/, 'kaynak seçilmeden yazılmamalı');
+  // Çalma listesi markaya özel: başka markanın listesi atanamaz.
+  assert.match(blok, /kaynakKayit\.brand_id !== b\.id/, 'yabancı liste reddedilmeli');
+
+  // Klasör tablosu geri gelmez: gruplama marka klasörüyle yapılır, SQL gerekmez.
   assert.ok(!source.includes('brand_playlist_folders'), 'klasör tablosu okunmamalı');
-  assert.ok(!source.includes("from('brand_playlists').select('id,playlist_folder_id')"),
-    'gruplama kolonu artık çekilmemeli');
+  ['liste-tasi', 'liste-klasor-ekle', 'liste-klasor-sil', 'ata-ac'].forEach(act =>
+    assert.ok(!source.includes("'" + act + "'"), act + ' olayı olmamalı'));
 });
 
 // Liste detayı marka sayfasının altında yaşar: adres markayı taşır, geri dönüş
