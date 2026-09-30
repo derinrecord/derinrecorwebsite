@@ -5,6 +5,10 @@
   // Sıralama/skor/geçiş hesabı harmonic-set.js'te: burası yalnız çizer ve yazar.
   const H = window.DerinHarmonicSet;
   const parseKey = H.parseKey;
+  // Ses dosyası yardımcıları tek kaynaktan gelir: audio-file-types.js.
+  // Supabase ücretsiz planda tek nesne sınırı 50 MiB (52.428.800 bayt); uzun bir
+  // WAV bunu aşar ve ham yükleme "size çok büyük" hatası verir.
+  const Ses = window.DerinAudioTypes;
 
   let client = null, tracks = [], set = [], selected = null;
 
@@ -20,6 +24,47 @@
     ayarYukle();          // hedef hız tercihi tarayıcıdan okunur
     byId('hm-app').hidden = false;
     await load();
+  }
+
+  // Parçalı yüklemeyi mümkün kılan yardımcılar yoksa (eski önbellek) yükleme
+  // yerine açık bir uyarı verilir; sessizce ham yüklemeye düşülmez.
+  const sesHazir = () => !!(Ses && Ses.parcaliYukle && Ses.parcalariCoz);
+
+  const djDepo = () => client.storage.from('dj-audio');
+
+  // Kova belirli bir MIME listesiyle kısıtlanmışsa tarayıcının bildirdiği tip
+  // reddedilir; bu durumda jenerik tip ile bir kez daha denenir.
+  async function djYukle(yol, dilim, tip) {
+    const ilk = await djDepo().upload(yol, dilim, { contentType: tip || 'audio/mpeg', upsert: false });
+    if (!ilk.error) return { path: yol, error: null };
+    if (/mime|content.?type/i.test(ilk.error.message || '')) {
+      const ikinci = await djDepo().upload(yol, dilim, { contentType: 'application/octet-stream', upsert: false });
+      if (!ikinci.error) return { path: yol, error: null };
+      return { path: null, error: ikinci.error };
+    }
+    return { path: null, error: ilk.error };
+  }
+  const imzaliUrl = async path => {
+    const { data, error } = await djDepo().createSignedUrl(path, 3600);
+    return error ? null : data.signedUrl;
+  };
+
+  // Parçalı dosya tek bir nesne gibi çalınamaz: parçalar indirilip tarayıcıda
+  // birleştirilir. Tek parçada doğrudan imzalı adres kullanılır.
+  let aktifBlobUrl = null;
+  async function sesUrl(path) {
+    if (!sesHazir() || !Ses.parcaliMi(path)) return imzaliUrl(path);
+    const parcalar = [];
+    for (const p of Ses.parcalariCoz(path)) {
+      const url = await imzaliUrl(p.path);
+      if (!url) return null;
+      const cevap = await fetch(url);
+      if (!cevap.ok) return null;
+      parcalar.push(await cevap.blob());
+    }
+    if (aktifBlobUrl) { try { URL.revokeObjectURL(aktifBlobUrl); } catch (e) {} }
+    aktifBlobUrl = URL.createObjectURL(new Blob(parcalar, { type: 'audio/mpeg' }));
+    return aktifBlobUrl;
   }
 
   async function load() {
@@ -126,7 +171,10 @@
   // hızlılar sonraki hızlı bölüm için". Ayar tarayıcıda saklanır ki her açılışta
   // yeniden girilmesin; motorun varsayılanı nötr kalır.
   const AYAR_ANAHTARI = 'derin-harmonik-hiz-ayari';
-  const VARSAYILAN_AYAR = { hedef: 126, tolerans: 4 };
+  const VARSAYILAN_AYAR = { hedef: 126, tolerans: 4, hizliEsik: 135, hizliHedef: 145, inisTolerans: 2 };
+  // İniş payı: tek bir küçük geri adım serbest, üst üste binemez. Ölçü komşu
+  // adım değil zirveden sapmadır (motor tarafında INIS_TOLERANS).
+  const INIS_PAYI_VARSAYILAN = 2;
 
   function ayarYukle() {
     let ayar = VARSAYILAN_AYAR;
@@ -134,7 +182,13 @@
       const ham = localStorage.getItem(AYAR_ANAHTARI);
       if (ham) {
         const okunan = JSON.parse(ham);
-        ayar = { hedef: Number(okunan.hedef) || null, tolerans: okunan.tolerans == null ? 4 : Number(okunan.tolerans) };
+        ayar = {
+          hedef: Number(okunan.hedef) || null,
+          tolerans: okunan.tolerans == null ? 4 : Number(okunan.tolerans),
+          hizliEsik: okunan.hizliEsik == null ? 135 : Number(okunan.hizliEsik),
+          hizliHedef: okunan.hizliHedef == null ? 145 : Number(okunan.hizliHedef),
+          inisTolerans: okunan.inisTolerans == null ? INIS_PAYI_VARSAYILAN : Number(okunan.inisTolerans)
+        };
       }
     } catch (e) { /* gizli pencere ya da bozuk kayıt: varsayılanla devam */ }
     H.hizAyari(ayar);
@@ -144,7 +198,11 @@
   function ayarKaydet(ayar) {
     H.hizAyari(ayar);
     try {
-      localStorage.setItem(AYAR_ANAHTARI, JSON.stringify({ hedef: ayar.hedef, tolerans: ayar.tolerans }));
+      localStorage.setItem(AYAR_ANAHTARI, JSON.stringify({
+        hedef: ayar.hedef, tolerans: ayar.tolerans,
+        hizliEsik: ayar.hizliEsik, hizliHedef: ayar.hizliHedef,
+        inisTolerans: ayar.inisTolerans
+      }));
     } catch (e) { /* saklanamazsa da ayar bu oturumda geçerli */ }
   }
 
@@ -159,11 +217,20 @@
       const ad = H.hizBolumu(t);
       (say[ad] || []).push(t);
     });
-    const sabit = set.filter(t => H.sabitlenen(t));
-    return `<p>Hedef: <b>${ayar.hedef} BPM</b> ± ${ayar.tolerans} BPM.
-        ${sabit.length ? `${sabit.length} parça hedefe sabitlenmiş sayılıyor:
-          ${sabit.slice(0, 6).map(t => `${safe(t.title)} (${t.bpm} → ${ayar.hedef})`).join(', ')}${sabit.length > 6 ? ' …' : ''}.` : 'Bu aralıkta parça yok.'}</p>
-      ${say.hizli.length ? `<p>Hızlı bölüm (setin sonuna): <b>${say.hizli.map(t => safe(t.title) + ' (' + t.bpm + ')').join(', ')}</b>.</p>`
+    const hizliSabit = set.filter(t => H.hizliSabit(Number(t.bpm) || 0));
+    // Hızlı bölümdekiler yukarıda ayrıca yazıldığı için burada tekrarlanmaz.
+    const sabit = set.filter(t => H.sabitlenen(t) && !H.hizliSabit(Number(t.bpm) || 0));
+    const hedefMetni = t => `${t.bpm} → ${H.etkinBpm(t)}`;
+    const liste = (dizi, adet) => dizi.slice(0, adet).map(t => `${safe(t.title)} (${hedefMetni(t)})`).join(', ')
+      + (dizi.length > adet ? ' …' : '');
+    return `<p>Ana bölüm hedefi: <b>${ayar.hedef} BPM</b> ± ${ayar.tolerans} BPM.
+        İniş payı <b>${ayar.inisTolerans} BPM</b> (zirveden en fazla bu kadar aşağı).
+        ${hizliSabit.length ? `<b>${hizliSabit.length} parça ${ayar.hizliEsik} BPM üstü olduğu için
+          hızlı bölümde ${ayar.hizliHedef} BPM'e sabitleniyor:</b>
+          ${liste(hizliSabit, 6)}.` : `${ayar.hizliEsik} BPM üstünde parça yok.`}</p>
+      ${sabit.length ? `<p>Hedefe çekilen ${sabit.length} parça: ${liste(sabit, 6)}.</p>`
+        : '<p style="opacity:.6">Bu aralıkta parça yok.</p>'}
+      ${say.hizli.length ? `<p>Hızlı bölüm (setin sonuna): <b>${say.hizli.map(t => safe(t.title) + ' (' + hedefMetni(t) + ')').join(', ')}</b>.</p>`
         : '<p style="opacity:.6">Hızlı bölüm boş.</p>'}
       ${say.giris.length ? `<p>Açılış (setin başına): <b>${say.giris.map(t => safe(t.title) + ' (' + t.bpm + ')').join(', ')}</b>.</p>` : ''}`;
   }
@@ -173,12 +240,22 @@
     return `<section class="hm-panel" style="margin-top:20px">
       <h2>HEDEF HIZ — BÖLÜMLÜ SET</h2>
       <p style="font-size:12px;opacity:.65;margin:0 0 12px">
+        Sıralamada öncelik hızdır: set her zaman <b>yavaştan hızlıya</b> akar, ton
+        uyumu bu iskeletin içinde aranır.<br>
         Ana bölümü tek hıza sabitliyorsan (ör. 122 civarı parçaları 126'da çalıyorsan)
         bu aralıktaki parçalar <b>aynı hızda</b> sayılır — aralarında hız farkı kalmaz.
-        Hedefin üstünde kalanlar <b>setin sonundaki hızlı bölüme</b>, altında kalanlar açılışa ayrılır.</p>
+        Hedefin üstünde kalanlar <b>setin sonundaki hızlı bölüme</b>, altında kalanlar açılışa ayrılır.
+        Hızlı bölüm de tek hıza çekilir: <b>eşiğin üstündeki parçalar hızlı hedefte</b> çalınır
+        (ör. 135 üstü → 145).<br>
+        <b>İniş payı</b>, setin zirvesinden en fazla ne kadar aşağı inebileceğidir:
+        2 BPM'lik tek bir dalma serbest, arka arkaya gelen inişler cezalı. 0 yazarsan
+        set kıl payı geri dönmez.</p>
       <div class="hm-edit" style="border:0;padding-top:0;margin-top:0">
-        <input id="hz-hedef" type="number" value="${ayar.hedef || ''}" placeholder="Hedef BPM (126)">
+        <input id="hz-hedef" type="number" value="${ayar.hedef || ''}" placeholder="Ana hedef BPM (126)">
         <input id="hz-tol" type="number" value="${ayar.tolerans}" placeholder="± BPM">
+        <input id="hz-esik" type="number" value="${ayar.hizliEsik}" placeholder="Hızlı eşik BPM (135)">
+        <input id="hz-hizli" type="number" value="${ayar.hizliHedef || ''}" placeholder="Hızlı hedef BPM (145)">
+        <input id="hz-inis" type="number" value="${ayar.inisTolerans}" placeholder="İniş payı BPM (2)">
         <button id="hz-uygula">UYGULA</button>
         <button id="hz-kapat" style="background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2)">KAPAT</button>
       </div>
@@ -340,20 +417,11 @@
         daha geliyor. Setin en hızlı parçası sona yakın olmalı.</p>`);
     }
 
-    // Geriye düşen adımlar: köprü değil, sıra değişikliği ister.
+    // Geriye düşen adımlar: köprü değil, sıra değişikliği ister. Ölçü zirveden
+    // sapmadır; küçük adımlarla oluşan uzun inişler de böylece yakalanır.
     y.inisler.forEach(g => satirlar.push(`<p class="hm-warn">“${safe(g.onceki.title)}” →
-      “${safe(g.sonraki.title)}”: hız <b>${g.dusus} BPM</b> düşüyor. Bu ikilinin sırasını
-      değiştir ya da araya daha yavaş bir parça koy.</p>`));
-
-    // Tolerans içindeki küçük inişler saklanmaz: eğri yükseliyor derken görünen
-    // düşüşlerin sebebi de yazılsın.
-    const yumusak = set.slice(1)
-      .map((t, i) => ({ onceki: set[i], sonraki: t, dusus: (Number(set[i].bpm) || 0) - (Number(t.bpm) || 0) }))
-      .filter(x => x.dusus > 0 && x.dusus <= H.INIS_TOLERANS);
-    if (yumusak.length) {
-      satirlar.push(`<p style="opacity:.7">Yumuşak inişler (${H.INIS_TOLERANS} BPM'e kadar serbest):
-        ${yumusak.map(x => `“${safe(x.onceki.title)}” → “${safe(x.sonraki.title)}” ${x.dusus} BPM`).join(' · ')}.</p>`);
-    }
+      “${safe(g.sonraki.title)}”: hız zirveden <b>${g.dusus} BPM</b> aşağı iniyor. Bu ikilinin
+      sırasını değiştir ya da araya daha yavaş bir parça koy.</p>`));
 
     // En büyük çıkış: araya ısınma parçası koymak için hedef hız.
     let atlama = null;
@@ -571,8 +639,10 @@
                 ? `<span class="hm-chip up">HIZ DÜŞÜYOR · ${g.inis.dusus} BPM</span>` : '';
               // Hedef hıza sabitlenen ve hızlı bölüme kalan parçalar işaretlenir.
               const bolumAdi = H.hizBolumu(t);
+              const bolumHedefi = bolumAdi === 'ana' ? H.hizAyari().hedef
+                : (bolumAdi === 'hizli' && H.hizliSabit(Number(t.bpm) || 0) ? H.hizAyari().hizliHedef : null);
               const bolum = bolumAdi
-                ? `<span class="hm-chip ${bolumAdi === 'hizli' ? 'up' : 'off'}">${BOLUM_ETIKETI[bolumAdi]}${bolumAdi === 'ana' ? ' · ' + H.hizAyari().hedef : ''}</span>` : '';
+                ? `<span class="hm-chip ${bolumAdi === 'hizli' ? 'up' : 'off'}">${BOLUM_ETIKETI[bolumAdi]}${bolumHedefi ? ' · ' + bolumHedefi : ''}</span>` : '';
               return `<li draggable="true" data-idx="${i}" style="cursor:grab">
                 <span><strong>${safe(t.title)}</strong>
                   <small>${meta(t)}</small>
@@ -676,10 +746,28 @@
       let audio_path = null;
       const file = byId('nt-file').files?.[0];
       if (file) {
-        const path = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${file.name.split('.').pop() || 'mp3'}`;
-        const up = await client.storage.from('dj-audio').upload(path, file, { contentType: file.type || 'audio/mpeg' });
-        if (up.error) { msg.textContent = 'Yükleme hatası: ' + up.error.message; return; }
-        audio_path = path;
+        if (!sesHazir()) { msg.textContent = 'Ses yükleme yardımcıları yüklenemedi (audio-file-types.js). Sayfayı yenileyin.'; return; }
+        if (!Ses.gecerli(file)) {
+          msg.textContent = `“${Ses.uzanti(file.name)}” uzantısı desteklenmiyor. Desteklenenler: ${Ses.desteklenenler()}.`;
+          return;
+        }
+        const taban = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+        const up = await Ses.parcaliYukle({
+          yukle: djYukle,
+          sil: yollar => djDepo().remove(yollar)
+        }, taban, file, (i, n) => {
+          msg.textContent = n > 1
+            ? `Ses yükleniyor… parça ${i}/${n} (${Ses.boyut(file.size)})`
+            : `Ses yükleniyor… (${Ses.boyut(file.size)})`;
+        });
+        if (up.error) {
+          msg.textContent = 'Yükleme hatası: ' + up.error.message
+            + (/maximum allowed size|too large|exceeded/i.test(up.error.message)
+              ? ' — dosya tek nesne sınırını aşmış görünüyor; sayfayı yenileyip tekrar dene.' : '');
+          return;
+        }
+        audio_path = up.path;
+        if (up.toplam > 1) msg.textContent = `Ses ${up.toplam} parça hâlinde yüklendi.`;
       }
       const { error } = await client.from('dj_tracks').insert({
         title, artist: byId('nt-artist').value.trim() || null, audio_path,
@@ -709,7 +797,7 @@
         + (y.inisSayi ? ` Yay ${y.inisSayi} yerde geriye düşüyor.`
           : (y.yukselen ? ' Set yavaştan hızlıya akıyor.'
             : ' İlk yarı ikinci yarıdan hızlı; yay geriye dönüyor.'))
-        + (ayar.hedef ? ` Bölümler: ${BOLUM_ETIKETI[bolum] || 'ana bölüm'} → … → ${BOLUM_ETIKETI[H.hizBolumu(set[set.length - 1])] || 'ana bölüm'} (${ayar.hedef} BPM'e sabit).` : '');
+        + (ayar.hedef ? ` Bölümler: ${BOLUM_ETIKETI[bolum] || 'ana bölüm'} → … → ${BOLUM_ETIKETI[H.hizBolumu(set[set.length - 1])] || 'ana bölüm'} (ana ${ayar.hedef} BPM, hızlı ${ayar.hizliHedef} BPM'e sabit).` : '');
     };
 
     byId('hm-auto').onclick = () => {
@@ -753,7 +841,11 @@
       ev.stopPropagation();
       if (!confirm('Parça katalogdan silinecek. Emin misiniz?')) return;
       const t = tracks.find(x => x.id === el.dataset.del);
-      if (t?.audio_path) await client.storage.from('dj-audio').remove([t.audio_path]);
+      // Parçalı yüklemede dosya birden çok nesnedir: hepsi birlikte silinir.
+      if (t?.audio_path) {
+        const yollar = sesHazir() ? Ses.parcalariCoz(t.audio_path).map(p => p.path) : [t.audio_path];
+        await djDepo().remove(yollar);
+      }
       await client.from('dj_tracks').delete().eq('id', el.dataset.del);
       set = set.filter(x => x.id !== el.dataset.del);
       if (selected?.id === el.dataset.del) selected = null;
@@ -788,13 +880,22 @@
     byId('hz-uygula').onclick = () => {
       const hedef = Number(byId('hz-hedef').value) || null;
       const tolerans = byId('hz-tol').value === '' ? 4 : Number(byId('hz-tol').value);
-      ayarKaydet({ hedef, tolerans: isNaN(tolerans) ? 4 : tolerans });
+      const hizliEsik = byId('hz-esik').value === '' ? 135 : Number(byId('hz-esik').value);
+      const hizliHedef = Number(byId('hz-hizli').value) || null;
+      const inisHam = byId('hz-inis').value === '' ? INIS_PAYI_VARSAYILAN : Number(byId('hz-inis').value);
+      ayarKaydet({
+        hedef,
+        tolerans: isNaN(tolerans) ? 4 : tolerans,
+        hizliEsik: isNaN(hizliEsik) ? 135 : hizliEsik,
+        hizliHedef,
+        inisTolerans: isNaN(inisHam) ? INIS_PAYI_VARSAYILAN : Math.max(0, inisHam)
+      });
       if (set.length > 1) set = H.autoOrder(set);
       render();
       byId('hm-status').textContent = siralamaNotu();
     };
     byId('hz-kapat').onclick = () => {
-      ayarKaydet({ hedef: null, tolerans: 4 });
+      ayarKaydet({ hedef: null, tolerans: 4, hizliEsik: 135, hizliHedef: 145, inisTolerans: INIS_PAYI_VARSAYILAN });
       render();
     };
 
@@ -827,9 +928,9 @@
         document.querySelectorAll('[data-play]').forEach(b => b.textContent = '▶');
         if (window.__hmPlaying === btn.dataset.play) { window.__hmPlaying = null; return; }
       }
-      const { data, error } = await client.storage.from('dj-audio').createSignedUrl(btn.dataset.path, 3600);
-      if (error) { byId('hm-status').textContent = 'Ses açılamadı: ' + error.message; return; }
-      window.__hmAudio = new Audio(data.signedUrl);
+      const url = await sesUrl(btn.dataset.path);
+      if (!url) { byId('hm-status').textContent = 'Ses açılamadı: dosya okunamadı.'; return; }
+      window.__hmAudio = new Audio(url);
       window.__hmPlaying = btn.dataset.play;
       window.__hmAudio.onended = () => { btn.textContent = '▶'; window.__hmPlaying = null; };
       await window.__hmAudio.play();

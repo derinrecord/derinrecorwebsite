@@ -895,7 +895,7 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
 <script>
 // ---- Sunucu taklidi: auth.js ve Supabase yerine geçer, yalnız önizlemede.
 (function () {
-  const satirlar = [{"id":"t1","title":"Kapadokya","artist":"Mahmut Orhan","camelot":"8A","key_name":"A minor","makam":"Hicaz","bpm":122,"energy":4,"duration_sec":305,"audio_path":null},{"id":"t2","title":"Gece Treni","artist":"Ilkay Sencan","camelot":"9A","key_name":"E minor","makam":null,"bpm":124,"energy":5,"duration_sec":280,"audio_path":null},{"id":"t3","title":"Kopuk Parça","artist":"Konuk","camelot":"4B","key_name":"F# major","makam":null,"bpm":96,"energy":7,"duration_sec":260,"audio_path":null},{"id":"t4","title":"Sahil","artist":"Boral Kibil","camelot":"9B","key_name":"B major","makam":null,"bpm":125,"energy":5,"duration_sec":300,"audio_path":null},{"id":"t5","title":"Yükseliş","artist":"Hakan Akkus","camelot":"10B","key_name":"D major","makam":null,"bpm":126,"energy":6,"duration_sec":290,"audio_path":null},{"id":"t6","title":"Sabah Rüzgârı","artist":"Mahmut Orhan","camelot":"8B","key_name":"C major","makam":null,"bpm":123,"energy":5,"duration_sec":310,"audio_path":null},{"id":"t7","title":"Tonu Girilmemiş","artist":"Konuk","camelot":null,"key_name":null,"makam":null,"bpm":120,"energy":4,"duration_sec":240,"audio_path":null},{"id":"t8","title":"Derin Bas","artist":"Konuk","camelot":"5A","key_name":"C minor","makam":null,"bpm":118,"energy":3,"duration_sec":270,"audio_path":null},{"id":"t9","title":"Hızlı Vites","artist":"Stoto","camelot":"8A","key_name":"A minor","makam":null,"bpm":130,"energy":6,"duration_sec":275,"audio_path":null},{"id":"t10","title":"Gece Vardiyası","artist":"Sako Isoyan","camelot":"9A","key_name":"E minor","makam":null,"bpm":131,"energy":6,"duration_sec":268,"audio_path":null}];
+  const satirlar = [{"id":"t1","title":"Kapadokya","artist":"Mahmut Orhan","camelot":"8A","key_name":"A minor","makam":"Hicaz","bpm":122,"energy":4,"duration_sec":305,"audio_path":null},{"id":"t2","title":"Gece Treni","artist":"Ilkay Sencan","camelot":"9A","key_name":"E minor","makam":null,"bpm":124,"energy":5,"duration_sec":280,"audio_path":null},{"id":"t3","title":"Kopuk Parça","artist":"Konuk","camelot":"4B","key_name":"F# major","makam":null,"bpm":96,"energy":7,"duration_sec":260,"audio_path":null},{"id":"t4","title":"Sahil","artist":"Boral Kibil","camelot":"9B","key_name":"B major","makam":null,"bpm":125,"energy":5,"duration_sec":300,"audio_path":null},{"id":"t5","title":"Yükseliş","artist":"Hakan Akkus","camelot":"10B","key_name":"D major","makam":null,"bpm":126,"energy":6,"duration_sec":290,"audio_path":null},{"id":"t6","title":"Sabah Rüzgârı","artist":"Mahmut Orhan","camelot":"8B","key_name":"C major","makam":null,"bpm":123,"energy":5,"duration_sec":310,"audio_path":null},{"id":"t7","title":"Tonu Girilmemiş","artist":"Konuk","camelot":null,"key_name":null,"makam":null,"bpm":120,"energy":4,"duration_sec":240,"audio_path":null},{"id":"t8","title":"Derin Bas","artist":"Konuk","camelot":"5A","key_name":"C minor","makam":null,"bpm":118,"energy":3,"duration_sec":270,"audio_path":null},{"id":"t9","title":"Hızlı Vites","artist":"Stoto","camelot":"8A","key_name":"A minor","makam":null,"bpm":130,"energy":6,"duration_sec":275,"audio_path":null},{"id":"t10","title":"Gece Vardiyası","artist":"Sako Isoyan","camelot":"9A","key_name":"E minor","makam":null,"bpm":131,"energy":6,"duration_sec":268,"audio_path":null},{"id":"t11","title":"Zirve","artist":"Mahmut Orhan","camelot":"8A","key_name":"A minor","makam":null,"bpm":140,"energy":7,"duration_sec":285,"audio_path":null},{"id":"t12","title":"Son Kuvvet","artist":"Boral Kibil","camelot":"9A","key_name":"E minor","makam":null,"bpm":152,"energy":8,"duration_sec":262,"audio_path":null}];
   const yazmaKapali = { message: 'Önizleme: yazma kapalı.' };
   const tablo = () => ({
     select: () => ({ order: () => Promise.resolve({ data: satirlar, error: null }) }),
@@ -914,6 +914,178 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     client: { from: tablo, storage: { from: () => kova } }
   };
 })();
+</script>
+<!-- Ses dosyası yardımcıları: tek nesne sınırını aşan kayıtlar parçalanarak yüklenir. -->
+<script>
+// Ses dosyası tipleri, boyut sınırı ve parçalama yardımcıları.
+//
+// Hem tarayıcıda (window.DerinAudioTypes) hem Node testlerinde (require) kullanılır.
+//
+// NEDEN PARÇALAMA VAR
+// Supabase ücretsiz planında tek nesne (object) sınırı tam olarak 52.428.800 bayt
+// (50 MiB). Canlıda ölçülerek doğrulandı: 52.428.800 bayt kabul edilir,
+// 52.428.801 bayt "The object exceeded the maximum allowed size" (HTTP 413) ile
+// reddedilir. WAV yaklaşık 10 MB/dakika olduğu için 5 dakikadan uzun kayıtlar bu
+// sınırı aşar. Çözüm: dosyayı 45 MB'lık parçalara bölüp sırayla yüklemek.
+//
+// Parçalar orijinal dosyanın kesintisiz dilimleridir (parça 1 dosya başlığını
+// taşır, sonraki parçalar ham devamıdır). Sırayla birleştirildiğinde dosya
+// BİT DÜZEYİNDE birebir aynı çıkar; kayıp yoktur, yeniden kodlama yoktur.
+(function () {
+  var TIPLER = {
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    wave: 'audio/wav',
+    flac: 'audio/flac',
+    m4a: 'audio/mp4',
+    mp4: 'audio/mp4',
+    aac: 'audio/aac',
+    ogg: 'audio/ogg',
+    oga: 'audio/ogg',
+    opus: 'audio/opus',
+    aif: 'audio/aiff',
+    aiff: 'audio/aiff',
+    aifc: 'audio/aiff',
+    webm: 'audio/webm',
+    caf: 'audio/x-caf'
+  };
+
+  // Tek nesne için servis tavanı (ölçülen değer).
+  var YUKLEME_SINIRI = 52428800;
+  // Parça boyutu sınırın altında tutulur (pay bırakılır).
+  var PARCA_BOYUTU = 45 * 1048576;
+
+  var UZANTILAR = Object.keys(TIPLER);
+
+  function uzanti(ad) {
+    return (String(ad == null ? '' : ad).split('.').pop() || '').toLowerCase();
+  }
+
+  function tip(dosya) {
+    var uz = uzanti(dosya && dosya.name);
+    return TIPLER[uz] || (dosya && dosya.type) || 'audio/mpeg';
+  }
+
+  function gecerli(dosya) {
+    return UZANTILAR.indexOf(uzanti(dosya && dosya.name)) !== -1;
+  }
+
+  function accept() {
+    return UZANTILAR.map(function (e) { return '.' + e; }).join(',') + ',audio/*';
+  }
+
+  function desteklenenler() {
+    return UZANTILAR.join(', ');
+  }
+
+  function boyut(bayt) {
+    if (typeof bayt !== 'number' || !isFinite(bayt) || bayt < 0) return '0 KB';
+    return bayt >= 1048576
+      ? (bayt / 1048576).toFixed(1) + ' MB'
+      : Math.max(1, Math.round(bayt / 1024)) + ' KB';
+  }
+
+  // Dosyanın bayt aralıklarını döner: 53 MB / 45 MB → [[0,47185920],[47185920,55574528]]
+  function dilimSinirlari(toplamBayt, parcaBoyutu) {
+    var limit = parcaBoyutu || PARCA_BOYUTU;
+    if (!toplamBayt || toplamBayt <= 0) return [[0, 0]];
+    var sinirlar = [];
+    for (var bas = 0; bas < toplamBayt; bas += limit) {
+      sinirlar.push([bas, Math.min(toplamBayt, bas + limit)]);
+    }
+    return sinirlar;
+  }
+
+  function parcaSayisi(toplamBayt) {
+    return dilimSinirlari(toplamBayt).length;
+  }
+
+  // Yol sonuna eklenen parça etiketi: -p02of03
+  function parcaEki(index, toplam) {
+    var i = String(index); while (i.length < 2) i = '0' + i;
+    var n = String(toplam); while (n.length < 2) n = '0' + n;
+    return '-p' + i + 'of' + n;
+  }
+
+  var PARCA_DESENI = /-p(\d{2})of(\d{2})(\.[^.\/]+)$/;
+
+  function parcaliMi(path) {
+    return PARCA_DESENI.test(String(path == null ? '' : path));
+  }
+
+  // "<antrenor>/<proje>-<zaman>-p02of03.wav" → üç parçanın da yolları.
+  // Parçalı olmayan yolda tek elemanlı liste döner.
+  function parcalariCoz(path) {
+    var yol = String(path == null ? '' : path);
+    var eslesme = PARCA_DESENI.exec(yol);
+    if (!eslesme) return [{ path: yol, index: 1, toplam: 1 }];
+    var toplam = parseInt(eslesme[2], 10) || 1;
+    var liste = [];
+    for (var i = 1; i <= toplam; i++) {
+      liste.push({
+        path: yol.replace(PARCA_DESENI, parcaEki(i, toplam) + '$3'),
+        index: i,
+        toplam: toplam
+      });
+    }
+    return liste;
+  }
+
+  // Dosya parçalanacak mı? (kullanıcıya bilgi vermek için)
+  function buyukMu(dosya) {
+    return !!dosya && dosya.size > PARCA_BOYUTU;
+  }
+
+  // Parçalı yükleme: tek nesne sınırı aşıldığında dosyayı dilimlere bölüp
+  // sırayla yükler. Girdi/çıktı dışarıdan verilir (io) — böylece hem tarayıcı
+  // (Supabase storage) hem testler (sahte io) aynı mantığı kullanır.
+  //   io.yukle(yol, dilim, tip) -> Promise<{error}>
+  //   io.sil(yollar)            -> Promise (isteğe bağlı)
+  // Döner: {error, path, toplam} — hata hâlinde yüklenmiş parçalar temizlenir.
+  async function parcaliYukle(io, temelYol, dosya, ilerleme) {
+    var toplam = parcaSayisi(dosya.size);
+    var uz = uzanti(dosya.name);
+    var mime = tip(dosya);
+    var sinirlar = dilimSinirlari(dosya.size);
+    var yuklenen = [];
+    for (var i = 1; i <= sinirlar.length; i++) {
+      if (ilerleme) ilerleme(i, sinirlar.length);
+      var yol = temelYol + (toplam > 1 ? parcaEki(i, toplam) : '') + '.' + uz;
+      var sonuc = await io.yukle(yol, dosya.slice(sinirlar[i - 1][0], sinirlar[i - 1][1]), mime);
+      if (sonuc && sonuc.error) {
+        // Yarım kalan parçaları temizle: depoda eksik dosya kalmasın.
+        if (yuklenen.length && io.sil) { try { await io.sil(yuklenen); } catch (e) {} }
+        return { error: sonuc.error, path: null, toplam: toplam, yol: yol, parca: i };
+      }
+      yuklenen.push(yol);
+    }
+    return { error: null, path: yuklenen[0], toplam: toplam, yol: yuklenen[0], parca: 1 };
+  }
+
+  var api = {
+    TIPLER: TIPLER,
+    UZANTILAR: UZANTILAR,
+    YUKLEME_SINIRI: YUKLEME_SINIRI,
+    PARCA_BOYUTU: PARCA_BOYUTU,
+    uzanti: uzanti,
+    tip: tip,
+    gecerli: gecerli,
+    accept: accept,
+    desteklenenler: desteklenenler,
+    boyut: boyut,
+    dilimSinirlari: dilimSinirlari,
+    parcaSayisi: parcaSayisi,
+    parcaEki: parcaEki,
+    parcaliMi: parcaliMi,
+    parcalariCoz: parcalariCoz,
+    buyukMu: buyukMu,
+    parcaliYukle: parcaliYukle
+  };
+
+  if (typeof window !== 'undefined') window.DerinAudioTypes = api;
+  if (typeof module !== 'undefined') module.exports = api;
+})();
+
 </script>
 <script>
 // Harmonik set motoru: saf hesap, DOM yok.
@@ -964,31 +1136,65 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
   // ikisi de 126'da çalınır. Motor da böyle saysın: hedefin ±tolerans içindeki
   // parçalar hedef hızda kabul edilir, hedefin üstündekiler setin sonundaki
   // hızlı bölüme ayrılır. Varsayılan kapalıdır; ayar ekrandan verilir.
+  //
+  // Hızlı bölümün de kendi hedefi vardır: "135'in üstündeki parçalar 145'te
+  // çalacak" gibi. Eşiğin üstündeki her parça hızlı hedefe çekilir, böylece
+  // hızlı bölüm de tek hızda akar ve 137 ile 152 arasında fark kalmaz.
   const HEDEF_TOLERANS = 4;
-  let ayar = { hedef: null, tolerans: HEDEF_TOLERANS };
+  const HIZLI_ESIK = 135;
+  const HIZLI_HEDEF = 145;
+  // İniş payı: tek bir küçük geri adım serbesttir, ama üst üste binemez. Ölçü
+  // komşu adım değil ZİRVEDEN sapmadır — 126 → 125 → 124 → 122 gibi adımlar
+  // tek tek küçük görünse de zirveden 4 BPM aşağı iner ve liste iniş sırası
+  // gibi okunur. Bu yüzden pay, zirveden toplam sapmayı sınırlar: 2 BPM'lik
+  // tek bir dalma serbest, arka arkaya gelen dalmаlar cezalı.
+  const INIS_TOLERANS = 2;
+  let ayar = {
+    hedef: null, tolerans: HEDEF_TOLERANS,
+    hizliEsik: HIZLI_ESIK, hizliHedef: HIZLI_HEDEF,
+    inisTolerans: INIS_TOLERANS
+  };
 
   function hizAyari(yeni) {
     if (yeni && typeof yeni === 'object') {
       ayar = {
         hedef: Number(yeni.hedef) || null,
-        tolerans: yeni.tolerans == null ? HEDEF_TOLERANS : Math.max(0, Number(yeni.tolerans) || 0)
+        tolerans: yeni.tolerans == null ? HEDEF_TOLERANS : Math.max(0, Number(yeni.tolerans) || 0),
+        hizliEsik: yeni.hizliEsik == null ? HIZLI_ESIK : Math.max(0, Number(yeni.hizliEsik) || 0),
+        hizliHedef: yeni.hizliHedef === null ? null
+          : (yeni.hizliHedef == null || !Number(yeni.hizliHedef) ? HIZLI_HEDEF : Number(yeni.hizliHedef)),
+        inisTolerans: yeni.inisTolerans == null
+          ? INIS_TOLERANS : Math.max(0, Number(yeni.inisTolerans) || 0)
       };
     }
-    return { hedef: ayar.hedef, tolerans: ayar.tolerans };
+    return {
+      hedef: ayar.hedef, tolerans: ayar.tolerans,
+      hizliEsik: ayar.hizliEsik, hizliHedef: ayar.hizliHedef,
+      inisTolerans: ayar.inisTolerans
+    };
   }
 
-  // Parçanın çalınacağı hız: hedef civarındaysa hedef, değilse kendi hızı.
+  // Eşiğin üstündeki parça hızlı bölümde tek hıza çekilir mi?
+  const hizliSabit = bpm => !!ayar.hedef && !!ayar.hizliHedef
+    && Number(bpm) > 0 && Number(bpm) > ayar.hizliEsik;
+
+  // Parçanın çalınacağı hız: eşiğin üstündeyse hızlı hedef, hedef civarındaysa
+  // hedef, değilse kendi hızı. (Sıra önemli: 140 BPM'lik parça ana hedefin
+  // dışındadır, hızlı hedefe çekilir.)
   function etkinBpm(deger) {
     const bpm = Number(deger && deger.bpm) || 0;
     if (!bpm || !ayar.hedef) return bpm;
+    if (hizliSabit(bpm)) return ayar.hizliHedef;
     return Math.abs(bpm - ayar.hedef) <= ayar.tolerans ? ayar.hedef : bpm;
   }
 
-  // Parçanın setteki yeri: hedefin altı açılış, hedefteki ana bölüm, üstü hızlı
-  // bölüm. Hedef kapalıysa etiket yok.
+  // Parçanın setteki yeri: hedefin altı açılış, hedefli ve hızlı hedefli
+  // parçalar ana/hızlı bölüm, hedefin üstü hızlı bölüm. Hedef kapalıysa etiket
+  // yok.
   function hizBolumu(parca) {
     const bpm = Number(parca && parca.bpm) || 0;
     if (!bpm || !ayar.hedef) return null;
+    if (hizliSabit(bpm)) return 'hizli';
     const fark = bpm - ayar.hedef;
     if (Math.abs(fark) <= ayar.tolerans) return 'ana';
     return fark > 0 ? 'hizli' : 'giris';
@@ -996,8 +1202,11 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
 
   // Sabitlenen parçalar "hedefe çekilmiş" sayılır: köprü önerisi de hedef hız
   // üzerinden verilir, çünkü kullanıcı zaten orada çalacak.
-  const sabitlenen = parca => !!ayar.hedef && Number(parca && parca.bpm)
-    && Math.abs(Number(parca.bpm) - ayar.hedef) <= ayar.tolerans;
+  const sabitlenen = parca => {
+    const bpm = Number(parca && parca.bpm) || 0;
+    if (!bpm || !ayar.hedef) return false;
+    return hizliSabit(bpm) || Math.abs(bpm - ayar.hedef) <= ayar.tolerans;
+  };
 
   // Tempo ölçüsü. Eşikler DJ pratiğinden: 3 BPM'e kadar fark duyulmaz, 5 BPM
   // perde kaydırmasıyla kapanır. 5 BPM'i aşan iki parça ton tutsa bile yan yana
@@ -1042,19 +1251,23 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
   // görmez, çünkü tek tek bakıldığında 122 → 124 ile 124 → 122 eşit derecede
   // yakındır. Oysa set yavaştan hızlıya akmalı: adım adım hız düşüşü ve zirveyi
   // erken harcamak yayı bozar. Ölçüt O(n) kalır (sıralama yapılmaz).
-  const INIS_TOLERANS = 2;   // 2 BPM'e kadar düşüş normal: "yumuşak iniş"
-  const INIS_CEZA = 12;      // tolerans üstü her BPM için
+  // Her ters BPM için ceza. Eşik ilkeli: tek bir hamle iki komşuluğu birden
+  // değiştirir, her birinde en fazla kopuk cezası kadar (300 + 66) kazanç olur:
+  // 2 × 366 = 732. Ceza bundan büyük seçildiği için ton kazancı uğruna hız
+  // sırası ASLA bozulmaz: önce yavaştan hızlıya akış, sonra ton uyumu.
+  const INIS_CEZA = 800;
   const YAY_CEZA = 3;        // ilk yarı ikinci yarıdan hızlıysa her BPM için
   const ZIRVE_CEZA = 10;     // zirveden sonra izin verilenden fazla parça başına
   const ZIRVE_PAYI = 0.2;    // setin en çok bu kadarı zirveden sonra gelebilir
 
-  // Adım yönü: hızdan yavaşa dönmek yayı bozar. Tolerans içindeki küçük inişler
-  // (aynı ton ilişkisindeki "yumuşak iniş" gibi) cezasız kalır.
+  // Adım yönü: hızdan yavaşa dönmek yayı bozar. Ölçü HAM BPM üzerindendir —
+  // kullanıcı listede ham hızı görür, dolayısıyla liste her zaman yavaştan
+  // hızlıya okunmalı. Sabitleme yalnız müzikal mesafeyi (tempo) etkiler.
   function inisCeza(a, b) {
-    const x = etkinBpm(a), y = etkinBpm(b);
+    const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
     if (!x || !y) return 0;
     const dusus = x - y;
-    return dusus > INIS_TOLERANS ? (dusus - INIS_TOLERANS) * INIS_CEZA : 0;
+    return dusus > ayar.inisTolerans ? (dusus - ayar.inisTolerans) * INIS_CEZA : 0;
   }
 
   const ortBpm = dizi => {
@@ -1068,13 +1281,20 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     const sira = Array.isArray(set) ? set : [];
     const inisler = [];
     let inisToplam = 0;
-    for (let i = 1; i < sira.length; i++) {
-      const x = etkinBpm(sira[i - 1]);
-      const y = etkinBpm(sira[i]);
-      if (!x || !y) continue;
-      if (x - y > INIS_TOLERANS) {
-        inisler.push({ sira: i, onceki: sira[i - 1], sonraki: sira[i], dusus: x - y });
-        inisToplam += x - y;
+    // İnişler ham BPM'den okunur: ekrandaki liste ile ekrandaki uyarı aynı
+    // sayıyı göstersin (sabitlenen parçalar etkin hızda eşitleniyor olsa da
+    // listede yavaştan hızlıya durmalı). Ölçü zirveden sapmadır, komşu adım
+    // değil: küçük adımlarla inen bir dizi de iniş sayılır.
+    const tol = ayar.inisTolerans;
+    let zirveHam = 0;
+    for (let i = 0; i < sira.length; i++) {
+      const v = Number(sira[i] && sira[i].bpm) || 0;
+      if (!v) continue;
+      if (v > zirveHam) zirveHam = v;
+      const sapma = zirveHam - v;
+      if (i > 0 && sapma > tol) {
+        inisler.push({ sira: i, onceki: sira[i - 1], sonraki: sira[i], dusus: sapma });
+        inisToplam += sapma - tol;
       }
     }
     const yarim = Math.floor(sira.length / 2);
@@ -1093,8 +1313,12 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     const izinli = Math.floor(sira.length * ZIRVE_PAYI);
     const zirveCezasi = Math.max(0, sonrasi - izinli) * ZIRVE_CEZA;
     const yarimCezasi = Math.max(0, ilkYari - ikinciYari) * YAY_CEZA;
+    // Zirveden sapmanın cezası: "adım küçüktü" bahanesiyle oluşan uzun iniş
+    // dizileri burada yakalanır (bkz. INIS_TOLERANS).
+    const gerilemeCezasi = inisToplam * INIS_CEZA;
+    const toplam = zirveCezasi + yarimCezasi + gerilemeCezasi;
     // Ceza yokken -0 sızmasın: ekranda ve testte "0" olarak okunsun.
-    const puan = zirveCezasi + yarimCezasi ? -(zirveCezasi + yarimCezasi) : 0;
+    const puan = toplam ? -toplam : 0;
     return {
       ilk: etkinBpm(sira[0]) || null,
       son: etkinBpm(sira[sira.length - 1]) || null,
@@ -1102,7 +1326,7 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       sonHam: Number(sira[sira.length - 1] && sira[sira.length - 1].bpm) || null,
       ilkYari: Math.round(ilkYari), ikinciYari: Math.round(ikinciYari),
       zirve, zirveYeri, zirveSonrasi: sonrasi, zirveCezasi,
-      enYavas, enYavasYeri, yarimCezasi,
+      enYavas, enYavasYeri, yarimCezasi, gerilemeCezasi,
       inisler, inisSayi: inisler.length, inisToplam,
       yukselen: inisler.length === 0 && yarimCezasi === 0,
       puan
@@ -1127,13 +1351,36 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     return s;
   }
 
-  // Zincir toplamı: kopuk geçiş sonsuz ceza yerine sabit büyük ceza alır ki
-  // sıralayıcı iki kopuk zincirden az kopuk olanı seçebilsin.
+  // Zincir puanı iki ayrı parçadan oluşur: TON ve HIZ.
+  //
+  // NEDEN AYRI: eskiden ton ilişkisi olmayan komşuluk sabit -300 alıyordu ve o
+  // çiftin hız bilgisi tamamen kayboluyordu. Tonlar dağınık olduğunda (setlerin
+  // çoğu böyle) çiftlerin büyük kısmı kopuk kalıyor, dolayısıyla sıralama
+  // hız açısından fiilen rastgele çıkıyordu — 12 parçalık setlerin tamamında
+  // hız düşüşü görülüyordu. Oysa setin ilk kuralı yavaştan hızlıya akmaktır ve
+  // bu, ton uyumundan bağımsız işlemeli. Artık ton cezası (kopuksa -300) ile
+  // hız cezası ayrı toplanır: kopuk çiftte de sıra doğru kurulur.
   const KOPUK_CEZA = -300;
-  const baglantiPuanu = (a, b) => {
-    const p = score(a, b);
-    return p === -Infinity ? KOPUK_CEZA : p;
+
+  // Yalnız ton ve enerji uyumu: ilişki yoksa kopuk cezası.
+  const tonPuanu = (a, b) => {
+    const r = relation(a && a.camelot, b && b.camelot);
+    if (!r) return KOPUK_CEZA;
+    let s = r.puan * 10;
+    const ea = Number(a && a.energy) || 0, eb = Number(b && b.energy) || 0;
+    if (ea && eb) {
+      const d = eb - ea;
+      if (d >= 0 && d <= 2) s += 6;      // hafif yükseliş: setin en rahat akışı
+      else if (d > 3) s -= 4;            // ani sıçrama kopukluk yaratır
+      else if (d < -2) s -= 6;           // sert düşüş dinleyiciyi düşürür
+    }
+    return s;
   };
+
+  // Yalnız hız: yan yana gelmemesi gereken fark ve hızdan yavaşa dönüş.
+  const hizPuanu = (a, b) => -(tempo(a, b).ceza + inisCeza(a, b));
+
+  const baglantiPuanu = (a, b) => tonPuanu(a, b) + hizPuanu(a, b);
   // Zincir puanı = yerel geçişler + setin genel yayı. Genel terim olmadan
   // sıralayıcı aynı komşuluk puanlarıyla hem 96 → 131 hem 131 → 96 dizisini
   // kurabilir; yay terimi yavaştan hızlıya olanı seçtirir.
@@ -1196,10 +1443,10 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
   function hizYerlestir(sira, tonsuz) {
     const sonuc = sira.slice();
     tonsuz.forEach(t => {
-      const v = etkinBpm(t);
+      const v = Number(t && t.bpm) || 0;
       let yer = sonuc.length;
       if (v) {
-        yer = sonuc.findIndex(x => (etkinBpm(x) || Infinity) > v);
+        yer = sonuc.findIndex(x => (Number(x && x.bpm) || Infinity) > v);
         if (yer < 0) yer = sonuc.length;
       }
       sonuc.splice(yer, 0, t);
@@ -1233,7 +1480,17 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       const deneme = greedy(baslangic), p = zincirPuanu(deneme);
       if (p > enPuan) { en = deneme; enPuan = p; }
     }
-    return hizYerlestir(yerelArama(en), tonsuz);
+    // Hız sırası tohumu. Harmonik zincir tek başına sırayı savsaklayabiliyor;
+    // yavaştan hızlıya dizilmiş iskelet her zaman elde olduğu için aramaya
+    // tohum olarak verilir. Yerel arama bundan sonra sırayı bozmadan ton
+    // uyumunu iyileştirir (ağırlıklar gereği bozacak kadar kazanamaz).
+    const sirali = tonlu.slice().sort((x, y) => (etkinBpm(x) || Infinity) - (etkinBpm(y) || Infinity));
+    // İki tohum da yerel aramadan geçirilir: harmonik zincir ton uyumunu,
+    // hız sırası tohumu tempoyu temsil eder. Kazananı zincir puanı seçer.
+    let kazanan = yerelArama(en);
+    const siraliSonuc = yerelArama(sirali);
+    if (zincirPuanu(siraliSonuc) > zincirPuanu(kazanan)) kazanan = siraliSonuc;
+    return hizYerlestir(kazanan, tonsuz);
   }
 
   // Hedef hız açıkken set üç bölümdür: açılış (hedefin altı), ana bölüm (hedefe
@@ -1274,6 +1531,9 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
 
   // Sıralama: hedef hız verilmişse bölüm bölüm (açılış → ana → hızlı), yoksa
   // setin tamamı tek zincir olarak çözülür.
+  //
+  // Öncelik sırası: ÖNCE hız sırası, SONRA ton uyumu. Set her zaman yavaştan
+  // hızlıya akar; ton zinciri bu iskeletin içinde aranır (bkz. INIS_CEZA).
   function autoOrder(list) {
     const hepsi = Array.isArray(list) ? list.slice() : [];
     if (ayar.hedef) return blokluDizi(hepsi);
@@ -1299,8 +1559,8 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
         if (iliski) sorunlar.push('ton uyumlu ama ' + hiz.fark + ' BPM fark var');
       }
       // Yay yönü: set yavaştan hızlıya akmalı, bu adım geriye dönüyor.
-      const dusus = etkinBpm(onceki) - etkinBpm(sonraki);
-      const inis = dusus > INIS_TOLERANS ? { dusus, ceza: inisCeza(onceki, sonraki) } : null;
+      const dusus = (Number(onceki && onceki.bpm) || 0) - (Number(sonraki && sonraki.bpm) || 0);
+      const inis = dusus > ayar.inisTolerans ? { dusus, ceza: inisCeza(onceki, sonraki) } : null;
       if (inis) sorunlar.push('hızdan yavaşa dönüş (' + dusus + ' BPM)');
       const seviye = (!iliski || hiz.tip === 'uyumsuz hız') ? 'uyumsuz'
         : ((iliski.puan <= 2 || hiz.tip === 'hız kayması' || inis) ? 'zorlama' : 'iyi');
@@ -1546,12 +1806,12 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
 
   return {
     parseKey, relation, tempo, score, autoOrder, gecisler, yanYana, inisCeza,
-    hizAyari, etkinBpm, hizBolumu, sabitlenen,
+    hizAyari, etkinBpm, hizBolumu, sabitlenen, hizliSabit, tonPuanu, hizPuanu,
     yay, yayPuanu, kopru, kopruTonlari, cikilanTonlar, girilenTonlar, uyumluTonlar,
     uymayanlar, setDisiKalanlar, aramaLinkleri, oneriSorgusu, zincirPuanu,
     tarzEtiketi, sanatciProfilleri, settekiYeri, uyumluSanatcilar,
     HIZ_TOLERANS, HIZ_SINIR, HIZ_AYIR_CEZA, HIZ_COK_CEZA, KOPUK_CEZA,
-    INIS_TOLERANS, INIS_CEZA, ZIRVE_CEZA
+    INIS_TOLERANS, INIS_CEZA, ZIRVE_CEZA, HIZLI_ESIK, HIZLI_HEDEF
   };
 });
 
@@ -1564,6 +1824,10 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
   // Sıralama/skor/geçiş hesabı harmonic-set.js'te: burası yalnız çizer ve yazar.
   const H = window.DerinHarmonicSet;
   const parseKey = H.parseKey;
+  // Ses dosyası yardımcıları tek kaynaktan gelir: audio-file-types.js.
+  // Supabase ücretsiz planda tek nesne sınırı 50 MiB (52.428.800 bayt); uzun bir
+  // WAV bunu aşar ve ham yükleme "size çok büyük" hatası verir.
+  const Ses = window.DerinAudioTypes;
 
   let client = null, tracks = [], set = [], selected = null;
 
@@ -1579,6 +1843,47 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     ayarYukle();          // hedef hız tercihi tarayıcıdan okunur
     byId('hm-app').hidden = false;
     await load();
+  }
+
+  // Parçalı yüklemeyi mümkün kılan yardımcılar yoksa (eski önbellek) yükleme
+  // yerine açık bir uyarı verilir; sessizce ham yüklemeye düşülmez.
+  const sesHazir = () => !!(Ses && Ses.parcaliYukle && Ses.parcalariCoz);
+
+  const djDepo = () => client.storage.from('dj-audio');
+
+  // Kova belirli bir MIME listesiyle kısıtlanmışsa tarayıcının bildirdiği tip
+  // reddedilir; bu durumda jenerik tip ile bir kez daha denenir.
+  async function djYukle(yol, dilim, tip) {
+    const ilk = await djDepo().upload(yol, dilim, { contentType: tip || 'audio/mpeg', upsert: false });
+    if (!ilk.error) return { path: yol, error: null };
+    if (/mime|content.?type/i.test(ilk.error.message || '')) {
+      const ikinci = await djDepo().upload(yol, dilim, { contentType: 'application/octet-stream', upsert: false });
+      if (!ikinci.error) return { path: yol, error: null };
+      return { path: null, error: ikinci.error };
+    }
+    return { path: null, error: ilk.error };
+  }
+  const imzaliUrl = async path => {
+    const { data, error } = await djDepo().createSignedUrl(path, 3600);
+    return error ? null : data.signedUrl;
+  };
+
+  // Parçalı dosya tek bir nesne gibi çalınamaz: parçalar indirilip tarayıcıda
+  // birleştirilir. Tek parçada doğrudan imzalı adres kullanılır.
+  let aktifBlobUrl = null;
+  async function sesUrl(path) {
+    if (!sesHazir() || !Ses.parcaliMi(path)) return imzaliUrl(path);
+    const parcalar = [];
+    for (const p of Ses.parcalariCoz(path)) {
+      const url = await imzaliUrl(p.path);
+      if (!url) return null;
+      const cevap = await fetch(url);
+      if (!cevap.ok) return null;
+      parcalar.push(await cevap.blob());
+    }
+    if (aktifBlobUrl) { try { URL.revokeObjectURL(aktifBlobUrl); } catch (e) {} }
+    aktifBlobUrl = URL.createObjectURL(new Blob(parcalar, { type: 'audio/mpeg' }));
+    return aktifBlobUrl;
   }
 
   async function load() {
@@ -1685,7 +1990,10 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
   // hızlılar sonraki hızlı bölüm için". Ayar tarayıcıda saklanır ki her açılışta
   // yeniden girilmesin; motorun varsayılanı nötr kalır.
   const AYAR_ANAHTARI = 'derin-harmonik-hiz-ayari';
-  const VARSAYILAN_AYAR = { hedef: 126, tolerans: 4 };
+  const VARSAYILAN_AYAR = { hedef: 126, tolerans: 4, hizliEsik: 135, hizliHedef: 145, inisTolerans: 2 };
+  // İniş payı: tek bir küçük geri adım serbest, üst üste binemez. Ölçü komşu
+  // adım değil zirveden sapmadır (motor tarafında INIS_TOLERANS).
+  const INIS_PAYI_VARSAYILAN = 2;
 
   function ayarYukle() {
     let ayar = VARSAYILAN_AYAR;
@@ -1693,7 +2001,13 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       const ham = localStorage.getItem(AYAR_ANAHTARI);
       if (ham) {
         const okunan = JSON.parse(ham);
-        ayar = { hedef: Number(okunan.hedef) || null, tolerans: okunan.tolerans == null ? 4 : Number(okunan.tolerans) };
+        ayar = {
+          hedef: Number(okunan.hedef) || null,
+          tolerans: okunan.tolerans == null ? 4 : Number(okunan.tolerans),
+          hizliEsik: okunan.hizliEsik == null ? 135 : Number(okunan.hizliEsik),
+          hizliHedef: okunan.hizliHedef == null ? 145 : Number(okunan.hizliHedef),
+          inisTolerans: okunan.inisTolerans == null ? INIS_PAYI_VARSAYILAN : Number(okunan.inisTolerans)
+        };
       }
     } catch (e) { /* gizli pencere ya da bozuk kayıt: varsayılanla devam */ }
     H.hizAyari(ayar);
@@ -1703,7 +2017,11 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
   function ayarKaydet(ayar) {
     H.hizAyari(ayar);
     try {
-      localStorage.setItem(AYAR_ANAHTARI, JSON.stringify({ hedef: ayar.hedef, tolerans: ayar.tolerans }));
+      localStorage.setItem(AYAR_ANAHTARI, JSON.stringify({
+        hedef: ayar.hedef, tolerans: ayar.tolerans,
+        hizliEsik: ayar.hizliEsik, hizliHedef: ayar.hizliHedef,
+        inisTolerans: ayar.inisTolerans
+      }));
     } catch (e) { /* saklanamazsa da ayar bu oturumda geçerli */ }
   }
 
@@ -1718,11 +2036,20 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       const ad = H.hizBolumu(t);
       (say[ad] || []).push(t);
     });
-    const sabit = set.filter(t => H.sabitlenen(t));
-    return `<p>Hedef: <b>${ayar.hedef} BPM</b> ± ${ayar.tolerans} BPM.
-        ${sabit.length ? `${sabit.length} parça hedefe sabitlenmiş sayılıyor:
-          ${sabit.slice(0, 6).map(t => `${safe(t.title)} (${t.bpm} → ${ayar.hedef})`).join(', ')}${sabit.length > 6 ? ' …' : ''}.` : 'Bu aralıkta parça yok.'}</p>
-      ${say.hizli.length ? `<p>Hızlı bölüm (setin sonuna): <b>${say.hizli.map(t => safe(t.title) + ' (' + t.bpm + ')').join(', ')}</b>.</p>`
+    const hizliSabit = set.filter(t => H.hizliSabit(Number(t.bpm) || 0));
+    // Hızlı bölümdekiler yukarıda ayrıca yazıldığı için burada tekrarlanmaz.
+    const sabit = set.filter(t => H.sabitlenen(t) && !H.hizliSabit(Number(t.bpm) || 0));
+    const hedefMetni = t => `${t.bpm} → ${H.etkinBpm(t)}`;
+    const liste = (dizi, adet) => dizi.slice(0, adet).map(t => `${safe(t.title)} (${hedefMetni(t)})`).join(', ')
+      + (dizi.length > adet ? ' …' : '');
+    return `<p>Ana bölüm hedefi: <b>${ayar.hedef} BPM</b> ± ${ayar.tolerans} BPM.
+        İniş payı <b>${ayar.inisTolerans} BPM</b> (zirveden en fazla bu kadar aşağı).
+        ${hizliSabit.length ? `<b>${hizliSabit.length} parça ${ayar.hizliEsik} BPM üstü olduğu için
+          hızlı bölümde ${ayar.hizliHedef} BPM'e sabitleniyor:</b>
+          ${liste(hizliSabit, 6)}.` : `${ayar.hizliEsik} BPM üstünde parça yok.`}</p>
+      ${sabit.length ? `<p>Hedefe çekilen ${sabit.length} parça: ${liste(sabit, 6)}.</p>`
+        : '<p style="opacity:.6">Bu aralıkta parça yok.</p>'}
+      ${say.hizli.length ? `<p>Hızlı bölüm (setin sonuna): <b>${say.hizli.map(t => safe(t.title) + ' (' + hedefMetni(t) + ')').join(', ')}</b>.</p>`
         : '<p style="opacity:.6">Hızlı bölüm boş.</p>'}
       ${say.giris.length ? `<p>Açılış (setin başına): <b>${say.giris.map(t => safe(t.title) + ' (' + t.bpm + ')').join(', ')}</b>.</p>` : ''}`;
   }
@@ -1732,12 +2059,22 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     return `<section class="hm-panel" style="margin-top:20px">
       <h2>HEDEF HIZ — BÖLÜMLÜ SET</h2>
       <p style="font-size:12px;opacity:.65;margin:0 0 12px">
+        Sıralamada öncelik hızdır: set her zaman <b>yavaştan hızlıya</b> akar, ton
+        uyumu bu iskeletin içinde aranır.<br>
         Ana bölümü tek hıza sabitliyorsan (ör. 122 civarı parçaları 126'da çalıyorsan)
         bu aralıktaki parçalar <b>aynı hızda</b> sayılır — aralarında hız farkı kalmaz.
-        Hedefin üstünde kalanlar <b>setin sonundaki hızlı bölüme</b>, altında kalanlar açılışa ayrılır.</p>
+        Hedefin üstünde kalanlar <b>setin sonundaki hızlı bölüme</b>, altında kalanlar açılışa ayrılır.
+        Hızlı bölüm de tek hıza çekilir: <b>eşiğin üstündeki parçalar hızlı hedefte</b> çalınır
+        (ör. 135 üstü → 145).<br>
+        <b>İniş payı</b>, setin zirvesinden en fazla ne kadar aşağı inebileceğidir:
+        2 BPM'lik tek bir dalma serbest, arka arkaya gelen inişler cezalı. 0 yazarsan
+        set kıl payı geri dönmez.</p>
       <div class="hm-edit" style="border:0;padding-top:0;margin-top:0">
-        <input id="hz-hedef" type="number" value="${ayar.hedef || ''}" placeholder="Hedef BPM (126)">
+        <input id="hz-hedef" type="number" value="${ayar.hedef || ''}" placeholder="Ana hedef BPM (126)">
         <input id="hz-tol" type="number" value="${ayar.tolerans}" placeholder="± BPM">
+        <input id="hz-esik" type="number" value="${ayar.hizliEsik}" placeholder="Hızlı eşik BPM (135)">
+        <input id="hz-hizli" type="number" value="${ayar.hizliHedef || ''}" placeholder="Hızlı hedef BPM (145)">
+        <input id="hz-inis" type="number" value="${ayar.inisTolerans}" placeholder="İniş payı BPM (2)">
         <button id="hz-uygula">UYGULA</button>
         <button id="hz-kapat" style="background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2)">KAPAT</button>
       </div>
@@ -1899,20 +2236,11 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
         daha geliyor. Setin en hızlı parçası sona yakın olmalı.</p>`);
     }
 
-    // Geriye düşen adımlar: köprü değil, sıra değişikliği ister.
+    // Geriye düşen adımlar: köprü değil, sıra değişikliği ister. Ölçü zirveden
+    // sapmadır; küçük adımlarla oluşan uzun inişler de böylece yakalanır.
     y.inisler.forEach(g => satirlar.push(`<p class="hm-warn">“${safe(g.onceki.title)}” →
-      “${safe(g.sonraki.title)}”: hız <b>${g.dusus} BPM</b> düşüyor. Bu ikilinin sırasını
-      değiştir ya da araya daha yavaş bir parça koy.</p>`));
-
-    // Tolerans içindeki küçük inişler saklanmaz: eğri yükseliyor derken görünen
-    // düşüşlerin sebebi de yazılsın.
-    const yumusak = set.slice(1)
-      .map((t, i) => ({ onceki: set[i], sonraki: t, dusus: (Number(set[i].bpm) || 0) - (Number(t.bpm) || 0) }))
-      .filter(x => x.dusus > 0 && x.dusus <= H.INIS_TOLERANS);
-    if (yumusak.length) {
-      satirlar.push(`<p style="opacity:.7">Yumuşak inişler (${H.INIS_TOLERANS} BPM'e kadar serbest):
-        ${yumusak.map(x => `“${safe(x.onceki.title)}” → “${safe(x.sonraki.title)}” ${x.dusus} BPM`).join(' · ')}.</p>`);
-    }
+      “${safe(g.sonraki.title)}”: hız zirveden <b>${g.dusus} BPM</b> aşağı iniyor. Bu ikilinin
+      sırasını değiştir ya da araya daha yavaş bir parça koy.</p>`));
 
     // En büyük çıkış: araya ısınma parçası koymak için hedef hız.
     let atlama = null;
@@ -2130,8 +2458,10 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
                 ? `<span class="hm-chip up">HIZ DÜŞÜYOR · ${g.inis.dusus} BPM</span>` : '';
               // Hedef hıza sabitlenen ve hızlı bölüme kalan parçalar işaretlenir.
               const bolumAdi = H.hizBolumu(t);
+              const bolumHedefi = bolumAdi === 'ana' ? H.hizAyari().hedef
+                : (bolumAdi === 'hizli' && H.hizliSabit(Number(t.bpm) || 0) ? H.hizAyari().hizliHedef : null);
               const bolum = bolumAdi
-                ? `<span class="hm-chip ${bolumAdi === 'hizli' ? 'up' : 'off'}">${BOLUM_ETIKETI[bolumAdi]}${bolumAdi === 'ana' ? ' · ' + H.hizAyari().hedef : ''}</span>` : '';
+                ? `<span class="hm-chip ${bolumAdi === 'hizli' ? 'up' : 'off'}">${BOLUM_ETIKETI[bolumAdi]}${bolumHedefi ? ' · ' + bolumHedefi : ''}</span>` : '';
               return `<li draggable="true" data-idx="${i}" style="cursor:grab">
                 <span><strong>${safe(t.title)}</strong>
                   <small>${meta(t)}</small>
@@ -2235,10 +2565,28 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       let audio_path = null;
       const file = byId('nt-file').files?.[0];
       if (file) {
-        const path = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${file.name.split('.').pop() || 'mp3'}`;
-        const up = await client.storage.from('dj-audio').upload(path, file, { contentType: file.type || 'audio/mpeg' });
-        if (up.error) { msg.textContent = 'Yükleme hatası: ' + up.error.message; return; }
-        audio_path = path;
+        if (!sesHazir()) { msg.textContent = 'Ses yükleme yardımcıları yüklenemedi (audio-file-types.js). Sayfayı yenileyin.'; return; }
+        if (!Ses.gecerli(file)) {
+          msg.textContent = `“${Ses.uzanti(file.name)}” uzantısı desteklenmiyor. Desteklenenler: ${Ses.desteklenenler()}.`;
+          return;
+        }
+        const taban = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+        const up = await Ses.parcaliYukle({
+          yukle: djYukle,
+          sil: yollar => djDepo().remove(yollar)
+        }, taban, file, (i, n) => {
+          msg.textContent = n > 1
+            ? `Ses yükleniyor… parça ${i}/${n} (${Ses.boyut(file.size)})`
+            : `Ses yükleniyor… (${Ses.boyut(file.size)})`;
+        });
+        if (up.error) {
+          msg.textContent = 'Yükleme hatası: ' + up.error.message
+            + (/maximum allowed size|too large|exceeded/i.test(up.error.message)
+              ? ' — dosya tek nesne sınırını aşmış görünüyor; sayfayı yenileyip tekrar dene.' : '');
+          return;
+        }
+        audio_path = up.path;
+        if (up.toplam > 1) msg.textContent = `Ses ${up.toplam} parça hâlinde yüklendi.`;
       }
       const { error } = await client.from('dj_tracks').insert({
         title, artist: byId('nt-artist').value.trim() || null, audio_path,
@@ -2268,7 +2616,7 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
         + (y.inisSayi ? ` Yay ${y.inisSayi} yerde geriye düşüyor.`
           : (y.yukselen ? ' Set yavaştan hızlıya akıyor.'
             : ' İlk yarı ikinci yarıdan hızlı; yay geriye dönüyor.'))
-        + (ayar.hedef ? ` Bölümler: ${BOLUM_ETIKETI[bolum] || 'ana bölüm'} → … → ${BOLUM_ETIKETI[H.hizBolumu(set[set.length - 1])] || 'ana bölüm'} (${ayar.hedef} BPM'e sabit).` : '');
+        + (ayar.hedef ? ` Bölümler: ${BOLUM_ETIKETI[bolum] || 'ana bölüm'} → … → ${BOLUM_ETIKETI[H.hizBolumu(set[set.length - 1])] || 'ana bölüm'} (ana ${ayar.hedef} BPM, hızlı ${ayar.hizliHedef} BPM'e sabit).` : '');
     };
 
     byId('hm-auto').onclick = () => {
@@ -2312,7 +2660,11 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       ev.stopPropagation();
       if (!confirm('Parça katalogdan silinecek. Emin misiniz?')) return;
       const t = tracks.find(x => x.id === el.dataset.del);
-      if (t?.audio_path) await client.storage.from('dj-audio').remove([t.audio_path]);
+      // Parçalı yüklemede dosya birden çok nesnedir: hepsi birlikte silinir.
+      if (t?.audio_path) {
+        const yollar = sesHazir() ? Ses.parcalariCoz(t.audio_path).map(p => p.path) : [t.audio_path];
+        await djDepo().remove(yollar);
+      }
       await client.from('dj_tracks').delete().eq('id', el.dataset.del);
       set = set.filter(x => x.id !== el.dataset.del);
       if (selected?.id === el.dataset.del) selected = null;
@@ -2347,13 +2699,22 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     byId('hz-uygula').onclick = () => {
       const hedef = Number(byId('hz-hedef').value) || null;
       const tolerans = byId('hz-tol').value === '' ? 4 : Number(byId('hz-tol').value);
-      ayarKaydet({ hedef, tolerans: isNaN(tolerans) ? 4 : tolerans });
+      const hizliEsik = byId('hz-esik').value === '' ? 135 : Number(byId('hz-esik').value);
+      const hizliHedef = Number(byId('hz-hizli').value) || null;
+      const inisHam = byId('hz-inis').value === '' ? INIS_PAYI_VARSAYILAN : Number(byId('hz-inis').value);
+      ayarKaydet({
+        hedef,
+        tolerans: isNaN(tolerans) ? 4 : tolerans,
+        hizliEsik: isNaN(hizliEsik) ? 135 : hizliEsik,
+        hizliHedef,
+        inisTolerans: isNaN(inisHam) ? INIS_PAYI_VARSAYILAN : Math.max(0, inisHam)
+      });
       if (set.length > 1) set = H.autoOrder(set);
       render();
       byId('hm-status').textContent = siralamaNotu();
     };
     byId('hz-kapat').onclick = () => {
-      ayarKaydet({ hedef: null, tolerans: 4 });
+      ayarKaydet({ hedef: null, tolerans: 4, hizliEsik: 135, hizliHedef: 145, inisTolerans: INIS_PAYI_VARSAYILAN });
       render();
     };
 
@@ -2386,9 +2747,9 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
         document.querySelectorAll('[data-play]').forEach(b => b.textContent = '▶');
         if (window.__hmPlaying === btn.dataset.play) { window.__hmPlaying = null; return; }
       }
-      const { data, error } = await client.storage.from('dj-audio').createSignedUrl(btn.dataset.path, 3600);
-      if (error) { byId('hm-status').textContent = 'Ses açılamadı: ' + error.message; return; }
-      window.__hmAudio = new Audio(data.signedUrl);
+      const url = await sesUrl(btn.dataset.path);
+      if (!url) { byId('hm-status').textContent = 'Ses açılamadı: dosya okunamadı.'; return; }
+      window.__hmAudio = new Audio(url);
       window.__hmPlaying = btn.dataset.play;
       window.__hmAudio.onended = () => { btn.textContent = '▶'; window.__hmPlaying = null; };
       await window.__hmAudio.play();
@@ -2418,7 +2779,7 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
   const bekle = ms => new Promise(r => setTimeout(r, ms));
   (async () => {
     for (let i = 0; i < 40 && !document.querySelector('[data-push]'); i++) await bekle(100);
-    for (const id of ['t1', 't3', 't2', 't5', 't4', 't9', 't10']) {
+    for (const id of ['t1', 't3', 't2', 't5', 't4', 't9', 't10', 't11', 't12']) {
       const b = document.querySelector('[data-push="' + id + '"]');
       if (b) b.click();
       await bekle(120);

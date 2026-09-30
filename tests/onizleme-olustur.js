@@ -510,7 +510,11 @@ if (senaryo === 'harmonik') {
     // Motor aynı tona rağmen bu ikiliyi yan yana koymamalı; sığacak yer yoksa
     // köprü önerisini göstermeli.
     { id: 't9', title: 'Hızlı Vites', artist: 'Stoto', camelot: '8A', key_name: 'A minor', makam: null, bpm: 130, energy: 6, duration_sec: 275, audio_path: null },
-    { id: 't10', title: 'Gece Vardiyası', artist: 'Sako Isoyan', camelot: '9A', key_name: 'E minor', makam: null, bpm: 131, energy: 6, duration_sec: 268, audio_path: null }
+    { id: 't10', title: 'Gece Vardiyası', artist: 'Sako Isoyan', camelot: '9A', key_name: 'E minor', makam: null, bpm: 131, energy: 6, duration_sec: 268, audio_path: null },
+    // Hızlı bölümün kendi hedefi: 135'in üstündeki parçalar 145'te çalınır.
+    // İkisi de ham hızı farklı olsa da motor onları aynı hızda saysın.
+    { id: 't11', title: 'Zirve', artist: 'Mahmut Orhan', camelot: '8A', key_name: 'A minor', makam: null, bpm: 140, energy: 7, duration_sec: 285, audio_path: null },
+    { id: 't12', title: 'Son Kuvvet', artist: 'Boral Kibil', camelot: '9A', key_name: 'E minor', makam: null, bpm: 152, energy: 8, duration_sec: 262, audio_path: null }
   ];
   const taklit = `<script>
 // ---- Sunucu taklidi: auth.js ve Supabase yerine geçer, yalnız önizlemede.
@@ -542,7 +546,7 @@ if (senaryo === 'harmonik') {
   const bekle = ms => new Promise(r => setTimeout(r, ms));
   (async () => {
     for (let i = 0; i < 40 && !document.querySelector('[data-push]'); i++) await bekle(100);
-    for (const id of ['t1', 't3', 't2', 't5', 't4', 't9', 't10']) {
+    for (const id of ['t1', 't3', 't2', 't5', 't4', 't9', 't10', 't11', 't12']) {
       const b = document.querySelector('[data-push="' + id + '"]');
       if (b) b.click();
       await bekle(120);
@@ -558,19 +562,21 @@ if (senaryo === 'harmonik') {
     .replace(/<script src="config\.js"><\/script>\n?/, '')
     .replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@[^\"]+"><\/script>\n?/, '')
     .replace(/<script src="auth\.js\?v=[^\"]+"><\/script>/, taklit)
+    .replace(/<script src="audio-file-types\.js\?v=[^\"]+"><\/script>/, '<script>\n' + oku('audio-file-types.js') + '\n</script>')
     .replace(/<script src="harmonic-set\.js\?v=[^\"]+"><\/script>/, '<script>\n' + oku('harmonic-set.js') + '\n</script>')
     .replace(/<script src="harmonic-mixer\.js\?v=[^\"]+"><\/script>/, '<script>\n' + oku('harmonic-mixer.js') + '\n</script>' + akis)
     .replace(/<script src="harmonic-analyze\.js\?v=[^\"]+"><\/script>/, '<script>\n' + oku('harmonic-analyze.js') + '\n</script>')
     // Mixer bu yardımcıyı kullanmaz ve tek dosyalık önizlemede dışarıdan gelmez.
     .replace(/<script src="sortable-touch\.js\?v=[^\"]+"><\/script>\n?/, '');
   // Gömme sessizce boşa düşerse önizleme giriş ekranında kalır; bunun yerine dur.
-  ['branch.css', 'auth.css', 'glass.css', 'harmonic-set.js', 'harmonic-mixer.js', 'sortable-touch.js'].forEach(dis => {
+  ['branch.css', 'auth.css', 'glass.css', 'audio-file-types.js', 'harmonic-set.js', 'harmonic-mixer.js', 'sortable-touch.js'].forEach(dis => {
     if (new RegExp('(?:href|src)="' + dis.replace(/\./g, '\\.')).test(gomulu)) {
       throw new Error(dis + ' gömülmedi: harmonic-mixer.html etiketi değişmiş, onizleme-olustur.js harmonik modunu güncelleyin');
     }
   });
   if (!gomulu.includes('window.DerinAuth = {')) throw new Error('giriş taklidi gömülmedi');
   if (!gomulu.includes('DerinHarmonicSet')) throw new Error('harmonic-set.js gömülmedi');
+  if (!gomulu.includes('DerinAudioTypes')) throw new Error('audio-file-types.js gömülmedi');
   fs.writeFileSync(ciktiYolu, gomulu);
   console.log(path.relative(kok, ciktiYolu) + ' yazıldı · harmonik set önizlemesi');
   return;

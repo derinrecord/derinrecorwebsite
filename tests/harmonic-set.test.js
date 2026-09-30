@@ -179,15 +179,75 @@ test('set yayı ölçülür: inişler, zirvenin yeri ve yarı ortalamaları', ()
   // Geriye düşen adım: 20 BPM'lik iniş sayılır ve cezalanır.
   const zikzak = H.yay([parca('a', '8A', 120), parca('b', '9A', 100), parca('c', '10A', 130)]);
   assert.equal(zikzak.inisSayi, 1);
-  assert.equal(zikzak.inisToplam, 20);
+  assert.equal(zikzak.inisler[0].dusus, 20, 'zirveden sapma bildirilir');
+  assert.equal(zikzak.inisToplam, 18, 'iniş toplamında iniş payı düşülür');
   assert.equal(zikzak.yukselen, false);
   assert.ok(H.inisCeza(parca('a', '8A', 120), parca('b', '9A', 100)) > 0);
 
-  // 2 BPM'e kadar iniş "yumuşak iniş" sayılır, sorun değildir.
-  assert.equal(H.yay([parca('a', '8A', 120), parca('b', '9A', 118)]).inisSayi, 0);
-  assert.equal(H.yay([parca('a', '8A', 120), parca('b', '9A', 117)]).inisSayi, 1);
+  // İniş payı: tek bir küçük dalma serbest, üst üste binemez. Ölçü komşu adım
+  // değil zirveden sapmadır — küçük adımlarla inen dizi de iniş sayılır.
+  assert.equal(H.INIS_TOLERANS, 2, 'varsayılan pay');
+  const inen = [126, 125, 124, 122].map(b => parca('x' + b, '8A', b));
+  assert.equal(H.yay(inen).inisSayi, 1, 'üst üste binen iniş yakalanmalı');
+  assert.equal(H.yay(inen).inisToplam, 2, 'zirveden 4 BPM sapma, 2 BPM pay düşülünce 2 kalır');
+  assert.equal(H.yay([parca('a', '8A', 126), parca('b', '9A', 124)]).inisSayi, 0,
+    '2 BPM\'lik tek dalma serbest');
+  assert.equal(H.yay([parca('a', '8A', 120), parca('b', '9A', 120)]).inisSayi, 0, 'aynı hız iniş değil');
+  // Payı sıfırlayınca kıl payı geri adım bile iniş sayılır.
+  H.hizAyari({ hedef: null, inisTolerans: 0 });
+  try {
+    assert.equal(H.yay([parca('a', '8A', 120), parca('b', '9A', 119)]).inisSayi, 1);
+    assert.equal(H.yay([parca('a', '8A', 120), parca('b', '9A', 120)]).inisSayi, 0);
+  } finally {
+    H.hizAyari({ hedef: null });
+  }
   // Aynı hızdaki set yaydan ceza yemez (zirvede eşitlik keyfi sırayı cezalandırmasın).
   assert.equal(H.yayPuanu([parca('a', '8A', 124), parca('b', '9A', 124), parca('c', '10A', 124)]), 0);
+});
+
+test('sıralayıcı her sette yavaştan hızlıya dizer: ham BPM asla geri düşmez', () => {
+  // Regresyon: ton ilişkisi olmayan komşulukta hız cezası kaybolduğu için
+  // sıralama hız açısından rastgele çıkıyordu (12 parçalık setlerin tamamında
+  // iniş vardı). Tonlar dağınık olsa bile sıra kuralı işlemeli.
+  const tonlar = [];
+  for (const harf of ['A', 'B']) for (let n = 1; n <= 12; n++) tonlar.push(n + harf);
+  const uret = (adet, tohum) => {
+    let s = tohum;
+    const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; };
+    return Array.from({ length: adet }, (_, i) => ({
+      id: 't' + i, title: 't' + i,
+      camelot: tonlar[Math.floor(rnd() * tonlar.length)],
+      bpm: 118 + Math.floor(rnd() * 22),
+      energy: 3 + Math.floor(rnd() * 6)
+    }));
+  };
+  const hamSira = sira => sira.map(t => Number(t.bpm) || 0);
+  const enBuyukSapma = sira => {
+    const d = hamSira(sira);
+    let zirve = 0, sapma = 0;
+    d.forEach(v => { if (v > zirve) zirve = v; sapma = Math.max(sapma, zirve - v); });
+    return sapma;
+  };
+
+  for (const hedef of [null, 126]) {
+    for (const inisTolerans of [0, 2]) {
+      H.hizAyari({ hedef, tolerans: 4, hizliEsik: 135, hizliHedef: 145, inisTolerans });
+      try {
+        for (const adet of [5, 12, 25]) {
+          for (let tohum = 1; tohum <= 12; tohum++) {
+            const sira = H.autoOrder(uret(adet, tohum * 7919));
+            const adlar = sira.map(t => t.id + '(' + t.bpm + ')').join(' → ');
+            assert.equal(sira.length, adet, 'parça kaybolmamalı: ' + adlar);
+            assert.ok(enBuyukSapma(sira) <= inisTolerans,
+              `hedef ${hedef} · pay ${inisTolerans} · ${adet} parça: zirveden sapma aşılmamalı: ` + adlar);
+            assert.equal(H.yay(sira).inisSayi, 0, 'yay da iniş görmemeli: ' + adlar);
+          }
+        }
+      } finally {
+        H.hizAyari({ hedef: null });
+      }
+    }
+  }
 });
 
 test('puan yön duyarlı: aynı çift yükselirken daha yüksek puan alır', () => {
@@ -225,7 +285,7 @@ test('hedef hız açıkken yakın hızlar sabitlenmiş sayılır', () => {
   assert.equal(H.yanYana(yakin, hizli), false, 'hedef kapalıyken 8 BPM uzak');
   H.hizAyari({ hedef: 126, tolerans: 4 });
   try {
-    assert.deepEqual(H.hizAyari(), { hedef: 126, tolerans: 4 });
+    assert.deepEqual(H.hizAyari(), { hedef: 126, tolerans: 4, hizliEsik: 135, hizliHedef: 145, inisTolerans: 2 });
     assert.equal(H.etkinBpm(yakin), 126, 'hedef civarı hedefe çekilir');
     assert.equal(H.etkinBpm(parca('c', '9A', 131)), 131, 'hedefin dışı kendi hızında kalır');
     assert.equal(H.etkinBpm(parca('c', '9A', null)), 0);
@@ -272,9 +332,78 @@ test('hedef hız açıkken set açılış → ana → hızlı bölüm diye dizil
     assert.equal(y.inisSayi, 0, 'tek tek hız düşüşü olmamalı (plato düz): ' + adlar);
     assert.equal(y.yukselen, true, adlar);
     assert.equal(y.son, 131, 'set hızlı bölümde kapanır: ' + adlar);
-    // Sabitlenen komşular arasında hız farkı kalmadığı için geçişler "iyi".
-    const iyi = H.gecisler(sira).filter(g => g.seviye === 'iyi').length;
-    assert.ok(iyi >= 5, 'yalnız kopuk geçiş sorun olmalı: ' + adlar);
+    // Tonu bağlanan her geçiş sorunsuz olmalı: hız kısmı sabitlenmiş hızlar
+    // üzerinden çözüldüğü için geriye yalnız ton kopukluğu kalır.
+    const sorunlu = H.gecisler(sira).filter(g => g.seviye !== 'iyi');
+    assert.ok(sorunlu.every(g => !g.iliski), 'sorun varsa sebebi ton olmalı: ' + adlar);
+  } finally {
+    H.hizAyari({ hedef: null });
+  }
+});
+
+test('hızlı bölümde 135 BPM üstü parçalar 145 BPM\'e sabitlenir', () => {
+  H.hizAyari({ hedef: 126, tolerans: 4, hizliEsik: 135, hizliHedef: 145 });
+  try {
+    assert.deepEqual(H.hizAyari(), { hedef: 126, tolerans: 4, hizliEsik: 135, hizliHedef: 145, inisTolerans: 2 });
+    assert.equal(H.hizliSabit(152), true);
+    assert.equal(H.hizliSabit(137), true);
+    assert.equal(H.hizliSabit(135), false, 'eşiğin kendisi sabitlenmez, üstü sabitlenir');
+    assert.equal(H.hizliSabit(133), false, 'eşik altı hızlı bölümde ama kendi hızında');
+
+    const hizli = parca('hizli', '8A', 152), orta = parca('orta', '8A', 137);
+    assert.equal(H.etkinBpm(hizli), 145);
+    assert.equal(H.etkinBpm(orta), 145, '137 de 145\'e çekilir');
+    assert.equal(H.etkinBpm(parca('c', '9A', 133)), 133, 'eşik altına dokunulmaz');
+    assert.equal(H.hizBolumu(hizli), 'hizli');
+    assert.equal(H.sabitlenen(hizli), true);
+    assert.equal(H.sabitlenen(parca('c', '9A', 133)), false);
+
+    // Farklı ham hızlar aynı hedefte buluşur: aralarında duyulur fark kalmaz.
+    const t = H.tempo(hizli, orta);
+    assert.equal(t.fark, 0);
+    assert.equal(t.hamFark, 15, 'gerçek fark yanında taşınır');
+    assert.equal(t.tip, 'aynı hız');
+    assert.equal(H.yanYana(hizli, orta), true);
+    assert.equal(H.inisCeza(orta, hizli), 0);
+  } finally {
+    H.hizAyari({ hedef: null });
+  }
+  assert.equal(H.hizliSabit(152), false, 'hedef kapalıyken hızlı sabitleme de kapalı');
+  assert.equal(H.etkinBpm(parca('hizli', '8A', 152)), 152);
+});
+
+test('hızlı eşik ve hızlı hedef ayardan değiştirilebilir', () => {
+  H.hizAyari({ hedef: 126, tolerans: 4, hizliEsik: 130, hizliHedef: 140 });
+  try {
+    assert.equal(H.etkinBpm(parca('a', '8A', 132)), 140);
+    assert.equal(H.hizliSabit(131), true);
+    assert.equal(H.hizliSabit(129), false);
+  } finally {
+    H.hizAyari({ hedef: null });
+  }
+  // Hedef kapalıyken eşik ve hızlı hedef de devre dışı kalır.
+  assert.equal(H.etkinBpm(parca('a', '8A', 150)), 150);
+  assert.equal(H.hizBolumu(parca('a', '8A', 150)), null);
+});
+
+test('hızlı bölüm sondaki parçaları tek hıza çeker', () => {
+  const liste = [
+    parca('giris', '4B', 96, 7), parca('ana', '10B', 126, 6), parca('ana2', '9B', 124, 5),
+    parca('hizli1', '8A', 137, 6), parca('hizli2', '8A', 152, 7)
+  ];
+  H.hizAyari({ hedef: 126, tolerans: 4, hizliEsik: 135, hizliHedef: 145 });
+  try {
+    const sira = H.autoOrder(liste);
+    const adlar = sira.map(t => t.id + '(' + H.etkinBpm(t) + ')').join(' → ');
+    const bolum = sira.map(t => ({ giris: 0, ana: 1, hizli: 2 })[H.hizBolumu(t)]);
+    assert.ok(bolum.every((v, i) => i === 0 || v >= bolum[i - 1]), 'blok sırası bozulmamalı: ' + adlar);
+    assert.equal(sira[0].id, 'giris', 'en yavaş parça açılışta: ' + adlar);
+    assert.equal(H.etkinBpm(sira[sira.length - 1]), 145, 'set hızlı hedefte kapanır: ' + adlar);
+    const sonGecis = H.gecisler(sira).slice(-1)[0];
+    assert.equal(sonGecis.hiz.fark, 0, 'sondaki iki hızlı parça aynı hızda: ' + adlar);
+    const y = H.yay(sira);
+    assert.equal(y.inisSayi, 0, 'plato düz: ' + adlar);
+    assert.equal(y.yukselen, true, adlar);
   } finally {
     H.hizAyari({ hedef: null });
   }
@@ -457,4 +586,21 @@ test('ekran motoru kendi kopyasını taşımaz, ortak dosyayı kullanır', () =>
   // Motor, ekrandan önce yüklenmeli; yoksa ekran boş açılır.
   assert.ok(sayfa.indexOf('harmonic-set.js') < sayfa.indexOf('harmonic-mixer.js'),
     'motor ekrandan önce yüklenmeli');
+});
+
+test('ses yüklemesi parçalı yardımcıyı kullanır, tek nesne sınırına takılmaz', () => {
+  const kok = path.join(__dirname, '..');
+  const ekran = fs.readFileSync(path.join(kok, 'harmonic-mixer.js'), 'utf8');
+  const sayfa = fs.readFileSync(path.join(kok, 'harmonic-mixer.html'), 'utf8');
+  // Supabase ücretsiz planda tek nesne 50 MiB: uzun WAV'lar ancak parçalanarak
+  // yüklenebilir. Ekran ortak yardımcıyı kullanmalı, kendi kopyasını taşımamalı.
+  assert.ok(ekran.includes('window.DerinAudioTypes'), 'ortak ses yardımcısı kullanılmalı');
+  assert.ok(ekran.includes('Ses.parcaliYukle'), 'yükleme parçalı olmalı');
+  assert.ok(ekran.includes('Ses.parcalariCoz'), 'parçalı dosyanın bütün nesneleri bilinmeli');
+  // Dosyanın kendisi doğrudan yüklenmemeli; yüklemeye giden yalnız dilimler.
+  assert.ok(!/\.upload\([^)]*\bfile\b/.test(ekran),
+    'ham (tek nesnelik) yükleme kalmamalı: büyük dosyada 413 verir');
+  assert.ok(ekran.includes('djYukle'), 'yükleme tek bir yardımcıdan geçmeli');
+  assert.ok(sayfa.indexOf('audio-file-types.js') < sayfa.indexOf('harmonic-mixer.js'),
+    'ses yardımcısı ekrandan önce yüklenmeli');
 });
