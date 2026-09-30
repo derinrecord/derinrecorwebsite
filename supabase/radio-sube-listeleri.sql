@@ -13,10 +13,8 @@
 -- yayını (brand_broadcast) yalnız OTOMATİK seçeneğinin kaynağıdır ve oynatıcı
 -- onu ancak şubeye en az bir liste yüklüyse çalar.
 --
--- İki aşamalı seçim: yönetim her şubenin havuzunu belirler (hangi listeler o
--- şubeye AİT), marka ise kendi panelinde (coffee-marka sunumu, erişim koduyla)
--- bu havuzun içinden hangilerinin ÇALACAĞINI seçer. Cihaz yalnız markanın
--- seçtiği listeleri gösterir. Marka hiçbirini seçmezse o şube çalmaz.
+-- Atamayı yalnız yönetim yapar: marka → şube → birden fazla çalma listesi.
+-- Marka paneli (coffee-marka sunumu) okumaya devam eder; seçim orada yapılmaz.
 --
 -- Çalıştırma: Supabase → SQL Editor → bu dosyanın tamamını yapıştır → Run.
 -- Idempotent: tekrar çalıştırmak zarar vermez ve elle kaldırılan yüklemeleri
@@ -29,17 +27,9 @@ create table if not exists public.player_playlists (
   player_id   uuid not null references public.brand_players(id) on delete cascade,
   playlist_id uuid not null references public.brand_playlists(id) on delete cascade,
   sort_order  integer not null default 0,
-  -- Marka kendi panelinden bu listeyi seçti mi? Havuza yeni giren liste seçili
-  -- gelir: yönetim bir listeyi atadığında o şube çalmaya devam eder, marka
-  -- istemediğini kendi panelinden çıkarır.
-  secili      boolean not null default true,
   created_at  timestamptz not null default now(),
   unique (player_id, playlist_id)
 );
-
--- Var olan kuruluma da ekler (tekrar çalıştırmak zarar vermez).
-alter table public.player_playlists
-  add column if not exists secili boolean not null default true;
 
 create index if not exists player_playlists_player_order_idx
   on public.player_playlists (player_id, sort_order);
@@ -90,76 +80,5 @@ language sql security definer set search_path = public as $$
   join public.brand_playlists bp on bp.id = pp.playlist_id
   left join public.brand_playlist_tracks bpt on bpt.playlist_id = bp.id
   left join public.radio_tracks t on t.id = bpt.track_id
-  -- Markanın kendi panelinde işaretini kaldırdığı listeler cihazda görünmez.
-  where pp.secili
   order by pp.sort_order, bp.name, coalesce(bpt.sort_order, t.sort_order, 0), t.created_at;
 $$;
-
--- ---- Marka paneli: havuz ve seçim --------------------------------------
--- Sunum sayfası (coffee-marka) erişim koduyla açılır ve hiç giriş yapmaz, bu
--- yüzden iki işi burada, kodu sunucuda doğrulayarak yaparız:
---   1) coffee_brand_havuz  → yönetimin o şubenin havuzuna koyduklarını okur
---   2) coffee_brand_secim  → markanın işaretlediklerini kalıcı olarak yazar
--- Tablo yöneticiye kapalıdır; bu iki fonksiyon security definer olduğu için
--- marka yalnızca kendi şubesinin havuzuna dokunabilir.
-
-create or replace function public.coffee_brand_havuz(p_slug text, p_code text)
-returns table(
-  player_id uuid, sube text, playlist_id uuid, liste text,
-  secili boolean, parca integer, abonelik boolean, sira integer
-)
-language sql security definer set search_path = public as $$
-  with marka as (
-    select b.id, public.abonelik_gecerli(b.id) as gecerli
-    from public.brands b
-    where b.slug = p_slug and b.access_code = p_code
-  )
-  select p.id, p.label, bp.id, bp.name, pp.secili,
-    (select count(*) from public.brand_playlist_tracks t where t.playlist_id = bp.id)::int,
-    m.gecerli, pp.sort_order
-  from marka m
-  join public.brand_players p on p.brand_id = m.id
-  join public.player_playlists pp on pp.player_id = p.id
-  join public.brand_playlists bp on bp.id = pp.playlist_id
-  order by p.label, pp.sort_order, bp.name;
-$$;
-
--- Markanın seçimi kalıcıdır: kaydedilir ve yönetim havuzu değiştirmedikçe
--- olduğu gibi kalır. Boş dizi gönderilirse o şubede hiç liste çalmaz.
--- Abonelik geçerli değilse yazmaz: "kalıcı seçim" aboneliği olan markanın hakkı.
-create or replace function public.coffee_brand_secim(
-  p_slug text, p_code text, p_player_id uuid, p_playlist_ids uuid[]
-)
-returns integer
-language plpgsql security definer set search_path = public as $$
-declare
-  v_marka uuid;
-  v_secili integer;
-begin
-  select b.id into v_marka
-  from public.brands b
-  where b.slug = p_slug and b.access_code = p_code;
-  if v_marka is null then
-    raise exception 'Erişim kodu doğrulanamadı.';
-  end if;
-
-  if not exists (
-    select 1 from public.brand_players p
-    where p.id = p_player_id and p.brand_id = v_marka
-  ) then
-    raise exception 'Bu şube markaya ait değil.';
-  end if;
-
-  if not coalesce(public.abonelik_gecerli(v_marka), false) then
-    raise exception 'Abonelik aktif olmadığı için seçim kaydedilemez.';
-  end if;
-
-  update public.player_playlists pp
-     set secili = (pp.playlist_id = any(coalesce(p_playlist_ids, '{}'::uuid[])))
-   where pp.player_id = p_player_id;
-
-  select count(*)::int into v_secili
-  from public.player_playlists pp
-  where pp.player_id = p_player_id and pp.secili;
-  return coalesce(v_secili, 0);
-end $$;

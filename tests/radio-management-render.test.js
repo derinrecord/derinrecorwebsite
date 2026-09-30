@@ -333,8 +333,7 @@ test('panel şubeye liste yüklemeyi bağlar', () => {
   // Özellik tablosu kurulmadan panel çalışmaya devam etmeli: sorgu hataya
   // toleranslı okunur ve tablo yokken yükleme sütunu hiç çizilmez.
   assert.match(source,
-    /from\('player_playlists'\)\s*\.select\('player_id,playlist_id,sort_order,secili'\)/,
-    'markanın seçimi de okunmalı');
+    /from\('player_playlists'\)\s*\.select\('player_id,playlist_id,sort_order'\)/);
   assert.match(source, /D\.subeListeleriVar = true/, 'tablo varsa özellik açılmalı');
   assert.match(source, /case 'sube-listeler'/);
   assert.match(source, /V\.subeListePenceresi\(D, ui, p\)/);
@@ -345,8 +344,6 @@ test('panel şubeye liste yüklemeyi bağlar', () => {
     'yükleme yönetici kapısından geçmeli');
   assert.match(blok, /querySelectorAll\('\[data-sube-liste\]'\)/, 'işaretli kutular okunmalı');
   assert.ok(blok.includes("from('player_playlists').insert("), 'işaretlenenler yazılmalı');
-  assert.match(blok, /secili: true/,
-    'havuza yeni giren liste seçili başlamalı: atama çalmayı durdurmamalı');
   assert.match(blok, /\.delete\(\)[\s\S]*?\.in\('playlist_id'/, 'işareti kaldırılanlar silinmeli');
 });
 
@@ -367,33 +364,41 @@ test('şube listeleri SQL\'i yöneticiye kapalı cihaza fonksiyonla açık', () 
     'geçiş tohumu idempotent olmalı');
 });
 
-// İkinci aşama: yönetim havuzu kurar, marka kendi panelinden (erişim koduyla)
-// içinden seçer. Seçim cihazı belirler ve kalıcıdır; yalnız aboneliği geçerli
-// marka yazabilir. Marka paneli hiç giriş yapmadığı için yazma yolu
-// doğrulanmış bir fonksiyondan geçmek zorundadır.
-test('marka seçimi kalıcı yazılır ve cihazı belirler', () => {
+// Atama tek katmanlıdır: yönetim markayı, şubeyi ve listeleri seçer, biter.
+// Markanın kendi panelinden seçim yapması denemesi kaldırıldı; veritabanında
+// ikinci bir işaret ya da marka adına yazan bir fonksiyon kalmamalı.
+test('atama yalnız yöneticide, marka adına yazan fonksiyon yok', () => {
   const sql = fs.readFileSync(require.resolve('../supabase/radio-sube-listeleri.sql'), 'utf8');
+  assert.ok(!/secili/.test(sql), 'ikinci bir seçim işareti olmamalı');
+  assert.ok(!/coffee_brand_havuz|coffee_brand_secim/.test(sql),
+    'marka adına yazan fonksiyon bulunmamalı');
+  assert.match(sql, /create or replace function public\.radio_sube_listeler/);
+  assert.ok(!/where pp\.secili/.test(sql), 'cihaz yalnız atanmış listeleri görür, ayrıca süzülmez');
+});
 
-  // Havuzun bir de seçim boyutu var: yönetim atadı, marka işaretledi.
-  assert.match(sql, /secili\s+boolean not null default true/);
-  assert.match(sql, /add column if not exists secili boolean not null default true/,
-    'var olan kuruluma da eklenmeli');
-  assert.match(sql, /where pp\.secili/,
-    'cihaz yalnız markanın seçtiği listeleri görmeli');
+// Kurulum sırası: SQL bir kez çalıştırıldığı anda tohum her şubeye markasının
+// listelerini yazar, yoksa bütün şubeler susmuş olurdu.
+test('şube listeleri kurulumu sahayı susturmaz', () => {
+  const sql = fs.readFileSync(require.resolve('../supabase/radio-sube-listeleri.sql'), 'utf8');
+  const tohum = sql.slice(sql.indexOf('insert into public.player_playlists'), sql.indexOf('create or replace function'));
+  assert.match(tohum, /from public\.brand_players p/);
+  assert.match(tohum, /join public\.brand_playlists bp on bp\.brand_id = p\.brand_id/,
+    'tohum her şubeye markasının listelerini yazmalı');
+  assert.match(tohum, /on conflict \(player_id, playlist_id\) do nothing/);
+});
 
-  // Marka paneli: kodu sunucuda doğrulayan iki fonksiyon.
-  assert.match(sql, /create or replace function public\.coffee_brand_havuz\(p_slug text, p_code text\)/);
-  assert.match(sql, /create or replace function public\.coffee_brand_secim\(/);
-  assert.match(sql, /where b\.slug = p_slug and b\.access_code = p_code/,
-    'marka kimliği erişim koduyla doğrulanmalı');
-  assert.ok((sql.match(/security definer set search_path = public/g) || []).length >= 2,
-    'iki marka fonksiyonu da security definer olmalı');
-  assert.match(sql, /p\.id = p_player_id and p\.brand_id = v_marka/,
-    'şube yalnız kendi markasının şubesi olabilmeli');
-  assert.match(sql, /if not coalesce\(public\.abonelik_gecerli\(v_marka\), false\) then[\s\S]*?raise exception/,
-    'abonelik geçerli değilse kalıcı seçim yazılmamalı');
-  assert.match(sql, /set secili = \(pp\.playlist_id = any\(coalesce\(p_playlist_ids, '\{\}'::uuid\[\]\)\)\)/,
-    'seçim tümüyle yazılmalı: işareti kaldırılan liste kapanmalı');
+// Bu deneme bir kez sahaya çıktı: seçim kolonu ve marka fonksiyonları kurulu
+// veritabanında kalmış olabilir. Temizlik dosyası SIRAYI korumalıdır: önce cihaz
+// fonksiyonu süzgeçsiz hâline döner, sonra kolon ve fonksiyonlar düşer.
+test('geri alma dosyası kalan parçaları sırayla temizler', () => {
+  const sql = fs.readFileSync(require.resolve('../supabase/radio-liste-secimi-temizle.sql'), 'utf8');
+  const cihaz = sql.indexOf('create or replace function public.radio_sube_listeler');
+  const fonksiyonlar = sql.indexOf('drop function if exists public.coffee_brand_havuz');
+  const kolon = sql.indexOf('drop column if exists secili');
+  assert.ok(cihaz >= 0 && fonksiyonlar > cihaz && kolon > fonksiyonlar,
+    'oluşan sıra: önce cihaz fonksiyonu, sonra fonksiyonlar, en son kolon');
+  assert.match(sql, /drop function if exists public\.coffee_brand_secim\(text, text, uuid, uuid\[\]\)/);
+  assert.ok(!/where pp\.secili/.test(sql), 'geri alınan cihaz fonksiyonu süzgeçsiz olmalı');
 });
 
 // Liste detayı marka sayfasının altında yaşar: adres markayı taşır, geri dönüş

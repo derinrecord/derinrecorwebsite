@@ -1234,35 +1234,27 @@ test('şube satırı yüklenen listeleri gösterir ve yükleme penceresini açar
   assert.ok(!html.includes('radio-sube-listeleri.sql'), 'özellik kuruluyken bu yazı çıkmamalı');
 });
 
-// İki aşamalı seçim: yönetim şubenin havuzunu belirler, marka kendi panelinden
-// bu havuzun içinden seçer. Yönetici "10 liste atadım, cihaz 4 gösteriyor"
-// şaşkınlığını panelde okumalı; markaya şube linki de buradan verilir.
-test('marka seçimi yönetim panelinde görünür', () => {
+// Atama tek katmanlı kalır: işaretlenen liste o şubede çalar, ikinci bir onay
+// (marka paneli) yok. Panel bunu açıkça söyler; marka paneli linki gibi
+// kullanılmayan bir yönlendirme de bulunmaz.
+test('şube listesi ataması tek katmanlı ve okunur', () => {
   const Dsecim = {
     ...LISTE_D,
     subeListeleriVar: true,
     playerPlaylists: [
-      { player_id: 'p1', playlist_id: 'l1', sort_order: 0, secili: true },
-      { player_id: 'p1', playlist_id: 'l2', sort_order: 1, secili: false }
+      { player_id: 'p1', playlist_id: 'l1', sort_order: 0 },
+      { player_id: 'p1', playlist_id: 'l2', sort_order: 1 }
     ]
   };
   const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), Dsecim, ui);
-  assert.ok(html.includes('marka 1/2 seçti'), 'havuzun kaçının seçili olduğu satırda yazılmalı');
-
-  // Havuzun tamamı seçiliyse gürültü yapılmaz.
-  const tam = { ...Dsecim, playerPlaylists: Dsecim.playerPlaylists.map(x => ({ ...x, secili: true })) };
-  const tamHtml = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), tam, ui).html;
-  assert.ok(!/marka \d+\/\d+ seçti/.test(tamHtml), 'hepsi seçiliyse ek not yazılmamalı');
+  assert.ok(html.includes('2 LİSTE'), 'atama satırda görünmeli');
+  assert.ok(!/marka \d+\/\d+ seçti/.test(html), 'markanın ayrı seçimi diye bir katman yok');
 
   const pencere = V.subeListePenceresi(Dsecim, ui, Dsecim.players[0]);
-  assert.ok(pencere.includes('marka seçmedi'), 'markanın elediği liste pencerede işaretlenmeli');
-  assert.ok(pencere.includes('?sube=p1'), 'markaya o şubeye özel panel linki verilmeli');
-  assert.ok(pencere.includes('havuzuna girer'), 'pencerenin havuz kurduğu yazılmalı');
-
-  // Eski kayıtta secili alanı yoktur: seçili sayılır, kimse sessizce susmasın.
-  const eski = { ...Dsecim, playerPlaylists: [{ player_id: 'p1', playlist_id: 'l1', sort_order: 0 }] };
-  assert.ok(!V.subeListePenceresi(eski, ui, eski.players[0]).includes('marka seçmedi'),
-    'seçim bilgisi olmayan kayıt seçili sayılmalı');
+  assert.ok(pencere.includes('Kafedeki personel seçicisi yalnız burada işaretlediklerini görür'),
+    'işaretlenen listenin çalacağı yazılmalı');
+  assert.ok(!pencere.includes('?sube='), 'marka paneli yönlendirmesi kalmamalı');
+  assert.ok(!pencere.includes('marka seçmedi'), 'marka seçimi işareti kalmamalı');
 });
 
 // Listeler klasörde yönetilmez: oluşturma/silme ve detay marka sayfasında kalır.

@@ -29,12 +29,9 @@ const DUGME_MS = 420;      // düğmeyle geçişte kısa fade
 const GORSEL_MS = 340;     // sahne görselinin fade süresi
 const EN_KISA = 8;         // saniyeden kısa parçalarda uçtan geçiş yapılmaz
 
+// Sunum yalnız okur: hangi listelerin o şubede çalacağını yönetim belirler.
+// Marka burada seçim yapmaz, sunumu izler (karar tek yerde, panelde).
 let listeler = [];
-// Şube havuzu: yönetimin o şubenin havuzuna koydukları + markanın seçimi
-// (player_playlists). null = fonksiyon henüz kurulmamış ya da okunamadı: o
-// zaman seçim bölümü hiç çizilmez, sunum bugünkü gibi çalışır.
-let havuz = null;
-let sonKod = '';
 let kuyruk = [];
 let sira = -1;
 let acikListe = null;
@@ -304,7 +301,6 @@ function ciz(brand, plist) {
     <div id="mk-liste"></div>
   </div>
 
-  <div id="mk-secim"></div>
 
   <div class="mk-foot">
     <span>DERİN RECORD · ÖZEL SUNUM</span>
@@ -322,116 +318,6 @@ function ciz(brand, plist) {
   bagla();
 }
 
-// ---------- Şube listesi seçimi ----------
-// Yönetim her şubeye bir havuz atar (hangi listeler o şubeye ait). Marka bu
-// havuzun içinden hangilerinin çalacağını seçer; seçim sunucuya yazılır, yani
-// kalıcıdır. Şube başına liste sayısında sınır yoktur: 10 liste de seçilebilir.
-function subeFiltresi() {
-  try { return new URLSearchParams(location.search).get('sube') || ''; } catch { return ''; }
-}
-
-function secimGruplari() {
-  const filtre = subeFiltresi();
-  const gruplar = new Map();
-  (havuz || []).forEach(s => {
-    if (filtre && !es(s.player_id, filtre)) return;
-    if (!gruplar.has(String(s.player_id))) {
-      gruplar.set(String(s.player_id), {
-        player_id: s.player_id, sube: s.sube, abonelik: !!s.abonelik, listeler: []
-      });
-    }
-    gruplar.get(String(s.player_id)).listeler.push(s);
-  });
-  return [...gruplar.values()];
-}
-
-function durumYaz(playerId, metin) {
-  const el = document.querySelector('[data-sube-durum="' + playerId + '"]');
-  if (el) el.textContent = metin || '';
-}
-
-function secimCiz() {
-  const host = byId('mk-secim');
-  if (!host) return;
-  // Fonksiyon kurulmamışsa bölüm hiç görünmez: eksik kurulumu markaya
-  // gösterip korkutmaya gerek yok.
-  if (havuz === null) { host.innerHTML = ''; return; }
-
-  const gruplar = secimGruplari();
-  if (!gruplar.length) {
-    host.innerHTML = `<div class="mk-panel">
-      <h3><span>ÇALINACAK LİSTELER</span><span></span></h3>
-      <p class="mk-bos">Bu şubeye henüz çalma listesi atanmadı. Derin Record bir liste atadığında buradan istediklerini seçebilirsin.</p>
-    </div>`;
-    return;
-  }
-
-  const baslik = gruplar.length > 1 ? 'ŞUBELERDE ÇALINACAK LİSTELER' : 'BU ŞUBEDE ÇALINACAK LİSTELER';
-  const govde = gruplar.map(g => {
-    const seciliAdet = g.listeler.filter(x => x.secili).length;
-    const kilitli = !g.abonelik;
-    const satirlar = g.listeler.map(x => `
-      <label class="mk-secim-satir">
-        <input type="checkbox" data-sube="${safe(g.player_id)}" value="${safe(x.playlist_id)}"
-          ${x.secili ? 'checked' : ''}${kilitli ? ' disabled' : ''}>
-        <span><b>${safe(x.liste)}</b><small>${Number(x.parca) || 0} parça</small></span>
-      </label>`).join('');
-    return `<div class="mk-sube">
-      <div class="mk-sube-ust">
-        <b>${safe(g.sube || 'Şube')}</b>
-        <span class="mk-sub">${seciliAdet} / ${g.listeler.length} liste çalıyor</span>
-      </div>
-      <div class="mk-secim-alt">
-        <button class="mk-btn2" type="button" data-sube-hepsi="${safe(g.player_id)}"${kilitli ? ' disabled' : ''}>TÜMÜNÜ SEÇ</button>
-        <button class="mk-btn2" type="button" data-sube-hicbiri="${safe(g.player_id)}"${kilitli ? ' disabled' : ''}>HİÇBİRİNİ SEÇ</button>
-        <span class="mk-sub">Hiçbiri işaretlenmezse bu şube çalmaz.</span>
-      </div>
-      <div class="mk-secim-kutu">${satirlar}</div>
-      ${kilitli ? `<p class="mk-bos">Aboneliğiniz aktif olmadığı için seçim kaydedilemez. Derin Record ile iletişime geçin.</p>` : ''}
-      <div class="mk-secim-alt">
-        <button class="mk-btn" type="button" data-sube-kaydet="${safe(g.player_id)}"${kilitli ? ' disabled' : ''}>SEÇİMİ KAYDET</button>
-        <span class="mk-sub" data-sube-durum="${safe(g.player_id)}">Kaydettiğiniz anda bu şubede geçerli olur ve siz değiştirene kadar kalır.</span>
-      </div>
-    </div>`;
-  }).join('');
-
-  host.innerHTML = `<div class="mk-panel">
-    <h3><span>${baslik}</span><span>istediğiniz kadar liste</span></h3>
-    <p class="mk-bos">Derin Record bu şubeye hangi listeleri atadıysa aşağıdadır. <b>Birden çok liste seçebilirsiniz.</b>
-      İşaretledikleriniz bu şubede çalar, işareti kaldırdıklarınız çalmaz; kayıt yalnız <b>SEÇİMİ KAYDET</b> dediğinizde olur.</p>
-    ${govde}
-  </div>`;
-}
-
-async function secimYukle(kod) {
-  try {
-    const r = await client.rpc('coffee_brand_havuz', { p_slug: slug, p_code: kod });
-    if (!r || r.error || !Array.isArray(r.data)) { havuz = null; secimCiz(); return; }
-    havuz = r.data;
-  } catch { havuz = null; }
-  secimCiz();
-}
-
-async function secimKaydet(playerId, dugme) {
-  const secili = [...document.querySelectorAll('[data-sube]')]
-    .filter(k => es(k.dataset.sube, playerId) && k.checked)
-    .map(k => k.value);
-  dugme.disabled = true;
-  durumYaz(playerId, 'Kaydediliyor…');
-  const { data, error } = await client.rpc('coffee_brand_secim', {
-    p_slug: slug, p_code: sonKod, p_player_id: playerId, p_playlist_ids: secili
-  });
-  dugme.disabled = false;
-  if (error) { durumYaz(playerId, 'Kaydedilemedi: ' + error.message); return; }
-  (havuz || []).forEach(x => {
-    if (es(x.player_id, playerId)) x.secili = secili.some(v => es(v, x.playlist_id));
-  });
-  secimCiz();
-  const adet = Number(data) || 0;
-  durumYaz(playerId, adet === 0
-    ? 'Hiç liste seçilmedi: bu şubede müzik çalmaz.'
-    : 'Kaydedildi: bu şubede ' + adet + ' liste çalacak.');
-}
 
 function bagla() {
   byId('mk-tabs').addEventListener('click', async e => {
@@ -483,25 +369,6 @@ function bagla() {
     surukluyor = false;
     if (isFinite(audio.duration) && audio.duration) audio.currentTime = (Number(e.target.value) / 1000) * audio.duration;
   });
-  byId('mk-secim').addEventListener('click', e => {
-    const dugme = e.target.closest('[data-sube-kaydet]');
-    if (dugme) {
-      secimKaydet(dugme.dataset.subeKaydet, dugme).catch(err =>
-        durumYaz(dugme.dataset.subeKaydet, 'Kaydedilemedi: ' + (err.message || '')));
-      return;
-    }
-    // Toplu işaretleme kaydetmez: yalnız kutuları doldurur, kayıt SEÇİMİ
-    // KAYDET'e bırakılır. Böylece yanlışlıkla tümü seçilip kaydedilmiş olmaz.
-    const hepsi = e.target.closest('[data-sube-hepsi]');
-    const hicbiri = e.target.closest('[data-sube-hicbiri]');
-    if (!hepsi && !hicbiri) return;
-    const playerId = (hepsi || hicbiri).dataset[hepsi ? 'subeHepsi' : 'subeHicbiri'];
-    document.querySelectorAll('[data-sube]').forEach(k => {
-      if (es(k.dataset.sube, playerId)) k.checked = !!hepsi;
-    });
-    durumYaz(playerId, 'Henüz kaydedilmedi: SEÇİMİ KAYDET demeden değişmez.');
-  });
-
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
     if (e.key === 'ArrowRight') byId('mk-ileri').click();
@@ -600,9 +467,7 @@ async function ac(kod) {
   });
 
   try { sessionStorage.setItem('br-' + slug, kod); } catch {}
-  sonKod = kod;
   ciz(brand, listeler);
-  secimYukle(kod).catch(() => {});
 }
 
 byId('mk-gir').onclick = () => {

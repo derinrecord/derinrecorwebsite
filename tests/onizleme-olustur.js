@@ -390,13 +390,9 @@ body{background:#0b0b0d;padding:22px;display:block}
   return;
 }
 
-// "marka" modu marka panelini (coffee-marka) önizler: erişim kodunun kilidi,
-// sunumun kendisi ve şube listesi seçimi bir arada. Gerçek sayfa gömülür,
-// yalnız sunucu taklit edilir. Taklit sunucu havuzu bellekte tutar: kaydedilen
-// seçim yeniden okunduğunda da görünür, yani seçimin kalıcı olduğu sınanır.
-//
-// Sorgu ekleri:  ?ab=0 (abonelik geçersiz) · ?kurulum=yok (fonksiyonlar yok)
-//                ?sube=p1 (şubeye özel link)
+// "marka" modu marka panelini (coffee-marka) önizler: erişim kodunun kilidi ve
+// sunumun kendisi. Sayfa yalnız okur ve listeleri gösterir; hangi listelerin
+// çalacağını yönetim belirler. Gerçek sayfa gömülür, yalnız sunucu taklit edilir.
 if (senaryo === 'marka') {
   const gom = dosya => 'data:text/css;base64,' + Buffer.from(oku(dosya)).toString('base64');
   const sayfaHam = oku('coffee-marka.html');
@@ -405,8 +401,6 @@ if (senaryo === 'marka') {
 <script>
 // ---- Sunucu taklidi: marka paneli yalnız bu uçlarla konuşur ---------------
 (() => {
-  const q = new URLSearchParams(location.search);
-  const KURULUM = q.get('kurulum') !== 'yok';
   const COD = 'PROVA';
   const MARKA = {
     brand_id: 'b1', name: 'Brew Lab', slug: 'onizleme-marka.html',
@@ -423,22 +417,12 @@ if (senaryo === 'marka') {
     l1: ['Filtre Sabah', 'Uzun Yol'], l2: ['Keskin Makas', 'Tıraş Ritmi'],
     l3: ['Isınma', 'Sprint'], l4: ['Sokak Sessiz', 'Kapanış']
   };
-  // Havuz: yönetimin bu şubeye attıkları + markanın seçimi.
-  let havuz = [
-    { player_id: 'p1', sube: 'Brew Lab — Alsancak', playlist_id: 'l1', liste: 'Sabah Akışı', secili: true, parca: 2, sira: 0 },
-    { player_id: 'p1', sube: 'Brew Lab — Alsancak', playlist_id: 'l2', liste: 'Berber Kuşağı', secili: true, parca: 2, sira: 1 },
-    { player_id: 'p1', sube: 'Brew Lab — Alsancak', playlist_id: 'l3', liste: 'Spor Salonu — Enerji', secili: false, parca: 2, sira: 2 },
-    { player_id: 'p2', sube: 'Brew Lab — Bornova', playlist_id: 'l1', liste: 'Sabah Akışı', secili: true, parca: 2, sira: 0 },
-    { player_id: 'p2', sube: 'Brew Lab — Bornova', playlist_id: 'l4', liste: 'Akşam Kapanış — Lo-fi', secili: true, parca: 2, sira: 1 }
-  ];
-  const abonelik = q.get('ab') !== '0';
   const satir = (pl) => P_TRACK[pl.id].map((t, i) => ({
     playlist_id: pl.id, name: pl.name, cover_path: null, created_at: '2026-09-01T09:00:00Z',
     track_id: 't-' + pl.id + '-' + i, title: t, storage_path: pl.id + '/p' + i + '.wav',
     track_cover: null, duration_sec: 200 + i * 10, sort_order: i
   }));
   const listeSatirlari = [].concat(...P_LISTELER.map(satir));
-  window.__prova = { kayitlar: [], havuz: () => havuz };
 
   window.supabase = {
     createClient: () => ({
@@ -449,19 +433,6 @@ if (senaryo === 'marka') {
             : { data: [], error: null });
         }
         if (ad === 'coffee_brand_liste') return Promise.resolve({ data: listeSatirlari, error: null });
-        if (ad === 'coffee_brand_havuz') {
-          if (!KURULUM) return Promise.resolve({ data: null, error: { code: 'PGRST202', message: 'fonksiyon yok' } });
-          return Promise.resolve({ data: havuz.map(x => ({ ...x, abonelik: abonelik })), error: null });
-        }
-        if (ad === 'coffee_brand_secim') {
-          if (!abonelik) return Promise.resolve({ data: null, error: { message: 'Abonelik aktif olmadığı için seçim kaydedilemez.' } });
-          const secili = (p.p_playlist_ids || []).map(String);
-          havuz = havuz.map(x => x.player_id === p.p_player_id ? { ...x, secili: secili.includes(String(x.playlist_id)) } : x);
-          const adet = havuz.filter(x => x.player_id === p.p_player_id && x.secili).length;
-          window.__prova.kayitlar.push({ player_id: p.p_player_id, secili: secili, adet: adet });
-          console.log('coffee_brand_secim', JSON.stringify({ player_id: p.p_player_id, secili: secili }));
-          return Promise.resolve({ data: adet, error: null });
-        }
         return Promise.resolve({ data: [], error: null });
       },
       storage: { from: () => ({ getPublicUrl: p => ({ data: { publicUrl: p ? 'data:,' : '' } }) }) },
@@ -488,7 +459,7 @@ if (senaryo === 'marka') {
       throw new Error(dis + ' gömülmedi: prova sayfasının etiketi değişmiş, onizleme-olustur.js marka modunu güncelleyin');
     }
   });
-  if (!gomulu.includes('coffee_brand_havuz')) throw new Error('sunucu taklidi gömülmedi');
+  if (!gomulu.includes('coffee_brand_liste')) throw new Error('sunucu taklidi gömülmedi');
   fs.writeFileSync(ciktiYolu, gomulu);
   console.log(path.relative(kok, ciktiYolu) + ' yazıldı · marka paneli · ' + gomulu.length + ' bayt');
   return;

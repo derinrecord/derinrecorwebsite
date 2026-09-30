@@ -180,42 +180,6 @@
   display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
   font-size:11px;letter-spacing:.14em;opacity:.42}
 
-/* ---------- Şube listesi seçimi (marka paneli) ----------
-   Yönetim havuzu atar, marka içinden seçer. Seçim kalıcıdır: kaydedilir ve
-   yönetim havuzu değiştirmedikçe olduğu gibi kalır. */
-.mk-sube{margin-top:18px;padding-top:18px;border-top:1px solid var(--mk-line)}
-.mk-sube:first-of-type{border-top:0;padding-top:0}
-.mk-sube-ust{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap}
-.mk-sube-ust b{font-size:14.5px}
-/* Satırlar yönetim panelindeki şube penceresiyle aynı düzendedir: tek sütun,
-   tam genişlik, ad + parça sayısı. Marka aynı îi iki ekranda da aynı görsün. */
-.mk-secim-kutu{margin:12px 0 14px}
-.mk-secim-satir{display:flex;align-items:center;gap:13px;padding:12px 15px;border-radius:14px;cursor:pointer;
-  margin-bottom:8px;border:1px solid var(--mk-line);background:rgba(255,255,255,.035);
-  transition:background .2s,border-color .2s}
-.mk-secim-satir:hover{background:rgba(255,255,255,.07)}
-.mk-secim-satir input{appearance:none;-webkit-appearance:none;width:19px;height:19px;flex:0 0 auto;position:relative;
-  border-radius:6px;border:1px solid var(--mk-line);background:rgba(0,0,0,.35);cursor:pointer}
-.mk-secim-satir input:checked{border-color:var(--mk-accent);background:var(--mk-accent)}
-.mk-secim-satir input:checked::after{content:'✓';position:absolute;inset:0;display:grid;place-items:center;
-  color:#131313;font-size:12.5px;font-weight:700}
-.mk-secim-satir input:disabled{opacity:.45;cursor:not-allowed}
-.mk-secim-satir:has(input:checked){border-color:rgba(232,209,90,.45);background:rgba(232,209,90,.08)}
-.mk-secim-satir span{display:flex;flex-direction:column;gap:2px;min-width:0}
-.mk-secim-satir b{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mk-secim-satir small{font-size:11px;opacity:.5}
-.mk-secim-alt{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.mk-secim-alt + .mk-secim-kutu{margin-top:12px}
-.mk-secim-alt + .mk-secim-alt{margin-top:14px}
-.mk-btn{padding:12px 20px;border:0;border-radius:14px;cursor:pointer;font:inherit;font-weight:700;
-  font-size:11.5px;letter-spacing:.12em;color:#131313;
-  background:linear-gradient(145deg,#e6cf55,#bfa32c);box-shadow:0 10px 24px rgba(0,0,0,.4)}
-.mk-btn:disabled{opacity:.5;cursor:not-allowed}
-.mk-btn2{padding:12px 18px;border-radius:14px;cursor:pointer;font:inherit;font-weight:700;font-size:11.5px;
-  letter-spacing:.12em;color:inherit;background:rgba(255,255,255,.05);border:1px solid var(--mk-line)}
-.mk-btn2:hover{background:rgba(255,255,255,.1)}
-.mk-btn2:disabled{opacity:.5;cursor:not-allowed}
-
 /* ---------- Duyarlı ---------- */
 @media(max-width:820px){
   .mk-stage{grid-template-columns:1fr;text-align:center}

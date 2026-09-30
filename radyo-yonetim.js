@@ -236,10 +236,7 @@
     if (eklenecek.length) {
       const { error } = await client.from('player_playlists').insert(
         eklenecek.map((playlistId, i) => ({
-          player_id: p.id, playlist_id: playlistId, sort_order: yuklu.length + i,
-          // Havuza yeni giren liste seçili başlar: yönetim atadığı anda o şube
-          // çalmaya devam eder; marka istemediğini kendi panelinden çıkarır.
-          secili: true
+          player_id: p.id, playlist_id: playlistId, sort_order: yuklu.length + i
         })));
       if (error) return hata('Listeler yüklenemedi: ' + error.message);
     }
@@ -251,8 +248,8 @@
     pencereKapat();
     await yenile(false);
     bildir(!secilen.length
-      ? p.label + ' şubesinin havuzu boş; bu şube çalmayacak.'
-      : p.label + ' şubesinin havuzuna ' + secilen.length + ' liste kondu. Marka kendi panelinden istediklerini seçer.');
+      ? p.label + ' şubesinde liste kalmadı; bu şube çalmayacak.'
+      : p.label + ' şubesine ' + secilen.length + ' liste atandı.');
   }
 
   // ---------- Çekmece ----------
@@ -433,7 +430,7 @@
     // tutulur ki ana yükleme bundan etkilenmesin.
     try {
       const yuklu = await client.from('player_playlists')
-        .select('player_id,playlist_id,sort_order,secili').order('sort_order');
+        .select('player_id,playlist_id,sort_order').order('sort_order');
       if (!yuklu.error && Array.isArray(yuklu.data)) {
         D.playerPlaylists = yuklu.data;
         D.subeListeleriVar = true;
@@ -1553,14 +1550,14 @@
       }
 
       // --- şube listeleri (supabase/radio-sube-listeleri.sql) ---
-      // Burada kurulan şey havuzdur: o şubeye ait listeler. Marka kendi
-      // panelinden havuzun içinden seçer; yükleme tek başına yayını değiştirmez.
+      // Şubeye liste atamak yayını değiştirmez: yalnız o şubenin cihazındaki
+      // personel seçicisini belirler. Hiçbiri atanmazsa şube çalmaz.
       case 'sube-listeler': {
         const p = D.players.find(x => x.id === id);
         if (!p) return hata('Şube bulunamadı.');
         if (!D.subeListeleriVar) return hata('Şube listeleri için supabase/radio-sube-listeleri.sql çalıştırılmalı.');
         pencere({
-          baslik: p.label + ' · şube listesi havuzu',
+          baslik: p.label + ' · çalma listeleri',
           govde: V.subeListePenceresi(D, ui, p),
           onayMetni: 'KAYDET',
           onOnay: () => subeListeleriKaydet(p.id)
