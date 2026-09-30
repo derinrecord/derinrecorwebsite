@@ -1,0 +1,1932 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Harmonik Set — Derin Record</title>
+<style>
+:root{--ink:#0b0b0d;--cream:#f4f1e9;--pink:#cb2468;--red:#ff352e;--yellow:#d8bb2c;--muted:#a8a5a0}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--ink);color:var(--cream);font-family:Arial,Helvetica,sans-serif}.noise{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:.06;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}a{color:inherit;text-decoration:none}.header{padding:28px 6vw;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #3f3d40}.home{font-size:13px;font-weight:900;letter-spacing:1px}.home span{color:var(--pink);font-size:18px}.wordmark{font-weight:900;font-size:20px;line-height:.8;letter-spacing:-1px}.wordmark b{color:var(--red);font-size:24px}.hero{padding:84px 9vw 60px;min-height:440px;position:relative;overflow:hidden;background:radial-gradient(circle at 88% 5%,#472031,transparent 34%),#111115}.hero:after{content:"";position:absolute;width:520px;height:520px;right:-190px;top:-225px;border-radius:50%;background-image:radial-gradient(circle,var(--pink) 2px,transparent 3px);background-size:17px 17px;opacity:.65}.eyebrow{margin:0 0 18px;color:var(--yellow);font-size:12px;font-weight:900;letter-spacing:2px}.hero h1,.track-title{margin:0;font-size:clamp(56px,9vw,130px);line-height:.78;letter-spacing:-.07em;font-weight:900}.hero h1 span{color:var(--pink)}.hero p:last-child{max-width:490px;margin:28px 0 0;color:#c7c3be;line-height:1.5}.track-area{padding:75px 9vw 115px;background:var(--cream);color:var(--ink)}.track-area h2{margin:0 0 45px;font-size:16px;letter-spacing:1px}.player-list{display:grid;gap:26px}.track{position:relative;min-height:230px;padding:30px;display:grid;grid-template-columns:minmax(140px,270px) 1fr auto;align-items:center;gap:44px;overflow:hidden;background:#16151a;color:var(--cream);box-shadow:12px 12px 0 var(--pink)}.track:before{content:"";position:absolute;width:360px;height:360px;right:-110px;bottom:-260px;border-radius:50%;background-image:radial-gradient(circle,var(--pink) 2px,transparent 3px);background-size:15px 15px;opacity:.8}.track:nth-child(2){box-shadow:12px 12px 0 var(--yellow)}.track:nth-child(2):before{background-image:radial-gradient(circle,var(--yellow) 2px,transparent 3px)}.cassette{position:relative;aspect-ratio:1.55;width:100%;padding:17px;display:flex;align-items:center;justify-content:space-between;color:var(--ink);background:var(--yellow);border:7px solid #030303;box-shadow:inset 0 0 0 3px var(--ink);transition:transform .35s ease}.track:hover .cassette{transform:translateY(-12px) rotate(-3deg) scale(1.07)}.cassette:after{content:"";position:absolute;left:25%;right:25%;top:35%;bottom:35%;background:#0a090a;border-radius:3px}.cassette i{width:35px;height:35px;z-index:1;border:7px dotted var(--yellow);border-radius:50%;background:#111}.cassette b{position:absolute;z-index:1;left:50%;top:8px;transform:translateX(-50%);font-size:11px;letter-spacing:1px}.cassette em{position:absolute;z-index:1;left:50%;bottom:8px;transform:translateX(-50%);font-size:12px;font-weight:900;font-style:normal;letter-spacing:.5px}.track:nth-child(2) .cassette{background:var(--pink);color:var(--cream)}.track-info{position:relative;z-index:1}.track-type{display:block;margin-bottom:10px;color:var(--yellow);font-size:11px;font-weight:900;letter-spacing:2px}.track-title{font-size:clamp(34px,5vw,72px)}.track-note{margin:15px 0 0;color:#bab5b1;font-size:14px}.play{position:relative;z-index:1;width:85px;height:85px;border:0;border-radius:50%;cursor:pointer;color:var(--ink);background:var(--yellow);font-size:22px;font-weight:900;transition:transform .2s}.play:hover{transform:scale(1.1)}.track:nth-child(2) .play{background:var(--pink);color:var(--cream)}.empty{padding:55px 30px;background:#dbd6cb;color:var(--ink);border-left:12px solid var(--pink)}.empty h3{margin:0 0 12px;font-size:34px;letter-spacing:-1px}.empty p{margin:0;line-height:1.5}.page-footer{padding:34px 9vw;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:900;letter-spacing:1px}.page-footer span{color:var(--red);font-size:17px}@media(max-width:700px){.header{padding:20px 7vw}.hero{padding:65px 7vw 50px}.track-area{padding:60px 7vw 80px}.track{grid-template-columns:1fr;gap:24px;padding:25px}.cassette{width:70%;max-width:260px}.track-title{font-size:47px}.play{position:absolute;right:24px;bottom:30px;width:65px;height:65px}.track-info{padding-right:75px}}
+video{display:none}
+.player-controls{position:relative;z-index:1;width:175px;display:grid;grid-template-columns:72px 1fr;gap:8px;align-items:center}.player-controls .play{width:72px;height:72px;grid-row:1/3}.seek{width:100%;height:5px;appearance:none;border:0;border-radius:9px;cursor:pointer;background:#747077}.seek::-webkit-slider-thumb{appearance:none;width:15px;height:15px;border:2px solid var(--ink);border-radius:50%;background:var(--yellow)}.seek::-moz-range-thumb{width:13px;height:13px;border:2px solid var(--ink);border-radius:50%;background:var(--yellow)}.time{font-size:10px;font-weight:900;letter-spacing:.4px;color:#d8d3ce;white-space:nowrap}@media(max-width:700px){.player-controls{width:100%;grid-template-columns:65px 1fr;margin-top:4px}.player-controls .play{position:static;width:62px;height:62px;grid-row:1/3}.seek{align-self:end}.time{align-self:start}}
+
+</style>
+<style>
+.account-actions{display:flex;align-items:center;gap:.55rem}.account-button{border:1px solid var(--yellow,#f4d43e);background:var(--yellow,#f4d43e);color:#111;padding:.55rem .8rem;font:700 .7rem/1 Arial,sans-serif;letter-spacing:.08em;cursor:pointer}.account-button.secondary{background:transparent;color:var(--yellow,#f4d43e)}.account-menu{position:fixed;inset:0;z-index:90}.account-menu[hidden]{display:none}.account-menu-backdrop{position:absolute;inset:0;background:rgba(6,5,8,.65);opacity:0;transition:opacity .32s ease}.account-menu-panel{position:absolute;top:0;right:0;height:100%;width:min(86vw,320px);box-sizing:border-box;display:flex;flex-direction:column;gap:.4rem;padding:1.6rem 1.3rem;background:radial-gradient(circle at 15% 0%,rgba(255,45,150,.28),transparent 55%),radial-gradient(circle at 100% 100%,rgba(0,209,255,.2),transparent 50%),#141018;border-left:1px solid rgba(255,255,255,.12);box-shadow:-24px 0 60px rgba(0,0,0,.55);transform:translateX(100%);transition:transform .32s cubic-bezier(.22,.9,.32,1);overflow-y:auto}.account-menu.open .account-menu-backdrop{opacity:1}.account-menu.open .account-menu-panel{transform:translateX(0)}.account-menu-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding-bottom:1rem;margin-bottom:.4rem;border-bottom:1px solid rgba(255,255,255,.12)}.account-menu-name{font:800 .78rem/1.2 Arial,sans-serif;letter-spacing:.04em;color:#e8d15a;text-transform:uppercase}.account-menu-close{border:0;background:transparent;color:#fff;font-size:1.4rem;line-height:1;cursor:pointer;padding:.2rem .4rem}.account-menu-links{display:grid;gap:.35rem}.account-menu-links a{padding:.7rem .6rem;border-radius:10px;background:rgba(255,255,255,.05);color:#fff;text-decoration:none;text-align:left;font:700 .72rem/1 Arial,sans-serif;letter-spacing:.05em;transition:background .2s ease,color .2s ease}.account-menu-links a:hover{background:rgba(255,45,150,.18);color:#ff8fd6}.account-menu-logout{margin-top:auto;padding:.7rem .6rem;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:transparent;color:#fff;text-align:left;font:700 .72rem/1 Arial,sans-serif;letter-spacing:.05em;cursor:pointer}.account-menu-logout:hover{border-color:#ff2f96;color:#ff8fd6}body.account-menu-open{overflow:hidden}.auth-overlay{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:1rem;background:rgba(0,0,0,.72)}.auth-overlay[hidden]{display:none}.auth-card{width:min(100%,27rem);padding:1.5rem;background:#171717;border:1px solid var(--yellow,#f4d43e);color:#fff;box-shadow:8px 8px 0 rgba(244,212,62,.25)}.auth-card h2{margin:0 0 .4rem;font:800 1.45rem/1 Arial,sans-serif;letter-spacing:.04em}.auth-card p{margin:.25rem 0 1rem;color:#d2d2d2;font:400 .86rem/1.5 Arial,sans-serif}.auth-card label{display:grid;gap:.3rem;margin:.65rem 0;font:700 .68rem/1 Arial,sans-serif;letter-spacing:.06em}.auth-card input{box-sizing:border-box;width:100%;padding:.7rem;border:1px solid #5b5b5b;background:#101010;color:#fff}.auth-submit{width:100%;margin-top:.8rem;padding:.8rem;border:0;background:var(--yellow,#f4d43e);color:#111;font-weight:800;cursor:pointer}.auth-switch,.auth-close{margin-top:.8rem;border:0;background:none;color:var(--yellow,#f4d43e);font-size:.75rem;cursor:pointer}.auth-close{float:right}.auth-message{min-height:1.2rem;margin-top:.7rem!important;color:var(--yellow,#f4d43e)!important}.feedback-access{margin:1rem 0;padding:1rem;border:1px solid #555;background:#171717;color:#fff}.feedback-access h3{margin:0 0 .45rem;color:var(--yellow,#f4d43e);font-size:1rem}.feedback-access p{margin:0 0 .8rem;font-size:.85rem;line-height:1.45}.admin-main{max-width:70rem;margin:0 auto;padding:3rem 1.25rem}.admin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0}.admin-stat,.admin-panel{padding:1rem;border:1px solid #4c4c4c;background:#171717;color:#fff}.admin-stat strong{display:block;margin-top:.35rem;color:var(--yellow,#f4d43e);font-size:2rem}.admin-panel{margin-top:1rem}.admin-panel h2{margin:0 0 1rem;color:var(--yellow,#f4d43e);font-size:1rem}.access-form{display:grid;grid-template-columns:1fr 1fr auto;gap:.7rem}.access-form select,.access-form button{padding:.65rem;background:#111;color:#fff;border:1px solid #555}.access-form button{background:var(--yellow,#f4d43e);color:#111;border:0;font-weight:800;cursor:pointer}.admin-table{width:100%;border-collapse:collapse;font-size:.8rem}.admin-table th,.admin-table td{padding:.65rem;text-align:left;border-bottom:1px solid #383838}.admin-table button{padding:.35rem .55rem;border:1px solid #777;background:transparent;color:#fff;cursor:pointer}@media(max-width:650px){.header{gap:.7rem}.account-actions{margin-left:auto}.account-button{font-size:.6rem}.admin-grid{grid-template-columns:1fr}.access-form{grid-template-columns:1fr}.account-menu-panel{width:min(92vw,300px)}}
+
+</style>
+<style>
+/* Derin Record — cam katmanı (marka paletiyle) */
+
+:root{
+  --glass-bg:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.04));
+  --glass-line:rgba(255,255,255,.22);
+  --glass-shadow:0 18px 46px rgba(0,0,0,.5),
+                 inset 0 1px 0 rgba(255,255,255,.34),
+                 inset 0 -1px 0 rgba(255,255,255,.07);
+  --glass-blur:blur(24px) saturate(180%);
+}
+
+/* --- Üst menü: yüzen cam çubuk --- */
+.site-header{
+  position:fixed; top:14px; left:50%; width:min(1180px,94vw);
+  transform:translateX(-50%);
+  padding:14px 26px; border-radius:24px;
+  background:var(--glass-bg);
+  border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shadow);
+  align-items:center;
+}
+.site-header::after{
+  content:""; position:absolute; inset:0; border-radius:24px; pointer-events:none;
+  background:linear-gradient(120deg,rgba(255,255,255,.22),transparent 30%,
+             transparent 70%,rgba(203,36,104,.16));
+  mix-blend-mode:overlay;
+}
+.site-header > *{position:relative; z-index:1}
+.nav-cta{
+  border-radius:14px; padding:11px 17px;
+  background:linear-gradient(145deg,var(--yellow),#b8992a);
+  box-shadow:0 8px 20px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.7);
+}
+
+/* --- Butonlar: cam hap --- */
+.button{
+  border-radius:18px;
+  box-shadow:0 10px 26px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.75);
+}
+.button-yellow{background:linear-gradient(145deg,#e6c840,#b8992a)}
+.button-pink{background:linear-gradient(145deg,#e0357a,#a51a50)}
+.button:hover{transform:translateY(-3px) rotate(-1deg)}
+
+/* --- Hero: renkli cam ışıması --- */
+.hero::before{
+  background-image:none;
+  background:radial-gradient(circle,rgba(203,36,104,.55),transparent 68%);
+  filter:blur(60px);
+}
+.hero::after{
+  background-image:none;
+  background:radial-gradient(circle,rgba(216,187,44,.42),transparent 68%);
+  filter:blur(60px);
+}
+
+/* --- Hizmet satırları: cam kartlar --- */
+.service-list{border-top:0}
+.service-list article{
+  margin-bottom:14px; padding:22px 24px; border-bottom:0; border-radius:22px;
+  background:var(--glass-bg);
+  border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shadow);
+  transition:transform .3s cubic-bezier(.2,.8,.3,1),box-shadow .3s;
+}
+.service-list article:hover{
+  transform:translateY(-4px);
+  box-shadow:0 26px 58px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.42);
+}
+
+/* --- Sezon bölümü: cam pano --- */
+.season{position:relative}
+.season-copy{
+  padding:30px 32px; border-radius:26px;
+  background:var(--glass-bg);
+  border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shadow);
+}
+
+/* --- Mobil --- */
+@media(max-width:760px){
+  .site-header{top:10px; width:94vw; padding:12px 18px; border-radius:20px}
+  nav{border-radius:18px; top:60px}
+}
+
+/* --- Cam desteklenmeyen tarayıcılarda geri dönüş --- */
+@supports not (backdrop-filter:blur(1px)){
+  .site-header,.service-list article,.season-copy{background:rgba(20,20,24,.9)}
+}
+/* Sabit menü için üstten pay */
+.manifesto,.services,.demos,.season{scroll-margin-top:100px}
+h2{padding-top:6px}
+.services{padding-top:150px}
+.manifesto{padding-top:150px}
+/* ============================================
+   ALT SAYFALAR (.header + branch.css yapısı)
+   aerobik, akrobatik, artistik, ritmik,
+   cocuk-fitness, chat, admin, news, license,
+   projects, music-request, energy-map ...
+   ============================================ */
+
+.header{
+  position:sticky; top:12px; z-index:20;
+  width:min(1180px,94vw); margin:12px auto 0;
+  padding:14px 24px; border-radius:22px;
+  border:1px solid var(--glass-line); border-bottom:1px solid var(--glass-line);
+  background:var(--glass-bg);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shadow);
+}
+.header::after{
+  content:""; position:absolute; inset:0; border-radius:22px; pointer-events:none;
+  background:linear-gradient(120deg,rgba(255,255,255,.2),transparent 32%,
+             transparent 68%,rgba(203,36,104,.14));
+  mix-blend-mode:overlay;
+}
+.header > *{position:relative; z-index:1}
+
+/* Sayfa içeriği sabit başlığın altında kalmasın */
+main{scroll-margin-top:96px}
+
+/* Hesap / giriş butonları */
+.account-button,.home{
+  border-radius:14px; padding:10px 16px;
+  background:rgba(255,255,255,.07);
+  border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  transition:background .2s,transform .2s;
+}
+.account-button:hover,.home:hover{
+  background:rgba(255,255,255,.15); transform:translateY(-2px);
+}
+
+/* Kart benzeri yüzeyler */
+.panel,.card,.box,.branch-card,.project-card,.news-card,.license-card,.demo-card{
+  border-radius:24px;
+  background:var(--glass-bg);
+  border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shadow);
+}
+
+/* Form alanları */
+input:not([type=file]):not([type=checkbox]):not([type=radio]),
+textarea,select{
+  border-radius:14px;
+  border:1px solid var(--glass-line);
+  background:rgba(255,255,255,.06);
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+}
+input:focus,textarea:focus,select:focus{
+  outline:0; border-color:rgba(255,255,255,.45);
+  box-shadow:0 0 0 4px rgba(255,255,255,.08);
+}
+
+@media(max-width:760px){
+  .header{top:8px; width:94vw; padding:12px 16px; border-radius:18px}
+}
+
+@supports not (backdrop-filter:blur(1px)){
+  .header,.panel,.card,.box{background:rgba(20,20,24,.92)}
+}
+/* ============================================
+   SABİT MENÜ — hamburger yerine cam haplar
+   ============================================ */
+
+.site-header .menu-toggle{display:none !important}
+
+.site-header{
+  display:flex; flex-wrap:wrap; gap:14px;
+  justify-content:space-between;
+}
+
+.site-header nav{
+  position:static !important;
+  display:flex !important; flex-wrap:wrap; align-items:center; gap:8px;
+  order:2; flex:1 1 auto; justify-content:center;
+  transform:none !important; opacity:1 !important; visibility:visible !important;
+  background:none !important; border:0 !important; box-shadow:none !important;
+  padding:0 !important; margin:0 !important; height:auto !important;
+  max-height:none !important; width:auto !important;
+}
+
+.site-header nav a{
+  padding:9px 15px; border-radius:14px; font-size:12px;
+  letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.06);
+  -webkit-backdrop-filter:blur(12px) saturate(160%);
+  backdrop-filter:blur(12px) saturate(160%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22);
+  transition:transform .22s cubic-bezier(.2,.8,.3,1),background .22s;
+}
+.site-header nav a:hover{
+  transform:translateY(-2px);
+  background:rgba(255,255,255,.15);
+  box-shadow:0 8px 18px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35);
+}
+
+.site-header .account-actions{order:3}
+.site-header .wordmark{order:1}
+
+/* Dar ekranda alta sarsın, yine açık kalsın */
+@media(max-width:900px){
+  .site-header{padding:12px 16px}
+  .site-header nav{order:4; flex:1 1 100%; justify-content:flex-start; gap:6px}
+  .site-header nav a{padding:8px 12px; font-size:11px}
+}
+@media(min-width:1100px){
+  .site-header{flex-wrap:nowrap; padding:12px 22px}
+  .site-header nav{gap:6px}
+  .site-header nav a{padding:8px 12px; font-size:11px}
+}
+/* Menü + butonlar tek hizada */
+@media(min-width:1000px){
+  .site-header{
+    flex-wrap:nowrap; align-items:center; gap:12px;
+    padding:12px 20px; overflow:hidden;
+  }
+  .site-header .wordmark{order:1; flex:0 0 auto}
+  .site-header nav{
+    order:2; flex:1 1 auto; justify-content:flex-end;
+    gap:4px; min-width:0; overflow:hidden;
+  }
+  .site-header .account-actions{
+    order:3; flex:0 0 auto; display:flex; gap:8px; align-items:center;
+  }
+  .site-header nav a{
+    padding:8px 11px; font-size:10.5px; letter-spacing:.06em;
+  }
+  .site-header .account-actions a,
+  .site-header .account-actions button{
+    padding:9px 14px; font-size:10.5px; white-space:nowrap;
+  }
+}
+
+/* Hiçbir öğe cam çerçeveden taşmasın */
+.site-header{overflow:hidden}
+.site-header nav a{max-width:100%}
+/* Cam kartlar — daha geniş ve ferah */
+.service-list article{
+  padding:34px 38px;
+  margin-bottom:20px;
+  border-radius:28px;
+}
+.season-copy{
+  padding:42px 44px;
+  border-radius:32px;
+}
+.panel,.card,.box,.branch-card,.project-card,.news-card,.license-card,.demo-card{
+  padding:30px 32px;
+  border-radius:28px;
+}
+
+@media(max-width:760px){
+  .service-list article{padding:24px 22px; border-radius:22px}
+  .season-copy{padding:28px 24px; border-radius:24px}
+  .panel,.card,.box{padding:22px 20px; border-radius:22px}
+}
+/* Menü hapları — çerçeve büyüsün, yazı aynı kalsın */
+@media(min-width:1000px){
+  .site-header{padding:16px 24px; gap:14px}
+  .site-header nav{gap:8px}
+  .site-header nav a{
+    padding:14px 20px;
+    font-size:10.5px;
+    border-radius:18px;
+  }
+  .site-header .account-actions{gap:10px}
+  .site-header .account-actions a,
+  .site-header .account-actions button{
+    padding:14px 22px;
+    font-size:10.5px;
+    border-radius:18px;
+  }
+}
+
+@media(max-width:999px){
+  .site-header nav a{padding:12px 16px; border-radius:16px}
+}
+/* Menü hapları — kesin boyut */
+.site-header nav a{
+  display:inline-flex !important;
+  align-items:center !important;
+  padding:15px 22px !important;
+  border-radius:18px !important;
+  line-height:1 !important;
+  font-size:11px !important;
+}
+.site-header .account-actions a,
+.site-header .account-actions button{
+  display:inline-flex !important;
+  align-items:center !important;
+  padding:15px 22px !important;
+  border-radius:18px !important;
+  line-height:1 !important;
+}
+@media(max-width:999px){
+  .site-header nav a,
+  .site-header .account-actions a,
+  .site-header .account-actions button{
+    padding:12px 16px !important;
+    border-radius:15px !important;
+  }
+}
+/* Menü iki sıra: üstte 3, altta 4 */
+@media(min-width:1000px){
+  .site-header{flex-wrap:wrap !important; padding:14px 22px}
+
+  .site-header nav{
+    order:2 !important;
+    flex:1 1 auto !important;
+    flex-wrap:wrap !important;
+    justify-content:flex-end !important;
+    align-content:flex-start;
+    gap:8px !important;
+    overflow:visible !important;
+  }
+
+  /* 4. bağlantıdan önce satır kır */
+  .site-header nav a:nth-child(4){
+    margin-left:auto;
+  }
+  .site-header nav::after{
+    content:"";
+    flex-basis:100%;
+    order:0;
+  }
+  .site-header nav a:nth-child(-n+3){order:-1}
+  .site-header nav a:nth-child(n+4){order:1}
+
+  .site-header .account-actions{order:3 !important; align-self:flex-start}
+
+  .site-header nav a,
+  .site-header .account-actions a,
+  .site-header .account-actions button{
+    padding:13px 18px !important;
+    font-size:10.5px !important;
+    border-radius:16px !important;
+  }
+}
+
+.site-header{overflow:visible !important}
+/* Menü alt satırda tek sıra */
+.site-header{
+  flex-wrap:wrap !important;
+  align-items:center;
+  padding:14px 22px !important;
+  overflow:visible !important;
+}
+
+.site-header .wordmark{order:1 !important; flex:0 0 auto}
+.site-header .account-actions{order:2 !important; margin-left:auto; display:flex; gap:8px}
+
+.site-header nav{
+  order:3 !important;
+  flex:1 1 100% !important;
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  justify-content:flex-start !important;
+  gap:8px !important;
+  margin-top:12px !important;
+  overflow:visible !important;
+}
+
+.site-header nav a{
+  flex:0 0 auto;
+  padding:13px 18px !important;
+  font-size:10.5px !important;
+  border-radius:16px !important;
+  white-space:nowrap;
+}
+
+@media(max-width:760px){
+  .site-header nav{flex-wrap:wrap !important; gap:6px !important}
+  .site-header nav a{padding:11px 14px !important; font-size:10px !important}
+}
+/* Menü: yedisi bitişik tek sıra */
+.site-header nav{
+  justify-content:flex-start !important;
+  gap:8px !important;
+}
+.site-header nav a{
+  margin-left:0 !important;
+  margin-right:0 !important;
+  order:0 !important;
+  flex:0 0 auto !important;
+}
+.site-header nav::after{content:none !important}
+.site-header nav a:nth-child(4){margin-left:0 !important}
+.site-header nav{justify-content:flex-end !important;gap:8px !important}
+.site-header nav a{margin-left:0 !important;margin-right:0 !important;order:0 !important;flex:0 0 auto !important}
+.site-header nav::after{content:none !important}
+.site-header .account-actions{margin-left:auto !important;margin-right:0 !important}
+/* Sohbette müzik gönderme satırı */
+.chat-file-row{
+  padding:14px 16px !important;
+  margin-bottom:10px;
+  border-radius:20px;
+  background:linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.035));
+  border:1px solid rgba(255,255,255,.2);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  backdrop-filter:blur(22px) saturate(180%);
+  box-shadow:0 14px 36px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.3);
+}
+
+/* Dosya seçici: yazısız + kutusu */
+.chat-file-row input[type=file]{
+  position:relative;
+  min-height:46px;
+  border-radius:14px;
+  border:1px dashed rgba(255,255,255,.3);
+  background:rgba(255,255,255,.05);
+  color:transparent;
+  cursor:pointer;
+  transition:.2s;
+}
+.chat-file-row input[type=file]::file-selector-button{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  opacity:0; cursor:pointer;
+}
+.chat-file-row{position:relative}
+.chat-file-row input[type=file]::after{
+  content:"+";
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; font-weight:300; color:rgba(255,255,255,.75);
+  pointer-events:none;
+}
+.chat-file-row input[type=file]:hover{
+  background:rgba(255,255,255,.1);
+  border-color:rgba(255,255,255,.5);
+}
+
+.chat-file-row select{
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  border-radius:14px !important;
+}
+.chat-file-row button{
+  border-radius:14px !important;
+  padding:11px 18px !important;
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  transition:transform .2s,background .2s;
+}
+.chat-file-row button:hover{
+  background:rgba(255,255,255,.16) !important;
+  transform:translateY(-2px); 
+}
+/* Sohbet gönder butonu — dairesel oynat ikonu */
+.derin-send-button{
+  position:relative !important;
+  width:64px !important;
+  height:64px !important;
+  min-width:64px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:50% !important;
+  background:radial-gradient(circle at 34% 28%, #2a2a2a 0%, #0b0b0b 62%) !important;
+  box-shadow:
+    0 0 0 4px rgba(224,195,65,.95),
+    0 10px 26px rgba(0,0,0,.55),
+    inset 0 2px 6px rgba(255,255,255,.12) !important;
+  font-size:0 !important;
+  color:transparent !important;
+  cursor:pointer;
+  overflow:hidden;
+  transition:transform .22s cubic-bezier(.2,.8,.3,1), box-shadow .22s;
+}
+
+/* içindeki yazılar gizlensin */
+.derin-send-button span,
+.derin-send-button b{ display:none !important; }
+
+/* sarı üçgen */
+.derin-send-button::before{
+  content:"";
+  position:absolute;
+  top:50%; left:54%;
+  transform:translate(-50%,-50%);
+  width:0; height:0;
+  border-left:22px solid #e8d15a;
+  border-top:14px solid transparent;
+  border-bottom:14px solid transparent;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));
+}
+
+/* hafif grenli doku */
+.derin-send-button::after{
+  content:"";
+  position:absolute; inset:0; border-radius:50%;
+  background:radial-gradient(circle at 70% 22%, rgba(255,255,255,.14), transparent 46%);
+  pointer-events:none;
+}
+
+.derin-send-button:hover{
+  transform:scale(1.06);
+  box-shadow:
+    0 0 0 4px rgba(224,195,65,1),
+    0 14px 32px rgba(0,0,0,.6),
+    inset 0 2px 6px rgba(255,255,255,.18) !important;
+}
+.derin-send-button:active{ transform:scale(.95); }
+  display:inline-flex !important;
+  align-self:center !important;
+  flex:0 0 64px !important;
+  min-height:64px !important;
+  max-height:64px !important;
+/* Spotify tarzı çalma listesi */
+.sp-head{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap;
+  padding:30px 28px;border-radius:28px;margin-bottom:22px;
+  background:linear-gradient(150deg,rgba(201,138,75,.42),rgba(20,20,24,.9) 62%);
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 20px 54px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.22)}
+.sp-cover{width:190px;height:190px;border-radius:12px;object-fit:cover;flex:0 0 auto;
+  box-shadow:0 22px 48px rgba(0,0,0,.6)}
+.sp-cover.empty{background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;
+  font-size:44px;opacity:.35}
+.sp-info{flex:1 1 240px;min-width:0}
+.sp-info .lbl{font-size:11px;letter-spacing:.2em;opacity:.7}
+.sp-info h2{margin:8px 0 10px;font-size:clamp(28px,4.5vw,50px);line-height:1.02;letter-spacing:-.02em}
+.sp-info .sub{font-size:13px;opacity:.72}
+
+.sp-bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:0 0 18px;padding:0 6px}
+.sp-play{width:58px;height:58px;border-radius:50%;border:0;cursor:pointer;
+  background:linear-gradient(145deg,#e6cf55,#c1a52f);color:#131313;font-size:20px;
+  box-shadow:0 12px 28px rgba(0,0,0,.45);transition:transform .2s}
+.sp-play:hover{transform:scale(1.07)}
+.sp-bar button:not(.sp-play){padding:10px 16px;border-radius:14px;font-size:12px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:inherit}
+
+.sp-rows{list-style:none;margin:0;padding:0}
+.sp-th{display:grid;grid-template-columns:36px 1fr 74px 120px;gap:14px;padding:0 16px 10px;
+  font-size:10.5px;letter-spacing:.16em;opacity:.5;border-bottom:1px solid rgba(255,255,255,.1)}
+.sp-row{display:grid;grid-template-columns:36px 1fr 74px 120px;gap:14px;align-items:center;
+  padding:11px 16px;border-radius:12px;cursor:grab;transition:background .18s}
+.sp-row:hover{background:rgba(255,255,255,.07)}
+.sp-row .no{opacity:.5;font-size:13px;font-variant-numeric:tabular-nums}
+.sp-row:hover .no{opacity:0}
+.sp-row .no::after{content:"▶";position:absolute;opacity:0;font-size:12px;color:#e8d15a;transition:.18s}
+.sp-row:hover .no::after{opacity:1}
+.sp-row .ttl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.sp-row .dur{opacity:.55;font-size:12px;font-variant-numeric:tabular-nums}
+.sp-row .act{display:flex;gap:6px;justify-content:flex-end}
+.sp-row .act button{padding:5px 9px;border-radius:9px;font-size:11px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:inherit}
+.sp-row.playing{background:rgba(224,195,65,.12)}
+.sp-row.playing .ttl{color:#e8d15a;font-weight:600}
+@media(max-width:700px){
+  .sp-th{display:none}
+  .sp-row{grid-template-columns:28px 1fr auto;gap:10px}
+  .sp-row .dur{display:none}
+}
+/* Sabit oynatıcı barı */
+.sp-player{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+  width:min(1100px,94vw);z-index:60;display:none;gap:18px;align-items:center;
+  padding:12px 20px;border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+  border:1px solid rgba(255,255,255,.2);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
+  box-shadow:0 22px 56px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.3)}
+.sp-player.on{display:flex}
+
+.sp-now{display:flex;gap:12px;align-items:center;flex:1 1 180px;min-width:0}
+.sp-now img{width:48px;height:48px;border-radius:9px;object-fit:cover;flex:0 0 auto;
+  box-shadow:0 6px 16px rgba(0,0,0,.5)}
+.sp-now .t{min-width:0}
+.sp-now .t b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-now .t small{opacity:.55;font-size:11px}
+
+.sp-ctr{flex:2 1 320px;display:flex;flex-direction:column;gap:7px;align-items:center;min-width:0}
+.sp-btns{display:flex;gap:16px;align-items:center}
+.sp-btns button{background:transparent;border:0;color:inherit;cursor:pointer;font-size:15px;opacity:.75;
+  transition:opacity .18s,transform .18s}
+.sp-btns button:hover{opacity:1;transform:scale(1.12)}
+.sp-btns .main{width:40px;height:40px;border-radius:50%;opacity:1;font-size:15px;
+  background:linear-gradient(145deg,#e6cf55,#c1a52f);color:#131313;
+  box-shadow:0 8px 20px rgba(0,0,0,.45)}
+
+.sp-seek{display:flex;gap:10px;align-items:center;width:100%;font-size:10.5px;opacity:.6;
+  font-variant-numeric:tabular-nums}
+.sp-seek input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:99px;
+  background:rgba(255,255,255,.2);cursor:pointer}
+.sp-seek input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;
+  border-radius:50%;background:#e8d15a;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+
+.sp-vol{flex:0 1 110px;display:flex;gap:8px;align-items:center;font-size:13px;opacity:.7}
+.sp-vol input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:99px;
+  background:rgba(255,255,255,.2);cursor:pointer}
+.sp-vol input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;
+  border-radius:50%;background:#e8d15a}
+
+@media(max-width:760px){
+  .sp-player{padding:10px 14px;gap:12px;flex-wrap:wrap}
+  .sp-vol{display:none}
+  .sp-ctr{flex:1 1 100%}
+}
+
+/* Bar açıkken sayfa sonu boşluğu */
+body.sp-open .admin-main{padding-bottom:110px}
+.sp-cover{
+  width:190px !important;
+  height:190px !important;
+  max-width:190px !important;
+  min-width:190px !important;
+  flex:0 0 190px !important;
+  object-fit:cover !important;
+  border-radius:12px !important;
+}
+.sp-head{align-items:center !important}
+.sp-now img{width:48px !important;height:48px !important;flex:0 0 48px !important}
+@media(max-width:600px){
+  .sp-cover{width:140px !important;height:140px !important;min-width:140px !important;flex:0 0 140px !important}
+}
+
+.corporate{padding-top:150px}
+@media(max-width:700px){.corporate{padding-top:120px}}
+/* Ana sayfa kurumsal bölümü */
+.corporate{padding:150px 7vw 90px;position:relative}
+.corporate .eyebrow{font-size:11px;letter-spacing:.24em;opacity:.6}
+.corporate h2{font-size:clamp(34px,6vw,72px);line-height:.98;letter-spacing:-.03em;margin:12px 0 18px}
+.corporate h2 span{color:#e8d15a}
+.corporate-lead{max-width:600px;font-size:15.5px;line-height:1.75;opacity:.78;margin:0 0 34px}
+
+
+      /* Ana sayfa kurumsal bolumu */
+.corporate{padding:80px 7vw 90px}
+.corporate h2 span{color:#e8d15a}
+.corporate-lead{max-width:600px;font-size:15.5px;line-height:1.75;opacity:.78;margin:0 0 34px}
+.corporate-list{list-style:none;padding:0;margin:0 0 36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
+.corporate-list li{padding:22px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);box-shadow:0 14px 38px rgba(0,0,0,.4)}
+.corporate-list strong{display:block;font-size:14px;margin-bottom:7px;color:#e8d15a}
+.corporate-list span{display:block;font-size:13px;line-height:1.65;opacity:.72}
+.corporate-cta{display:inline-block;padding:16px 32px;border-radius:20px;text-decoration:none;color:#131313;font-weight:600;background:#e6cf55;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.corporate-cta:hover{transform:translateY(-3px)}
+@media(max-width:700px){.corporate{padding:60px 6vw 70px}}                                                        
+/* Klasör çalma modu düğmesi */
+.sp-mode{display:inline-flex;align-items:center;gap:9px;padding:11px 18px;border-radius:999px;
+  cursor:pointer;font:inherit;font-size:11px;font-weight:600;letter-spacing:.12em;
+  border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:inherit;
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  transition:background .2s,border-color .2s,transform .18s,color .2s}
+.sp-mode:hover{background:rgba(255,255,255,.13);transform:translateY(-2px)}
+.sp-mode:active{transform:scale(.96)}
+.sp-mode svg{flex:0 0 auto}
+.sp-mode.on{border-color:rgba(24,195,125,.55);background:rgba(24,195,125,.15);color:#6ee7b0;
+  box-shadow:0 0 18px rgba(24,195,125,.18)}
+.sp-mode.on:hover{background:rgba(24,195,125,.22)}
+@media(max-width:600px){.sp-mode span{display:none}.sp-mode{padding:11px 13px}}
+/* Sol altta sabit butonlar */
+.float-actions{position:fixed;right:22px;bottom:22px;z-index:90;display:flex;flex-direction:column;gap:12px;align-items:flex-end}
+  display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+
+.float-teklif{display:inline-flex;align-items:center;gap:9px;padding:14px 20px;border-radius:999px;
+  text-decoration:none;color:#131313;font-size:11.5px;font-weight:700;letter-spacing:.12em;
+  background:linear-gradient(145deg,#e6cf55,#c1a52f);
+  box-shadow:0 12px 30px rgba(0,0,0,.5);
+  transition:transform .22s,box-shadow .22s}
+.float-teklif:hover{transform:translateY(-3px);box-shadow:0 18px 38px rgba(0,0,0,.6)}
+.float-teklif-wrap{position:relative}
+.float-teklif{border:0;cursor:pointer;font-family:inherit}
+.float-teklif-menu{position:absolute;bottom:calc(100% + 12px);right:0;display:grid;gap:8px;padding:10px;border-radius:16px;background:radial-gradient(circle at 20% 10%,rgba(255,45,150,.22),transparent 55%),radial-gradient(circle at 90% 90%,rgba(0,209,255,.16),transparent 50%),#141018;border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 45px rgba(0,0,0,.55);min-width:240px}
+.float-teklif-menu[hidden]{display:none}
+.float-teklif-menu a{display:block;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.05);color:#fff;text-decoration:none;font-size:11px;font-weight:700;letter-spacing:.05em;white-space:nowrap;transition:background .2s ease,color .2s ease}
+.float-teklif-menu a:hover{background:rgba(255,45,150,.18);color:#ff8fd6}
+@media(max-width:650px){.float-teklif-menu{right:-10px;min-width:210px}}
+
+.float-wa{display:inline-flex;align-items:center;justify-content:center;
+  width:54px;height:54px;border-radius:50%;color:#fff;text-decoration:none;
+  background:linear-gradient(145deg,#37d15a,#1da851);
+  box-shadow:0 12px 30px rgba(0,0,0,.5);
+  transition:transform .22s}
+.float-wa:hover{transform:translateY(-3px) scale(1.04)}
+
+@media(max-width:700px){
+  .float-actions{right:14px;bottom:14px;gap:10px}
+  .float-teklif,.float-wa{padding:12px 16px;font-size:10.5px}
+}
+.float-wa{display:inline-flex !important;align-items:center;gap:9px;
+  width:auto !important;height:auto !important;border-radius:999px !important;
+  padding:14px 20px;text-decoration:none;color:#fff;
+  font-size:11.5px;font-weight:700;letter-spacing:.12em;
+  background:linear-gradient(145deg,#37d15a,#1da851);
+  box-shadow:0 12px 30px rgba(0,0,0,.5);transition:transform .22s}
+.float-wa:hover{transform:translateY(-3px)}
+.float-wa svg{width:18px;height:18px;flex:0 0 auto}
+.float-teklif{display:inline-flex !important;align-items:center;gap:9px;
+  padding:14px 20px !important;border-radius:999px !important;
+  text-decoration:none;color:#131313 !important;
+  font-size:11.5px;font-weight:700;letter-spacing:.12em;
+  background:linear-gradient(145deg,#e6cf55,#c1a52f) !important;
+  box-shadow:0 12px 30px rgba(0,0,0,.5);transition:transform .22s}
+.float-teklif:hover{transform:translateY(-3px)}
+.float-teklif svg{width:18px;height:18px;flex:0 0 auto}
+/* Kurumsal paketler */
+.cf-plans{max-width:1000px;margin:60px 0 10px}
+.cf-plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}
+.cf-plan{position:relative;padding:28px 26px;border-radius:26px;
+  background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));
+  border:1px solid rgba(255,255,255,.18);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+  box-shadow:0 16px 42px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.26);
+  display:flex;flex-direction:column}
+.cf-plan.one{border-color:rgba(224,195,65,.45);box-shadow:0 20px 50px rgba(0,0,0,.5),0 0 0 1px rgba(224,195,65,.25)}
+.cf-rozet{position:absolute;top:-10px;left:26px;padding:5px 12px;border-radius:999px;
+  font-size:9.5px;font-weight:700;letter-spacing:.14em;color:#131313;
+  background:linear-gradient(145deg,#e6cf55,#c1a52f)}
+.cf-plan h3{margin:4px 0 2px;font-size:19px;letter-spacing:.02em}
+.cf-branch{margin:0 0 16px;font-size:12px;opacity:.6}
+.cf-price{margin:0 0 18px;font-size:14px;opacity:.85}
+.cf-price b{font-size:32px;color:#e8d15a;font-weight:700}
+.cf-price span{opacity:.6;font-size:12px}
+.cf-plan ul{list-style:none;margin:0 0 22px;padding:0;flex:1}
+.cf-plan li{font-size:13px;line-height:1.55;opacity:.78;padding:6px 0 6px 20px;position:relative}
+.cf-plan li::before{content:"✓";position:absolute;left:0;color:#6ee7b0;font-size:12px}
+.cf-plan button{padding:14px 20px;border-radius:16px;border:0;cursor:pointer;
+  font:inherit;font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#131313;
+  background:linear-gradient(145deg,#e6cf55,#c1a52f);
+  box-shadow:0 10px 24px rgba(0,0,0,.4);transition:transform .2s}
+.cf-plan button:hover{transform:translateY(-2px)}
+@media(max-width:700px){.cf-plans{margin:40px 0 0}}
+.cf-toggle{display:inline-flex;gap:6px;padding:5px;border-radius:999px;margin:0 0 24px;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05)}
+.cf-toggle button{padding:10px 20px;border-radius:999px;border:0;cursor:pointer;
+  background:transparent;color:inherit;font:inherit;font-size:11px;font-weight:700;letter-spacing:.1em;
+  transition:.2s}
+.cf-toggle button.on{background:linear-gradient(145deg,#e6cf55,#c1a52f);color:#131313}
+[hidden],
+.site-header .account-actions button[hidden],
+.site-header .account-actions a[hidden],
+.site-header nav a[hidden]{display:none !important}
+/* Sohbet: müzik bırakma alanı */
+.chat-file-row{display:block !important;padding:16px !important}
+.dz{position:relative;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;
+  padding:26px 20px 22px;border-radius:20px;cursor:pointer;
+  border:1.5px dashed rgba(224,195,65,.45);background:rgba(224,195,65,.04);
+  transition:background .25s,border-color .25s,transform .25s}
+.dz:hover{background:rgba(224,195,65,.08);border-color:rgba(224,195,65,.7)}
+.dz.ustunde{background:rgba(224,195,65,.14);border-color:#e8d15a;transform:scale(1.01)}
+.dz.dolu{border-style:solid;border-color:rgba(24,195,125,.55);background:rgba(24,195,125,.07)}
+
+.dz-ok{color:rgba(224,195,65,.7);display:flex;transition:transform .35s}
+.dz-ok-l{justify-self:end}
+.dz:hover .dz-ok-l,.dz.ustunde .dz-ok-l{transform:translate(4px,4px)}
+.dz:hover .dz-ok-r,.dz.ustunde .dz-ok-r{transform:translate(-4px,4px)}
+
+.dz-kartlar{position:relative;height:64px;display:flex;justify-content:center;align-items:center}
+.dz-kart{position:absolute;width:48px;height:58px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  color:#e8d15a;background:#1b1a1f;border:1.5px solid rgba(224,195,65,.45);
+  box-shadow:0 8px 18px rgba(0,0,0,.45);transition:transform .35s cubic-bezier(.2,.8,.3,1)}
+.dz-kart.k1{transform:translateX(-34px) rotate(-14deg)}
+.dz-kart.k2{z-index:2;transform:translateY(-4px)}
+.dz-kart.k3{transform:translateX(34px) rotate(14deg)}
+.dz:hover .dz-kart.k1,.dz.ustunde .dz-kart.k1{transform:translateX(-46px) rotate(-22deg)}
+.dz:hover .dz-kart.k2,.dz.ustunde .dz-kart.k2{transform:translateY(-12px) scale(1.06)}
+.dz:hover .dz-kart.k3,.dz.ustunde .dz-kart.k3{transform:translateX(46px) rotate(22deg)}
+.dz.dolu .dz-kart{border-color:rgba(24,195,125,.6);color:#6ee7b0}
+
+.dz-yazi,.dz-dosya{grid-column:1 / -1;text-align:center;display:flex;flex-direction:column;gap:4px}
+.dz-yazi b{font-size:14px;letter-spacing:.02em}
+.dz-yazi small,.dz-dosya small{font-size:11.5px;opacity:.6}
+.dz-yazi u{color:#e8d15a;text-underline-offset:3px}
+.dz.dolu .dz-yazi{display:none}
+.dz-dosya b{font-size:13px;color:#6ee7b0;word-break:break-all}
+
+.dz-alt{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.dz-alt select{flex:1 1 150px;padding:11px 13px;border-radius:14px;font:inherit;font-size:12px;
+  border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit}
+#chat-audio-send{position:relative;overflow:hidden;flex:1 1 160px;padding:12px 18px !important;
+  border-radius:14px !important;border:0 !important;cursor:pointer;font:inherit;font-size:11.5px;font-weight:700;letter-spacing:.1em;
+  color:#131313 !important;background:linear-gradient(145deg,#e6cf55,#c1a52f) !important;transition:opacity .2s,transform .2s}
+#chat-audio-send:disabled{opacity:.35;cursor:not-allowed}
+#chat-audio-send span{position:relative;z-index:1}
+#chat-audio-send .dz-bar{position:absolute;left:0;bottom:0;height:100%;width:0;background:rgba(255,255,255,.35)}
+#chat-audio-send.yukleniyor .dz-bar{animation:dzYukle 2.4s ease-in-out infinite}
+#chat-audio-send.yukleniyor span::after{content:"…"}
+#chat-audio-send.bitti{background:linear-gradient(145deg,#37d15a,#1da851) !important;color:#fff !important}
+@keyframes dzYukle{0%{width:0;left:0}50%{width:70%;left:10%}100%{width:0;left:100%}}
+
+@media(max-width:600px){.dz-ok{display:none}.dz{grid-template-columns:1fr}}
+
+/* ============================================
+   MİSAFİR ZİYARETÇİDE YÖNETİCİ LİNKİNİ GİZLE
+   auth.js oturum açıldığında body.is-admin ekler.
+   ============================================ */
+/* Yönetici araçları (radyo yönetimi) misafir ziyaretçiye hiçbir yüzeyde görünmez;
+   yönetici linkleri hesap menüsünden yönetilir. Bu kurallar olası nav linkine karşı koruma. */
+body:not(.is-admin) .site-header nav a[href="radyo-yonetim.html"],
+body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:none}
+
+/* Hareket azaltma tercihi: süs animasyonlarını kapat */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+  html{scroll-behavior:auto}
+}
+
+</style>
+<style>
+  .hm-grid{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:20px;margin-top:24px}
+  @media(max-width:900px){.hm-grid{grid-template-columns:1fr}}
+
+  .hm-panel{padding:22px;border-radius:26px;
+    background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.18);
+    -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+    box-shadow:0 16px 44px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.26)}
+  .hm-panel h2{margin:0 0 14px;font-size:12px;letter-spacing:.18em;opacity:.7}
+
+  .hm-track{display:flex;gap:12px;align-items:center;justify-content:space-between;
+    padding:11px 13px;margin-bottom:8px;border-radius:15px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);transition:.2s}
+  .hm-track:hover{background:rgba(255,255,255,.1);transform:translateX(3px)}
+  .hm-track.sel{border-color:#e0c341;box-shadow:0 0 0 3px rgba(224,195,65,.16)}
+  .hm-track strong{font-size:13px;font-weight:600}
+  .hm-track small{display:block;opacity:.55;font-size:11px;margin-top:2px}
+
+  .hm-key{flex:0 0 auto;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;
+    letter-spacing:.04em;background:rgba(224,195,65,.16);color:#e8d15a;border:1px solid rgba(224,195,65,.35)}
+  .hm-key.b{background:rgba(94,164,255,.16);color:#8fc0ff;border-color:rgba(94,164,255,.35)}
+
+  .hm-rel{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .hm-chip{padding:4px 10px;border-radius:999px;font-size:10px;letter-spacing:.06em;
+    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);opacity:.8}
+  .hm-chip.ok{border-color:rgba(24,195,125,.5);color:#6ee7b0;background:rgba(24,195,125,.12)}
+  .hm-chip.up{border-color:rgba(224,195,65,.5);color:#e8d15a;background:rgba(224,195,65,.12)}
+
+  .hm-set{list-style:none;margin:0;padding:0;counter-reset:s}
+  .hm-set li{counter-increment:s;display:flex;gap:12px;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;
+    padding:12px 14px;margin-bottom:8px;border-radius:16px;
+    border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05)}
+
+  /* Uymayan geçişte satırın altına tam genişlikte köprü kutusu düşer. */
+  .hm-kopru{flex:1 1 100%;margin-top:10px;padding:12px 14px;border-radius:14px;
+    border:1px solid rgba(255,95,109,.42);background:rgba(255,95,109,.08)}
+  .hm-kopru b{font-size:11px;letter-spacing:.12em;color:#ffb3b3}
+  .hm-kopru p{margin:7px 0 0;font-size:12px;line-height:1.5;opacity:.88}
+  .hm-links{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px}
+  .hm-link{font-size:11px;padding:4px 11px;border-radius:999px;text-decoration:none;color:inherit;
+    border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.05);opacity:.85}
+  .hm-link:hover{opacity:1;border-color:#e0c341}
+  .hm-chip.bad{border-color:rgba(255,95,109,.55);color:#ffb3b3;background:rgba(255,95,109,.12)}
+  .hm-chip.off{opacity:.6}
+  .hm-set li::before{content:counter(s);flex:0 0 26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18)}
+  .hm-set button{padding:6px 11px;border-radius:10px;font-size:11px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit}
+
+  .hm-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;opacity:.7;margin:6px 0 16px}
+  .hm-meta b{color:#e8d15a;font-weight:600}
+
+  .hm-curve{width:100%;height:150px;display:block;margin-top:10px}
+  .hm-warn{color:#ffb3b3;font-size:11px;margin-top:4px}
+
+  .hm-edit{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:14px;
+    border-top:1px solid rgba(255,255,255,.1)}
+  .hm-edit input,.hm-edit select{flex:1 1 92px;padding:9px 11px;border-radius:12px;font:inherit;font-size:12px;
+    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:inherit}
+  .hm-edit button{padding:9px 16px;border-radius:12px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;
+    border:0;background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(255,255,255,.65));color:#131313}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<header class="header">
+  <a class="home" href="index.html"><span>←</span> ANA SAYFA</a>
+  <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+</header>
+<main class="admin-main">
+  <p class="eyebrow">STÜDYO ARACI</p>
+  <h1>HARMONİK<br><span>SET SIRALAYICI.</span></h1>
+  <p id="hm-status">Hesap kontrol ediliyor…</p>
+  <section id="hm-app" hidden></section>
+</main>
+<script>
+// ---- Sunucu taklidi: auth.js ve Supabase yerine geçer, yalnız önizlemede.
+(function () {
+  const satirlar = [{"id":"t1","title":"Kapadokya","artist":"Derin","camelot":"8A","key_name":"A minor","makam":"Hicaz","bpm":122,"energy":4,"duration_sec":305,"audio_path":null},{"id":"t2","title":"Gece Treni","artist":"Derin","camelot":"9A","key_name":"E minor","makam":null,"bpm":124,"energy":5,"duration_sec":280,"audio_path":null},{"id":"t3","title":"Kopuk Parça","artist":"Konuk","camelot":"4B","key_name":"F# major","makam":null,"bpm":96,"energy":7,"duration_sec":260,"audio_path":null},{"id":"t4","title":"Sahil","artist":"Derin","camelot":"9B","key_name":"B major","makam":null,"bpm":125,"energy":5,"duration_sec":300,"audio_path":null},{"id":"t5","title":"Yükseliş","artist":"Derin","camelot":"10B","key_name":"D major","makam":null,"bpm":126,"energy":6,"duration_sec":290,"audio_path":null},{"id":"t6","title":"Sabah Rüzgârı","artist":"Derin","camelot":"8B","key_name":"C major","makam":null,"bpm":123,"energy":5,"duration_sec":310,"audio_path":null},{"id":"t7","title":"Tonu Girilmemiş","artist":"Konuk","camelot":null,"key_name":null,"makam":null,"bpm":120,"energy":4,"duration_sec":240,"audio_path":null},{"id":"t8","title":"Derin Bas","artist":"Konuk","camelot":"5A","key_name":"C minor","makam":null,"bpm":118,"energy":3,"duration_sec":270,"audio_path":null}];
+  const yazmaKapali = { message: 'Önizleme: yazma kapalı.' };
+  const tablo = () => ({
+    select: () => ({ order: () => Promise.resolve({ data: satirlar, error: null }) }),
+    insert: () => Promise.resolve({ data: null, error: yazmaKapali }),
+    update: () => ({ eq: () => Promise.resolve({ data: null, error: yazmaKapali }) }),
+    delete: () => ({ eq: () => Promise.resolve({ data: null, error: yazmaKapali }) })
+  });
+  const kova = {
+    upload: () => Promise.resolve({ data: null, error: yazmaKapali }),
+    remove: () => Promise.resolve({ data: null, error: null }),
+    createSignedUrl: () => Promise.resolve({ data: null, error: { message: 'Önizleme: ses kapalı.' } })
+  };
+  window.DerinAuth = {
+    ready: Promise.resolve(), configured: true, user: { id: 'onizleme' },
+    profile: { role: 'admin' }, open: () => {},
+    client: { from: tablo, storage: { from: () => kova } }
+  };
+})();
+</script>
+<script>
+// Harmonik set motoru: saf hesap, DOM yok.
+//
+// Burada kalan tek karar "hangi parça hangisinin ardından gelir" sorusudur.
+// Üç ölçüte bakılır: Camelot ton ilişkisi, tempo (BPM) yakınlığı ve enerji
+// akışı. Ton ilişkisi yoksa geçiş kopuktur; tempo farkı büyükse köprü parçası
+// ya da hız kaydırması gerekir. Ekran bu dosyadaki sonuçları yalnız yazar.
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  root.DerinHarmonicSet = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, () => {
+  // Camelot anahtarı: <numara><harf>. A minör, B majör halkası.
+  function parseKey(deger) {
+    const m = /^(\d{1,2})([AB])$/i.exec(String(deger == null ? '' : deger).trim());
+    if (!m) return null;
+    const n = Number(m[1]);
+    if (n < 1 || n > 12) return null;
+    return { n, L: m[2].toUpperCase() };
+  }
+
+  const wrap = n => ((n - 1 + 12) % 12) + 1;
+
+  const TUM_TONLAR = (() => {
+    const liste = [];
+    for (let n = 1; n <= 12; n++) liste.push(n + 'A', n + 'B');
+    return liste;
+  })();
+
+  // Camelot çarkındaki standart geçişler. Uymayan çift null döner; bu "çalınmaz"
+  // demek değil, "köprü ya da kaydırma gerekir" demektir.
+  function relation(from, to) {
+    const a = parseKey(from), b = parseKey(to);
+    if (!a || !b) return null;
+    if (a.n === b.n && a.L === b.L) return { tip: 'Aynı ton', sinif: 'ok', puan: 5 };
+    if (a.n === b.n) return { tip: 'Paralel majör↔minör', sinif: 'ok', puan: 5 };
+    if (a.L === b.L && wrap(a.n + 1) === b.n) return { tip: 'Enerji artışı (+1)', sinif: 'up', puan: 6 };
+    if (a.L === b.L && wrap(a.n - 1) === b.n) return { tip: 'Yumuşak iniş (−1)', sinif: 'ok', puan: 4 };
+    if (a.L === b.L && wrap(a.n + 2) === b.n) return { tip: 'Enerji sıçraması (+2)', sinif: 'up', puan: 2 };
+    if (a.L === b.L && wrap(a.n + 7) === b.n) return { tip: 'Yükseltme (+7)', sinif: 'up', puan: 2 };
+    return null;
+  }
+
+  // Tempo ölçüsü. Eşikler DJ pratiğinden: 3 BPM'e kadar fark duyulmaz, 6 BPM
+  // perde kaydırmasıyla kapanır, 12 BPM sonrası geçiş kendini belli eder.
+  // Yarım/çift tempo (62 → 124) ayrı sayılır: kulakta kopukluk değildir.
+  const HIZ_TOLERANS = 6;
+  const HIZ_SINIR = 12;
+
+  function tempo(a, b) {
+    const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
+    if (!x || !y) return { fark: null, tip: 'bilinmiyor', ceza: 0 };
+    const fark = Math.abs(x - y);
+    if (fark <= 3) return { fark, tip: 'aynı hız', ceza: 0 };
+    if (fark <= HIZ_TOLERANS) return { fark, tip: 'yakın hız', ceza: 3 };
+    if (fark <= HIZ_SINIR) return { fark, tip: 'hız kayması', ceza: 14 };
+    const yarim = Math.min(Math.abs(x * 2 - y), Math.abs(x - y * 2));
+    if (yarim <= 3) return { fark, tip: 'yarım/çift tempo', ceza: 6 };
+    return { fark, tip: 'uyumsuz hız', ceza: 45 };
+  }
+
+  // Tek geçişin puanı. Ton ilişkisi yoksa -Infinity: zincire hiç girmez.
+  function score(a, b) {
+    const r = relation(a && a.camelot, b && b.camelot);
+    if (!r) return -Infinity;
+    let s = r.puan * 10 - tempo(a, b).ceza;
+    const ea = Number(a && a.energy) || 0, eb = Number(b && b.energy) || 0;
+    if (ea && eb) {
+      const d = eb - ea;
+      if (d >= 0 && d <= 2) s += 6;      // hafif yükseliş: setin en rahat akışı
+      else if (d > 3) s -= 4;            // ani sıçrama kopukluk yaratır
+      else if (d < -2) s -= 6;           // sert düşüş dinleyiciyi düşürür
+    }
+    return s;
+  }
+
+  // Zincir toplamı: kopuk geçiş sonsuz ceza yerine sabit büyük ceza alır ki
+  // sıralayıcı iki kopuk zincirden az kopuk olanı seçebilsin.
+  const KOPUK_CEZA = -300;
+  const baglantiPuanu = (a, b) => {
+    const p = score(a, b);
+    return p === -Infinity ? KOPUK_CEZA : p;
+  };
+  const zincirPuanu = sira =>
+    sira.slice(1).reduce((toplam, x, i) => toplam + baglantiPuanu(sira[i], x), 0);
+
+  // Açgözlü zincir + iki-opt iyileştirme. Tonu olmayan parçalar sıralamaya
+  // girmez, sonunda kendi aralarındaki sırayı korur.
+  function autoOrder(list) {
+    const hepsi = Array.isArray(list) ? list.slice() : [];
+    const tonlu = hepsi.filter(t => parseKey(t && t.camelot));
+    const tonsuz = hepsi.filter(t => !parseKey(t && t.camelot));
+    if (tonlu.length < 2) return hepsi;
+
+    const greedy = start => {
+      const kalan = tonlu.filter(t => t.id !== start.id);
+      const sira = [start];
+      while (kalan.length) {
+        const son = sira[sira.length - 1];
+        let enIyi = -Infinity, enIdx = 0;
+        kalan.forEach((t, i) => {
+          const p = baglantiPuanu(son, t);
+          if (p > enIyi) { enIyi = p; enIdx = i; }
+        });
+        sira.push(kalan[enIdx]);
+        kalan.splice(enIdx, 1);
+      }
+      return sira;
+    };
+
+    let en = greedy(tonlu[0]), enPuan = zincirPuanu(en);
+    for (const baslangic of tonlu.slice(1)) {
+      const deneme = greedy(baslangic), p = zincirPuanu(deneme);
+      if (p > enPuan) { en = deneme; enPuan = p; }
+    }
+
+    // Yerel arama. Üç hamle denenir: iki parçanın yerini değiştirme (swap),
+    // bir parçayı başka yere kaydırma (insertion) ve bir bölütü ters çevirme
+    // (reversal). Zincir puanı simetrik değildir — 8A→9A ile 9A→8A aynı puanı
+    // vermez — bu yüzden yön de aranır. Yalnız swap, açgözlü çözümün
+    // yakınındaki yerel en iyide takılı kalıyordu; kaydırma ve ters çevirme
+    // onu gerçek en iyiye taşır. Her kabul puanı kesin artırdığı için döngü
+    // sonludur; tur sınırı yine de var.
+    const n = en.length;
+    // Kaydırma O(n²) deneme × O(n) puan = O(n³); uzun setlerde yalnız
+    // swap/reversal koşar (canlı set ~30 parça, sınır rahat yetiyor).
+    const kaydirmaVar = n <= 60;
+    const dene = dizi => {
+      const p = zincirPuanu(dizi);
+      if (p > enPuan + 1e-9) { en = dizi; enPuan = p; return true; }
+      return false;
+    };
+    for (let tur = 0; tur < 60; tur++) {
+      let iyilesti = false;
+      for (let i = 0; i < n - 1; i++) {
+        for (let j = i + 1; j < n; j++) {
+          const takas = en.slice();
+          const gecici = takas[i];
+          takas[i] = takas[j];
+          takas[j] = gecici;
+          if (dene(takas)) iyilesti = true;
+          const ters = en.slice(0, i).concat(en.slice(i, j + 1).reverse(), en.slice(j + 1));
+          if (dene(ters)) iyilesti = true;
+        }
+      }
+      if (kaydirmaVar) {
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+            if (i === j) continue;
+            const kaydir = en.slice();
+            const tasinan = kaydir.splice(i, 1)[0];
+            kaydir.splice(j, 0, tasinan);
+            if (dene(kaydir)) iyilesti = true;
+          }
+        }
+      }
+      if (!iyilesti) break;
+    }
+    return en.concat(tonsuz);
+  }
+
+  // Her geçişin okunur hâli: seviye 'iyi' | 'zorlama' | 'uyumsuz'.
+  function gecisler(set) {
+    const sira = Array.isArray(set) ? set : [];
+    const out = [];
+    for (let i = 1; i < sira.length; i++) {
+      const onceki = sira[i - 1], sonraki = sira[i];
+      const iliski = relation(onceki && onceki.camelot, sonraki && sonraki.camelot);
+      const hiz = tempo(onceki, sonraki);
+      const sorunlar = [];
+      if (!iliski) sorunlar.push('ton uyumsuz');
+      else if (iliski.puan <= 2) sorunlar.push('ton geçişi zorlama');
+      if (hiz.tip === 'uyumsuz hız') sorunlar.push('tempo uyumsuz');
+      else if (hiz.tip === 'hız kayması') sorunlar.push('tempo kayması');
+      const seviye = (!iliski || hiz.tip === 'uyumsuz hız') ? 'uyumsuz'
+        : ((iliski.puan <= 2 || hiz.tip === 'hız kayması') ? 'zorlama' : 'iyi');
+      out.push({ sira: i, onceki, sonraki, iliski, hiz, sorunlar, seviye, puan: baglantiPuanu(onceki, sonraki) });
+    }
+    return out;
+  }
+
+  // İki komşuya da ton olarak bağlanan anahtarlar: köprü parçasının tonu.
+  function kopruTonlari(a, b) {
+    return TUM_TONLAR
+      .map(ton => {
+        const ra = relation(a && a.camelot, ton), rb = relation(ton, b && b.camelot);
+        return (ra && rb) ? { ton, puan: ra.puan + rb.puan } : null;
+      })
+      .filter(Boolean)
+      .sort((x, y) => y.puan - x.puan);
+  }
+
+  // Bir parçadan doğrudan çıkılabilen tonlar: iki köprü gerektiğinde ilk
+  // köprünün tonu bunlardan biri olmalı (önceki parça ona bağlanır).
+  function cikilanTonlar(parca) {
+    return TUM_TONLAR
+      .map(ton => {
+        const r = relation(parca && parca.camelot, ton);
+        return r ? { ton, puan: r.puan } : null;
+      })
+      .filter(Boolean)
+      .sort((x, y) => y.puan - x.puan);
+  }
+
+  // Bir parçaya doğrudan bağlanan tonlar: son köprünün tonu bunlardan biri
+  // olmalı (o ton sonraki parçaya bağlanır).
+  function girilenTonlar(parca) {
+    return TUM_TONLAR
+      .map(ton => {
+        const r = relation(ton, parca && parca.camelot);
+        return r ? { ton, puan: r.puan } : null;
+      })
+      .filter(Boolean)
+      .sort((x, y) => y.puan - x.puan);
+  }
+
+  // Aralarındaki hız farkı tek köprüyle kapanmayan iki parça için iki adımlı
+  // yol: her köprü kendi komşusunun hızına yakın olur, tonları da iki yaka
+  // arasında zincir kurmalı (a → 1. köprü → 2. köprü → b).
+  function ikiAdimYolu(a, b) {
+    const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
+    const cikis = cikilanTonlar(a), giris = girilenTonlar(b);
+    if (!cikis.length || !giris.length) return null;
+    const ornek = [];
+    cikis.forEach(c => giris.forEach(g => {
+      const ara = relation(c.ton, g.ton);
+      if (ara) ornek.push({ birinci: c.ton, ikinci: g.ton, puan: c.puan + ara.puan + g.puan });
+    }));
+    ornek.sort((u, v) => v.puan - u.puan);
+    const hiz = bpm => bpm ? { bpmMin: Math.round(bpm - HIZ_TOLERANS), bpmMax: Math.round(bpm + HIZ_TOLERANS) } : { bpmMin: null, bpmMax: null };
+    return {
+      birinci: { taraf: 'önceki', tonlar: cikis.slice(0, 3).map(c => c.ton), ...hiz(x) },
+      ikinci: { taraf: 'sonraki', tonlar: giris.slice(0, 3).map(g => g.ton), ...hiz(y) },
+      ornek: ornek.slice(0, 3)
+    };
+  }
+
+  // Uymayan bir geçişe araya girecek parçanın tonu ve hızı. BPM aralığı iki
+  // komşunun da toleransına giren kesişimdir; kesişim boşsa tek parça yetmez.
+  function kopru(a, b) {
+    const tonlar = kopruTonlari(a, b).map(x => x.ton).slice(0, 3);
+    const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
+    let bpmMin = null, bpmMax = null, tekParca = true, not = '';
+    if (x && y) {
+      const alt = Math.min(x, y), ust = Math.max(x, y);
+      bpmMin = Math.round(ust - HIZ_TOLERANS);
+      bpmMax = Math.round(alt + HIZ_TOLERANS);
+      if (bpmMin > bpmMax) {
+        tekParca = false;
+        const orta = Math.round((alt + ust) / 2);
+        bpmMin = orta - 3;
+        bpmMax = orta + 3;
+        not = 'İki parça arasında ' + (ust - alt) + ' BPM var; tek köprü ikisini de tutmaz. '
+          + 'Ya iki köprü kullan ya da bir ucu ' + orta + ' BPM civarına kaydır.';
+      }
+    }
+    if (!tonlar.length) {
+      not = not || 'Ton bilgisi eksik: iki parçanın da Camelot kodu girilmeli.';
+    }
+    // Tek parça yetmiyorsa iki adımın ton ve hızını ayrı ayrı ver.
+    const ikiAdim = tekParca ? null : ikiAdimYolu(a, b);
+    return { tonlar, bpmMin, bpmMax, tekParca, not, ikiAdim };
+  }
+
+  // Setteki parçalara en çok bağlanan anahtarlar: yeni parça ararken hangi
+  // tonun işe yaradığını söyler.
+  function uyumluTonlar(set, adet) {
+    const sira = (Array.isArray(set) ? set : []).filter(t => parseKey(t && t.camelot));
+    if (!sira.length) return [];
+    return TUM_TONLAR
+      .map(ton => ({
+        ton,
+        sayi: sira.filter(t => relation(t.camelot, ton) || relation(ton, t.camelot)).length
+      }))
+      .filter(x => x.sayi)
+      .sort((a, b) => b.sayi - a.sayi)
+      .slice(0, Number(adet) || 3);
+  }
+
+  // Setin içinde hiçbir parçaya ton olarak bağlanmayan parçalar: bunlar setin
+  // neresine konursa konsun kopukluk yaratır. Yalnız komşusuna uymayan parça
+  // buraya girmez; o geçişin sorunudur ve köprü önerisiyle çözülür.
+  function uymayanlar(set) {
+    const sira = Array.isArray(set) ? set : [];
+    // Tek tonlu parça kalırsa (ötekilerin tonu yoksa) o parça "bağlanamıyor"
+    // sayılmaz: kusur eksik ton bilgisindedir, o da ayrıca yazılır.
+    const tonluSayi = sira.filter(t => parseKey(t && t.camelot)).length;
+    const out = [];
+    sira.forEach((t, i) => {
+      if (!parseKey(t && t.camelot)) {
+        out.push({ parca: t, sira: i, sebep: 'Camelot tonu yok' });
+        return;
+      }
+      if (tonluSayi < 2) return;
+      const bagli = sira.some((x, j) => j !== i
+        && (relation(t.camelot, x.camelot) || relation(x.camelot, t.camelot)));
+      if (!bagli) out.push({ parca: t, sira: i, sebep: 'setteki hiçbir parçaya ton olarak bağlanmıyor' });
+    });
+    return out;
+  }
+
+  // Setteki hiçbir parçaya ton olarak bağlanmayan katalog parçaları: sete
+  // alınamazlar, yerlerine uyumlu bir parça gerekir.
+  function setDisiKalanlar(set, katalog) {
+    const sira = (Array.isArray(set) ? set : []).filter(t => parseKey(t && t.camelot));
+    if (!sira.length) return [];
+    const settekiIdler = new Set(sira.map(t => t.id));
+    return (Array.isArray(katalog) ? katalog : [])
+      .filter(t => parseKey(t && t.camelot) && !settekiIdler.has(t.id))
+      .filter(t => !sira.some(s => relation(s.camelot, t.camelot) || relation(t.camelot, s.camelot)));
+  }
+
+  // Dış servis anahtarı yok: öneri gerçek şarkı listesi değil, arama
+  // bağlantısıdır. Sorgu ton + hız taşır, sonucu kullanıcı seçer.
+  function aramaLinkleri(sorgu) {
+    const kod = encodeURIComponent(String(sorgu == null ? '' : sorgu).trim());
+    return {
+      youtube: 'https://www.youtube.com/results?search_query=' + kod,
+      spotify: 'https://open.spotify.com/search/' + kod
+    };
+  }
+
+  function oneriSorgusu(hedef) {
+    const h = hedef || {};
+    const ton = Array.isArray(h.tonlar) && h.tonlar.length ? h.tonlar.slice(0, 2).join(' ') : '';
+    const hiz = (h.bpmMin && h.bpmMax)
+      ? (h.bpmMin === h.bpmMax ? h.bpmMin + ' BPM' : h.bpmMin + '-' + h.bpmMax + ' BPM')
+      : (h.bpm ? h.bpm + ' BPM' : '');
+    return [ton, hiz].filter(Boolean).join(' ') + ' mix';
+  }
+
+  return {
+    parseKey, relation, tempo, score, autoOrder, gecisler,
+    kopru, kopruTonlari, cikilanTonlar, girilenTonlar, uyumluTonlar,
+    uymayanlar, setDisiKalanlar, aramaLinkleri, oneriSorgusu, zincirPuanu,
+    HIZ_TOLERANS, HIZ_SINIR, KOPUK_CEZA
+  };
+});
+
+</script>
+<script>
+(() => {
+  const byId = id => document.getElementById(id);
+  const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // Sıralama/skor/geçiş hesabı harmonic-set.js'te: burası yalnız çizer ve yazar.
+  const H = window.DerinHarmonicSet;
+  const parseKey = H.parseKey;
+
+  let client = null, tracks = [], set = [], selected = null;
+
+  async function boot() {
+    await window.DerinAuth.ready;
+    const a = window.DerinAuth; client = a.client;
+    const st = byId('hm-status');
+    if (!a.configured) { st.textContent = 'Bağlantı hazırlanıyor.'; return; }
+    if (!a.user) { st.innerHTML = '<button class="account-button" id="hm-login">GİRİŞ YAP</button>';
+      byId('hm-login').onclick = () => a.open(); return; }
+    if (a.profile?.role !== 'admin') { st.textContent = 'Bu araç yalnızca yöneticilere açıktır.'; return; }
+    st.textContent = '';
+    byId('hm-app').hidden = false;
+    await load();
+  }
+
+  async function load() {
+    const { data, error } = await client.from('dj_tracks')
+      .select('id,title,artist,audio_path,camelot,key_name,makam,bpm,energy,duration_sec')
+      .order('created_at', { ascending:false });
+    if (error) { byId('hm-status').textContent = error.message; return; }
+    tracks = data || [];
+    set = set.map(s => tracks.find(t => t.id === s.id)).filter(Boolean);
+    render();
+  }
+
+  function suggestions() {
+    const last = set.length ? set[set.length - 1] : selected;
+    if (!last) return [];
+    return tracks.filter(t => t.id !== last.id && !set.some(s => s.id === t.id))
+      .map(t => ({ t, rel: H.relation(last.camelot, t.camelot), p: H.score(last, t) }))
+      .filter(x => x.rel).sort((a, b) => b.p - a.p);
+  }
+
+  const keyChip = t => t.camelot
+    ? `<span class="hm-key ${parseKey(t.camelot)?.L === 'B' ? 'b' : ''}">${safe(t.camelot)}</span>`
+    : '<span class="hm-key" style="opacity:.4">ton yok</span>';
+
+  const meta = t => [t.artist, t.key_name, t.makam, t.bpm ? t.bpm + ' BPM' : null, t.energy ? 'E' + t.energy : null]
+    .filter(Boolean).map(safe).join(' · ') || 'meta veri eksik';
+
+  // Öneri bağlantısı: dış servis anahtarı yok, arama sorgusuna götürür.
+  function linkHtml(hedef) {
+    const sorgu = H.oneriSorgusu(hedef);
+    const l = H.aramaLinkleri(sorgu);
+    return `<span class="hm-links">
+      <span class="hm-chip">${safe(sorgu)}</span>
+      <a class="hm-link" href="${safe(l.youtube)}" target="_blank" rel="noopener">YouTube'da ara ↗</a>
+      <a class="hm-link" href="${safe(l.spotify)}" target="_blank" rel="noopener">Spotify'da ara ↗</a>
+    </span>`;
+  }
+
+  const hizMetni = h => (h.bpmMin && h.bpmMax)
+    ? (h.bpmMin === h.bpmMax ? h.bpmMin + ' BPM' : h.bpmMin + '–' + h.bpmMax + ' BPM')
+    : 'hız bilgisi yok';
+
+  const tonMetni = h => (h.tonlar && h.tonlar.length) ? h.tonlar.join(' · ') : 'ton bilgisi yok';
+
+  // Geçiş uymadığında araya girecek parçanın tonu ve hızı. Hız farkı tek
+  // köprüyle kapanmıyorsa iki adım ayrı ayrı yazılır.
+  function kopruHtml(g) {
+    const k = H.kopru(g.onceki, g.sonraki);
+    const hedef = k.tekParca
+      ? `<b>${safe(tonMetni(k))}</b> tonunda, <b>${safe(hizMetni(k))}</b> aralığında bir parça koy.`
+      : 'tek parça yetmiyor; aşağıdaki iki köprüyü sırayla kullan.';
+    const iki = k.ikiAdim ? `
+      <p><b>1. köprü:</b> <b>${safe(tonMetni(k.ikiAdim.birinci))}</b> tonunda,
+        <b>${safe(hizMetni(k.ikiAdim.birinci))}</b> — önceki parçanın hızına yakın.<br>
+        <b>2. köprü:</b> <b>${safe(tonMetni(k.ikiAdim.ikinci))}</b> tonunda,
+        <b>${safe(hizMetni(k.ikiAdim.ikinci))}</b> — sonraki parçanın hızına yakın.</p>
+      ${k.ikiAdim.ornek.length ? `<p>İki köprü birbirine de bağlanmalı; örnek zincir:
+        <b>${safe(k.ikiAdim.ornek.map(o => o.birinci + ' → ' + o.ikinci).join('  ·  '))}</b></p>` : ''}
+      ${linkHtml({ tonlar: k.ikiAdim.birinci.tonlar, bpmMin: k.ikiAdim.birinci.bpmMin, bpmMax: k.ikiAdim.birinci.bpmMax })}
+      ${linkHtml({ tonlar: k.ikiAdim.ikinci.tonlar, bpmMin: k.ikiAdim.ikinci.bpmMin, bpmMax: k.ikiAdim.ikinci.bpmMax })}` : '';
+    return `<div class="hm-kopru">
+      <b>KÖPRÜ PARÇASI GEREKİYOR</b>
+      <p>“${safe(g.onceki.title)}” ile “${safe(g.sonraki.title)}” arasına ${hedef}
+        ${g.sorunlar.length ? 'Sorun: ' + safe(g.sorunlar.join(', ')) + '.' : ''}</p>
+      ${iki}
+      ${k.not ? `<p class="hm-warn">${safe(k.not)}</p>` : ''}
+      ${k.tekParca ? linkHtml({ tonlar: k.tonlar, bpmMin: k.bpmMin, bpmMax: k.bpmMax }) : ''}
+    </div>`;
+  }
+
+  // Uymayan parçalar: setin içinde kopukluk yaratanlar ve sete hiç giremeyenler.
+  function uyumsuzPanel() {
+    if (!set.length) return '<p style="opacity:.5;font-size:13px">Set boş: önce parça ekle.</p>';
+    const icinde = H.uymayanlar(set);
+    const disi = H.setDisiKalanlar(set, tracks);
+    const tonlar = H.uyumluTonlar(set, 3).map(x => x.ton);
+    const bpmlar = set.map(t => Number(t.bpm)).filter(Boolean);
+    const setHedef = {
+      tonlar,
+      bpmMin: bpmlar.length ? Math.min(...bpmlar) : null,
+      bpmMax: bpmlar.length ? Math.max(...bpmlar) : null
+    };
+
+    if (!icinde.length && !disi.length) {
+      return '<p style="opacity:.6;font-size:13px">Bütün geçişler uyumlu; değiştirilecek parça yok.</p>';
+    }
+
+    const icindeHtml = icinde.map(x => {
+      const i = x.sira;
+      const onceki = set[i - 1], sonraki = set[i + 1];
+      const hedef = (onceki && sonraki)
+        ? H.kopru(onceki, sonraki)
+        : H.kopru(onceki || sonraki, onceki || sonraki);
+      return `<div class="hm-kopru">
+        <b>${safe(x.parca.title)} — SET İÇİNDE UYMUYOR</b>
+        <p>${safe(x.sebep)}. Yerine ${hedef.tekParca
+          ? `<b>${safe(tonMetni(hedef))}</b> tonunda, <b>${safe(hizMetni(hedef))}</b> aralığında bir parça koy.`
+          : 'komşularına uyan <b>tek</b> parça yetmiyor; köprü zinciri ya da parçayı kaydırmak gerekir.'}</p>
+        ${hedef.ikiAdim ? `<p>1. köprü: <b>${safe(tonMetni(hedef.ikiAdim.birinci))}</b> tonunda,
+          <b>${safe(hizMetni(hedef.ikiAdim.birinci))}</b> · 2. köprü:
+          <b>${safe(tonMetni(hedef.ikiAdim.ikinci))}</b> tonunda,
+          <b>${safe(hizMetni(hedef.ikiAdim.ikinci))}</b></p>` : ''}
+        ${hedef.not ? `<p class="hm-warn">${safe(hedef.not)}</p>` : ''}
+        ${linkHtml({ tonlar: hedef.tonlar, bpmMin: hedef.bpmMin, bpmMax: hedef.bpmMax })}
+      </div>`;
+    }).join('');
+
+    const disiHtml = disi.length ? `<div class="hm-kopru">
+      <b>SETE GİRMEYEN ${disi.length} KATALOG PARÇASI</b>
+      <p>${disi.slice(0, 8).map(t => safe(t.title)).join(', ')}${disi.length > 8 ? ' …' : ''}
+        — setteki tonlarla bağlanmıyor.</p>
+      <p>Yerlerine setteki tonlara uyan bir parça ara: <b>${safe(tonlar.join(' · ') || 'ton bilgisi yok')}</b>,
+        <b>${safe(hizMetni(setHedef))}</b>.</p>
+      ${linkHtml(setHedef)}
+    </div>` : '';
+
+    return icindeHtml + disiHtml;
+  }
+
+  function render() {
+    const sug = suggestions();
+    const sn = set.reduce((s, t) => s + (Number(t.duration_sec) || 0), 0);
+    const dk = Math.round(sn / 60);
+    const eksikTon = tracks.filter(t => !t.camelot).length;
+    const gecisListesi = H.gecisler(set);
+    const sorunlu = gecisListesi.filter(g => g.seviye !== 'iyi').length;
+
+    byId('hm-app').innerHTML = `
+      <div class="hm-grid">
+        <div>
+          <section class="hm-panel">
+            <h2>PARÇA EKLE</h2>
+            <div class="hm-edit" style="border:0;padding-top:0;margin-top:0">
+              <input id="nt-title" placeholder="Parça adı" style="flex:1 1 100%">
+              <input id="nt-artist" placeholder="Sanatçı">
+              <input id="nt-cam" placeholder="Camelot (8A)">
+              <input id="nt-key" placeholder="Ton (A minor)">
+              <input id="nt-makam" placeholder="Makam">
+              <input id="nt-bpm" type="number" placeholder="BPM">
+              <input id="nt-en" type="number" min="1" max="10" placeholder="Enerji 1-10">
+              <input id="nt-dur" type="number" placeholder="Süre (sn)">
+              <input id="nt-file" type="file" accept="audio/*" style="flex:1 1 100%">
+              <button id="nt-add">KATALOĞA EKLE</button>
+            </div>
+            <p class="hm-warn" id="nt-msg"></p>
+          </section>
+
+          <section class="hm-panel" style="margin-top:20px">
+            <h2>SET KATALOĞU (${tracks.length})</h2>
+            ${eksikTon ? `<p class="hm-warn">${eksikTon} parçanın Camelot kodu yok — sıralamaya girmez.</p>` : ''}
+            ${tracks.map(t => `
+              <div class="hm-track ${selected?.id === t.id ? 'sel' : ''}" data-pick="${t.id}">
+                <span><strong>${safe(t.title)}</strong><small>${meta(t)}</small></span>
+                <span style="display:flex;gap:7px;align-items:center">${keyChip(t)}
+                  <button data-push="${t.id}" style="padding:4px 9px;border-radius:9px;font-size:10px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;cursor:pointer">SETE EKLE</button>
+                  <button data-del="${t.id}" style="padding:4px 9px;border-radius:9px;font-size:10px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer">SİL</button></span>
+              </div>`).join('') || '<p style="opacity:.5;font-size:13px">Katalog boş. Yukarıdan parça ekle.</p>'}
+
+            ${selected ? `<div class="hm-edit">
+              <input id="hm-cam" value="${safe(selected.camelot || '')}" placeholder="Camelot">
+              <input id="hm-key" value="${safe(selected.key_name || '')}" placeholder="Ton">
+              <input id="hm-bpm" type="number" value="${selected.bpm || ''}" placeholder="BPM">
+              <input id="hm-en" type="number" min="1" max="10" value="${selected.energy || ''}" placeholder="Enerji">
+              <input id="hm-dur" type="number" value="${selected.duration_sec || ''}" placeholder="Süre (sn)">
+              <button id="hm-save">GÜNCELLE</button>
+            </div>` : ''}
+          </section>
+        </div>
+
+        <div>
+          <section class="hm-panel">
+            <h2>OTOMATİK SIRALAMA</h2>
+            <p style="font-size:12px;opacity:.65;margin:0 0 12px">
+              Parçaları ton uyumu, <b>tempo yakınlığı</b> ve enerji akışına göre dizer:
+              önce her başlangıç denenir, sonra ikili yer değiştirmelerle zincir iyileştirilir.</p>
+            <div class="hm-edit" style="border:0;padding-top:0;margin-top:0">
+              <button id="hm-auto">TÜM KATALOĞU SIRALA</button>
+              <button id="hm-autoset" style="background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2)">MEVCUT SETİ YENİDEN DİZ</button>
+              <button id="hm-clear" style="background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2)">SETİ TEMİZLE</button>
+            </div>
+          </section>
+
+          <section class="hm-panel" style="margin-top:20px">
+            <h2>SIRADAKİ UYUMLU PARÇALAR</h2>
+            ${(set.length || selected)
+              ? (sug.length ? sug.slice(0, 6).map(x => `
+                  <div class="hm-track" data-add="${x.t.id}">
+                    <span><strong>${safe(x.t.title)}</strong><small>${meta(x.t)}</small>
+                      <span class="hm-rel"><span class="hm-chip ${x.rel.sinif}">${x.rel.tip}</span>
+                        ${(() => { const h = H.tempo(set.length ? set[set.length - 1] : selected, x.t);
+                          return h.fark == null ? '' : `<span class="hm-chip">${h.fark} BPM fark · ${safe(h.tip)}</span>`; })()}</span></span>
+                    ${keyChip(x.t)}
+                  </div>`).join('')
+                : '<p style="opacity:.5;font-size:13px">Uyumlu parça yok.</p>')
+              : '<p style="opacity:.5;font-size:13px">Katalogdan bir parça seç ya da otomatik sıralamayı çalıştır.</p>'}
+          </section>
+
+          <section class="hm-panel" style="margin-top:20px">
+            <h2>SET AKIŞI</h2>
+            <div class="hm-meta">
+              <span>Parça: <b>${set.length}</b></span>
+              <span>Süre: <b>${dk} dk</b> / 90 dk</span>
+              <span>Kalan: <b>${Math.max(0, 90 - dk)} dk</b></span>
+              <span>Sorunlu geçiş: <b>${sorunlu}</b></span>
+            </div>
+            <ol class="hm-set">${set.map((t, i) => {
+              const g = i ? gecisListesi[i - 1] : null;
+              const chipTur = !g ? 'off' : (g.seviye === 'iyi' ? 'ok' : (g.seviye === 'zorlama' ? 'up' : 'bad'));
+              const chipMetin = !g ? 'BAŞLANGIÇ' : (g.iliski ? g.iliski.tip : 'UYUMSUZ GEÇİŞ');
+              const hiz = g && g.hiz.fark != null
+                ? `<span class="hm-chip">${g.hiz.fark} BPM fark · ${safe(g.hiz.tip)}</span>` : '';
+              return `<li draggable="true" data-idx="${i}" style="cursor:grab">
+                <span><strong>${safe(t.title)}</strong>
+                  <small>${meta(t)}</small>
+                  <span class="hm-rel"><span class="hm-chip ${chipTur}">${safe(chipMetin)}</span>${hiz}</span></span>
+                <span style="display:flex;gap:8px;align-items:center">${keyChip(t)}
+                ${t.audio_path ? `<button data-play="${t.id}" data-path="${safe(t.audio_path)}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;cursor:pointer">▶</button>` : ''}
+                <button data-rm="${t.id}">ÇIKAR</button></span>
+                ${g && g.seviye !== 'iyi' ? kopruHtml(g) : ''}
+              </li>`;
+            }).join('') || '<p style="opacity:.5;font-size:13px">Set boş.</p>'}</ol>
+            <canvas class="hm-curve" id="hm-curve"></canvas>
+          </section>
+
+          <section class="hm-panel" style="margin-top:20px">
+            <h2>UYUMSUZ PARÇALAR VE ÖNERİLER</h2>
+            <p style="font-size:12px;opacity:.65;margin:0 0 12px">
+              Uymayan geçişlerde araya koyulacak parçanın tonu ve hızı burada yazar.
+              Bağlantılar dış serviste <b>arama</b> açar; önerilen parça listesi dışarıdan çekilmez.</p>
+            ${uyumsuzPanel()}
+          </section>
+        </div>
+      </div>`;
+    wire(); drawCurve();
+  }
+
+  // Enerji (dolu çizgi) ve tempo (kesikli çizgi) aynı grafikte: set akışının
+  // nerede yükselip nerede hızlandığı tek bakışta görünsün.
+  function drawCurve() {
+    const c = byId('hm-curve'); if (!c) return;
+    c.width = c.offsetWidth * 2; c.height = 300;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    if (set.length < 2) {
+      ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('Enerji ve tempo eğrisi için en az iki parça', c.width/2, c.height/2); return;
+    }
+    const ust = 40, alt = c.height - 40;
+    const bpmlar = set.map(t => Number(t.bpm)).filter(Boolean);
+    const enAz = bpmlar.length ? Math.min(...bpmlar) : 0;
+    const enCok = bpmlar.length ? Math.max(...bpmlar) : 0;
+    const bpmY = v => {
+      if (!bpmlar.length) return (ust + alt) / 2;
+      if (enCok === enAz) return (ust + alt) / 2;
+      return alt - ((v - enAz) / (enCok - enAz)) * (alt - ust);
+    };
+    const pts = set.map((t, i) => ({
+      x: (i / (set.length - 1)) * (c.width - 80) + 40,
+      y: alt - ((Number(t.energy) || 5) / 10) * (alt - ust)
+    }));
+
+    ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 2;
+    for (let e = 0; e <= 10; e += 2) {
+      const y = alt - (e / 10) * (alt - ust);
+      ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(c.width - 40, y); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.font = '20px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('ENERJİ', 8, ust + 6);
+    if (bpmlar.length) {
+      ctx.textAlign = 'right';
+      ctx.fillText(enCok + ' BPM', c.width - 8, ust + 6);
+      ctx.fillText(enAz + ' BPM', c.width - 8, alt + 6);
+      ctx.textAlign = 'left';
+      ctx.fillText('TEMPO (kesikli)', 8, alt + 24);
+      ctx.save();
+      ctx.setLineDash([14, 10]); ctx.strokeStyle = '#5ea4ff'; ctx.lineWidth = 3;
+      ctx.beginPath();
+      let basladi = false;
+      set.forEach((t, i) => {
+        const v = Number(t.bpm);
+        if (!v) return;
+        const x = pts[i].x, y = bpmY(v);
+        if (basladi) ctx.lineTo(x, y); else { ctx.moveTo(x, y); basladi = true; }
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const g = ctx.createLinearGradient(0, 0, c.width, 0);
+    g.addColorStop(0, '#5ea4ff'); g.addColorStop(1, '#e0c341');
+    ctx.strokeStyle = g; ctx.lineWidth = 5; ctx.lineJoin = 'round';
+    ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke();
+    pts.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2);
+      ctx.fillStyle = '#e8d15a'; ctx.fill(); ctx.strokeStyle = '#141416'; ctx.lineWidth = 3; ctx.stroke(); });
+  }
+
+  function wire() {
+    byId('nt-add').onclick = async () => {
+      const msg = byId('nt-msg');
+      const title = byId('nt-title').value.trim();
+      if (!title) { msg.textContent = 'Parça adı gerekli.'; return; }
+      msg.textContent = 'Ekleniyor…';
+      let audio_path = null;
+      const file = byId('nt-file').files?.[0];
+      if (file) {
+        const path = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${file.name.split('.').pop() || 'mp3'}`;
+        const up = await client.storage.from('dj-audio').upload(path, file, { contentType: file.type || 'audio/mpeg' });
+        if (up.error) { msg.textContent = 'Yükleme hatası: ' + up.error.message; return; }
+        audio_path = path;
+      }
+      const { error } = await client.from('dj_tracks').insert({
+        title, artist: byId('nt-artist').value.trim() || null, audio_path,
+        camelot: byId('nt-cam').value.trim() || null,
+        key_name: byId('nt-key').value.trim() || null,
+        makam: byId('nt-makam').value.trim() || null,
+        bpm: byId('nt-bpm').value ? Number(byId('nt-bpm').value) : null,
+        energy: byId('nt-en').value ? Number(byId('nt-en').value) : null,
+        duration_sec: byId('nt-dur').value ? Number(byId('nt-dur').value) : null
+      });
+      msg.textContent = error ? error.message : 'Parça eklendi.';
+      if (!error) await load();
+    };
+
+    const siralamaNotu = () => {
+      const sorun = H.gecisler(set).filter(g => g.seviye !== 'iyi').length;
+      return `${set.length} parça sıralandı.`
+        + (sorun ? ` ${sorun} geçişte köprü gerekiyor.` : ' Bütün geçişler uyumlu.');
+    };
+
+    byId('hm-auto').onclick = () => {
+      const uygun = tracks.filter(t => t.camelot);
+      if (uygun.length < 2) { byId('hm-status').textContent = 'En az iki parçaya Camelot kodu gerekli.'; return; }
+      set = H.autoOrder(uygun); selected = null;
+      byId('hm-status').textContent = siralamaNotu();
+      render();
+    };
+
+    byId('hm-autoset').onclick = () => {
+      if (set.length < 2) return;
+      set = H.autoOrder(set.filter(t => t.camelot));
+      byId('hm-status').textContent = siralamaNotu();
+      render();
+    };
+
+    byId('hm-clear').onclick = () => { set = []; selected = null; render(); };
+
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = e => {
+      if (e.target.dataset.del || e.target.dataset.push) return;
+      selected = tracks.find(t => t.id === el.dataset.pick);
+      if (!set.length) set = [selected];
+      render();
+    });
+    document.querySelectorAll('[data-push]').forEach(el => el.onclick = ev => {
+      ev.stopPropagation();
+      const t = tracks.find(x => x.id === el.dataset.push);
+      if (set.some(s => s.id === t.id)) { byId('hm-status').textContent = 'Bu parça sette zaten var.'; return; }
+      set.push(t); render();
+    });
+    document.querySelectorAll('[data-add]').forEach(el => el.onclick = () => {
+      set.push(tracks.find(t => t.id === el.dataset.add)); render();
+    });
+
+    document.querySelectorAll('[data-rm]').forEach(el => el.onclick = () => {
+      set = set.filter(t => t.id !== el.dataset.rm); render();
+    });
+
+    document.querySelectorAll('[data-del]').forEach(el => el.onclick = async ev => {
+      ev.stopPropagation();
+      if (!confirm('Parça katalogdan silinecek. Emin misiniz?')) return;
+      const t = tracks.find(x => x.id === el.dataset.del);
+      if (t?.audio_path) await client.storage.from('dj-audio').remove([t.audio_path]);
+      await client.from('dj_tracks').delete().eq('id', el.dataset.del);
+      set = set.filter(x => x.id !== el.dataset.del);
+      if (selected?.id === el.dataset.del) selected = null;
+      await load();
+    });
+    // Sürükle-bırak sıralama
+    let suruklenen = null;
+    document.querySelectorAll('.hm-set li[draggable]').forEach(li => {
+      li.addEventListener('dragstart', e => {
+        suruklenen = +li.dataset.idx;
+        li.style.opacity = '.4';
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      li.addEventListener('dragend', () => { li.style.opacity = ''; });
+      li.addEventListener('dragover', e => {
+        e.preventDefault();
+        li.style.borderColor = 'rgba(224,195,65,.7)';
+      });
+      li.addEventListener('dragleave', () => { li.style.borderColor = ''; });
+      li.addEventListener('drop', e => {
+        e.preventDefault();
+        const hedef = +li.dataset.idx;
+        if (suruklenen === null || suruklenen === hedef) return;
+        const [tasinan] = set.splice(suruklenen, 1);
+        set.splice(hedef, 0, tasinan);
+        suruklenen = null;
+        render();
+      });
+    });
+
+    // Parça dinleme
+    document.querySelectorAll('[data-play]').forEach(btn => btn.onclick = async () => {
+      if (window.__hmAudio && !window.__hmAudio.paused) {
+        window.__hmAudio.pause();
+        document.querySelectorAll('[data-play]').forEach(b => b.textContent = '▶');
+        if (window.__hmPlaying === btn.dataset.play) { window.__hmPlaying = null; return; }
+      }
+      const { data, error } = await client.storage.from('dj-audio').createSignedUrl(btn.dataset.path, 3600);
+      if (error) { byId('hm-status').textContent = 'Ses açılamadı: ' + error.message; return; }
+      window.__hmAudio = new Audio(data.signedUrl);
+      window.__hmPlaying = btn.dataset.play;
+      window.__hmAudio.onended = () => { btn.textContent = '▶'; window.__hmPlaying = null; };
+      await window.__hmAudio.play();
+      btn.textContent = '⏸';
+    });
+    const save = byId('hm-save');
+    if (save) save.onclick = async () => {
+      const body = {
+        camelot: byId('hm-cam').value.trim() || null,
+        key_name: byId('hm-key').value.trim() || null,
+        bpm: byId('hm-bpm').value ? Number(byId('hm-bpm').value) : null,
+        energy: byId('hm-en').value ? Number(byId('hm-en').value) : null,
+        duration_sec: byId('hm-dur').value ? Number(byId('hm-dur').value) : null
+      };
+      const { error } = await client.from('dj_tracks').update(body).eq('id', selected.id);
+      byId('hm-status').textContent = error ? error.message : 'Güncellendi.';
+      if (!error) { Object.assign(selected, body); await load(); }
+    };
+  }
+
+  window.addEventListener('resize', drawCurve);
+  boot();
+})();
+
+</script><script>
+(function () {
+  const bekle = ms => new Promise(r => setTimeout(r, ms));
+  (async () => {
+    for (let i = 0; i < 40 && !document.querySelector('[data-push]'); i++) await bekle(100);
+    for (const id of ['t1', 't3', 't2', 't5', 't4']) {
+      const b = document.querySelector('[data-push="' + id + '"]');
+      if (b) b.click();
+      await bekle(120);
+    }
+  })();
+})();
+</script>
+  <script>
+(() => {
+  const PC = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const CAMELOT_MAJ = { C:'8B',G:'9B',D:'10B',A:'11B',E:'12B',B:'1B','F#':'2B','C#':'3B','G#':'4B','D#':'5B','A#':'6B',F:'7B' };
+  const CAMELOT_MIN = { A:'8A',E:'9A',B:'10A','F#':'11A','C#':'12A','G#':'1A','D#':'2A','A#':'3A',F:'4A',C:'5A',G:'6A',D:'7A' };
+  const MAJ = [6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+  const MIN = [6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+
+  const corr = (a, b) => {
+    const ma = a.reduce((s,x)=>s+x,0)/12, mb = b.reduce((s,x)=>s+x,0)/12;
+    let n=0, da=0, db=0;
+    for (let i=0;i<12;i++){ const x=a[i]-ma, y=b[i]-mb; n+=x*y; da+=x*x; db+=y*y; }
+    return n / Math.sqrt(da*db || 1);
+  };
+
+  function goertzel(buf, sr, freq) {
+    const k = 2 * Math.cos(2 * Math.PI * freq / sr);
+    let s0=0, s1=0, s2=0;
+    for (let i=0;i<buf.length;i++){ s0 = buf[i] + k*s1 - s2; s2=s1; s1=s0; }
+    return Math.sqrt(Math.max(0, s1*s1 + s2*s2 - k*s1*s2));
+  }
+
+  function detectKey(ch, sr) {
+    const chroma = new Array(12).fill(0);
+    const pencere = Math.min(ch.length, sr * 30);
+    const basla = Math.floor((ch.length - pencere) / 2);
+    const parca = ch.subarray(basla, basla + pencere);
+    const adim = Math.floor(sr * 0.5);
+    const blok = 4096;
+    for (let oct = 2; oct <= 5; oct++) {
+      for (let p = 0; p < 12; p++) {
+        const f = 440 * Math.pow(2, (p - 9) / 12 + (oct - 4));
+        let toplam = 0, n = 0;
+        for (let off = 0; off + blok < parca.length; off += adim * 4) {
+          toplam += goertzel(parca.subarray(off, off + blok), sr, f); n++;
+        }
+        if (n) chroma[p] += toplam / n;
+      }
+    }
+    let best = null;
+    for (let r = 0; r < 12; r++) {
+      const don = chroma.slice(r).concat(chroma.slice(0, r));
+      const cM = corr(don, MAJ), cm = corr(don, MIN);
+      if (!best || cM > best.p) best = { p:cM, kok:PC[r], mod:'major' };
+      if (cm > best.p) best = { p:cm, kok:PC[r], mod:'minor' };
+    }
+    return {
+      key_name: best.kok + (best.mod === 'minor' ? ' minor' : ' major'),
+      camelot: best.mod === 'minor' ? CAMELOT_MIN[best.kok] : CAMELOT_MAJ[best.kok],
+      guven: Math.round(Math.max(0, best.p) * 100)
+    };
+  }
+
+  function detectBPM(ch, sr) {
+    const boy = 1024;
+    const enerji = [];
+    for (let i = 0; i + boy < ch.length; i += boy) {
+      let s = 0;
+      for (let j = 0; j < boy; j += 4) s += ch[i+j] * ch[i+j];
+      enerji.push(s);
+    }
+    const fark = enerji.map((v, i) => i ? Math.max(0, v - enerji[i-1]) : 0);
+    const fps = sr / boy;
+    const enAz = Math.floor(fps * 60 / 180), enCok = Math.ceil(fps * 60 / 70);
+    let iyi = null;
+    for (let lag = enAz; lag <= enCok; lag++) {
+      let s = 0;
+      for (let i = 0; i + lag < fark.length; i++) s += fark[i] * fark[i+lag];
+      s /= (fark.length - lag);
+      if (!iyi || s > iyi.s) iyi = { s, lag };
+    }
+    let bpm = (fps * 60) / iyi.lag;
+    while (bpm < 85) bpm *= 2;
+    while (bpm > 175) bpm /= 2;
+    return Math.round(bpm * 10) / 10;
+  }
+
+  function detectEnergy(ch) {
+    let s = 0, n = 0;
+    for (let i = 0; i < ch.length; i += 64) { s += ch[i] * ch[i]; n++; }
+    return Math.min(10, Math.max(1, Math.round(Math.sqrt(s / n) * 34)));
+  }
+
+  async function analiz(file, bildir) {
+    bildir('Dosya okunuyor…');
+    const buf = await file.arrayBuffer();
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const ab = await ac.decodeAudioData(buf);
+    const ch = ab.getChannelData(0), sr = ab.sampleRate;
+    bildir('Tempo hesaplanıyor…');
+    const bpm = detectBPM(ch, sr);
+    await new Promise(r => setTimeout(r, 30));
+    bildir('Ton analiz ediliyor… (biraz sürebilir)');
+    await new Promise(r => setTimeout(r, 30));
+    const key = detectKey(ch, sr);
+    const energy = detectEnergy(ch);
+    ac.close();
+    return { bpm, ...key, energy, duration_sec: Math.round(ab.duration) };
+  }
+
+  const parseKey = k => { const m=/^(\d{1,2})([AB])$/i.exec(String(k||'').trim()); return m?{n:+m[1],L:m[2].toUpperCase()}:null; };
+  const wrap = n => ((n-1+12)%12)+1;
+
+  const uyumluTonlar = k => {
+    const K = parseKey(k);
+    if (!K) return [];
+    return [`${K.n}${K.L}`, `${K.n}${K.L==='A'?'B':'A'}`,
+            `${wrap(K.n+1)}${K.L}`, `${wrap(K.n-1)}${K.L}`, `${wrap(K.n+7)}${K.L}`];
+  };
+
+  const kopruTonlari = (a, b) => {
+    const bU = new Set(uyumluTonlar(b));
+    return uyumluTonlar(a).filter(k => bU.has(k));
+  };
+
+  function ikiAdimliKopru(a, b) {
+    const bU = uyumluTonlar(b), yollar = [];
+    for (const x of uyumluTonlar(a)) {
+      for (const y of uyumluTonlar(x)) {
+        if (bU.includes(y) && x !== y) yollar.push([x, y]);
+      }
+    }
+    return yollar.slice(0, 3);
+  }
+
+  function baglaAnaliz() {
+    const dosya = document.getElementById('nt-file');
+    if (!dosya || dosya.dataset.hazir) return;
+    dosya.dataset.hazir = '1';
+    const btn = document.createElement('button');
+    btn.textContent = '🎧 DOSYAYI ANALİZ ET';
+    btn.type = 'button';
+    btn.style.cssText = 'flex:1 1 100%;padding:11px 16px;border-radius:12px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;font:inherit;font-size:12px;font-weight:600;cursor:pointer';
+    dosya.insertAdjacentElement('afterend', btn);
+    btn.onclick = async () => {
+      const f = dosya.files?.[0];
+      const msg = document.getElementById('nt-msg');
+      if (!f) { msg.textContent = 'Önce bir ses dosyası seç.'; return; }
+      btn.disabled = true;
+      try {
+        const r = await analiz(f, t => { msg.textContent = t; });
+        const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+        set('nt-bpm', r.bpm); set('nt-cam', r.camelot); set('nt-key', r.key_name);
+        set('nt-en', r.energy); set('nt-dur', r.duration_sec);
+        if (!document.getElementById('nt-title').value.trim())
+          document.getElementById('nt-title').value = f.name.replace(/\.[^.]+$/, '');
+        msg.textContent = `Analiz tamam — ${r.bpm} BPM · ${r.camelot} (${r.key_name}) · ton güveni %${r.guven}. Yanlışsa elle düzelt.`;
+      } catch (e) { msg.textContent = 'Analiz başarısız: ' + e.message; }
+      btn.disabled = false;
+    };
+  }
+
+  function baglaKopru() {
+    document.querySelectorAll('.hm-set li').forEach(li => {
+      if (li.dataset.kopru) return;
+      const kucuk = li.querySelector('small');
+      if (!kucuk || !kucuk.textContent.includes('uyumsuz geçiş')) return;
+
+      const oncekiLi = li.previousElementSibling;
+      const key = li.querySelector('.hm-key')?.textContent.trim();
+      const oncekiKey = oncekiLi?.querySelector('.hm-key')?.textContent.trim();
+      if (!key || !oncekiKey) return;
+      li.dataset.kopru = '1';
+
+      const ortak = kopruTonlari(oncekiKey, key);
+      const zincir = ortak.length ? [] : ikiAdimliKopru(oncekiKey, key);
+      const hedefTon = ortak.length ? ortak[0] : (zincir[0] ? zincir[0][0] : oncekiKey);
+
+      const bpmEsle = /(\d+(?:\.\d+)?) BPM/.exec(kucuk.textContent);
+      const bpm = bpmEsle ? Math.round(+bpmEsle[1]) : null;
+      const aralik = bpm ? `${bpm-4}-${bpm+4} BPM` : 'benzer tempo';
+
+      const sorgu = `${hedefTon} ${bpm ? bpm + ' bpm' : ''} track`.replace(/\s+/g, ' ').trim();
+      const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(sorgu);
+      const sp = 'https://open.spotify.com/search/' + encodeURIComponent(sorgu);
+
+      const kutu = document.createElement('div');
+      kutu.style.cssText = 'flex:1 1 100%;margin-top:10px;padding:12px 14px;border-radius:14px;border:1px dashed rgba(255,179,179,.4);background:rgba(255,120,120,.07);font-size:11.5px;line-height:1.7';
+      kutu.innerHTML = `<strong style="color:#ffb3b3">${oncekiKey} → ${key} geçişi uyumsuz.</strong><br>
+        ${ortak.length
+          ? `Araya girecek parçanın tonu şunlardan biri olmalı: <b style="color:#e8d15a">${ortak.join(' · ')}</b>`
+          : (zincir.length
+              ? `Tek parça yetmiyor, iki köprü gerekiyor. Önerilen zincir:<br>` +
+                zincir.map(z => `&nbsp;&nbsp;<b style="color:#e8d15a">${oncekiKey} → ${z[0]} → ${z[1]} → ${key}</b>`).join('<br>')
+              : 'Bu iki ton arasında köprü bulunamadı — parçalardan birini değiştirmen gerekebilir.')}
+        <br>Tempo: <b style="color:#e8d15a">${aralik}</b>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <a href="${yt}" target="_blank" rel="noreferrer" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);color:inherit;text-decoration:none">YouTube'da ara ↗</a>
+          <a href="${sp}" target="_blank" rel="noreferrer" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);color:inherit;text-decoration:none">Spotify'da ara ↗</a>
+        </div>`;
+      li.appendChild(kutu);
+      li.style.flexWrap = 'wrap';
+    });
+  }
+
+  const gozle = () => { baglaAnaliz(); baglaKopru(); };
+  new MutationObserver(gozle).observe(document.body, { childList:true, subtree:true });
+  document.addEventListener('DOMContentLoaded', gozle);
+  gozle();
+})();
+
+
+</script>
+</body>
+</html>

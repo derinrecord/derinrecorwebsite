@@ -488,6 +488,87 @@ if (senaryo === 'kabuk') {
   return;
 }
 
+// "harmonik" modu Harmonik Set ekranını örnek katalogla önizler: giriş ve
+// Supabase yoktur, gerçek harmonic-mixer.js sahte bir istemciyle çalışır. Böylece
+// köprü önerileri, iki adımlı yol, uyumsuz parça paneli ve tempo eğrisi hesap
+// açmadan gözle doğrulanabilir.
+if (senaryo === 'harmonik') {
+  // Katalogda bilinçli olarak: uyumlu bir çift, tonu olmayan bir parça,
+  // setle bağlanamayan bir parça ve hızı uzak bir parça var.
+  const KATALOG = [
+    { id: 't1', title: 'Kapadokya', artist: 'Derin', camelot: '8A', key_name: 'A minor', makam: 'Hicaz', bpm: 122, energy: 4, duration_sec: 305, audio_path: null },
+    { id: 't2', title: 'Gece Treni', artist: 'Derin', camelot: '9A', key_name: 'E minor', makam: null, bpm: 124, energy: 5, duration_sec: 280, audio_path: null },
+    { id: 't3', title: 'Kopuk Parça', artist: 'Konuk', camelot: '4B', key_name: 'F# major', makam: null, bpm: 96, energy: 7, duration_sec: 260, audio_path: null },
+    { id: 't4', title: 'Sahil', artist: 'Derin', camelot: '9B', key_name: 'B major', makam: null, bpm: 125, energy: 5, duration_sec: 300, audio_path: null },
+    { id: 't5', title: 'Yükseliş', artist: 'Derin', camelot: '10B', key_name: 'D major', makam: null, bpm: 126, energy: 6, duration_sec: 290, audio_path: null },
+    { id: 't6', title: 'Sabah Rüzgârı', artist: 'Derin', camelot: '8B', key_name: 'C major', makam: null, bpm: 123, energy: 5, duration_sec: 310, audio_path: null },
+    { id: 't7', title: 'Tonu Girilmemiş', artist: 'Konuk', camelot: null, key_name: null, makam: null, bpm: 120, energy: 4, duration_sec: 240, audio_path: null },
+    { id: 't8', title: 'Derin Bas', artist: 'Konuk', camelot: '5A', key_name: 'C minor', makam: null, bpm: 118, energy: 3, duration_sec: 270, audio_path: null }
+  ];
+  const taklit = `<script>
+// ---- Sunucu taklidi: auth.js ve Supabase yerine geçer, yalnız önizlemede.
+(function () {
+  const satirlar = ${JSON.stringify(KATALOG)};
+  const yazmaKapali = { message: 'Önizleme: yazma kapalı.' };
+  const tablo = () => ({
+    select: () => ({ order: () => Promise.resolve({ data: satirlar, error: null }) }),
+    insert: () => Promise.resolve({ data: null, error: yazmaKapali }),
+    update: () => ({ eq: () => Promise.resolve({ data: null, error: yazmaKapali }) }),
+    delete: () => ({ eq: () => Promise.resolve({ data: null, error: yazmaKapali }) })
+  });
+  const kova = {
+    upload: () => Promise.resolve({ data: null, error: yazmaKapali }),
+    remove: () => Promise.resolve({ data: null, error: null }),
+    createSignedUrl: () => Promise.resolve({ data: null, error: { message: 'Önizleme: ses kapalı.' } })
+  };
+  window.DerinAuth = {
+    ready: Promise.resolve(), configured: true, user: { id: 'onizleme' },
+    profile: { role: 'admin' }, open: () => {},
+    client: { from: tablo, storage: { from: () => kova } }
+  };
+})();
+</script>`;
+  // Önce dağınık bir set kurulur: köprü kutuları ve uyumsuz panel hemen görünür.
+  // Kullanıcı "MEVCUT SETİ YENİDEN DİZ" ile iyileştirilmiş sırayı kendi görür.
+  const akis = `<script>
+(function () {
+  const bekle = ms => new Promise(r => setTimeout(r, ms));
+  (async () => {
+    for (let i = 0; i < 40 && !document.querySelector('[data-push]'); i++) await bekle(100);
+    for (const id of ['t1', 't3', 't2', 't5', 't4']) {
+      const b = document.querySelector('[data-push="' + id + '"]');
+      if (b) b.click();
+      await bekle(120);
+    }
+  })();
+})();
+</script>`;
+
+  const gomulu = oku('harmonic-mixer.html')
+    .replace('<link rel="stylesheet" href="branch.css">', '<style>\n' + oku('branch.css') + '\n</style>')
+    .replace('<link rel="stylesheet" href="auth.css">', '<style>\n' + oku('auth.css') + '\n</style>')
+    .replace(/<link rel="stylesheet" href="glass\.css\?v=[^\"]+">/, '<style>\n' + oku('glass.css') + '\n</style>')
+    .replace(/<script src="config\.js"><\/script>\n?/, '')
+    .replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@[^\"]+"><\/script>\n?/, '')
+    .replace(/<script src="auth\.js\?v=[^\"]+"><\/script>/, taklit)
+    .replace(/<script src="harmonic-set\.js\?v=[^\"]+"><\/script>/, '<script>\n' + oku('harmonic-set.js') + '\n</script>')
+    .replace(/<script src="harmonic-mixer\.js\?v=[^\"]+"><\/script>/, '<script>\n' + oku('harmonic-mixer.js') + '\n</script>' + akis)
+    .replace(/<script src="harmonic-analyze\.js\?v=[^\"]+"><\/script>/, '<script>\n' + oku('harmonic-analyze.js') + '\n</script>')
+    // Mixer bu yardımcıyı kullanmaz ve tek dosyalık önizlemede dışarıdan gelmez.
+    .replace(/<script src="sortable-touch\.js\?v=[^\"]+"><\/script>\n?/, '');
+  // Gömme sessizce boşa düşerse önizleme giriş ekranında kalır; bunun yerine dur.
+  ['branch.css', 'auth.css', 'glass.css', 'harmonic-set.js', 'harmonic-mixer.js', 'sortable-touch.js'].forEach(dis => {
+    if (new RegExp('(?:href|src)="' + dis.replace(/\./g, '\\.')).test(gomulu)) {
+      throw new Error(dis + ' gömülmedi: harmonic-mixer.html etiketi değişmiş, onizleme-olustur.js harmonik modunu güncelleyin');
+    }
+  });
+  if (!gomulu.includes('window.DerinAuth = {')) throw new Error('giriş taklidi gömülmedi');
+  if (!gomulu.includes('DerinHarmonicSet')) throw new Error('harmonic-set.js gömülmedi');
+  fs.writeFileSync(ciktiYolu, gomulu);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · harmonik set önizlemesi');
+  return;
+}
+
 let sayfa = oku('radyo-cihaz-prova.html');
 const kuyruk = oku('radio-playlist-queue.js');
 // Oynatıcı anahtarı yalnızca sorgu dizesinden okur; provada sorgu dizesi

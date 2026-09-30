@@ -2,62 +2,9 @@
   const byId = id => document.getElementById(id);
   const safe = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-  const parseKey = k => {
-    const m = /^(\d{1,2})([AB])$/i.exec(String(k || '').trim());
-    return m ? { n:+m[1], L:m[2].toUpperCase() } : null;
-  };
-  const wrap = n => ((n - 1 + 12) % 12) + 1;
-
-  function relation(from, to) {
-    const a = parseKey(from), b = parseKey(to);
-    if (!a || !b) return null;
-    if (a.n === b.n && a.L === b.L) return { tip:'Aynı ton', sinif:'ok', puan:5 };
-    if (a.n === b.n) return { tip:'Paralel majör↔minör', sinif:'ok', puan:5 };
-    if (a.L === b.L && wrap(a.n + 1) === b.n) return { tip:'Enerji artışı (+1)', sinif:'up', puan:6 };
-    if (a.L === b.L && wrap(a.n - 1) === b.n) return { tip:'Yumuşak iniş (−1)', sinif:'ok', puan:4 };
-    if (a.L === b.L && wrap(a.n + 2) === b.n) return { tip:'Enerji sıçraması (+2)', sinif:'up', puan:2 };
-    if (a.L === b.L && wrap(a.n + 7) === b.n) return { tip:'Yükseltme (+7)', sinif:'up', puan:2 };
-    return null;
-  }
-
-  // Geçiş kalitesi: ton + BPM yakınlığı + enerji akışı
-  function score(a, b) {
-    const r = relation(a.camelot, b.camelot);
-    if (!r) return -Infinity;
-    let s = r.puan * 10;
-    if (a.bpm && b.bpm) {
-      const fark = Math.abs(a.bpm - b.bpm);
-      s -= fark > 6 ? (fark - 6) * 2 : 0;
-      if (fark <= 3) s += 4;
-    }
-    if (a.energy && b.energy) {
-      const d = b.energy - a.energy;
-      if (d >= 0 && d <= 2) s += 5;
-      else if (d < -2) s -= 6;
-    }
-    return s;
-  }
-
-  // Açgözlü zincir + her başlangıç noktası denenir
-  function autoOrder(list) {
-    if (list.length < 2) return list.slice();
-    let best = null, bestScore = -Infinity;
-    for (const start of list) {
-      const kalan = list.filter(t => t.id !== start.id);
-      const sira = [start];
-      let toplam = 0;
-      while (kalan.length) {
-        const son = sira[sira.length - 1];
-        let en = null, enP = -Infinity, enIdx = -1;
-        kalan.forEach((t, i) => { const p = score(son, t); if (p > enP) { enP = p; en = t; enIdx = i; } });
-        if (enP === -Infinity) { en = kalan[0]; enIdx = 0; enP = -25; }
-        toplam += enP;
-        sira.push(en); kalan.splice(enIdx, 1);
-      }
-      if (toplam > bestScore) { bestScore = toplam; best = sira; }
-    }
-    return best;
-  }
+  // Sıralama/skor/geçiş hesabı harmonic-set.js'te: burası yalnız çizer ve yazar.
+  const H = window.DerinHarmonicSet;
+  const parseKey = H.parseKey;
 
   let client = null, tracks = [], set = [], selected = null;
 
@@ -88,7 +35,7 @@
     const last = set.length ? set[set.length - 1] : selected;
     if (!last) return [];
     return tracks.filter(t => t.id !== last.id && !set.some(s => s.id === t.id))
-      .map(t => ({ t, rel: relation(last.camelot, t.camelot), p: score(last, t) }))
+      .map(t => ({ t, rel: H.relation(last.camelot, t.camelot), p: H.score(last, t) }))
       .filter(x => x.rel).sort((a, b) => b.p - a.p);
   }
 
@@ -99,11 +46,105 @@
   const meta = t => [t.artist, t.key_name, t.makam, t.bpm ? t.bpm + ' BPM' : null, t.energy ? 'E' + t.energy : null]
     .filter(Boolean).map(safe).join(' · ') || 'meta veri eksik';
 
+  // Öneri bağlantısı: dış servis anahtarı yok, arama sorgusuna götürür.
+  function linkHtml(hedef) {
+    const sorgu = H.oneriSorgusu(hedef);
+    const l = H.aramaLinkleri(sorgu);
+    return `<span class="hm-links">
+      <span class="hm-chip">${safe(sorgu)}</span>
+      <a class="hm-link" href="${safe(l.youtube)}" target="_blank" rel="noopener">YouTube'da ara ↗</a>
+      <a class="hm-link" href="${safe(l.spotify)}" target="_blank" rel="noopener">Spotify'da ara ↗</a>
+    </span>`;
+  }
+
+  const hizMetni = h => (h.bpmMin && h.bpmMax)
+    ? (h.bpmMin === h.bpmMax ? h.bpmMin + ' BPM' : h.bpmMin + '–' + h.bpmMax + ' BPM')
+    : 'hız bilgisi yok';
+
+  const tonMetni = h => (h.tonlar && h.tonlar.length) ? h.tonlar.join(' · ') : 'ton bilgisi yok';
+
+  // Geçiş uymadığında araya girecek parçanın tonu ve hızı. Hız farkı tek
+  // köprüyle kapanmıyorsa iki adım ayrı ayrı yazılır.
+  function kopruHtml(g) {
+    const k = H.kopru(g.onceki, g.sonraki);
+    const hedef = k.tekParca
+      ? `<b>${safe(tonMetni(k))}</b> tonunda, <b>${safe(hizMetni(k))}</b> aralığında bir parça koy.`
+      : 'tek parça yetmiyor; aşağıdaki iki köprüyü sırayla kullan.';
+    const iki = k.ikiAdim ? `
+      <p><b>1. köprü:</b> <b>${safe(tonMetni(k.ikiAdim.birinci))}</b> tonunda,
+        <b>${safe(hizMetni(k.ikiAdim.birinci))}</b> — önceki parçanın hızına yakın.<br>
+        <b>2. köprü:</b> <b>${safe(tonMetni(k.ikiAdim.ikinci))}</b> tonunda,
+        <b>${safe(hizMetni(k.ikiAdim.ikinci))}</b> — sonraki parçanın hızına yakın.</p>
+      ${k.ikiAdim.ornek.length ? `<p>İki köprü birbirine de bağlanmalı; örnek zincir:
+        <b>${safe(k.ikiAdim.ornek.map(o => o.birinci + ' → ' + o.ikinci).join('  ·  '))}</b></p>` : ''}
+      ${linkHtml({ tonlar: k.ikiAdim.birinci.tonlar, bpmMin: k.ikiAdim.birinci.bpmMin, bpmMax: k.ikiAdim.birinci.bpmMax })}
+      ${linkHtml({ tonlar: k.ikiAdim.ikinci.tonlar, bpmMin: k.ikiAdim.ikinci.bpmMin, bpmMax: k.ikiAdim.ikinci.bpmMax })}` : '';
+    return `<div class="hm-kopru">
+      <b>KÖPRÜ PARÇASI GEREKİYOR</b>
+      <p>“${safe(g.onceki.title)}” ile “${safe(g.sonraki.title)}” arasına ${hedef}
+        ${g.sorunlar.length ? 'Sorun: ' + safe(g.sorunlar.join(', ')) + '.' : ''}</p>
+      ${iki}
+      ${k.not ? `<p class="hm-warn">${safe(k.not)}</p>` : ''}
+      ${k.tekParca ? linkHtml({ tonlar: k.tonlar, bpmMin: k.bpmMin, bpmMax: k.bpmMax }) : ''}
+    </div>`;
+  }
+
+  // Uymayan parçalar: setin içinde kopukluk yaratanlar ve sete hiç giremeyenler.
+  function uyumsuzPanel() {
+    if (!set.length) return '<p style="opacity:.5;font-size:13px">Set boş: önce parça ekle.</p>';
+    const icinde = H.uymayanlar(set);
+    const disi = H.setDisiKalanlar(set, tracks);
+    const tonlar = H.uyumluTonlar(set, 3).map(x => x.ton);
+    const bpmlar = set.map(t => Number(t.bpm)).filter(Boolean);
+    const setHedef = {
+      tonlar,
+      bpmMin: bpmlar.length ? Math.min(...bpmlar) : null,
+      bpmMax: bpmlar.length ? Math.max(...bpmlar) : null
+    };
+
+    if (!icinde.length && !disi.length) {
+      return '<p style="opacity:.6;font-size:13px">Bütün geçişler uyumlu; değiştirilecek parça yok.</p>';
+    }
+
+    const icindeHtml = icinde.map(x => {
+      const i = x.sira;
+      const onceki = set[i - 1], sonraki = set[i + 1];
+      const hedef = (onceki && sonraki)
+        ? H.kopru(onceki, sonraki)
+        : H.kopru(onceki || sonraki, onceki || sonraki);
+      return `<div class="hm-kopru">
+        <b>${safe(x.parca.title)} — SET İÇİNDE UYMUYOR</b>
+        <p>${safe(x.sebep)}. Yerine ${hedef.tekParca
+          ? `<b>${safe(tonMetni(hedef))}</b> tonunda, <b>${safe(hizMetni(hedef))}</b> aralığında bir parça koy.`
+          : 'komşularına uyan <b>tek</b> parça yetmiyor; köprü zinciri ya da parçayı kaydırmak gerekir.'}</p>
+        ${hedef.ikiAdim ? `<p>1. köprü: <b>${safe(tonMetni(hedef.ikiAdim.birinci))}</b> tonunda,
+          <b>${safe(hizMetni(hedef.ikiAdim.birinci))}</b> · 2. köprü:
+          <b>${safe(tonMetni(hedef.ikiAdim.ikinci))}</b> tonunda,
+          <b>${safe(hizMetni(hedef.ikiAdim.ikinci))}</b></p>` : ''}
+        ${hedef.not ? `<p class="hm-warn">${safe(hedef.not)}</p>` : ''}
+        ${linkHtml({ tonlar: hedef.tonlar, bpmMin: hedef.bpmMin, bpmMax: hedef.bpmMax })}
+      </div>`;
+    }).join('');
+
+    const disiHtml = disi.length ? `<div class="hm-kopru">
+      <b>SETE GİRMEYEN ${disi.length} KATALOG PARÇASI</b>
+      <p>${disi.slice(0, 8).map(t => safe(t.title)).join(', ')}${disi.length > 8 ? ' …' : ''}
+        — setteki tonlarla bağlanmıyor.</p>
+      <p>Yerlerine setteki tonlara uyan bir parça ara: <b>${safe(tonlar.join(' · ') || 'ton bilgisi yok')}</b>,
+        <b>${safe(hizMetni(setHedef))}</b>.</p>
+      ${linkHtml(setHedef)}
+    </div>` : '';
+
+    return icindeHtml + disiHtml;
+  }
+
   function render() {
     const sug = suggestions();
     const sn = set.reduce((s, t) => s + (Number(t.duration_sec) || 0), 0);
     const dk = Math.round(sn / 60);
     const eksikTon = tracks.filter(t => !t.camelot).length;
+    const gecisListesi = H.gecisler(set);
+    const sorunlu = gecisListesi.filter(g => g.seviye !== 'iyi').length;
 
     byId('hm-app').innerHTML = `
       <div class="hm-grid">
@@ -131,7 +172,7 @@
             ${tracks.map(t => `
               <div class="hm-track ${selected?.id === t.id ? 'sel' : ''}" data-pick="${t.id}">
                 <span><strong>${safe(t.title)}</strong><small>${meta(t)}</small></span>
-                               <span style="display:flex;gap:7px;align-items:center">${keyChip(t)}
+                <span style="display:flex;gap:7px;align-items:center">${keyChip(t)}
                   <button data-push="${t.id}" style="padding:4px 9px;border-radius:9px;font-size:10px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;cursor:pointer">SETE EKLE</button>
                   <button data-del="${t.id}" style="padding:4px 9px;border-radius:9px;font-size:10px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer">SİL</button></span>
               </div>`).join('') || '<p style="opacity:.5;font-size:13px">Katalog boş. Yukarıdan parça ekle.</p>'}
@@ -151,7 +192,8 @@
           <section class="hm-panel">
             <h2>OTOMATİK SIRALAMA</h2>
             <p style="font-size:12px;opacity:.65;margin:0 0 12px">
-              Katalogdaki tüm parçaları ton uyumu, BPM yakınlığı ve enerji akışına göre en akıcı sıraya dizer.</p>
+              Parçaları ton uyumu, <b>tempo yakınlığı</b> ve enerji akışına göre dizer:
+              önce her başlangıç denenir, sonra ikili yer değiştirmelerle zincir iyileştirilir.</p>
             <div class="hm-edit" style="border:0;padding-top:0;margin-top:0">
               <button id="hm-auto">TÜM KATALOĞU SIRALA</button>
               <button id="hm-autoset" style="background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2)">MEVCUT SETİ YENİDEN DİZ</button>
@@ -165,7 +207,9 @@
               ? (sug.length ? sug.slice(0, 6).map(x => `
                   <div class="hm-track" data-add="${x.t.id}">
                     <span><strong>${safe(x.t.title)}</strong><small>${meta(x.t)}</small>
-                      <span class="hm-rel"><span class="hm-chip ${x.rel.sinif}">${x.rel.tip}</span></span></span>
+                      <span class="hm-rel"><span class="hm-chip ${x.rel.sinif}">${x.rel.tip}</span>
+                        ${(() => { const h = H.tempo(set.length ? set[set.length - 1] : selected, x.t);
+                          return h.fark == null ? '' : `<span class="hm-chip">${h.fark} BPM fark · ${safe(h.tip)}</span>`; })()}</span></span>
                     ${keyChip(x.t)}
                   </div>`).join('')
                 : '<p style="opacity:.5;font-size:13px">Uyumlu parça yok.</p>')
@@ -178,23 +222,41 @@
               <span>Parça: <b>${set.length}</b></span>
               <span>Süre: <b>${dk} dk</b> / 90 dk</span>
               <span>Kalan: <b>${Math.max(0, 90 - dk)} dk</b></span>
+              <span>Sorunlu geçiş: <b>${sorunlu}</b></span>
             </div>
             <ol class="hm-set">${set.map((t, i) => {
-              const r = i ? relation(set[i-1].camelot, t.camelot) : null;
-                            return `<li draggable="true" data-idx="${i}" style="cursor:grab">
+              const g = i ? gecisListesi[i - 1] : null;
+              const chipTur = !g ? 'off' : (g.seviye === 'iyi' ? 'ok' : (g.seviye === 'zorlama' ? 'up' : 'bad'));
+              const chipMetin = !g ? 'BAŞLANGIÇ' : (g.iliski ? g.iliski.tip : 'UYUMSUZ GEÇİŞ');
+              const hiz = g && g.hiz.fark != null
+                ? `<span class="hm-chip">${g.hiz.fark} BPM fark · ${safe(g.hiz.tip)}</span>` : '';
+              return `<li draggable="true" data-idx="${i}" style="cursor:grab">
                 <span><strong>${safe(t.title)}</strong>
-                <small>${meta(t)}${r ? ' · ' + r.tip : (i ? ' · ⚠ uyumsuz geçiş' : '')}</small></span>
+                  <small>${meta(t)}</small>
+                  <span class="hm-rel"><span class="hm-chip ${chipTur}">${safe(chipMetin)}</span>${hiz}</span></span>
                 <span style="display:flex;gap:8px;align-items:center">${keyChip(t)}
                 ${t.audio_path ? `<button data-play="${t.id}" data-path="${safe(t.audio_path)}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;cursor:pointer">▶</button>` : ''}
-                <button data-rm="${t.id}">ÇIKAR</button></span></li>`;
+                <button data-rm="${t.id}">ÇIKAR</button></span>
+                ${g && g.seviye !== 'iyi' ? kopruHtml(g) : ''}
+              </li>`;
             }).join('') || '<p style="opacity:.5;font-size:13px">Set boş.</p>'}</ol>
             <canvas class="hm-curve" id="hm-curve"></canvas>
+          </section>
+
+          <section class="hm-panel" style="margin-top:20px">
+            <h2>UYUMSUZ PARÇALAR VE ÖNERİLER</h2>
+            <p style="font-size:12px;opacity:.65;margin:0 0 12px">
+              Uymayan geçişlerde araya koyulacak parçanın tonu ve hızı burada yazar.
+              Bağlantılar dış serviste <b>arama</b> açar; önerilen parça listesi dışarıdan çekilmez.</p>
+            ${uyumsuzPanel()}
           </section>
         </div>
       </div>`;
     wire(); drawCurve();
   }
 
+  // Enerji (dolu çizgi) ve tempo (kesikli çizgi) aynı grafikte: set akışının
+  // nerede yükselip nerede hızlandığı tek bakışta görünsün.
   function drawCurve() {
     const c = byId('hm-curve'); if (!c) return;
     c.width = c.offsetWidth * 2; c.height = 300;
@@ -202,17 +264,49 @@
     ctx.clearRect(0, 0, c.width, c.height);
     if (set.length < 2) {
       ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('Enerji eğrisi için en az iki parça', c.width/2, c.height/2); return;
+      ctx.fillText('Enerji ve tempo eğrisi için en az iki parça', c.width/2, c.height/2); return;
     }
+    const ust = 40, alt = c.height - 40;
+    const bpmlar = set.map(t => Number(t.bpm)).filter(Boolean);
+    const enAz = bpmlar.length ? Math.min(...bpmlar) : 0;
+    const enCok = bpmlar.length ? Math.max(...bpmlar) : 0;
+    const bpmY = v => {
+      if (!bpmlar.length) return (ust + alt) / 2;
+      if (enCok === enAz) return (ust + alt) / 2;
+      return alt - ((v - enAz) / (enCok - enAz)) * (alt - ust);
+    };
     const pts = set.map((t, i) => ({
       x: (i / (set.length - 1)) * (c.width - 80) + 40,
-      y: c.height - 40 - ((Number(t.energy) || 5) / 10) * (c.height - 80)
+      y: alt - ((Number(t.energy) || 5) / 10) * (alt - ust)
     }));
+
     ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 2;
     for (let e = 0; e <= 10; e += 2) {
-      const y = c.height - 40 - (e / 10) * (c.height - 80);
+      const y = alt - (e / 10) * (alt - ust);
       ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(c.width - 40, y); ctx.stroke();
     }
+    ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.font = '20px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('ENERJİ', 8, ust + 6);
+    if (bpmlar.length) {
+      ctx.textAlign = 'right';
+      ctx.fillText(enCok + ' BPM', c.width - 8, ust + 6);
+      ctx.fillText(enAz + ' BPM', c.width - 8, alt + 6);
+      ctx.textAlign = 'left';
+      ctx.fillText('TEMPO (kesikli)', 8, alt + 24);
+      ctx.save();
+      ctx.setLineDash([14, 10]); ctx.strokeStyle = '#5ea4ff'; ctx.lineWidth = 3;
+      ctx.beginPath();
+      let basladi = false;
+      set.forEach((t, i) => {
+        const v = Number(t.bpm);
+        if (!v) return;
+        const x = pts[i].x, y = bpmY(v);
+        if (basladi) ctx.lineTo(x, y); else { ctx.moveTo(x, y); basladi = true; }
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+
     const g = ctx.createLinearGradient(0, 0, c.width, 0);
     g.addColorStop(0, '#5ea4ff'); g.addColorStop(1, '#e0c341');
     ctx.strokeStyle = g; ctx.lineWidth = 5; ctx.lineJoin = 'round';
@@ -248,25 +342,31 @@
       if (!error) await load();
     };
 
+    const siralamaNotu = () => {
+      const sorun = H.gecisler(set).filter(g => g.seviye !== 'iyi').length;
+      return `${set.length} parça sıralandı.`
+        + (sorun ? ` ${sorun} geçişte köprü gerekiyor.` : ' Bütün geçişler uyumlu.');
+    };
+
     byId('hm-auto').onclick = () => {
       const uygun = tracks.filter(t => t.camelot);
       if (uygun.length < 2) { byId('hm-status').textContent = 'En az iki parçaya Camelot kodu gerekli.'; return; }
-      set = autoOrder(uygun); selected = null;
-      byId('hm-status').textContent = `${set.length} parça otomatik sıralandı.`;
+      set = H.autoOrder(uygun); selected = null;
+      byId('hm-status').textContent = siralamaNotu();
       render();
     };
 
     byId('hm-autoset').onclick = () => {
       if (set.length < 2) return;
-      set = autoOrder(set.filter(t => t.camelot));
-      byId('hm-status').textContent = 'Set yeniden dizildi.';
+      set = H.autoOrder(set.filter(t => t.camelot));
+      byId('hm-status').textContent = siralamaNotu();
       render();
     };
 
     byId('hm-clear').onclick = () => { set = []; selected = null; render(); };
 
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = e => {
-            if (e.target.dataset.del || e.target.dataset.push) return;
+      if (e.target.dataset.del || e.target.dataset.push) return;
       selected = tracks.find(t => t.id === el.dataset.pick);
       if (!set.length) set = [selected];
       render();

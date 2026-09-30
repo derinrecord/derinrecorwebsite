@@ -38,8 +38,21 @@
 
   .hm-set{list-style:none;margin:0;padding:0;counter-reset:s}
   .hm-set li{counter-increment:s;display:flex;gap:12px;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;
     padding:12px 14px;margin-bottom:8px;border-radius:16px;
     border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05)}
+
+  /* Uymayan geçişte satırın altına tam genişlikte köprü kutusu düşer. */
+  .hm-kopru{flex:1 1 100%;margin-top:10px;padding:12px 14px;border-radius:14px;
+    border:1px solid rgba(255,95,109,.42);background:rgba(255,95,109,.08)}
+  .hm-kopru b{font-size:11px;letter-spacing:.12em;color:#ffb3b3}
+  .hm-kopru p{margin:7px 0 0;font-size:12px;line-height:1.5;opacity:.88}
+  .hm-links{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px}
+  .hm-link{font-size:11px;padding:4px 11px;border-radius:999px;text-decoration:none;color:inherit;
+    border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.05);opacity:.85}
+  .hm-link:hover{opacity:1;border-color:#e0c341}
+  .hm-chip.bad{border-color:rgba(255,95,109,.55);color:#ffb3b3;background:rgba(255,95,109,.12)}
+  .hm-chip.off{opacity:.6}
   .hm-set li::before{content:counter(s);flex:0 0 26px;height:26px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
     background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18)}
@@ -75,7 +88,8 @@
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="auth.js?v=20260926"></script>
-<script src="harmonic-mixer.js?v=1"></script>
+<script src="harmonic-set.js?v=1"></script>
+<script src="harmonic-mixer.js?v=2"></script>
   <script src="harmonic-analyze.js?v=1"></script>
 </body>
 </html>
