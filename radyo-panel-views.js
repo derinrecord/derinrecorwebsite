@@ -793,7 +793,7 @@
     const MENU_SATIRLARI = {
       canli: ['subeler'],
       icerik: ['klasorler', 'anonslar'],
-      musteri: ['markalar', 'listeler', 'abonelikler', 'talepler']
+      musteri: ['markalar', 'abonelikler', 'talepler']
     };
     const aktifMi = (nav, sub) => state.nav === nav
       && (state.sub === sub || !(MENU_SATIRLARI[nav] || []).includes(state.sub));
@@ -809,7 +809,6 @@
       klasor: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>',
       anons: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
       marka: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0l-7.2-7.2A2 2 0 013 12V4h8a2 2 0 011.4.6l7.2 7.2a2 2 0 010 1.6z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>',
-      liste: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg>',
       abonelik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/></svg>',
       talep: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="3"/></svg>',
       saglik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>',
@@ -831,7 +830,6 @@
 
         <div class="nav-title">MÜŞTERİ</div>
         ${oge('musteri', 'markalar', 'Markalar', 'Şubeler, listeler ve yayın', counts.brands, ikonlar.marka)}
-        ${oge('musteri', 'listeler', 'Çalma listeleri', 'Marka klasörleri, elle atama', counts.playlists, ikonlar.liste)}
         ${oge('musteri', 'abonelikler', 'Abonelikler', 'Paket ve süreler', null, ikonlar.abonelik)}
         ${oge('musteri', 'talepler', 'Talepler', 'Gelen başvurular', counts.requests, ikonlar.talep)}
       </nav>
@@ -851,7 +849,6 @@
     'icerik/klasorler': ['Yayın klasörleri', 'Parçaları yükle, sırala, kapağı değiştir'],
     'icerik/anonslar': ['Anonslar', 'Mikrofonla kaydedilen duyurular'],
     'musteri/markalar': ['Markalar', 'Şubeler, yayın linkleri ve çalma listeleri'],
-    'musteri/listeler': ['Çalma listeleri', 'Her marka bir klasör: şubeyi ve listeyi elle seçip uygularsın'],
     'musteri/abonelikler': ['Abonelikler', 'Paketler, deneme ve lisans süreleri'],
     'musteri/talepler': ['Talepler', 'Kahve markalarından gelen başvurular']
   };
@@ -1592,70 +1589,12 @@
       </div>`;
   }
 
-  // ---------- ÇALMA LİSTELERİ (marka klasörleri) ----------
-  // Her marka bir klasördür. Klasör kapalı gelir; açtığında markanın şubelerini
-  // (ve çaldıkları kaynağı), listelerini ve elle yayın atama seçeneklerini
-  // görürsün. Ekran kendiliğinden hiçbir şey yapmaz: hedefi de kaynağı da
-  // yönetici seçer, yayın ancak UYGULA ile değişir. Liste oluşturma, silme ve
-  // detay marka sayfasında kalır; burası seçim ve okuma ekranıdır.
-
-  // Markanın şubeleri ve gerçekte çaldıkları kaynak. Burada atama yapılmaz:
-  // tablo yalnız durumu okur, atama yukarıdaki elle atama formundan geçer.
-  // Şubeye yüklenen listeler (supabase/radio-sube-listeleri.sql).
+  // ---------- ŞUBEYE YÜKLENEN ÇALMA LİSTELERİ ----------
+  // Liste oluşturma/silme marka sayfasında kalır. Şubeye hangi listelerin
+  // atanacağı tek yerden, yöneticinin "LİSTE ATA" penceresinden yapılır
+  // (supabase/radio-sube-listeleri.sql).
   const subeYukluListeleri = (D, playerId) => (D.playerPlaylists || [])
     .filter(x => x.player_id === playerId);
-
-
-  function subeDurumTablosu(D, b) {
-    const subeler = D.players.filter(p => p.brand_id === b.id);
-    const genel = kaynak(D, b.id);
-    const satirlar = [`<tr>
-        <td><b>BÜTÜN ŞUBELER</b><span class="sub">marka geneli · şube seçmeden atanan kaynak</span></td>
-        <td>${genel.ad ? esc(genel.ad) : '<span class="sub">yayın atanmadı</span>'}
-          ${genel.tip ? `<span class="sub">${genel.tip === 'liste' ? 'çalma listesi' : 'yayın klasörü'}</span>` : ''}</td>
-        <td class="tight">${genel.tip ? chip('live', 'ELLE ATANMIŞ', true) : chip('off', 'ATANMAMIŞ')}</td>
-        <td class="tight"><span class="sub">OTOMATİK kaynağı</span></td>
-      </tr>`];
-    subeler.forEach(p => {
-      const ozel = subeKaynagi(D, p.id);
-      const k = ozel.tip ? ozel : genel;
-      // Şubeye yüklenen listeler cihazdaki seçicide görünür. Hiç liste
-      // yüklenmemişse şube çalmaz; bu bilinçli bir durum, kırmızı işaretlenir.
-      const yukluKayitlar = subeYukluListeleri(D, p.id);
-      const yukluAdlar = yukluKayitlar
-        .map(x => (D.playlists || []).find(pl => pl.id === x.playlist_id))
-        .filter(Boolean).map(pl => pl.name);
-      // Şubeye bağlı listeler adlarıyla yazılır: "kaç liste" değil "hangileri".
-      // Uzun listede ilk ikisi + kalan sayısı okunur kalır.
-      const listeDurumu = !D.subeListeleriVar
-        ? ''
-        : (yukluAdlar.length
-          ? chip('live', yukluAdlar.length + ' LİSTE', true)
-            + `<span class="sub">${esc(yukluAdlar.slice(0, 2).join(', '))}${yukluAdlar.length > 2 ? ' +' + (yukluAdlar.length - 2) + ' liste' : ''}</span>`
-          : chip('danger', 'LİSTE ATANMADI'));
-      const dugme = D.subeListeleriVar
-        ? `<button class="btn sm primary" data-act="sube-listeler" data-id="${esc(p.id)}" type="button">LİSTE ATA</button>`
-        : '';
-      satirlar.push(`<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
-        <td><b>${esc(p.label)}</b><span class="sub">${esc(ozel.tip
-          ? 'bu şubeye elle atanmış'
-          : (genel.tip ? 'marka genelini çalar' : 'kendi kaynağı yok'))}</span></td>
-        <td>${k.ad ? esc(k.ad) : '<span class="sub">yayın atanmadı</span>'}
-          ${k.tip ? `<span class="sub">${k.tip === 'liste' ? 'çalma listesi' : 'yayın klasörü'}</span>` : ''}</td>
-        <td class="tight">${ozel.tip ? chip('gold', 'KENDİ SEÇİMİ', true)
-          : (genel.tip ? chip('off', 'MARKA GENELİ') : chip('off', 'ATANMAMIŞ'))}</td>
-        <td class="tight"><div class="row-actions">${listeDurumu}${dugme}</div></td>
-      </tr>`);
-    });
-    return `<table>
-        <thead><tr><th>ŞUBE</th><th>ÇALDIĞI KAYNAK</th><th>ATAMA</th><th>ATANMIŞ ÇALMA LİSTELERİ</th></tr></thead>
-        <tbody>${subeler.length ? satirlar.join('') : bos(4, 'Bu markanın henüz şubesi yok.')}</tbody>
-      </table>
-      ${D.subeListeleriVar
-        ? `<p class="sub">Bir şubeye istediğin kadar çalma listesi atayabilirsin: satırdaki <b>LİSTE ATA</b> ile seçtiğin listeler o şubenin cihazında görünür.
-          Şubeye hiç liste atanmazsa o şube çalmaz.</p>`
-        : '<p class="sub">Şubeye birden çok çalma listesi atamak için supabase/radio-sube-listeleri.sql çalıştırılmalı. O zamana kadar her şube markanın bütün listelerini görür.</p>'}`;
-  }
 
   // Şube listeleri penceresi. İki adımın ikisi de elle: önce listeleri
   // vereceğin şubeler (birden çok seçilebilir), sonra o şubelerde çalacak
@@ -1714,119 +1653,6 @@
       </div>`;
   }
 
-  // Elle atama formu. İki kutu da boş gelir: hiçbir seçim hazır yapılmaz, çünkü
-  // yönetici neyin uygulanacağını kendisi seçer. Liste oluşturmak şube eklemez,
-  // listeyi şubeye bağlamaz: onu yalnız buradaki UYGULA düğmesi yapar.
-  function ataFormu(D, b, listeler, subeler) {
-    const sec = (deger, etiket) => `<option value="${esc(deger)}">${esc(etiket)}</option>`;
-    return `<div class="block">
-      <h4>ELLE YAYIN ATAMA</h4>
-      <p class="sub">Hedefi (bütün şubeler ya da tek şube) ve çalma listesini sen seçersin.
-        Seçim kutularda bekler; yayın yalnız <b>UYGULA</b> dediğinde değişir. Hiçbir liste kendiliğinden şubeye atanmaz.</p>
-      <div class="form-grid">
-        <div class="field"><label for="ata-hedef-${esc(b.id)}">1 · HEDEF</label>
-          <select id="ata-hedef-${esc(b.id)}">
-            ${sec('', '— hedef seç —')}
-            ${sec('genel', 'BÜTÜN ŞUBELER (marka geneli)')}
-            ${subeler.map(p => sec(p.id, p.label)).join('')}
-          </select></div>
-        <div class="field"><label for="ata-kaynak-${esc(b.id)}">2 · ÇALMA LİSTESİ</label>
-          <select id="ata-kaynak-${esc(b.id)}">
-            ${sec('', '— çalma listesi seç —')}
-            ${listeler.map(pl => sec('playlist:' + pl.id, pl.name)).join('')}
-            ${D.folders.map(f => sec('folder:' + f.id, f.name + ' (yayın klasörü)')).join('')}
-            ${sec('kaldir', '— atanmış kaynağı kaldır —')}
-          </select></div>
-      </div>
-      <div class="row" style="margin-top:12px">
-        <button class="btn primary" data-act="liste-ata" data-id="${esc(b.id)}" type="button">UYGULA</button>
-        <span class="sub">${listeler.length
-          ? 'Kaynak listesi markanın kendi listelerini ve yayın klasörlerini içerir.'
-          : 'Bu markanın henüz çalma listesi yok; yayın klasörü atayabilir ya da marka sayfasından liste oluşturabilirsin.'}</span>
-      </div>
-    </div>`;
-  }
-
-  function markaListeSatirlari(D, listeler) {
-    return listeler.map(pl => {
-      const adet = D.playlistTracks.filter(x => x.playlist_id === pl.id).length;
-      const kapaksiz = D.playlistTracks.filter(x => x.playlist_id === pl.id)
-        .map(x => D.tracks.find(t => t.id === x.track_id)).filter(kapakYok).length;
-      const kullanan = D.broadcast.filter(x => x.playlist_id === pl.id).length + subeKullanan(D, pl.id);
-      return `<tr class="selectable" data-act="list-open" data-id="${esc(pl.id)}">
-        <td><b>${esc(pl.name)}</b><span class="sub">${esc(pl.description || 'açıklama yok')}${kapakYok(pl) ? ' · kapağı yok' : ''}</span></td>
-        <td class="tight">${adet} parça${kapaksiz ? ' · ' + kapaksiz + ' kapağı yok' : ''}</td>
-        <td class="tight">${kullanan
-          ? chip('live', 'YAYINDA', true) + ` <span class="sub">${kullanan} hedefte</span>`
-          : chip('off', 'atanmamış')}</td>
-        <td><div class="row-actions">
-          <button class="btn sm" data-act="list-open" data-id="${esc(pl.id)}" type="button">AÇ ›</button>
-        </div></td>
-      </tr>`;
-    }).join('');
-  }
-
-  // Bir marka klasörü: elle atama formu + şube durumu + markanın listeleri.
-  function markaKlasoru(state, D, ui, b) {
-    const listeler = (D.playlists || []).filter(pl => pl.brand_id === b.id);
-    const subeler = D.players.filter(p => p.brand_id === b.id);
-    const genel = kaynak(D, b.id);
-    // Hiç liste yüklenmemiş şube çalmaz: yönetici bunu klasör kapalıyken de
-    // görsün diye başlık özetine yazılır.
-    const yuklenmemis = D.subeListeleriVar
-      ? subeler.filter(p => !subeYukluListeleri(D, p.id).length).length
-      : 0;
-    return katliBolum({
-      state: state, anahtar: 'listeler:marka:' + b.id,
-      baslik: String(b.name || '').toLocaleUpperCase('tr'),
-      baslikEk: ` <span>${listeler.length} liste · ${subeler.length} şube</span>`,
-      ozet: (b.is_active === false
-        ? 'Marka pasif: yayın verilmez'
-        : (genel.ad ? `Marka geneli: <b>${esc(genel.ad)}</b>` : 'Marka geneline kaynak atanmadı'))
-        + (yuklenmemis ? ` · <b>${yuklenmemis} şube çalmıyor</b>` : ''),
-      icerik: `
-        ${ataFormu(D, b, listeler, subeler)}
-        <h4 style="margin:18px 0 8px">ŞUBELER VE ÇALDIKLARI</h4>
-        ${subeDurumTablosu(D, b)}
-        <h4 style="margin:18px 0 8px">ÇALMA LİSTELERİ (${listeler.length})</h4>
-        <table>
-          <thead><tr><th>LİSTE</th><th>PARÇA</th><th>YAYIN</th><th></th></tr></thead>
-          <tbody>${listeler.length ? markaListeSatirlari(D, listeler)
-            : bos(4, 'Bu markanın henüz çalma listesi yok.')}</tbody>
-        </table>`,
-      alt: `<div class="row" style="margin-top:12px">
-          <button class="btn sm" data-act="brand-open" data-id="${esc(b.id)}" type="button">MARKA SAYFASI (liste oluştur, sil) ›</button>
-        </div>`
-    });
-  }
-
-  function listeListesi(state, D, ui) {
-    const q = norm(state.q);
-    const markalar = D.brands.filter(b =>
-      hit(q, b.name) || (D.playlists || []).some(pl => pl.brand_id === b.id && hit(q, pl.name)));
-    const markasiz = (D.playlists || []).filter(pl => !D.brands.some(b => b.id === pl.brand_id));
-
-    return `
-      <div class="panel" style="margin-bottom:18px">
-        <h3>ÇALMA LİSTELERİ (${(D.playlists || []).length})</h3>
-        <p class="panel-sub">Her marka bir klasör: açtığında o markanın şubelerini, çaldıkları kaynağı ve çalma listelerini görürsün.
-          Yayın ataması tamamen elle — hedefi ve listeyi sen seçip <b>UYGULA</b> dersin.
-          Ortada liste olmasa da marka geneli yayını kendiliğinden değişmez.</p>
-        <div class="row">
-          <span class="sub">${D.brands.length} marka · ${D.players.length} şube · ${(D.playlists || []).length} liste</span>
-        </div>
-      </div>
-      ${markalar.map(b => markaKlasoru(state, D, ui, b)).join('')
-        || `<div class="panel"><div class="empty">${q ? 'Aramayla eşleşen marka ya da liste yok.' : 'Henüz marka yok.'}</div></div>`}
-      ${markasiz.length ? `<div class="panel" style="margin-top:18px">
-        <h3>MARKASI BULUNAMAMIŞ LİSTELER (${markasiz.length})</h3>
-        <p class="panel-sub">Bu listelerin markası silinmiş ya da okunamıyor. Yayında kullanılamazlar.</p>
-        <table>
-          <thead><tr><th>LİSTE</th><th>PARÇA</th><th>YAYIN</th><th></th></tr></thead>
-          <tbody>${markaListeSatirlari(D, markasiz)}</tbody>
-        </table>
-      </div>` : ''}`;
-  }
 
   // Liste detayı marka sayfasından açılır (#/markalar/<marka>/listeler/<liste>).
   // Liste silinmişse marka listesine dönülür: indeks ekranı yok.
@@ -2004,7 +1830,7 @@
     // bağlantı geçmişi onun alt sekmeleridir.
     canli: [['subeler', 'Şubeler'], ['yayin', 'Yayın başlat'], ['saglik', 'Yayın sağlığı'], ['gecmis', 'Bağlantı geçmişi']],
     icerik: [['klasorler', 'Yayın klasörleri'], ['anonslar', 'Anonslar']],
-    musteri: [['markalar', 'Markalar'], ['listeler', 'Çalma listeleri'], ['abonelikler', 'Abonelikler'], ['talepler', 'Talepler']]
+    musteri: [['markalar', 'Markalar'], ['abonelikler', 'Abonelikler'], ['talepler', 'Talepler']]
   };
 
   // Canlı durum sekmelerinin başlığına, o sekmenin aciliyeti yazılır: kaç
@@ -2180,7 +2006,6 @@
     let govde;
     if (state.openPlaylist) govde = listeDetay(state, D, ui);
     else if (state.openBrand) govde = markaDetay(state, D, ui);
-    else if (state.sub === 'listeler') govde = listeListesi(state, D, ui);
     else if (state.sub === 'abonelikler') govde = abonelikListesi(state, D, ui);
     else if (state.sub === 'talepler') govde = talepListesi(state, D, ui);
     else govde = markaListesi(state, D, ui);
@@ -2204,6 +2029,11 @@
       p.last_ip ? 'IP: ' + p.last_ip : null,
       p.last_ip_at ? 'son görülme: ' + tarih(p.last_ip_at) : null
     ].filter(Boolean).join(' · ');
+    // Şubeye atanmış çalma listeleri. Hiçbiri atanmadıysa şube çalmaz; bu
+    // yüzden durum çekmecede adlarıyla yazılır, yalnız sayıyla geçilmez.
+    const yukluAdlar = subeYukluListeleri(D, p.id)
+      .map(x => (D.playlists || []).find(pl => pl.id === x.playlist_id))
+      .filter(Boolean).map(pl => pl.name);
     return `
       <h3>${esc(p.label)}</h3>
       <p class="sub">${esc(b ? b.name : '—')}${k && k.ad ? ' · ' + esc(k.ad) : ''}</p>
@@ -2227,6 +2057,18 @@
         <div class="row" style="margin-top:12px">
           <button class="btn" data-act="yayin-ac" data-id="${esc(p.id)}" type="button">YAYIN BAŞLAT EKRANINA GEÇ</button>
         </div>
+      </div>
+
+      <div class="block"><h4>ÇALMA LİSTELERİ</h4>
+        ${D.subeListeleriVar ? `
+        <p class="sub">Bu şubede hangi çalma listelerinin çalacağını sen seçersin; kayıt yalnız <b>KAYDET</b> ile olur.</p>
+        <div class="row">
+          <span class="sub">${yukluAdlar.length
+            ? '<b>' + yukluAdlar.length + ' liste atanmış:</b> ' + esc(yukluAdlar.join(', '))
+            : '<b>liste atanmadı</b> · hiç liste atanmazsa bu şube çalmaz.'}</span>
+          <button class="btn sm primary" data-act="sube-listeler" data-id="${esc(p.id)}" type="button">LİSTE ATA</button>
+        </div>` : `
+        <p class="sub">Şubeye birden çok çalma listesi atamak için supabase/radio-sube-listeleri.sql çalıştırılmalı. O zamana kadar bu şube markanın bütün listelerini görür.</p>`}
       </div>
 
       <div class="block"><h4>YAYIN LİNKİ</h4>

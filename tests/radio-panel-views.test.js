@@ -62,11 +62,11 @@ test('yan menüde bölümler ve sayıları görünür', () => {
     players: 4, folders: 3, announcements: 2, brands: 1, playlists: 1, requests: 7, olaySorun: 3
   }, { ad: 'Derin Record', alt: 'yonetici@ornek.test', basHarf: 'DR' });
 
-  ['subeler', 'klasorler', 'anonslar', 'markalar', 'listeler', 'abonelikler', 'talepler'].forEach(sub => {
+  ['subeler', 'klasorler', 'anonslar', 'markalar', 'abonelikler', 'talepler'].forEach(sub => {
     assert.ok(html.includes(`data-sub="${sub}"`), `${sub} menüde olmalı`);
   });
-  // Liste bölümü marka klasörlerinden oluşur; menü satırı bunu söyler.
-  assert.ok(html.includes('Marka klasörleri, elle atama'), 'menü satırı bölümün içeriğini söylemeli');
+  // Çalma listelerinin ayrı menü satırı yok: liste yönetimi marka sayfasında.
+  assert.ok(!html.includes('data-nav="musteri" data-sub="listeler"'), 'liste sekmesi menüde olmamalı');
   // Canlı durum tek satır: yayın başlatma, sağlık ve geçmiş artık o bölümün
   // sekmeleridir, menüde ayrı satır açmaz.
   ['yayin', 'saglik', 'gecmis'].forEach(sub => {
@@ -315,7 +315,7 @@ test('talep ekranı durum seçeneklerini ve başvuru bilgisini gösterir', () =>
 });
 
 test('çalma listesi detayı sıra düğmelerini uçlarda kapatır', () => {
-  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', openPlaylist: 'l1' }), D, ui);
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openPlaylist: 'l1' }), D, ui);
   assert.ok(html.includes('+ ŞARKI EKLE'));
   const ilkSatir = html.slice(html.indexOf('data-kayit="x1"'), html.indexOf('data-kayit="x2"'));
   assert.ok(ilkSatir.includes('data-act="ptrack-up"') && ilkSatir.includes('disabled'), 'ilk satırda yukarı kapalı olmalı');
@@ -1118,12 +1118,8 @@ test('saklanan tercih ekranı doğrudan etkiler', () => {
   assert.ok(acik.includes('data-katli="gecmis:olaylar"'), 'diğer bölümler varsayılanda kalır');
 });
 
-// ---------- ÇALMA LİSTELERİ: MARKA KLASÖRLERİ ----------
-// Panelde her marka bir klasördür. Kapalı gelir; açtığında markanın şubelerini,
-// çaldıkları kaynağı, listelerini ve elle yayın atama kutularını gösterir.
-// Kurallar: hiçbir şey kendiliğinden atanmaz, kutular boş gelir, yayın yalnız
-// UYGULA ile değişir; liste oluşturma/silme ve liste detayı marka sayfasında
-// kalır.
+// İki marka, iki şube ve üç liste: marka sayfası ile şube ataması bunun
+// üzerinden sınanır (l2 parçasız, boş liste uyarısı için).
 const LISTE_D = {
   ...D,
   brands: [
@@ -1142,83 +1138,65 @@ const LISTE_D = {
   ]
 };
 
-test('çalma listeleri ekranı her markayı bir klasör olarak çizer', () => {
-  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler' }), LISTE_D, ui);
+// ---------- ŞUBEYE ÇALMA LİSTESİ ATAMA ----------
+// Ayrı bir "Çalma listeleri" sekmesi yok: liste oluşturma/silme marka
+// sayfasında, şubeye atama ise şube çekmecesindeki "LİSTE ATA" penceresinde.
+// Elle atama formu (hedef + kaynak + UYGULA) tümüyle kaldırıldı.
+test('çalma listeleri sekmesi kalktı, liste yönetimi marka sayfasında', () => {
+  const menu = V.nav(durum({ nav: 'musteri', sub: 'markalar' }), {
+    players: 4, folders: 3, announcements: 2, brands: 2, playlists: 3, requests: 7, olaySorun: 0
+  }, { ad: 'Derin Record', alt: 'yonetici@ornek.test', basHarf: 'DR' });
+  assert.ok(!menu.includes('data-nav="musteri" data-sub="listeler"'), 'çalma listeleri menü satırı kalmamalı');
+  assert.ok(menu.includes('data-nav="musteri" data-sub="markalar"'), 'markalar satırı kalmalı');
 
-  ['b1', 'b2'].forEach(id => {
-    assert.ok(html.includes(`data-act="katla" data-id="listeler:marka:${id}"`), id + ' klasörü katlanabilmeli');
-  });
-  assert.ok(html.includes('MOKKA COFFEE'), 'marka adı klasör başlığı olmalı');
-  assert.ok(html.includes('2 liste · 2 şube'), 'klasör başlığı kapsamı yazmalı');
-  assert.ok(html.includes('1 liste · 0 şube'));
-  // Klasör kapalı gelir: ekran önce başlıkları gösterir, içerik istenince açılır.
-  assert.ok(!html.includes('data-katli="listeler:marka:b1"'), 'klasör varsayılanda kapalı olmalı');
-  const acik = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), LISTE_D, ui).html;
-  assert.ok(acik.includes('data-katli="listeler:marka:b1"'), 'açılan klasör açık kalmalı');
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar' }), LISTE_D, ui);
+  assert.ok(html.includes('Mokka Coffee') && html.includes('Brew Lab'), 'marka listesi çizilmeli');
+  assert.ok(!html.includes('ELLE YAYIN ATAMA'), 'elle yayın atama formu kalmamalı');
+  assert.ok(!html.includes('data-act="liste-ata"'), 'UYGULA düğmesi kalmamalı');
+  assert.ok(!html.includes('data-katli="listeler:marka:'), 'marka klasörü kalmamalı');
+
+  const marka = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), LISTE_D, ui).html;
+  assert.ok(marka.includes('data-act="playlist-add" data-id="b1"'), 'liste marka sayfasından açılmalı');
+  assert.ok(!marka.includes('ŞUBELER VE ÇALDIKLARI'), 'şube durum tablosu kalmamalı');
 });
 
-// Ekranın asıl işi: şube ve çalma listesi seçeneklerini elle sunmak. Kutular
-// boş gelir (hiçbir seçim hazır yapılmaz), yayın yalnız UYGULA ile yazılır.
-test('klasör içinde şube ve liste seçenekleri elle sunulur', () => {
-  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), LISTE_D, ui);
-
-  assert.ok(html.includes('id="ata-hedef-b1"'), 'hedef kutusu olmalı');
-  assert.ok(html.includes('id="ata-kaynak-b1"'), 'kaynak kutusu olmalı');
-  assert.ok(html.includes('data-act="liste-ata" data-id="b1"'), 'uygula düğmesi olmalı');
-  assert.ok(html.includes('>UYGULA<'), 'düğmenin adı ne yaptığını söylemeli');
-  assert.ok(html.includes('kendiliğinden şubeye atanmaz'), 'otomatik atama yapılmadığı yazılmalı');
-
-  // Hedef seçenekleri: bütün şubeler + markanın şubeleri. Başka markanın şubesi yok.
-  const hedef = html.slice(html.indexOf('id="ata-hedef-b1"'), html.indexOf('id="ata-kaynak-b1"'));
-  assert.ok(hedef.includes('value="genel"'), 'marka geneli seçilebilmeli');
-  assert.ok(hedef.includes('>Nişantaşı<') && hedef.includes('>Alsancak<'), 'şubeler seçilebilmeli');
-  assert.ok(!hedef.includes('selected'), 'hedef boş gelmeli: seçim yöneticinin');
-
-  // Kaynak seçenekleri: yalnız bu markanın listeleri + yayın klasörleri.
-  const kaynak = html.slice(html.indexOf('id="ata-kaynak-b1"'));
-  assert.ok(kaynak.includes('value="playlist:l1"') && kaynak.includes('value="playlist:l2"'),
-    'markanın listeleri seçilebilmeli');
-  assert.ok(!kaynak.includes('playlist:l3'), 'başka markanın listesi sunulmamalı');
-  assert.ok(kaynak.includes('value="folder:f1"'), 'yayın klasörü de kaynak olabilmeli');
-  assert.ok(kaynak.includes('value="kaldir"'), 'atanmış kaynak kaldırılabilmeli');
-  assert.ok(!kaynak.includes('selected'), 'kaynak boş gelmeli: seçim yöneticinin');
-
-  // Şube tablosu durumu okur: şubeye özel atama ve marka geneli ayrılır.
-  assert.ok(html.includes('BÜTÜN ŞUBELER'), 'marka geneli satırı olmalı');
-  assert.ok(html.includes('KENDİ SEÇİMİ'), 'şubeye elle atanmış kaynak işaretlenmeli');
-  assert.ok(html.includes('ÇALMA LİSTELERİ (2)'), 'markanın listeleri klasörde listelenmeli');
-});
-
-// Şubeye liste yükleme: markanın bütün listeleri her şubeye ait değildir. Satır
-// kaç liste yüklü olduğunu yazar, yükleme penceresi işaret kutularıyla seçtirir.
-test('şube satırı yüklenen listeleri gösterir ve yükleme penceresini açar', () => {
+// Şube çekmecesi atamanın tek giriş noktası: atanmış listeleri adlarıyla yazar,
+// pencereyi LİSTE ATA açar; özellik kurulmadıysa düğme çizilmez.
+test('şube çekmecesi atanmış listeleri gösterir ve atama penceresini açar', () => {
   const Dsiz = {
     ...LISTE_D,
-    playerPlaylists: [{ player_id: 'p1', playlist_id: 'l1', sort_order: 0 }],
-    subeListeleriVar: true
+    subeListeleriVar: true,
+    playerPlaylists: [
+      { player_id: 'p1', playlist_id: 'l1', sort_order: 0 },
+      { player_id: 'p1', playlist_id: 'l2', sort_order: 1 }
+    ]
   };
-  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), Dsiz, ui);
+  const kapali = V.subeCekmecesi('p1', Dsiz, ui);
+  assert.ok(kapali.includes('data-act="sube-listeler" data-id="p1"'), 'atama düğmesi çekmecede olmalı');
+  assert.ok(kapali.includes('>LİSTE ATA<'), 'düğme ne yaptığını söylemeli');
+  assert.ok(kapali.includes('2 liste atanmış'), 'kaç liste atandığı yazılmalı');
+  assert.ok(kapali.includes('Sabah Akışı') && kapali.includes('Akşam Akışı'), 'atanmış listeler adlarıyla yazılmalı');
 
-  assert.ok(html.includes('data-act="sube-listeler" data-id="p1"'), 'atama düğmesi olmalı');
-  assert.ok(html.includes('>LİSTE ATA<'), 'düğme ne yaptığını söylemeli');
-  assert.ok(html.includes('LİSTE ATANMADI'), 'listesi olmayan şube işaretlenmeli');
-  assert.ok(html.includes('1 LİSTE'), 'şube kaç liste taşıdığını yazmalı');
-  assert.ok(html.includes('Sabah Akışı'), 'atanmış listeler adlarıyla yazılmalı');
-  assert.ok(html.includes('şube çalmıyor'), 'klasör özeti ataması eksik şubeyi söylemeli');
-  // Şube başına liste sayısında sınır yok: iki liste atanmış şube ikisini de yazar.
-  const iki = { ...Dsiz, playerPlaylists: [
-    { player_id: 'p1', playlist_id: 'l1', sort_order: 0 },
-    { player_id: 'p1', playlist_id: 'l2', sort_order: 1 }
-  ] };
-  const ikili = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), iki, ui).html;
-  assert.ok(ikili.includes('2 LİSTE'), 'iki liste atanmış şube ikisini saymalı');
-  assert.ok(ikili.includes('Sabah Akışı, Akşam Akışı'), 'iki listenin adı da yazılmalı');
+  const atanmamis = V.subeCekmecesi('p2', Dsiz, ui);
+  assert.ok(atanmamis.includes('liste atanmadı'), 'listesi olmayan şube işaretlenmeli');
+  assert.ok(atanmamis.includes('bu şube çalmaz'), 'atamasız şube çalmayacağını söylemeli');
 
-  const pencere = V.subeListePenceresi(Dsiz, ui, Dsiz.players[0]);
+  const kurulmamis = V.subeCekmecesi('p1', LISTE_D, ui);
+  assert.ok(!kurulmamis.includes('data-act="sube-listeler"'), 'tablo yokken düğme çıkmamalı');
+  assert.ok(kurulmamis.includes('radio-sube-listeleri.sql'), 'eksik SQL yazılmalı');
+});
+
+// Atama penceresi iki adımı da elle seçtirir: şubeler ve çalma listeleri.
+test('şube listesi penceresi şubeleri ve listeleri elle seçtirir', () => {
+  const Dsecim = {
+    ...LISTE_D,
+    subeListeleriVar: true,
+    playerPlaylists: [{ player_id: 'p1', playlist_id: 'l1', sort_order: 0 }]
+  };
+  const pencere = V.subeListePenceresi(Dsecim, ui, Dsecim.players[0]);
   assert.ok(pencere.includes('data-sube-liste'), 'liste kutuları olmalı');
   assert.ok(pencere.includes('data-act="sube-liste-hepsi"') && pencere.includes('data-act="sube-liste-hicbiri"'),
     'toplu seçim düğmeleri olmalı');
-  // Yüklü liste işaretli, yüklenmemiş olan boş gelir.
   const l1 = pencere.slice(pencere.indexOf('value="l1"'), pencere.indexOf('value="l2"'));
   assert.ok(l1.includes('checked'), 'yüklü liste işaretli gelmeli');
   const l2 = pencere.slice(pencere.indexOf('value="l2"'));
@@ -1232,71 +1210,24 @@ test('şube satırı yüklenen listeleri gösterir ve yükleme penceresini açar
   assert.ok(/value="p2" data-sube-hedef(?! checked)/.test(pencere), 'diğer şube kendiliğinden seçilmemeli');
   assert.ok(pencere.includes('Alsancak'), 'markanın bütün şubeleri sunulmalı');
   assert.ok(!pencere.includes('Kahve Durağı'), 'başka markanın şubesi sunulmamalı');
-  // Parçasız liste atanabilir ama ses çıkarmaz: satır sarı işaretlenir ve
-  // pencerenin kendisi bu tuzağı yazıyla söyler.
-  assert.ok(pencere.includes('sube-liste bos'), 'parçasız liste sarı işaretlenmeli');
-  assert.ok(pencere.includes('boş liste · hiç parçası yok'), 'boş listenin nedeni yazılmalı');
-  assert.ok(pencere.includes('şube sessiz kalır'), 'boş liste uyarısı pencereye girmeli');
-  const dolu = V.subeListePenceresi({ ...Dsiz, playlists: [Dsiz.playlists[0]] }, ui, Dsiz.players[0]);
-  assert.ok(!dolu.includes('sube-liste bos') && !dolu.includes('şube sessiz kalır'),
-    'her liste doluysa uyarı çıkmamalı');
-
-  // Özellik kurulmadan (SQL çalışmadan) sütun ve düğme çizilmez.
-  const kapali = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), LISTE_D, ui).html;
-  assert.ok(!kapali.includes('data-act="sube-listeler"'), 'tablo yokken yükleme düğmesi çıkmamalı');
-  assert.ok(!kapali.includes('şube çalmıyor'), 'tablo yokken uyarı da çıkmamalı');
-  // Sessizce eksik kalmasın: özellik kurulmadan ne yapılacağı yazılır.
-  assert.ok(kapali.includes('radio-sube-listeleri.sql'), 'eksik SQL yazılmalı');
-  assert.ok(!html.includes('radio-sube-listeleri.sql'), 'özellik kuruluyken bu yazı çıkmamalı');
-});
-
-// Atama tek katmanlı kalır: işaretlenen liste o şubede çalar, ikinci bir onay
-// (marka paneli) yok. Panel bunu açıkça söyler; marka paneli linki gibi
-// kullanılmayan bir yönlendirme de bulunmaz.
-test('şube listesi ataması tek katmanlı ve okunur', () => {
-  const Dsecim = {
-    ...LISTE_D,
-    subeListeleriVar: true,
-    playerPlaylists: [
-      { player_id: 'p1', playlist_id: 'l1', sort_order: 0 },
-      { player_id: 'p1', playlist_id: 'l2', sort_order: 1 }
-    ]
-  };
-  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), Dsecim, ui);
-  assert.ok(html.includes('2 LİSTE'), 'atama satırda görünmeli');
-  assert.ok(!/marka \d+\/\d+ seçti/.test(html), 'markanın ayrı seçimi diye bir katman yok');
-
-  const pencere = V.subeListePenceresi(Dsecim, ui, Dsecim.players[0]);
   assert.ok(pencere.includes('kafedeki personel seçicisinde görünür'),
     'işaretlenen listenin çalacağı yazılmalı');
   assert.ok(pencere.includes('kayıt yalnız <b>KAYDET</b> dediğinde olur'),
     'her şeyin elle ve KAYDET ile yazıldığı söylenmeli');
+  assert.ok(pencere.includes('baştan kurulur'), 'mevcut atamanın yenileneceği yazılmalı');
   assert.ok(!pencere.includes('?sube='), 'marka paneli yönlendirmesi kalmamalı');
   assert.ok(!pencere.includes('marka seçmedi'), 'marka seçimi işareti kalmamalı');
-  // Atama baştan kurulur: işaretlenmeyen liste o şubeden düşer, bunu yazmalı.
-  assert.ok(pencere.includes('baştan kurulur'), 'mevcut atamanın yenileneceği yazılmalı');
-});
 
-// Listeler klasörde yönetilmez: oluşturma/silme ve detay marka sayfasında kalır.
-test('klasör listeleri yalnız okur, yönetim marka sayfasına yollar', () => {
-  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), LISTE_D, ui);
-  assert.ok(html.includes('data-act="brand-open" data-id="b1"'), 'marka sayfasına geçiş olmalı');
-  assert.ok(html.includes('data-act="list-open" data-id="l1"'), 'liste detayı açılabilmeli');
-  assert.ok(!html.includes('data-act="playlist-add"'), 'liste oluşturma burada olmamalı');
-  assert.ok(!html.includes('data-act="list-del"'), 'liste silme burada olmamalı');
-  assert.ok(!html.includes('data-act="liste-tasi"') && !html.includes('data-act="liste-klasor-ekle"'),
-    'klasör taşıma/oluşturma düğmesi olmamalı');
-});
-
-// Arama hem marka hem liste adına bakar: eşleşmeyen marka klasörü çizilmez.
-test('çalma listeleri araması markaya ve liste adına bakar', () => {
-  const marka = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', q: 'brew' }), LISTE_D, ui).html;
-  assert.ok(marka.includes('BREW LAB'), 'eşleşen marka kalmalı');
-  assert.ok(!marka.includes('MOKKA COFFEE'), 'eşleşmeyen marka çizilmemeli');
-
-  const liste = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', q: 'akşam akışı' }), LISTE_D, ui).html;
-  assert.ok(liste.includes('MOKKA COFFEE'), 'liste adı marka klasörünü getirmeli');
-  assert.ok(!liste.includes('BREW LAB'));
+  // Parçasız liste atanabilir ama ses çıkarmaz: satır sarı işaretlenir ve
+  // pencerenin kendisi bu tuzağı yazıyla söyler.
+  const boslu = V.subeListePenceresi({ ...Dsecim, playerPlaylists: [] }, ui, Dsecim.players[0]);
+  assert.ok(boslu.includes('sube-liste bos'), 'parçasız liste sarı işaretlenmeli');
+  assert.ok(boslu.includes('boş liste · hiç parçası yok'), 'boş listenin nedeni yazılmalı');
+  assert.ok(boslu.includes('şube sessiz kalır'), 'boş liste uyarısı pencereye girmeli');
+  const dolu = V.subeListePenceresi(
+    { ...Dsecim, playlists: [Dsecim.playlists[0]] }, ui, Dsecim.players[0]);
+  assert.ok(!dolu.includes('sube-liste bos') && !dolu.includes('şube sessiz kalır'),
+    'her liste doluysa uyarı çıkmamalı');
 });
 
 test('marka sayfası listeleri yönetir, detay markanın altında açılır', () => {

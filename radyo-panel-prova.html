@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=41"></script>
+<script src="radyo-panel-views.js?v=42"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -275,6 +275,8 @@
     if (act === 'sube-listeler') {
       const p = D.players.find(x => x.id === id);
       if (!p) return;
+      // Gerçek panelde de atama penceresi çekmeceyi kapatıp açılır.
+      cekmeceKapat();
       return pencere({
         baslik: p.label + ' · çalma listeleri',
         govde: V.subeListePenceresi(D, ui, p),
@@ -299,19 +301,6 @@
       const acik = act === 'sube-liste-hepsi';
       md.querySelectorAll('[data-sube-liste]').forEach(k => { k.checked = acik; });
       return;
-    }
-    // Elle yayın atama: gerçek panelde hedef+kaynak yazılır
-    // (radyo-yonetim.js · case 'liste-ata'); provada yalnız önizlenir.
-    if (act === 'liste-ata') {
-      const hedef = el('ata-hedef-' + id);
-      const kaynak = el('ata-kaynak-' + id);
-      if (!hedef || !hedef.value) return bildir('Prova: önce hedefi seç (bütün şubeler ya da bir şube).');
-      if (!kaynak || !kaynak.value) return bildir('Prova: önce bir çalma listesi seç.');
-      const hedefAd = hedef.selectedIndex >= 0 ? hedef.options[hedef.selectedIndex].textContent.trim() : hedef.value;
-      const kaynakAd = kaynak.value === 'kaldir'
-        ? 'kaynağı kaldır'
-        : (kaynak.selectedIndex >= 0 ? kaynak.options[kaynak.selectedIndex].textContent.trim() : kaynak.value);
-      return bildir('Prova: “' + hedefAd + '” hedefine “' + kaynakAd + '” atanacak.');
     }
     if (act === 'yayin-ac') {
       const sube = D.players.find(x => x.id === id);
@@ -456,8 +445,6 @@
     anonslar: { nav: 'icerik', sub: 'anonslar' },
     markalar: { nav: 'musteri', sub: 'markalar' },
     'marka-detay': { nav: 'musteri', sub: 'markalar', openBrand: 'b1' },
-    listeler: { nav: 'musteri', sub: 'listeler' },
-    'liste-klasoru': { nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } },
     'liste-detay': { nav: 'musteri', sub: 'markalar', openBrand: 'b1', openPlaylist: 'l1' },
     abonelikler: { nav: 'musteri', sub: 'abonelikler' },
     talepler: { nav: 'musteri', sub: 'talepler' }
