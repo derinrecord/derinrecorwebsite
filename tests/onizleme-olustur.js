@@ -495,15 +495,22 @@ if (senaryo === 'kabuk') {
 if (senaryo === 'harmonik') {
   // Katalogda bilinçli olarak: uyumlu bir çift, tonu olmayan bir parça,
   // setle bağlanamayan bir parça ve hızı uzak bir parça var.
+  // Sanatçı adları bilinçli olarak gerçek: tarz önerisi paneli Deezer'ın benzer
+  // sanatçı algoritmasını kullanıyor ve önizlemede gerçek sonuç göstermeli.
   const KATALOG = [
-    { id: 't1', title: 'Kapadokya', artist: 'Derin', camelot: '8A', key_name: 'A minor', makam: 'Hicaz', bpm: 122, energy: 4, duration_sec: 305, audio_path: null },
-    { id: 't2', title: 'Gece Treni', artist: 'Derin', camelot: '9A', key_name: 'E minor', makam: null, bpm: 124, energy: 5, duration_sec: 280, audio_path: null },
+    { id: 't1', title: 'Kapadokya', artist: 'Mahmut Orhan', camelot: '8A', key_name: 'A minor', makam: 'Hicaz', bpm: 122, energy: 4, duration_sec: 305, audio_path: null },
+    { id: 't2', title: 'Gece Treni', artist: 'Ilkay Sencan', camelot: '9A', key_name: 'E minor', makam: null, bpm: 124, energy: 5, duration_sec: 280, audio_path: null },
     { id: 't3', title: 'Kopuk Parça', artist: 'Konuk', camelot: '4B', key_name: 'F# major', makam: null, bpm: 96, energy: 7, duration_sec: 260, audio_path: null },
-    { id: 't4', title: 'Sahil', artist: 'Derin', camelot: '9B', key_name: 'B major', makam: null, bpm: 125, energy: 5, duration_sec: 300, audio_path: null },
-    { id: 't5', title: 'Yükseliş', artist: 'Derin', camelot: '10B', key_name: 'D major', makam: null, bpm: 126, energy: 6, duration_sec: 290, audio_path: null },
-    { id: 't6', title: 'Sabah Rüzgârı', artist: 'Derin', camelot: '8B', key_name: 'C major', makam: null, bpm: 123, energy: 5, duration_sec: 310, audio_path: null },
+    { id: 't4', title: 'Sahil', artist: 'Boral Kibil', camelot: '9B', key_name: 'B major', makam: null, bpm: 125, energy: 5, duration_sec: 300, audio_path: null },
+    { id: 't5', title: 'Yükseliş', artist: 'Hakan Akkus', camelot: '10B', key_name: 'D major', makam: null, bpm: 126, energy: 6, duration_sec: 290, audio_path: null },
+    { id: 't6', title: 'Sabah Rüzgârı', artist: 'Mahmut Orhan', camelot: '8B', key_name: 'C major', makam: null, bpm: 123, energy: 5, duration_sec: 310, audio_path: null },
     { id: 't7', title: 'Tonu Girilmemiş', artist: 'Konuk', camelot: null, key_name: null, makam: null, bpm: 120, energy: 4, duration_sec: 240, audio_path: null },
-    { id: 't8', title: 'Derin Bas', artist: 'Konuk', camelot: '5A', key_name: 'C minor', makam: null, bpm: 118, energy: 3, duration_sec: 270, audio_path: null }
+    { id: 't8', title: 'Derin Bas', artist: 'Konuk', camelot: '5A', key_name: 'C minor', makam: null, bpm: 118, energy: 3, duration_sec: 270, audio_path: null },
+    // Şunlar kuralı göstermek için: ikisi de 8A ama hızlı olan 130 BPM'de.
+    // Motor aynı tona rağmen bu ikiliyi yan yana koymamalı; sığacak yer yoksa
+    // köprü önerisini göstermeli.
+    { id: 't9', title: 'Hızlı Vites', artist: 'Stoto', camelot: '8A', key_name: 'A minor', makam: null, bpm: 130, energy: 6, duration_sec: 275, audio_path: null },
+    { id: 't10', title: 'Gece Vardiyası', artist: 'Sako Isoyan', camelot: '9A', key_name: 'E minor', makam: null, bpm: 131, energy: 6, duration_sec: 268, audio_path: null }
   ];
   const taklit = `<script>
 // ---- Sunucu taklidi: auth.js ve Supabase yerine geçer, yalnız önizlemede.
@@ -535,7 +542,7 @@ if (senaryo === 'harmonik') {
   const bekle = ms => new Promise(r => setTimeout(r, ms));
   (async () => {
     for (let i = 0; i < 40 && !document.querySelector('[data-push]'); i++) await bekle(100);
-    for (const id of ['t1', 't3', 't2', 't5', 't4']) {
+    for (const id of ['t1', 't3', 't2', 't5', 't4', 't9', 't10']) {
       const b = document.querySelector('[data-push="' + id + '"]');
       if (b) b.click();
       await bekle(120);

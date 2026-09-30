@@ -895,7 +895,7 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
 <script>
 // ---- Sunucu taklidi: auth.js ve Supabase yerine geçer, yalnız önizlemede.
 (function () {
-  const satirlar = [{"id":"t1","title":"Kapadokya","artist":"Derin","camelot":"8A","key_name":"A minor","makam":"Hicaz","bpm":122,"energy":4,"duration_sec":305,"audio_path":null},{"id":"t2","title":"Gece Treni","artist":"Derin","camelot":"9A","key_name":"E minor","makam":null,"bpm":124,"energy":5,"duration_sec":280,"audio_path":null},{"id":"t3","title":"Kopuk Parça","artist":"Konuk","camelot":"4B","key_name":"F# major","makam":null,"bpm":96,"energy":7,"duration_sec":260,"audio_path":null},{"id":"t4","title":"Sahil","artist":"Derin","camelot":"9B","key_name":"B major","makam":null,"bpm":125,"energy":5,"duration_sec":300,"audio_path":null},{"id":"t5","title":"Yükseliş","artist":"Derin","camelot":"10B","key_name":"D major","makam":null,"bpm":126,"energy":6,"duration_sec":290,"audio_path":null},{"id":"t6","title":"Sabah Rüzgârı","artist":"Derin","camelot":"8B","key_name":"C major","makam":null,"bpm":123,"energy":5,"duration_sec":310,"audio_path":null},{"id":"t7","title":"Tonu Girilmemiş","artist":"Konuk","camelot":null,"key_name":null,"makam":null,"bpm":120,"energy":4,"duration_sec":240,"audio_path":null},{"id":"t8","title":"Derin Bas","artist":"Konuk","camelot":"5A","key_name":"C minor","makam":null,"bpm":118,"energy":3,"duration_sec":270,"audio_path":null}];
+  const satirlar = [{"id":"t1","title":"Kapadokya","artist":"Mahmut Orhan","camelot":"8A","key_name":"A minor","makam":"Hicaz","bpm":122,"energy":4,"duration_sec":305,"audio_path":null},{"id":"t2","title":"Gece Treni","artist":"Ilkay Sencan","camelot":"9A","key_name":"E minor","makam":null,"bpm":124,"energy":5,"duration_sec":280,"audio_path":null},{"id":"t3","title":"Kopuk Parça","artist":"Konuk","camelot":"4B","key_name":"F# major","makam":null,"bpm":96,"energy":7,"duration_sec":260,"audio_path":null},{"id":"t4","title":"Sahil","artist":"Boral Kibil","camelot":"9B","key_name":"B major","makam":null,"bpm":125,"energy":5,"duration_sec":300,"audio_path":null},{"id":"t5","title":"Yükseliş","artist":"Hakan Akkus","camelot":"10B","key_name":"D major","makam":null,"bpm":126,"energy":6,"duration_sec":290,"audio_path":null},{"id":"t6","title":"Sabah Rüzgârı","artist":"Mahmut Orhan","camelot":"8B","key_name":"C major","makam":null,"bpm":123,"energy":5,"duration_sec":310,"audio_path":null},{"id":"t7","title":"Tonu Girilmemiş","artist":"Konuk","camelot":null,"key_name":null,"makam":null,"bpm":120,"energy":4,"duration_sec":240,"audio_path":null},{"id":"t8","title":"Derin Bas","artist":"Konuk","camelot":"5A","key_name":"C minor","makam":null,"bpm":118,"energy":3,"duration_sec":270,"audio_path":null},{"id":"t9","title":"Hızlı Vites","artist":"Stoto","camelot":"8A","key_name":"A minor","makam":null,"bpm":130,"energy":6,"duration_sec":275,"audio_path":null},{"id":"t10","title":"Gece Vardiyası","artist":"Sako Isoyan","camelot":"9A","key_name":"E minor","makam":null,"bpm":131,"energy":6,"duration_sec":268,"audio_path":null}];
   const yazmaKapali = { message: 'Önizleme: yazma kapalı.' };
   const tablo = () => ({
     select: () => ({ order: () => Promise.resolve({ data: satirlar, error: null }) }),
@@ -958,11 +958,18 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     return null;
   }
 
-  // Tempo ölçüsü. Eşikler DJ pratiğinden: 3 BPM'e kadar fark duyulmaz, 6 BPM
-  // perde kaydırmasıyla kapanır, 12 BPM sonrası geçiş kendini belli eder.
-  // Yarım/çift tempo (62 → 124) ayrı sayılır: kulakta kopukluk değildir.
-  const HIZ_TOLERANS = 6;
+  // Tempo ölçüsü. Eşikler DJ pratiğinden: 3 BPM'e kadar fark duyulmaz, 5 BPM
+  // perde kaydırmasıyla kapanır. 5 BPM'i aşan iki parça ton tutsa bile yan yana
+  // konmaz: 6–12 BPM arası araya köprü ister, 12 BPM sonrası geçiş kendini belli
+  // eder. Yarım/çift tempo (62 → 124) ayrı sayılır: kulakta kopukluk değildir.
+  const HIZ_TOLERANS = 5;
   const HIZ_SINIR = 12;
+  // Yan yana gelmemesi gereken çiftin cezası, en iyi ton geçişinin kazancından
+  // (6 × 10 + 6 = 66) büyük olmalı. Böylece hız farkı 5 BPM'i aşan komşuluk
+  // hiçbir zaman kârlı çıkmaz; sıralayıcı onu ancak başka çare yokken kabul
+  // eder ve ekran köprü önerir.
+  const HIZ_AYIR_CEZA = 70;
+  const HIZ_COK_CEZA = 95;
 
   function tempo(a, b) {
     const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
@@ -970,17 +977,100 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     const fark = Math.abs(x - y);
     if (fark <= 3) return { fark, tip: 'aynı hız', ceza: 0 };
     if (fark <= HIZ_TOLERANS) return { fark, tip: 'yakın hız', ceza: 3 };
-    if (fark <= HIZ_SINIR) return { fark, tip: 'hız kayması', ceza: 14 };
+    if (fark <= HIZ_SINIR) return { fark, tip: 'hız kayması', ceza: HIZ_AYIR_CEZA };
     const yarim = Math.min(Math.abs(x * 2 - y), Math.abs(x - y * 2));
     if (yarim <= 3) return { fark, tip: 'yarım/çift tempo', ceza: 6 };
-    return { fark, tip: 'uyumsuz hız', ceza: 45 };
+    return { fark, tip: 'uyumsuz hız', ceza: HIZ_COK_CEZA };
   }
 
-  // Tek geçişin puanı. Ton ilişkisi yoksa -Infinity: zincire hiç girmez.
+  // İki parça yan yana konabilir mi? Ton ilişkisi olmalı ve hız farkı 5 BPM'i
+  // aşmamalı. Yarım/çift tempo kuralın dışında: 124 ile 62 yan yana gelebilir,
+  // çünkü bu kopukluk değil bilinçli bir tercihtir. Hız bilinmiyorsa engel
+  // konmaz; eksik veriyi ihlal saymak sıralamayı haksız yere kilitler.
+  function yanYana(a, b) {
+    if (!relation(a && a.camelot, b && b.camelot)) return false;
+    const h = tempo(a, b);
+    if (h.fark == null) return true;
+    return h.fark <= HIZ_TOLERANS || h.tip === 'yarım/çift tempo';
+  }
+
+  // Set yayı (genel bakış). Yerel puan "bu iki parça uyar mı" der; setin eğrisini
+  // görmez, çünkü tek tek bakıldığında 122 → 124 ile 124 → 122 eşit derecede
+  // yakındır. Oysa set yavaştan hızlıya akmalı: adım adım hız düşüşü ve zirveyi
+  // erken harcamak yayı bozar. Ölçüt O(n) kalır (sıralama yapılmaz).
+  const INIS_TOLERANS = 2;   // 2 BPM'e kadar düşüş normal: "yumuşak iniş"
+  const INIS_CEZA = 12;      // tolerans üstü her BPM için
+  const YAY_CEZA = 3;        // ilk yarı ikinci yarıdan hızlıysa her BPM için
+  const ZIRVE_CEZA = 10;     // zirveden sonra izin verilenden fazla parça başına
+  const ZIRVE_PAYI = 0.2;    // setin en çok bu kadarı zirveden sonra gelebilir
+
+  // Adım yönü: hızdan yavaşa dönmek yayı bozar. Tolerans içindeki küçük inişler
+  // (aynı ton ilişkisindeki "yumuşak iniş" gibi) cezasız kalır.
+  function inisCeza(a, b) {
+    const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
+    if (!x || !y) return 0;
+    const dusus = x - y;
+    return dusus > INIS_TOLERANS ? (dusus - INIS_TOLERANS) * INIS_CEZA : 0;
+  }
+
+  const ortBpm = dizi => {
+    const v = dizi.map(t => Number(t && t.bpm) || 0).filter(Boolean);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0;
+  };
+
+  // Zincirin tamamına bakışı: eğri yükseliyor mu, nerede geri düşüyor, zirve
+  // nerede? Ekran bunu yazar; puanı da buradan türetilir ki ikisi ayrışmasın.
+  function yay(set) {
+    const sira = Array.isArray(set) ? set : [];
+    const inisler = [];
+    let inisToplam = 0;
+    for (let i = 1; i < sira.length; i++) {
+      const x = Number(sira[i - 1] && sira[i - 1].bpm) || 0;
+      const y = Number(sira[i] && sira[i].bpm) || 0;
+      if (!x || !y) continue;
+      if (x - y > INIS_TOLERANS) {
+        inisler.push({ sira: i, onceki: sira[i - 1], sonraki: sira[i], dusus: x - y });
+        inisToplam += x - y;
+      }
+    }
+    const yarim = Math.floor(sira.length / 2);
+    const ilkYari = ortBpm(sira.slice(0, yarim));
+    const ikinciYari = ortBpm(sira.slice(yarim));
+    let zirve = sira[0] || null, zirveYeri = 0, enYavas = sira[0] || null, enYavasYeri = 0;
+    sira.forEach((t, i) => {
+      const v = Number(t && t.bpm) || 0;
+      if (!v) return;
+      // Zirvede eşitlik varsa en sondaki sayılır: aynı hızdaki parçaların
+      // sırası keyfi olduğu için set yaydan haksız ceza yememeli.
+      if (v >= (Number(zirve && zirve.bpm) || 0)) { zirve = t; zirveYeri = i; }
+      if (v < (Number(enYavas && enYavas.bpm) || Infinity)) { enYavas = t; enYavasYeri = i; }
+    });
+    const sonrasi = sira.length - 1 - zirveYeri;
+    const izinli = Math.floor(sira.length * ZIRVE_PAYI);
+    const zirveCezasi = Math.max(0, sonrasi - izinli) * ZIRVE_CEZA;
+    const yarimCezasi = Math.max(0, ilkYari - ikinciYari) * YAY_CEZA;
+    // Ceza yokken -0 sızmasın: ekranda ve testte "0" olarak okunsun.
+    const puan = zirveCezasi + yarimCezasi ? -(zirveCezasi + yarimCezasi) : 0;
+    return {
+      ilk: Number(sira[0] && sira[0].bpm) || null,
+      son: Number(sira[sira.length - 1] && sira[sira.length - 1].bpm) || null,
+      ilkYari: Math.round(ilkYari), ikinciYari: Math.round(ikinciYari),
+      zirve, zirveYeri, zirveSonrasi: sonrasi, zirveCezasi,
+      enYavas, enYavasYeri, yarimCezasi,
+      inisler, inisSayi: inisler.length, inisToplam,
+      yukselen: inisler.length === 0 && yarimCezasi === 0,
+      puan
+    };
+  }
+
+  const yayPuanu = sira => yay(sira).puan;
+
+  // Tek geçişin puanı. Ton ilişkisi yoksa -Infinity: zincire hiç girmez. Puan
+  // yön duyarlıdır: hızdan yavaşa dönmek "inisCeza" ile ayrıca düşer.
   function score(a, b) {
     const r = relation(a && a.camelot, b && b.camelot);
     if (!r) return -Infinity;
-    let s = r.puan * 10 - tempo(a, b).ceza;
+    let s = r.puan * 10 - tempo(a, b).ceza - inisCeza(a, b);
     const ea = Number(a && a.energy) || 0, eb = Number(b && b.energy) || 0;
     if (ea && eb) {
       const d = eb - ea;
@@ -998,8 +1088,12 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     const p = score(a, b);
     return p === -Infinity ? KOPUK_CEZA : p;
   };
+  // Zincir puanı = yerel geçişler + setin genel yayı. Genel terim olmadan
+  // sıralayıcı aynı komşuluk puanlarıyla hem 96 → 131 hem 131 → 96 dizisini
+  // kurabilir; yay terimi yavaştan hızlıya olanı seçtirir.
   const zincirPuanu = sira =>
-    sira.slice(1).reduce((toplam, x, i) => toplam + baglantiPuanu(sira[i], x), 0);
+    sira.slice(1).reduce((toplam, x, i) => toplam + baglantiPuanu(sira[i], x), 0)
+    + yayPuanu(sira);
 
   // Açgözlü zincir + iki-opt iyileştirme. Tonu olmayan parçalar sıralamaya
   // girmez, sonunda kendi aralarındaki sırayı korur.
@@ -1073,7 +1167,21 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       }
       if (!iyilesti) break;
     }
-    return en.concat(tonsuz);
+
+    // Tonu olmayan parçalar yerel puana giremez (komşuluk her yerde kopuk), ama
+    // tempoları var. Setin yayını bozmasınlar diye hız sırasına göre yerleştirilir:
+    // her parça, kendisinden yavaş olanların hemen ardına girer.
+    const sonuc = en.slice();
+    tonsuz.forEach(t => {
+      const v = Number(t && t.bpm) || 0;
+      let yer = sonuc.length;
+      if (v) {
+        yer = sonuc.findIndex(x => (Number(x && x.bpm) || Infinity) > v);
+        if (yer < 0) yer = sonuc.length;
+      }
+      sonuc.splice(yer, 0, t);
+    });
+    return sonuc;
   }
 
   // Her geçişin okunur hâli: seviye 'iyi' | 'zorlama' | 'uyumsuz'.
@@ -1088,10 +1196,24 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       if (!iliski) sorunlar.push('ton uyumsuz');
       else if (iliski.puan <= 2) sorunlar.push('ton geçişi zorlama');
       if (hiz.tip === 'uyumsuz hız') sorunlar.push('tempo uyumsuz');
-      else if (hiz.tip === 'hız kayması') sorunlar.push('tempo kayması');
+      else if (hiz.tip === 'hız kayması') {
+        sorunlar.push('tempo kayması');
+        // Ton tutuyor da olsa bu iki parça yan yana konmamalı: sebebi tek
+        // cümlede yazılır ki köprünün neden gerektiği okunabilsin.
+        if (iliski) sorunlar.push('ton uyumlu ama ' + hiz.fark + ' BPM fark var');
+      }
+      // Yay yönü: set yavaştan hızlıya akmalı, bu adım geriye dönüyor.
+      const dusus = (Number(onceki && onceki.bpm) || 0) - (Number(sonraki && sonraki.bpm) || 0);
+      const inis = dusus > INIS_TOLERANS ? { dusus, ceza: inisCeza(onceki, sonraki) } : null;
+      if (inis) sorunlar.push('hızdan yavaşa dönüş (' + dusus + ' BPM)');
       const seviye = (!iliski || hiz.tip === 'uyumsuz hız') ? 'uyumsuz'
-        : ((iliski.puan <= 2 || hiz.tip === 'hız kayması') ? 'zorlama' : 'iyi');
-      out.push({ sira: i, onceki, sonraki, iliski, hiz, sorunlar, seviye, puan: baglantiPuanu(onceki, sonraki) });
+        : ((iliski.puan <= 2 || hiz.tip === 'hız kayması' || inis) ? 'zorlama' : 'iyi');
+      out.push({
+        sira: i, onceki, sonraki, iliski, hiz, sorunlar, seviye, inis,
+        // Komşuluk kuralı: ton uyumlu + hız farkı en çok 5 BPM.
+        yanYana: yanYana(onceki, sonraki),
+        puan: baglantiPuanu(onceki, sonraki)
+      });
     }
     return out;
   }
@@ -1227,8 +1349,87 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       .filter(t => !sira.some(s => relation(s.camelot, t.camelot) || relation(t.camelot, s.camelot)));
   }
 
+  // Tarz etiketi. Katalogda tür alanı yok; tempo, enerji ve makam üçlüsünden
+  // okunur. Etiket yalnız süs değil: dış servis aramasına da girer, böylece
+  // öneri aynı tarzda kalsın (ör. "Mahmut Orhan benzeri melodic house").
+  function tarzEtiketi(parca) {
+    const bpm = Number(parca && parca.bpm) || 0;
+    const enerji = Number(parca && parca.energy) || 0;
+    const govde = !bpm ? 'tempo bilinmiyor'
+      : bpm < 100 ? 'downtempo / lounge'
+      : bpm < 115 ? 'organik deep house'
+      : bpm < 125 ? 'melodic house'
+      : bpm < 133 ? 'progressive house'
+      : 'yüksek enerji / tech';
+    const eki = enerji >= 7 ? ' (yoğun)' : (enerji && enerji <= 3 ? ' (sakin)' : '');
+    return ((parca && parca.makam) ? 'Anadolu elektronik · ' : '') + govde + eki;
+  }
+
+  // Katalogdaki sanatçıların tarz imzası: parçalarından çıkan hız, enerji ve
+  // ton eğilimi. "Mahmut Orhan tarzı nedir?" sorusunun elimizdeki veriyle
+  // cevabı budur; dışarıdan hiçbir şey çekmeden hesaplanır.
+  function sanatciProfilleri(katalog) {
+    const harita = new Map();
+    (Array.isArray(katalog) ? katalog : []).forEach(t => {
+      const ad = String((t && t.artist) || '').trim();
+      if (!ad) return;
+      if (!harita.has(ad)) harita.set(ad, { sanatci: ad, parcalar: [], tonSayi: {}, makamlar: {}, bpmToplam: 0, bpmSayi: 0, enerjiToplam: 0, enerjiSayi: 0 });
+      const p = harita.get(ad);
+      p.parcalar.push(t);
+      if (t.camelot) p.tonSayi[t.camelot] = (p.tonSayi[t.camelot] || 0) + 1;
+      if (t.makam) p.makamlar[t.makam] = (p.makamlar[t.makam] || 0) + 1;
+      if (Number(t.bpm)) { p.bpmToplam += Number(t.bpm); p.bpmSayi++; }
+      if (Number(t.energy)) { p.enerjiToplam += Number(t.energy); p.enerjiSayi++; }
+    });
+    return [...harita.values()].map(p => {
+      const bpm = p.bpmSayi ? Math.round(p.bpmToplam / p.bpmSayi) : null;
+      const enerji = p.enerjiSayi ? Math.round(p.enerjiToplam / p.enerjiSayi) : null;
+      const enCokTonlar = Object.entries(p.tonSayi).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+      const enCokMakam = Object.keys(p.makamlar)[0] || null;
+      return {
+        sanatci: p.sanatci, parcalar: p.parcalar, bpm, enerji, tonSayi: p.tonSayi,
+        enCokTonlar, makamlar: Object.keys(p.makamlar),
+        tarz: tarzEtiketi({ bpm, energy: enerji, makam: enCokMakam })
+      };
+    }).sort((a, b) => b.parcalar.length - a.parcalar.length) ;
+  }
+
+  // Bir parça setin neresine girebilir? Tonu uyan ve hızı 5 BPM içinde kalan
+  // komşular listelenir; boş liste "bu parça sete girmez" demektir.
+  function settekiYeri(set, parca) {
+    return (Array.isArray(set) ? set : []).filter(s => s.id !== parca.id
+      && (relation(s.camelot, parca.camelot) || relation(parca.camelot, s.camelot))
+      && (yanYana(s, parca) || yanYana(parca, s)));
+  }
+
+  // Katalogdan, sete gerçekten girebilecek sanatçılar: her sanatçının setle hem
+  // tonu hem hızı uyan parçaları varsa önerilir. Dışarıya çıkmadan "bu tarz
+  // buraya uyar" diyebilmenin yolu.
+  function uyumluSanatcilar(set, katalog, adet) {
+    const sira = Array.isArray(set) ? set : [];
+    const settekiIdler = new Set(sira.map(t => t && t.id));
+    return sanatciProfilleri(katalog)
+      .map(p => {
+        const uyan = p.parcalar.filter(t => t && !settekiIdler.has(t.id) && settekiYeri(sira, t).length);
+        if (!uyan.length) return null;
+        const bpmlar = uyan.map(t => Number(t.bpm)).filter(Boolean);
+        return {
+          sanatci: p.sanatci, tarz: p.tarz, bpm: p.bpm, enerji: p.enerji,
+          parcalar: uyan,
+          enCokTonlar: p.enCokTonlar.filter(ton => uyan.some(t => t.camelot === ton)),
+          bpmMin: bpmlar.length ? Math.min(...bpmlar) : null,
+          bpmMax: bpmlar.length ? Math.max(...bpmlar) : null
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.parcalar.length - a.parcalar.length)
+      .slice(0, Number(adet) || 5);
+  }
+
   // Dış servis anahtarı yok: öneri gerçek şarkı listesi değil, arama
-  // bağlantısıdır. Sorgu ton + hız taşır, sonucu kullanıcı seçer.
+  // bağlantısıdır. Sorgu ton + hız taşır, sonucu kullanıcı seçer. Sanatçı ve
+  // tarz verilirse sorguya girer ("Mahmut Orhan benzeri melodic house …"),
+  // böylece öneri parçanın tarzında kalır.
   function aramaLinkleri(sorgu) {
     const kod = encodeURIComponent(String(sorgu == null ? '' : sorgu).trim());
     return {
@@ -1243,14 +1444,17 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     const hiz = (h.bpmMin && h.bpmMax)
       ? (h.bpmMin === h.bpmMax ? h.bpmMin + ' BPM' : h.bpmMin + '-' + h.bpmMax + ' BPM')
       : (h.bpm ? h.bpm + ' BPM' : '');
-    return [ton, hiz].filter(Boolean).join(' ') + ' mix';
+    const tarz = [h.sanatci ? String(h.sanatci) + ' benzeri' : '', h.tarz || ''].filter(Boolean).join(' ');
+    return [tarz, ton, hiz].filter(Boolean).join(' ') + ' mix';
   }
 
   return {
-    parseKey, relation, tempo, score, autoOrder, gecisler,
-    kopru, kopruTonlari, cikilanTonlar, girilenTonlar, uyumluTonlar,
+    parseKey, relation, tempo, score, autoOrder, gecisler, yanYana, inisCeza,
+    yay, yayPuanu, kopru, kopruTonlari, cikilanTonlar, girilenTonlar, uyumluTonlar,
     uymayanlar, setDisiKalanlar, aramaLinkleri, oneriSorgusu, zincirPuanu,
-    HIZ_TOLERANS, HIZ_SINIR, KOPUK_CEZA
+    tarzEtiketi, sanatciProfilleri, settekiYeri, uyumluSanatcilar,
+    HIZ_TOLERANS, HIZ_SINIR, HIZ_AYIR_CEZA, HIZ_COK_CEZA, KOPUK_CEZA,
+    INIS_TOLERANS, INIS_CEZA, ZIRVE_CEZA
   };
 });
 
@@ -1321,13 +1525,174 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
 
   const tonMetni = h => (h.tonlar && h.tonlar.length) ? h.tonlar.join(' · ') : 'ton bilgisi yok';
 
+  // ---- Tarz önerisi: Deezer'ın benzer sanatçı algoritması --------------------
+  // Spotify ve YouTube API anahtarı yok; tarayıcıdan api.deezer.com'a düz fetch
+  // CORS'a takılır (allow-origin başlığı yok) ama Deezer JSONP destekliyor:
+  // veri <script> ile okunur. Sonuç sanatçı bazında önbelleğe alınır ki her
+  // çizimde yeniden sorulmasın.
+  let dzSayac = 0;
+  const tarzOnbellek = new Map();
+  let tarzDurum = { sanatci: null, veri: null, hata: null, yukleniyor: false };
+
+  function deezerOku(yol, parametreler) {
+    return new Promise((cozum, ret) => {
+      const ad = 'derinDz' + (++dzSayac);
+      const betik = document.createElement('script');
+      const temizle = () => { try { delete window[ad]; } catch (e) { window[ad] = null; } betik.remove(); };
+      const zaman = setTimeout(() => { temizle(); ret(new Error('yanıt gelmedi')); }, 8000);
+      window[ad] = veri => { clearTimeout(zaman); temizle(); cozum(veri); };
+      const sorgu = new URLSearchParams(Object.assign({}, parametreler, { output: 'jsonp', callback: ad }));
+      betik.src = 'https://api.deezer.com/' + yol + '?' + sorgu.toString();
+      betik.onerror = () => { clearTimeout(zaman); temizle(); ret(new Error('bağlantı kurulamadı')); };
+      document.head.appendChild(betik);
+    });
+  }
+
+  async function tarzGetir(sanatci) {
+    if (tarzOnbellek.has(sanatci)) return tarzOnbellek.get(sanatci);
+    const ara = await deezerOku('search/artist', { q: sanatci, limit: 1 });
+    const kaynak = ara && ara.data && ara.data[0];
+    if (!kaynak) throw new Error('Deezer\'da bulunamadı');
+    const benzer = await deezerOku('artist/' + kaynak.id + '/related', { limit: 10 });
+    const liste = (benzer && benzer.data) || [];
+    // İlk beş sanatçının öne çıkan parçaları da alınır: öneri sanatçı adı değil,
+    // dinlenebilir parça olsun (30 sn önizleme Deezer'dan gelir).
+    const ilk = await Promise.all(liste.slice(0, 5).map(async a => {
+      try {
+        const top = await deezerOku('artist/' + a.id + '/top', { limit: 2 });
+        return Object.assign({}, a, { parcalar: (top && top.data) || [] });
+      } catch (e) {
+        return Object.assign({}, a, { parcalar: [] });
+      }
+    }));
+    const veri = { kaynak, benzer: ilk.concat(liste.slice(5).map(a => Object.assign({}, a, { parcalar: [] }))) };
+    tarzOnbellek.set(sanatci, veri);
+    return veri;
+  }
+
+  // Referans parçanın ardından gelecek parçanın hedefi: yay yükseldiği için hız
+  // bir adım yukarısı, ton da referanstan çıkılabilen tonlar.
+  const tarzHedefi = t => {
+    const bpm = Number(t && t.bpm) || null;
+    return {
+      tonlar: H.cikilanTonlar(t).slice(0, 3).map(x => x.ton),
+      bpm,
+      bpmMin: bpm,
+      bpmMax: bpm ? bpm + H.HIZ_TOLERANS : null
+    };
+  };
+
+  const disLinkler = (sorgu, etiket) => {
+    const l = H.aramaLinkleri(sorgu);
+    return `<span class="hm-links"><span class="hm-chip">${safe(sorgu)}</span>
+      <a class="hm-link" href="${safe(l.youtube)}" target="_blank" rel="noopener">${safe(etiket || 'YouTube\'da ara')} ↗</a>
+      <a class="hm-link" href="${safe(l.spotify)}" target="_blank" rel="noopener">Spotify\'da ara ↗</a></span>`;
+  };
+
+  // Tarz önerileri paneli: solda kendi kataloğundan tarz imzası, sağda Deezer
+  // algoritmasından benzer sanatçılar. Her ikisi de parçanın tarzını taşır.
+  function tarzPanel() {
+    // Referans: kullanıcı katalogdan bir parça seçtiyse o, yoksa setin sonuncusu.
+    // Böylece "en son çalan neyse ona göre" varsayılanı bozulmaz, isteyen başka
+    // bir sanatçıyı da analiz ettirebilir.
+    const ref = selected || (set.length ? set[set.length - 1] : null);
+    if (!ref) return '<p style="opacity:.5;font-size:13px">Önce bir parça seç ya da set kur.</p>';
+    const refNotu = (selected && (!set.length || set[set.length - 1].id !== selected.id)) ? 'seçili parça' : 'setin sonuncusu';
+    const tarz = H.tarzEtiketi(ref);
+    const hedef = tarzHedefi(ref);
+
+    // Katalogdan uyan sanatçılar: dış servise çıkmadan, elimizdeki parçalarla.
+    const katalogUyan = set.length ? H.uyumluSanatcilar(set, tracks, 4) : [];
+    const katalogHtml = katalogUyan.length ? katalogUyan.map(x => `
+      <div class="hm-track" style="cursor:default;align-items:flex-start">
+        <span><strong>${safe(x.sanatci)}</strong>
+          <small>${safe(x.tarz)} · ${x.bpm ? x.bpm + ' BPM' : 'hız yok'} · katalogda ${x.parcalar.length} parça uyar</small>
+          <span class="hm-rel">${x.parcalar.slice(0, 3).map(t => `<span class="hm-chip">${safe(t.title)}${t.camelot ? ' · ' + safe(t.camelot) : ''}${t.bpm ? ' · ' + safe(String(t.bpm)) : ''}</span>`).join('')}</span>
+          <span style="display:block;margin-top:7px">${disLinkler(H.oneriSorgusu({
+            sanatci: x.sanatci, tarz: x.tarz, tonlar: hedef.tonlar, bpmMin: hedef.bpmMin, bpmMax: hedef.bpmMax
+          }))}</span>
+        </span>
+      </div>`).join('')
+      : '<p style="opacity:.6;font-size:13px">Katalogdaki başka sanatçılarda sete uyan parça yok.</p>';
+
+    // Dış öneri: referans sanatçının benzerleri (Deezer). Tek sefer sorulur.
+    const sanatci = String(ref.artist || '').trim();
+    if (sanatci && tarzDurum.sanatci !== sanatci && !tarzDurum.yukleniyor) {
+      tarzDurum = { sanatci, veri: null, hata: null, yukleniyor: true };
+      // Yanıt gelince panel tazelenir. Kullanıcı o sırada form dolduruyorsa
+      // çizim atlanır: alanlara yazdığı yazı silinmesin, bir sonraki
+      // etkileşimde (ya da YENİLE ile) öneriler zaten görünür.
+      const tazele = () => {
+        const odak = document.activeElement;
+        if (odak && odak.tagName === 'INPUT' && byId('hm-app') && byId('hm-app').contains(odak)) return;
+        render();
+      };
+      tarzGetir(sanatci).then(veri => {
+        tarzDurum = { sanatci, veri, hata: null, yukleniyor: false };
+        tazele();
+      }).catch(hata => {
+        tarzDurum = { sanatci, veri: null, hata: String((hata && hata.message) || hata), yukleniyor: false };
+        tazele();
+      });
+    }
+
+    let disHtml;
+    if (!sanatci) {
+      disHtml = '<p style="opacity:.6;font-size:13px">Referans parçanın sanatçısı girilmemiş; tarz önerisi için sanatçı alanını doldur.</p>';
+    } else if (tarzDurum.yukleniyor || tarzDurum.sanatci !== sanatci) {
+      disHtml = '<p style="opacity:.6;font-size:13px">Benzeri sanatçılar aranıyor…</p>';
+    } else if (tarzDurum.hata) {
+      disHtml = `<p class="hm-warn">“${safe(sanatci)}” için dış öneri alınamadı (${safe(tarzDurum.hata)}).
+        Yukarıdaki arama bağlantılarıyla devam edebilirsin.</p>`;
+    } else {
+      const liste = (tarzDurum.veri && tarzDurum.veri.benzer) || [];
+      disHtml = liste.length ? liste.map(a => {
+        const parca = (a.parcalar || [])[0];
+        const sorgu = H.oneriSorgusu({ sanatci: a.name, tarz, tonlar: [], bpmMin: null, bpmMax: null }).replace(' mix', '');
+        const l = H.aramaLinkleri(sorgu);
+        return `<div class="hm-track" style="cursor:default;align-items:flex-start">
+          <span><strong>${safe(a.name)}</strong>
+            <small>${parca ? safe(parca.title) : 'Deezer önerisi'} · ${safe(tarz)}
+              ${parca && parca.preview ? `<button data-onizleme="${safe(parca.preview)}" style="padding:2px 8px;border-radius:8px;font-size:10px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;cursor:pointer">▶ 30 sn</button>` : ''}</small>
+            <span style="display:block;margin-top:7px"><span class="hm-links">
+              <a class="hm-link" href="${safe(l.youtube)}" target="_blank" rel="noopener">Tarzında YouTube ↗</a>
+              <a class="hm-link" href="${safe(l.spotify)}" target="_blank" rel="noopener">Spotify ↗</a>
+              <a class="hm-link" href="${safe(a.link)}" target="_blank" rel="noopener">Deezer ↗</a></span></span>
+          </span>
+        </div>`;
+      }).join('')
+        : '<p style="opacity:.6;font-size:13px">Deezer bu sanatçı için benzer sanatçı döndürmedi.</p>';
+    }
+
+    return `<p>Referans (${safe(refNotu)}): <b>${safe(ref.title)}</b> · ${safe(ref.artist || 'sanatçı yok')} ·
+        <b>${safe(tarz)}</b>${ref.bpm ? ' · ' + safe(String(ref.bpm)) + ' BPM' : ''}
+        <span style="opacity:.6">— başka bir sanatçıyı görmek için katalogdan parça seç.</span></p>
+      <p>Sıradaki parça hedefi: <b>${safe(hedef.tonlar.join(' · ') || 'ton bilgisi yok')}</b> tonunda,
+        <b>${safe(hedef.bpmMin ? hedef.bpmMin + '–' + hedef.bpmMax + ' BPM' : 'hız bilgisi yok')}</b>
+        — yay yükseldiği için bir adım yukarısı.</p>
+      ${disLinkler(H.oneriSorgusu({ sanatci: ref.artist || '', tarz, tonlar: hedef.tonlar, bpmMin: hedef.bpmMin, bpmMax: hedef.bpmMax }))}
+      <h2 style="margin:16px 0 10px">KENDİ KATALOĞUNDAN UYAN SANATÇILAR</h2>
+      ${katalogHtml}
+      <h2 style="margin:16px 0 10px">BENZERİ SANATÇILAR — DEEZER ALGORİTMASI
+        <button id="tarz-yenile" style="float:right;padding:4px 10px;border-radius:9px;font-size:10px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer">YENİLE</button></h2>
+      ${disHtml}`;
+  }
+
   // Geçiş uymadığında araya girecek parçanın tonu ve hızı. Hız farkı tek
   // köprüyle kapanmıyorsa iki adım ayrı ayrı yazılır.
   function kopruHtml(g) {
     const k = H.kopru(g.onceki, g.sonraki);
-    const hedef = k.tekParca
-      ? `<b>${safe(tonMetni(k))}</b> tonunda, <b>${safe(hizMetni(k))}</b> aralığında bir parça koy.`
-      : 'tek parça yetmiyor; aşağıdaki iki köprüyü sırayla kullan.';
+    // Başlık sorunun ton mu hız mı yay mı olduğunu söyler: ton tutup hız
+    // uzaksa köprü, set geriye dönüyorsa sıra değişikliği gerekir.
+    const baslik = g.inis ? 'SIRA GERİYE DÖNÜYOR — HIZ DÜŞÜYOR'
+      : ((g.iliski && !g.yanYana) ? 'ARAYA KÖPRÜ — TON UYUMLU, HIZ UZAK' : 'KÖPRÜ PARÇASI GEREKİYOR');
+    const yerlestir = `<b>${safe(tonMetni(k))}</b> tonunda, <b>${safe(hizMetni(k))}</b> aralığında bir parça koy.`;
+    const hedef = !k.tekParca ? 'tek parça yetmiyor; aşağıdaki iki köprüyü sırayla kullan.'
+      : (g.inis ? `bu ikilinin sırasını değiştir; olmuyorsa araya ${yerlestir}` : `arasına ${yerlestir}`);
+    // İniş varsa cümle "arasına" ile kurulmaz: önce sıra düzeltilir.
+    const cumle = g.inis
+      ? `“${safe(g.onceki.title)}” ile “${safe(g.sonraki.title)}” arasında hız düşüyor: ${hedef}`
+      : `“${safe(g.onceki.title)}” ile “${safe(g.sonraki.title)}” ${hedef}`;
     const iki = k.ikiAdim ? `
       <p><b>1. köprü:</b> <b>${safe(tonMetni(k.ikiAdim.birinci))}</b> tonunda,
         <b>${safe(hizMetni(k.ikiAdim.birinci))}</b> — önceki parçanın hızına yakın.<br>
@@ -1337,14 +1702,72 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
         <b>${safe(k.ikiAdim.ornek.map(o => o.birinci + ' → ' + o.ikinci).join('  ·  '))}</b></p>` : ''}
       ${linkHtml({ tonlar: k.ikiAdim.birinci.tonlar, bpmMin: k.ikiAdim.birinci.bpmMin, bpmMax: k.ikiAdim.birinci.bpmMax })}
       ${linkHtml({ tonlar: k.ikiAdim.ikinci.tonlar, bpmMin: k.ikiAdim.ikinci.bpmMin, bpmMax: k.ikiAdim.ikinci.bpmMax })}` : '';
+    // Tarzı korumak için ayrı bir arama: köprü parçası da aynı tarzda olmalı.
+    const tarzSatiri = g.onceki && g.onceki.artist
+      ? `<p style="opacity:.85">Tarzı koru (${safe(g.onceki.artist)}): ${disLinkler(H.oneriSorgusu({
+          sanatci: g.onceki.artist, tarz: H.tarzEtiketi(g.onceki), tonlar: k.tonlar, bpmMin: k.bpmMin, bpmMax: k.bpmMax
+        }))}</p>` : '';
     return `<div class="hm-kopru">
-      <b>KÖPRÜ PARÇASI GEREKİYOR</b>
-      <p>“${safe(g.onceki.title)}” ile “${safe(g.sonraki.title)}” arasına ${hedef}
+      <b>${baslik}</b>
+      <p>${cumle}
         ${g.sorunlar.length ? 'Sorun: ' + safe(g.sorunlar.join(', ')) + '.' : ''}</p>
       ${iki}
       ${k.not ? `<p class="hm-warn">${safe(k.not)}</p>` : ''}
+      ${tarzSatiri}
       ${k.tekParca ? linkHtml({ tonlar: k.tonlar, bpmMin: k.bpmMin, bpmMax: k.bpmMax }) : ''}
     </div>`;
+  }
+
+  // Setin tamamına bakış. Yerel geçiş listesi yayı göstermez: tek tek
+  // bakıldığında 122 → 124 ile 124 → 122 eşit derecede yakın görünür, oysa set
+  // yavaştan hızlıya akmalı. Burada eğri, zirvenin yeri ve en büyük atlama yazılır.
+  function yayHtml() {
+    if (set.length < 2) return '<p style="opacity:.5;font-size:13px">Yay için en az iki parça gerekir.</p>';
+    const y = H.yay(set);
+    const satirlar = [`<p>Yay: <b>${safe(String(y.ilk))} → ${safe(String(y.son))} BPM</b> ·
+      ${y.yukselen ? '<b>yükseliyor</b>' : 'zikzaklı'}.
+      En hızlı parça <b>${safe(y.zirve.title)}</b> (${safe(String(y.zirve.bpm))} BPM),
+      ${y.zirveYeri + 1}. sırada.</p>`];
+
+    // Zirve sonda değilse setin ikinci yarısı yavaşlıyor demektir.
+    if (y.zirveSonrasi > Math.floor(set.length * 0.2)) {
+      satirlar.push(`<p class="hm-warn">Zirve erken: en hızlı parçadan sonra ${y.zirveSonrasi} parça
+        daha geliyor. Setin en hızlı parçası sona yakın olmalı.</p>`);
+    }
+
+    // Geriye düşen adımlar: köprü değil, sıra değişikliği ister.
+    y.inisler.forEach(g => satirlar.push(`<p class="hm-warn">“${safe(g.onceki.title)}” →
+      “${safe(g.sonraki.title)}”: hız <b>${g.dusus} BPM</b> düşüyor. Bu ikilinin sırasını
+      değiştir ya da araya daha yavaş bir parça koy.</p>`));
+
+    // Tolerans içindeki küçük inişler saklanmaz: eğri yükseliyor derken görünen
+    // düşüşlerin sebebi de yazılsın.
+    const yumusak = set.slice(1)
+      .map((t, i) => ({ onceki: set[i], sonraki: t, dusus: (Number(set[i].bpm) || 0) - (Number(t.bpm) || 0) }))
+      .filter(x => x.dusus > 0 && x.dusus <= H.INIS_TOLERANS);
+    if (yumusak.length) {
+      satirlar.push(`<p style="opacity:.7">Yumuşak inişler (${H.INIS_TOLERANS} BPM'e kadar serbest):
+        ${yumusak.map(x => `“${safe(x.onceki.title)}” → “${safe(x.sonraki.title)}” ${x.dusus} BPM`).join(' · ')}.</p>`);
+    }
+
+    // En büyük çıkış: araya ısınma parçası koymak için hedef hız.
+    let atlama = null;
+    set.slice(1).forEach((t, i) => {
+      const onceki = set[i];
+      const artis = (Number(t.bpm) || 0) - (Number(onceki.bpm) || 0);
+      if (artis > 10 && (!atlama || artis > atlama.artis)) atlama = { artis, onceki, sonraki: t };
+    });
+    if (atlama) {
+      const orta = Math.round(((Number(atlama.onceki.bpm) || 0) + (Number(atlama.sonraki.bpm) || 0)) / 2);
+      satirlar.push(`<p>En büyük çıkış: “${safe(atlama.onceki.title)}” → “${safe(atlama.sonraki.title)}”
+        arasında <b>${atlama.artis} BPM</b> atlama var; araya <b>${orta} BPM</b> civarı bir
+        ısınma parçası yayı düzler.</p>`);
+    }
+
+    if (satirlar.length === 1) {
+      satirlar.push('<p style="opacity:.65">Set baştan sona yükseliyor; tek tek hız düşüşü yok.</p>');
+    }
+    return satirlar.join('');
   }
 
   // Uymayan parçalar: setin içinde kopukluk yaratanlar ve sete hiç giremeyenler.
@@ -1353,12 +1776,32 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     const icinde = H.uymayanlar(set);
     const disi = H.setDisiKalanlar(set, tracks);
     const tonlar = H.uyumluTonlar(set, 3).map(x => x.ton);
-    const bpmlar = set.map(t => Number(t.bpm)).filter(Boolean);
+    // Yerine aranacak parçanın hızı, bu tonlara uyan setteki parçaların hızına
+    // göre verilir: setin tamamının 96–131 gibi geniş aralığı işe yaramaz, çünkü
+    // parça yalnızca tonu uyan komşusuna 5 BPM içinde bağlanabilir.
+    const eslesen = set.filter(t => tonlar.some(ton =>
+      H.relation(t.camelot, ton) || H.relation(ton, t.camelot)));
+    const eslesenBpm = eslesen.map(t => Number(t.bpm)).filter(Boolean);
+    // Yeni parça komşusuna 5 BPM içinde bağlanmalı: uygun hızlar, tonu uyan
+    // komşuların ±5 BPM pencerelerinin birleşimidir. Tek bir min–max aralığı
+    // yanıltır (91 ile 136 arası sanılır), ortada boşluk varsa ayrı yazılır.
+    const pencereler = eslesenBpm.map(b => [b - H.HIZ_TOLERANS, b + H.HIZ_TOLERANS])
+      .sort((u, v) => u[0] - v[0]);
+    const araliklar = [];
+    pencereler.forEach(pencere => {
+      const son = araliklar[araliklar.length - 1];
+      if (son && pencere[0] <= son[1] + 1) son[1] = Math.max(son[1], pencere[1]);
+      else araliklar.push(pencere.slice());
+    });
+    const enGenis = araliklar.slice().sort((u, v) => (v[1] - v[0]) - (u[1] - u[0]))[0];
     const setHedef = {
       tonlar,
-      bpmMin: bpmlar.length ? Math.min(...bpmlar) : null,
-      bpmMax: bpmlar.length ? Math.max(...bpmlar) : null
+      bpmMin: enGenis ? enGenis[0] : null,
+      bpmMax: enGenis ? enGenis[1] : null
     };
+    const aralikMetni = araliklar.length
+      ? araliklar.slice(0, 3).map(a => a[0] + '–' + a[1] + ' BPM').join(' ya da ')
+      : 'hız bilgisi yok';
 
     if (!icinde.length && !disi.length) {
       return '<p style="opacity:.6;font-size:13px">Bütün geçişler uyumlu; değiştirilecek parça yok.</p>';
@@ -1389,7 +1832,7 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       <p>${disi.slice(0, 8).map(t => safe(t.title)).join(', ')}${disi.length > 8 ? ' …' : ''}
         — setteki tonlarla bağlanmıyor.</p>
       <p>Yerlerine setteki tonlara uyan bir parça ara: <b>${safe(tonlar.join(' · ') || 'ton bilgisi yok')}</b>,
-        <b>${safe(hizMetni(setHedef))}</b>.</p>
+        <b>${safe(aralikMetni)}</b> (komşusuna 5 BPM içinde bağlanmalı).</p>
       ${linkHtml(setHedef)}
     </div>` : '';
 
@@ -1403,6 +1846,9 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     const eksikTon = tracks.filter(t => !t.camelot).length;
     const gecisListesi = H.gecisler(set);
     const sorunlu = gecisListesi.filter(g => g.seviye !== 'iyi').length;
+    const ayrilan = gecisListesi.filter(g => g.iliski && !g.yanYana).length;
+    // Set yayı: BPM eğrisinin tamamı (yerel geçişler bunu göstermez).
+    const yay = H.yay(set);
 
     byId('hm-app').innerHTML = `
       <div class="hm-grid">
@@ -1450,8 +1896,11 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
           <section class="hm-panel">
             <h2>OTOMATİK SIRALAMA</h2>
             <p style="font-size:12px;opacity:.65;margin:0 0 12px">
-              Parçaları ton uyumu, <b>tempo yakınlığı</b> ve enerji akışına göre dizer:
-              önce her başlangıç denenir, sonra ikili yer değiştirmelerle zincir iyileştirilir.</p>
+              Parçaları <b>setin tamamına</b> bakarak dizer: önce her başlangıç ve BPM sırası
+              denenir, sonra yer değiştirme, kaydırma ve bölüt ters çevirmeyle zincir
+              iyileştirilir. Set <b>yavaştan hızlıya</b> akar (hız düşüşleri cezalı), ton uysa
+              bile <b>hız farkı 5 BPM'i aşan iki parça yan yana konmaz</b>; başka çare yoksa
+              köprü önerilir.</p>
             <div class="hm-edit" style="border:0;padding-top:0;margin-top:0">
               <button id="hm-auto">TÜM KATALOĞU SIRALA</button>
               <button id="hm-autoset" style="background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2)">MEVCUT SETİ YENİDEN DİZ</button>
@@ -1466,12 +1915,27 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
                   <div class="hm-track" data-add="${x.t.id}">
                     <span><strong>${safe(x.t.title)}</strong><small>${meta(x.t)}</small>
                       <span class="hm-rel"><span class="hm-chip ${x.rel.sinif}">${x.rel.tip}</span>
-                        ${(() => { const h = H.tempo(set.length ? set[set.length - 1] : selected, x.t);
-                          return h.fark == null ? '' : `<span class="hm-chip">${h.fark} BPM fark · ${safe(h.tip)}</span>`; })()}</span></span>
+                        ${(() => { const onceki = set.length ? set[set.length - 1] : selected;
+                          const h = H.tempo(onceki, x.t);
+                          if (h.fark == null) return '';
+                          // Ton tutsa da hız uzaksa öneri işaretlenir: kullanıcı bunu
+                          // yan yana koymadan önce bilsin.
+                          const ayri = !H.yanYana(onceki, x.t);
+                          return `<span class="hm-chip${ayri ? ' bad' : ''}">${h.fark} BPM fark · ${safe(h.tip)}${ayri ? ' · yan yana olmamalı' : ''}</span>`; })()}</span></span>
                     ${keyChip(x.t)}
                   </div>`).join('')
                 : '<p style="opacity:.5;font-size:13px">Uyumlu parça yok.</p>')
               : '<p style="opacity:.5;font-size:13px">Katalogdan bir parça seç ya da otomatik sıralamayı çalıştır.</p>'}
+          </section>
+
+          <section class="hm-panel" style="margin-top:20px">
+            <h2>TARZ ÖNERİLERİ</h2>
+            <p style="font-size:12px;opacity:.65;margin:0 0 12px">
+              Öneri artık yalnız ton + hız değil: referans parçanın <b>tarzı</b> (tempo, enerji,
+              makamdan okunur) ve sanatçısı analiz edilir. Kendi kataloğundan sete uyan
+              sanatçılar burada, dış öneriler Deezer'ın benzer sanatçı algoritmasından gelir —
+              ses verisi tarayıcıdan okunur, API anahtarı gerekmez.</p>
+            ${tarzPanel()}
           </section>
 
           <section class="hm-panel" style="margin-top:20px">
@@ -1481,6 +1945,9 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
               <span>Süre: <b>${dk} dk</b> / 90 dk</span>
               <span>Kalan: <b>${Math.max(0, 90 - dk)} dk</b></span>
               <span>Sorunlu geçiş: <b>${sorunlu}</b></span>
+              <span>Ton uyumlu, hız uzak: <b>${ayrilan}</b></span>
+              <span>Yay: <b>${yay.ilk} → ${yay.son} BPM</b></span>
+              <span>İniş: <b>${yay.inisSayi}</b></span>
             </div>
             <ol class="hm-set">${set.map((t, i) => {
               const g = i ? gecisListesi[i - 1] : null;
@@ -1488,10 +1955,17 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
               const chipMetin = !g ? 'BAŞLANGIÇ' : (g.iliski ? g.iliski.tip : 'UYUMSUZ GEÇİŞ');
               const hiz = g && g.hiz.fark != null
                 ? `<span class="hm-chip">${g.hiz.fark} BPM fark · ${safe(g.hiz.tip)}</span>` : '';
+              // Ton tutuyor ama hız farkı 5 BPM'i aşıyor: bu ikili yan yana
+              // olmamalı, sebebi de satırın üstünde yazılı olsun.
+              const ayri = g && g.iliski && !g.yanYana
+                ? `<span class="hm-chip bad">YAN YANA OLMAMALI · ${g.hiz.fark} BPM</span>` : '';
+              // Yay uyarısı: bu adım hızdan yavaşa dönüyor.
+              const inis = g && g.inis
+                ? `<span class="hm-chip up">HIZ DÜŞÜYOR · ${g.inis.dusus} BPM</span>` : '';
               return `<li draggable="true" data-idx="${i}" style="cursor:grab">
                 <span><strong>${safe(t.title)}</strong>
                   <small>${meta(t)}</small>
-                  <span class="hm-rel"><span class="hm-chip ${chipTur}">${safe(chipMetin)}</span>${hiz}</span></span>
+                  <span class="hm-rel"><span class="hm-chip ${chipTur}">${safe(chipMetin)}</span>${hiz}${ayri}${inis}</span></span>
                 <span style="display:flex;gap:8px;align-items:center">${keyChip(t)}
                 ${t.audio_path ? `<button data-play="${t.id}" data-path="${safe(t.audio_path)}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;cursor:pointer">▶</button>` : ''}
                 <button data-rm="${t.id}">ÇIKAR</button></span>
@@ -1499,6 +1973,15 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
               </li>`;
             }).join('') || '<p style="opacity:.5;font-size:13px">Set boş.</p>'}</ol>
             <canvas class="hm-curve" id="hm-curve"></canvas>
+          </section>
+
+          <section class="hm-panel" style="margin-top:20px">
+            <h2>SET YAYI — GENEL BAKIŞ</h2>
+            <p style="font-size:12px;opacity:.65;margin:0 0 12px">
+              Tek tek geçişlere bakmak yetmez: 122 → 124 ile 124 → 122 eşit derecede yakın
+              görünür. Burada setin tamamı okunur — eğri yavaştan hızlıya mı akıyor,
+              nerede geriye düşüyor, zirve nerede?</p>
+            ${yayHtml()}
           </section>
 
           <section class="hm-panel" style="margin-top:20px">
@@ -1601,9 +2084,18 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
     };
 
     const siralamaNotu = () => {
-      const sorun = H.gecisler(set).filter(g => g.seviye !== 'iyi').length;
+      const gecis = H.gecisler(set);
+      const sorun = gecis.filter(g => g.seviye !== 'iyi').length;
+      // Yalnız tonu uyan ama hızı uzak komşuluklar: kopuk geçişler zaten
+      // "uyumsuz" olarak ayrıca sayılıyor.
+      const ayri = gecis.filter(g => g.iliski && !g.yanYana).length;
+      const y = H.yay(set);
       return `${set.length} parça sıralandı.`
-        + (sorun ? ` ${sorun} geçişte köprü gerekiyor.` : ' Bütün geçişler uyumlu.');
+        + (sorun ? ` ${sorun} geçişte köprü gerekiyor.` : ' Bütün geçişler uyumlu.')
+        + (ayri ? ` ${ayri} komşulukta ton uyuyor ama hız farkı 5 BPM'i aşıyor.` : '')
+        + (y.inisSayi ? ` Yay ${y.inisSayi} yerde geriye düşüyor.`
+          : (y.yukselen ? ' Set yavaştan hızlıya akıyor.'
+            : ' İlk yarı ikinci yarıdan hızlı; yay geriye dönüyor.'));
     };
 
     byId('hm-auto').onclick = () => {
@@ -1678,6 +2170,28 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
       });
     });
 
+    // Dış tarz önerisini yenile: önbellek ve durum sıfırlanır.
+    const yenile = byId('tarz-yenile');
+    if (yenile) yenile.onclick = () => {
+      if (tarzDurum.sanatci) tarzOnbellek.delete(tarzDurum.sanatci);
+      tarzDurum = { sanatci: null, veri: null, hata: null, yukleniyor: false };
+      render();
+    };
+
+    // Deezer 30 saniyelik önizlemeler
+    document.querySelectorAll('[data-onizleme]').forEach(btn => btn.onclick = async () => {
+      if (window.__hmAudio && !window.__hmAudio.paused) {
+        window.__hmAudio.pause();
+        document.querySelectorAll('[data-onizleme],[data-play]').forEach(b => b.textContent = b.dataset.play ? '▶' : '▶ 30 sn');
+        if (window.__hmOnizleme === btn.dataset.onizleme) { window.__hmOnizleme = null; return; }
+      }
+      window.__hmAudio = new Audio(btn.dataset.onizleme);
+      window.__hmOnizleme = btn.dataset.onizleme;
+      window.__hmAudio.onended = () => { btn.textContent = '▶ 30 sn'; window.__hmOnizleme = null; };
+      await window.__hmAudio.play();
+      btn.textContent = '⏸ 30 sn';
+    });
+
     // Parça dinleme
     document.querySelectorAll('[data-play]').forEach(btn => btn.onclick = async () => {
       if (window.__hmAudio && !window.__hmAudio.paused) {
@@ -1717,7 +2231,7 @@ body:not(.is-admin) .account-menu-links a[href="radyo-yonetim.html"]{display:non
   const bekle = ms => new Promise(r => setTimeout(r, ms));
   (async () => {
     for (let i = 0; i < 40 && !document.querySelector('[data-push]'); i++) await bekle(100);
-    for (const id of ['t1', 't3', 't2', 't5', 't4']) {
+    for (const id of ['t1', 't3', 't2', 't5', 't4', 't9', 't10']) {
       const b = document.querySelector('[data-push="' + id + '"]');
       if (b) b.click();
       await bekle(120);

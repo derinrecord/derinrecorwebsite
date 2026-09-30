@@ -52,19 +52,62 @@ test('ton ilişkisi camelot çarkındaki standart geçişleri tanır', () => {
 
 test('tempo ölçüsü yarım/çift tempoyu kopukluk saymaz', () => {
   assert.equal(H.tempo({ bpm: 124 }, { bpm: 126 }).tip, 'aynı hız');
+  // Sınır 5: 129 tam sınırda kalır, 130 bir adım öteye geçer.
   assert.equal(H.tempo({ bpm: 124 }, { bpm: 129 }).tip, 'yakın hız');
-  assert.equal(H.tempo({ bpm: 124 }, { bpm: 134 }).tip, 'hız kayması');
+  assert.equal(H.tempo({ bpm: 124 }, { bpm: 130 }).tip, 'hız kayması');
+  assert.equal(H.tempo({ bpm: 124 }, { bpm: 136 }).tip, 'hız kayması');
   assert.equal(H.tempo({ bpm: 124 }, { bpm: 62 }).tip, 'yarım/çift tempo');
   assert.equal(H.tempo({ bpm: 124 }, { bpm: 95 }).tip, 'uyumsuz hız');
   assert.equal(H.tempo({ bpm: null }, { bpm: 124 }).tip, 'bilinmiyor');
-  assert.equal(H.tempo({ bpm: 124 }, { bpm: 95 }).ceza, 45);
+  assert.equal(H.tempo({ bpm: 124 }, { bpm: 95 }).ceza, H.HIZ_COK_CEZA);
+  assert.equal(H.tempo({ bpm: 124 }, { bpm: 130 }).ceza, H.HIZ_AYIR_CEZA);
+});
+
+test('ton uyumlu olsa da hız farkı 5 BPM`i aşan çift yan yana sayılmaz', () => {
+  const a = parca('a', '8A', 124);
+  assert.equal(H.yanYana(a, parca('b', '9A', 129)), true, '5 BPM sınırda kalır');
+  assert.equal(H.yanYana(a, parca('b', '9A', 130)), false, '6 BPM sınırı aşar');
+  // Yarım/çift tempo bilinçli tercih: kural onu engellemez (124 ↔ 62).
+  assert.equal(H.yanYana(a, parca('b', '9A', 62)), true);
+  // Ton tutmuyorsa hız ne olursa olsun yan yana gelmez.
+  assert.equal(H.yanYana(a, parca('b', '2B', 124)), false);
+  // Hız bilinmiyorsa eksik veri ihlal sayılmaz; sıralama kilitlenmesin.
+  assert.equal(H.yanYana(parca('a', '8A', null), parca('b', '9A', 124)), true);
+  // Geçiş listesi de aynı kararı taşır.
+  assert.equal(H.gecisler([a, parca('b', '9A', 129)])[0].yanYana, true);
+  assert.equal(H.gecisler([a, parca('b', '9A', 130)])[0].yanYana, false);
+  assert.equal(H.gecisler([a, parca('b', '2B', 124)])[0].yanYana, false);
+});
+
+test('sıralayıcı ton uyumlu ama hızı uzak çifti ayırır, kaçınılmazsa köprü önerir', () => {
+  // a ile b komşu ton (8A → 9A) ama 10 BPM uzak. c araya girince iki komşuluk da
+  // hız sınırına yaklaşıyor; motor a-b'yi yan yana koymamalı.
+  const a = parca('a', '8A', 120), b = parca('b', '9A', 130), c = parca('c', '10A', 120);
+  const sira = H.autoOrder([a, b, c]);
+  const adlar = sira.map(t => t.id).join(' → ');
+  const uzaklik = Math.abs(sira.findIndex(t => t.id === 'a') - sira.findIndex(t => t.id === 'b'));
+  assert.notEqual(uzaklik, 1, 'a ile b yan yana gelmemeli: ' + adlar);
+  assert.equal(H.zincirPuanu(sira), enIyiPuan([a, b, c]), 'yine en iyi diziliş: ' + adlar);
+
+  // Başka çare yoksa (iki parçalık set) yan yana gelirler; ekran bunu söyleyip
+  // araya girecek parçanın tonunu ve hızını verir.
+  const tek = H.gecisler([a, b])[0];
+  assert.equal(tek.yanYana, false);
+  assert.equal(tek.seviye, 'zorlama');
+  assert.ok(tek.sorunlar.some(s => /ton uyumlu ama 10 BPM fark/.test(s)), tek.sorunlar.join(', '));
+  const k = H.kopru(a, b);
+  assert.equal(k.tekParca, true, '120–130 arası tek köprüyle kapanır');
+  assert.ok(Math.abs(k.bpmMin - 120) <= 5 && Math.abs(k.bpmMin - 130) <= 5,
+    'köprü hızı iki komşuyu da tutmalı: ' + k.bpmMin);
+  assert.ok(k.tonlar.length, 'köprü tonu önerilmeli: ' + k.tonlar.join(', '));
 });
 
 test('puan ton ilişkisi yoksa sonsuz eksi, tempo kötüyse belirgin düşük', () => {
   assert.equal(H.score(parca('a', '8A', 120), parca('b', '2B', 120)), -Infinity);
 
   const yakin = H.score(parca('a', '8A', 120, 5), parca('b', '9A', 122, 6));
-  // 10 BPM fark = hız kayması (ceza 14); 13 BPM zaten uyumsuz sınıra girer.
+  // 10 BPM fark = hız kayması; ceza ton kazancından büyük olduğu için bu
+  // komşuluk kârlı çıkmaz (13 BPM zaten uyumsuz sınıra girer).
   const kayma = H.score(parca('a', '8A', 120, 5), parca('b', '9A', 130, 6));
   assert.ok(yakin > kayma, 'tempo yakınken puan yüksek olmalı');
 
@@ -90,11 +133,18 @@ test('otomatik sıralama kaba kuvvetle bulunan en iyi diziyi yakalar', () => {
   assert.equal(H.zincirPuanu(sira), enIyiPuan(liste), 'bulunan dizi en iyiden kötü olamaz');
 });
 
-test('sıralama tonu olmayan parçayı dışarıda bırakır, sırasını korur', () => {
+test('tonu olmayan parça yerel puana girmez, hız sırasına yerleşir', () => {
+  // Yerel puana giremezler (komşuluk her yerde kopuk) ama tempoları var: setin
+  // yayını bozmasınlar diye hız sırasındaki yerlerine konur.
   const tonsuz1 = { id: 'n1', title: 'n1', camelot: null, bpm: 120 };
-  const tonsuz2 = { id: 'n2', title: 'n2', camelot: 'yok', bpm: 120 };
-  const sira = H.autoOrder([parca('a', '8A', 120, 5), tonsuz1, tonsuz2, parca('b', '9A', 121, 5)]);
-  assert.deepEqual(sira.map(t => t.id), ['a', 'b', 'n1', 'n2']);
+  const tonsuz2 = { id: 'n2', title: 'n2', camelot: 'yok', bpm: 126 };
+  const sira = H.autoOrder([parca('a', '8A', 118, 5), tonsuz1, tonsuz2, parca('b', '9A', 124, 5)]);
+  assert.deepEqual(sira.map(t => t.id), ['a', 'n1', 'b', 'n2'],
+    '118 → 120 → 124 → 126: eğri zikzak yapmamalı');
+  // Hızı bilinmeyen parça listenin sonunda kalır.
+  const bilinmez = { id: 'x', title: 'x', camelot: null, bpm: null };
+  const sonrasi = H.autoOrder([parca('a', '8A', 120, 5), parca('b', '9A', 121, 5), bilinmez]);
+  assert.equal(sonrasi[sonrasi.length - 1].id, 'x');
 });
 
 test('sıralama ulaşılamayan parçayı uca atar, bağlanabilen ikiliyi bozmaz', () => {
@@ -114,6 +164,60 @@ test('sıralama ulaşılamayan parçayı uca atar, bağlanabilen ikiliyi bozmaz'
     'tek kopukluk, o da ulaşılamayan parçaya giden geçiş olmalı: ' + adlar);
   assert.equal(gecis[gecis.length - 1].sonraki.id, 'kopuk', 'kopukluk uçta olmalı: ' + adlar);
   assert.ok(gecis[gecis.length - 1].sorunlar.includes('ton uyumsuz'));
+});
+
+test('set yayı ölçülür: inişler, zirvenin yeri ve yarı ortalamaları', () => {
+  const duz = H.yay([parca('a', '8A', 100), parca('b', '9A', 110), parca('c', '10A', 120)]);
+  assert.equal(duz.yukselen, true);
+  assert.equal(duz.inisSayi, 0);
+  assert.equal(duz.ilk, 100);
+  assert.equal(duz.son, 120);
+  assert.equal(duz.zirve.id, 'c');
+  assert.equal(duz.zirveYeri, 2);
+  assert.equal(duz.puan, 0, 'düzgün yükselen set yaydan ceza yemez');
+
+  // Geriye düşen adım: 20 BPM'lik iniş sayılır ve cezalanır.
+  const zikzak = H.yay([parca('a', '8A', 120), parca('b', '9A', 100), parca('c', '10A', 130)]);
+  assert.equal(zikzak.inisSayi, 1);
+  assert.equal(zikzak.inisToplam, 20);
+  assert.equal(zikzak.yukselen, false);
+  assert.ok(H.inisCeza(parca('a', '8A', 120), parca('b', '9A', 100)) > 0);
+
+  // 2 BPM'e kadar iniş "yumuşak iniş" sayılır, sorun değildir.
+  assert.equal(H.yay([parca('a', '8A', 120), parca('b', '9A', 118)]).inisSayi, 0);
+  assert.equal(H.yay([parca('a', '8A', 120), parca('b', '9A', 117)]).inisSayi, 1);
+  // Aynı hızdaki set yaydan ceza yemez (zirvede eşitlik keyfi sırayı cezalandırmasın).
+  assert.equal(H.yayPuanu([parca('a', '8A', 124), parca('b', '9A', 124), parca('c', '10A', 124)]), 0);
+});
+
+test('puan yön duyarlı: aynı çift yükselirken daha yüksek puan alır', () => {
+  // Paralel ton: iki yönde de ton kazancı aynı, fark yalnız hızın yönünde.
+  const yukari = H.score(parca('a', '8A', 122), parca('b', '8B', 128));
+  const asagi = H.score(parca('a', '8B', 128), parca('b', '8A', 122));
+  assert.ok(yukari > asagi, 'yükselen adım daha iyi: ' + yukari + ' > ' + asagi);
+  const g = H.gecisler([parca('a', '8A', 128), parca('b', '9A', 122)])[0];
+  assert.ok(g.inis && g.inis.dusus === 6, 'iniş kaydedilmeli');
+  assert.ok(g.sorunlar.some(s => /hızdan yavaşa dönüş/.test(s)), g.sorunlar.join(', '));
+  assert.equal(H.gecisler([parca('a', '8A', 122), parca('b', '9A', 128)])[0].inis, null);
+});
+
+test('sıralayıcı seti yavaştan hızlıya dizer', () => {
+  // Aynı ton zinciri ters yönde de kurulabilir; yay terimi yavaştan hızlıya olanı
+  // seçmeli: en yavaş parça başta, en hızlı parça sonda.
+  const liste = [
+    parca('hizli', '9A', 132, 6), parca('orta', '8A', 124, 5),
+    parca('yavas', '8A', 112, 3), parca('kopuk', '4B', 100, 2)
+  ];
+  const sira = H.autoOrder(liste);
+  const adlar = sira.map(t => t.id + '(' + t.bpm + ')').join(' → ');
+  const y = H.yay(sira);
+  assert.equal(y.inisSayi, 0, 'tek tek hız düşüşü olmamalı: ' + adlar);
+  assert.equal(y.zirve.id, 'hizli', 'en hızlı parça sonda olmalı: ' + adlar);
+  assert.equal(y.zirveYeri, sira.length - 1, adlar);
+  assert.equal(sira[0].id, y.enYavas.id, 'en yavaş parça başta olmalı: ' + adlar);
+  assert.equal(y.enYavas.id, 'kopuk', '100 BPM\'lik parça yürürlüğe girsin: ' + adlar);
+  assert.equal(y.puan, 0, 'yay cezasız: ' + adlar);
+  assert.equal(H.zincirPuanu(sira), enIyiPuan(liste), adlar);
 });
 
 test('geçişler üç seviyede okunur ve sorunu adıyla yazar', () => {
@@ -219,6 +323,47 @@ test('uyumlu tonlar setteki parçalara en çok bağlanan anahtarları dizer', ()
   });
 });
 
+test('tarz etiketi tempo, enerji ve makamdan okunur', () => {
+  assert.equal(H.tarzEtiketi({ bpm: 122, energy: 5 }), 'melodic house');
+  assert.equal(H.tarzEtiketi({ bpm: 96, energy: 3 }), 'downtempo / lounge (sakin)');
+  assert.equal(H.tarzEtiketi({ bpm: 140, energy: 8 }), 'yüksek enerji / tech (yoğun)');
+  assert.equal(H.tarzEtiketi({ bpm: 112 }), 'organik deep house');
+  assert.match(H.tarzEtiketi({ bpm: 122, energy: 5, makam: 'Hicaz' }), /^Anadolu elektronik · melodic house$/);
+  assert.equal(H.tarzEtiketi({ bpm: null }), 'tempo bilinmiyor');
+});
+
+test('sanatçı profili katalogdaki parçalardan tarz imzası çıkarır', () => {
+  const katalog = [
+    { id: 'k1', artist: 'Mahmut Orhan', camelot: '8A', bpm: 122, energy: 4 },
+    { id: 'k2', artist: 'Mahmut Orhan', camelot: '8A', bpm: 124, energy: 6, makam: 'Hicaz' },
+    { id: 'k3', artist: 'Ilkay Sencan', camelot: '9A', bpm: 125, energy: 6 },
+    { id: 'k4', artist: '  ', camelot: '9A', bpm: 120, energy: 5 }
+  ];
+  const profiller = H.sanatciProfilleri(katalog);
+  assert.equal(profiller.length, 2, 'sanatçısı girilmemiş parça profil oluşturmaz');
+  const m = profiller.find(x => x.sanatci === 'Mahmut Orhan');
+  assert.equal(m.bpm, 123, 'ortalama hız');
+  assert.equal(m.enerji, 5, 'ortalama enerji');
+  assert.deepEqual(m.enCokTonlar, ['8A']);
+  assert.equal(m.parcalar.length, 2);
+  assert.match(m.tarz, /^Anadolu elektronik · melodic house$/);
+});
+
+test('katalogdan sete uyan sanatçılar hem ton hem hız süzgecinden geçer', () => {
+  const set = [{ id: 's1', title: 'A', artist: 'Konuk', camelot: '8A', bpm: 122, energy: 5 }];
+  const uyan = { id: 'k1', title: 'Uyan', artist: 'Mahmut Orhan', camelot: '8A', bpm: 124, energy: 5 };
+  const hizUzak = { id: 'k2', title: 'Hız Uzak', artist: 'Hızlı', camelot: '8A', bpm: 140, energy: 5 };
+  const tonUzak = { id: 'k3', title: 'Ton Uzak', artist: 'Uzak', camelot: '2B', bpm: 123, energy: 5 };
+  assert.equal(H.settekiYeri(set, uyan).length, 1);
+  assert.equal(H.settekiYeri(set, hizUzak).length, 0, 'ton uysa da 18 BPM uzak parça yan yana gelmez');
+  assert.equal(H.settekiYeri(set, tonUzak).length, 0);
+  // Sette olan parça kendi sanatçısını tekrar önermez; yalnız uyan sanatçı kalır.
+  const oneriler = H.uyumluSanatcilar(set, [uyan, hizUzak, tonUzak].concat(set), 5);
+  assert.deepEqual(oneriler.map(x => x.sanatci), ['Mahmut Orhan']);
+  assert.deepEqual(oneriler[0].parcalar.map(t => t.id), ['k1']);
+  assert.equal(oneriler[0].bpmMin, 124);
+});
+
 test('öneri bağlantısı ton ve hızı arama sorgusuna çevirir', () => {
   const sorgu = H.oneriSorgusu({ tonlar: ['8A', '8B'], bpmMin: 118, bpmMax: 124 });
   assert.equal(sorgu, '8A 8B 118-124 BPM mix');
@@ -232,6 +377,12 @@ test('öneri bağlantısı ton ve hızı arama sorgusuna çevirir', () => {
   // Tek hız varsa aralık yazılmaz; hiç hız yoksa yalnız ton kalır.
   assert.equal(H.oneriSorgusu({ tonlar: ['8A'], bpmMin: 120, bpmMax: 120 }), '8A 120 BPM mix');
   assert.equal(H.oneriSorgusu({ tonlar: ['8A'] }), '8A mix');
+
+  // Sanatçı/tarz verilirse sorgu o tarza bağlanır: öneri parçanın tarzını taşır.
+  assert.equal(
+    H.oneriSorgusu({ sanatci: 'Mahmut Orhan', tarz: 'melodic house', tonlar: ['8A', '8B'], bpmMin: 118, bpmMax: 124 }),
+    'Mahmut Orhan benzeri melodic house 8A 8B 118-124 BPM mix');
+  assert.equal(H.oneriSorgusu({ sanatci: 'Mahmut Orhan' }), 'Mahmut Orhan benzeri mix');
 });
 
 test('ekran motoru kendi kopyasını taşımaz, ortak dosyayı kullanır', () => {

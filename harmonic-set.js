@@ -40,11 +40,18 @@
     return null;
   }
 
-  // Tempo ölçüsü. Eşikler DJ pratiğinden: 3 BPM'e kadar fark duyulmaz, 6 BPM
-  // perde kaydırmasıyla kapanır, 12 BPM sonrası geçiş kendini belli eder.
-  // Yarım/çift tempo (62 → 124) ayrı sayılır: kulakta kopukluk değildir.
-  const HIZ_TOLERANS = 6;
+  // Tempo ölçüsü. Eşikler DJ pratiğinden: 3 BPM'e kadar fark duyulmaz, 5 BPM
+  // perde kaydırmasıyla kapanır. 5 BPM'i aşan iki parça ton tutsa bile yan yana
+  // konmaz: 6–12 BPM arası araya köprü ister, 12 BPM sonrası geçiş kendini belli
+  // eder. Yarım/çift tempo (62 → 124) ayrı sayılır: kulakta kopukluk değildir.
+  const HIZ_TOLERANS = 5;
   const HIZ_SINIR = 12;
+  // Yan yana gelmemesi gereken çiftin cezası, en iyi ton geçişinin kazancından
+  // (6 × 10 + 6 = 66) büyük olmalı. Böylece hız farkı 5 BPM'i aşan komşuluk
+  // hiçbir zaman kârlı çıkmaz; sıralayıcı onu ancak başka çare yokken kabul
+  // eder ve ekran köprü önerir.
+  const HIZ_AYIR_CEZA = 70;
+  const HIZ_COK_CEZA = 95;
 
   function tempo(a, b) {
     const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
@@ -52,17 +59,100 @@
     const fark = Math.abs(x - y);
     if (fark <= 3) return { fark, tip: 'aynı hız', ceza: 0 };
     if (fark <= HIZ_TOLERANS) return { fark, tip: 'yakın hız', ceza: 3 };
-    if (fark <= HIZ_SINIR) return { fark, tip: 'hız kayması', ceza: 14 };
+    if (fark <= HIZ_SINIR) return { fark, tip: 'hız kayması', ceza: HIZ_AYIR_CEZA };
     const yarim = Math.min(Math.abs(x * 2 - y), Math.abs(x - y * 2));
     if (yarim <= 3) return { fark, tip: 'yarım/çift tempo', ceza: 6 };
-    return { fark, tip: 'uyumsuz hız', ceza: 45 };
+    return { fark, tip: 'uyumsuz hız', ceza: HIZ_COK_CEZA };
   }
 
-  // Tek geçişin puanı. Ton ilişkisi yoksa -Infinity: zincire hiç girmez.
+  // İki parça yan yana konabilir mi? Ton ilişkisi olmalı ve hız farkı 5 BPM'i
+  // aşmamalı. Yarım/çift tempo kuralın dışında: 124 ile 62 yan yana gelebilir,
+  // çünkü bu kopukluk değil bilinçli bir tercihtir. Hız bilinmiyorsa engel
+  // konmaz; eksik veriyi ihlal saymak sıralamayı haksız yere kilitler.
+  function yanYana(a, b) {
+    if (!relation(a && a.camelot, b && b.camelot)) return false;
+    const h = tempo(a, b);
+    if (h.fark == null) return true;
+    return h.fark <= HIZ_TOLERANS || h.tip === 'yarım/çift tempo';
+  }
+
+  // Set yayı (genel bakış). Yerel puan "bu iki parça uyar mı" der; setin eğrisini
+  // görmez, çünkü tek tek bakıldığında 122 → 124 ile 124 → 122 eşit derecede
+  // yakındır. Oysa set yavaştan hızlıya akmalı: adım adım hız düşüşü ve zirveyi
+  // erken harcamak yayı bozar. Ölçüt O(n) kalır (sıralama yapılmaz).
+  const INIS_TOLERANS = 2;   // 2 BPM'e kadar düşüş normal: "yumuşak iniş"
+  const INIS_CEZA = 12;      // tolerans üstü her BPM için
+  const YAY_CEZA = 3;        // ilk yarı ikinci yarıdan hızlıysa her BPM için
+  const ZIRVE_CEZA = 10;     // zirveden sonra izin verilenden fazla parça başına
+  const ZIRVE_PAYI = 0.2;    // setin en çok bu kadarı zirveden sonra gelebilir
+
+  // Adım yönü: hızdan yavaşa dönmek yayı bozar. Tolerans içindeki küçük inişler
+  // (aynı ton ilişkisindeki "yumuşak iniş" gibi) cezasız kalır.
+  function inisCeza(a, b) {
+    const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
+    if (!x || !y) return 0;
+    const dusus = x - y;
+    return dusus > INIS_TOLERANS ? (dusus - INIS_TOLERANS) * INIS_CEZA : 0;
+  }
+
+  const ortBpm = dizi => {
+    const v = dizi.map(t => Number(t && t.bpm) || 0).filter(Boolean);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0;
+  };
+
+  // Zincirin tamamına bakışı: eğri yükseliyor mu, nerede geri düşüyor, zirve
+  // nerede? Ekran bunu yazar; puanı da buradan türetilir ki ikisi ayrışmasın.
+  function yay(set) {
+    const sira = Array.isArray(set) ? set : [];
+    const inisler = [];
+    let inisToplam = 0;
+    for (let i = 1; i < sira.length; i++) {
+      const x = Number(sira[i - 1] && sira[i - 1].bpm) || 0;
+      const y = Number(sira[i] && sira[i].bpm) || 0;
+      if (!x || !y) continue;
+      if (x - y > INIS_TOLERANS) {
+        inisler.push({ sira: i, onceki: sira[i - 1], sonraki: sira[i], dusus: x - y });
+        inisToplam += x - y;
+      }
+    }
+    const yarim = Math.floor(sira.length / 2);
+    const ilkYari = ortBpm(sira.slice(0, yarim));
+    const ikinciYari = ortBpm(sira.slice(yarim));
+    let zirve = sira[0] || null, zirveYeri = 0, enYavas = sira[0] || null, enYavasYeri = 0;
+    sira.forEach((t, i) => {
+      const v = Number(t && t.bpm) || 0;
+      if (!v) return;
+      // Zirvede eşitlik varsa en sondaki sayılır: aynı hızdaki parçaların
+      // sırası keyfi olduğu için set yaydan haksız ceza yememeli.
+      if (v >= (Number(zirve && zirve.bpm) || 0)) { zirve = t; zirveYeri = i; }
+      if (v < (Number(enYavas && enYavas.bpm) || Infinity)) { enYavas = t; enYavasYeri = i; }
+    });
+    const sonrasi = sira.length - 1 - zirveYeri;
+    const izinli = Math.floor(sira.length * ZIRVE_PAYI);
+    const zirveCezasi = Math.max(0, sonrasi - izinli) * ZIRVE_CEZA;
+    const yarimCezasi = Math.max(0, ilkYari - ikinciYari) * YAY_CEZA;
+    // Ceza yokken -0 sızmasın: ekranda ve testte "0" olarak okunsun.
+    const puan = zirveCezasi + yarimCezasi ? -(zirveCezasi + yarimCezasi) : 0;
+    return {
+      ilk: Number(sira[0] && sira[0].bpm) || null,
+      son: Number(sira[sira.length - 1] && sira[sira.length - 1].bpm) || null,
+      ilkYari: Math.round(ilkYari), ikinciYari: Math.round(ikinciYari),
+      zirve, zirveYeri, zirveSonrasi: sonrasi, zirveCezasi,
+      enYavas, enYavasYeri, yarimCezasi,
+      inisler, inisSayi: inisler.length, inisToplam,
+      yukselen: inisler.length === 0 && yarimCezasi === 0,
+      puan
+    };
+  }
+
+  const yayPuanu = sira => yay(sira).puan;
+
+  // Tek geçişin puanı. Ton ilişkisi yoksa -Infinity: zincire hiç girmez. Puan
+  // yön duyarlıdır: hızdan yavaşa dönmek "inisCeza" ile ayrıca düşer.
   function score(a, b) {
     const r = relation(a && a.camelot, b && b.camelot);
     if (!r) return -Infinity;
-    let s = r.puan * 10 - tempo(a, b).ceza;
+    let s = r.puan * 10 - tempo(a, b).ceza - inisCeza(a, b);
     const ea = Number(a && a.energy) || 0, eb = Number(b && b.energy) || 0;
     if (ea && eb) {
       const d = eb - ea;
@@ -80,8 +170,12 @@
     const p = score(a, b);
     return p === -Infinity ? KOPUK_CEZA : p;
   };
+  // Zincir puanı = yerel geçişler + setin genel yayı. Genel terim olmadan
+  // sıralayıcı aynı komşuluk puanlarıyla hem 96 → 131 hem 131 → 96 dizisini
+  // kurabilir; yay terimi yavaştan hızlıya olanı seçtirir.
   const zincirPuanu = sira =>
-    sira.slice(1).reduce((toplam, x, i) => toplam + baglantiPuanu(sira[i], x), 0);
+    sira.slice(1).reduce((toplam, x, i) => toplam + baglantiPuanu(sira[i], x), 0)
+    + yayPuanu(sira);
 
   // Açgözlü zincir + iki-opt iyileştirme. Tonu olmayan parçalar sıralamaya
   // girmez, sonunda kendi aralarındaki sırayı korur.
@@ -155,7 +249,21 @@
       }
       if (!iyilesti) break;
     }
-    return en.concat(tonsuz);
+
+    // Tonu olmayan parçalar yerel puana giremez (komşuluk her yerde kopuk), ama
+    // tempoları var. Setin yayını bozmasınlar diye hız sırasına göre yerleştirilir:
+    // her parça, kendisinden yavaş olanların hemen ardına girer.
+    const sonuc = en.slice();
+    tonsuz.forEach(t => {
+      const v = Number(t && t.bpm) || 0;
+      let yer = sonuc.length;
+      if (v) {
+        yer = sonuc.findIndex(x => (Number(x && x.bpm) || Infinity) > v);
+        if (yer < 0) yer = sonuc.length;
+      }
+      sonuc.splice(yer, 0, t);
+    });
+    return sonuc;
   }
 
   // Her geçişin okunur hâli: seviye 'iyi' | 'zorlama' | 'uyumsuz'.
@@ -170,10 +278,24 @@
       if (!iliski) sorunlar.push('ton uyumsuz');
       else if (iliski.puan <= 2) sorunlar.push('ton geçişi zorlama');
       if (hiz.tip === 'uyumsuz hız') sorunlar.push('tempo uyumsuz');
-      else if (hiz.tip === 'hız kayması') sorunlar.push('tempo kayması');
+      else if (hiz.tip === 'hız kayması') {
+        sorunlar.push('tempo kayması');
+        // Ton tutuyor da olsa bu iki parça yan yana konmamalı: sebebi tek
+        // cümlede yazılır ki köprünün neden gerektiği okunabilsin.
+        if (iliski) sorunlar.push('ton uyumlu ama ' + hiz.fark + ' BPM fark var');
+      }
+      // Yay yönü: set yavaştan hızlıya akmalı, bu adım geriye dönüyor.
+      const dusus = (Number(onceki && onceki.bpm) || 0) - (Number(sonraki && sonraki.bpm) || 0);
+      const inis = dusus > INIS_TOLERANS ? { dusus, ceza: inisCeza(onceki, sonraki) } : null;
+      if (inis) sorunlar.push('hızdan yavaşa dönüş (' + dusus + ' BPM)');
       const seviye = (!iliski || hiz.tip === 'uyumsuz hız') ? 'uyumsuz'
-        : ((iliski.puan <= 2 || hiz.tip === 'hız kayması') ? 'zorlama' : 'iyi');
-      out.push({ sira: i, onceki, sonraki, iliski, hiz, sorunlar, seviye, puan: baglantiPuanu(onceki, sonraki) });
+        : ((iliski.puan <= 2 || hiz.tip === 'hız kayması' || inis) ? 'zorlama' : 'iyi');
+      out.push({
+        sira: i, onceki, sonraki, iliski, hiz, sorunlar, seviye, inis,
+        // Komşuluk kuralı: ton uyumlu + hız farkı en çok 5 BPM.
+        yanYana: yanYana(onceki, sonraki),
+        puan: baglantiPuanu(onceki, sonraki)
+      });
     }
     return out;
   }
@@ -309,8 +431,87 @@
       .filter(t => !sira.some(s => relation(s.camelot, t.camelot) || relation(t.camelot, s.camelot)));
   }
 
+  // Tarz etiketi. Katalogda tür alanı yok; tempo, enerji ve makam üçlüsünden
+  // okunur. Etiket yalnız süs değil: dış servis aramasına da girer, böylece
+  // öneri aynı tarzda kalsın (ör. "Mahmut Orhan benzeri melodic house").
+  function tarzEtiketi(parca) {
+    const bpm = Number(parca && parca.bpm) || 0;
+    const enerji = Number(parca && parca.energy) || 0;
+    const govde = !bpm ? 'tempo bilinmiyor'
+      : bpm < 100 ? 'downtempo / lounge'
+      : bpm < 115 ? 'organik deep house'
+      : bpm < 125 ? 'melodic house'
+      : bpm < 133 ? 'progressive house'
+      : 'yüksek enerji / tech';
+    const eki = enerji >= 7 ? ' (yoğun)' : (enerji && enerji <= 3 ? ' (sakin)' : '');
+    return ((parca && parca.makam) ? 'Anadolu elektronik · ' : '') + govde + eki;
+  }
+
+  // Katalogdaki sanatçıların tarz imzası: parçalarından çıkan hız, enerji ve
+  // ton eğilimi. "Mahmut Orhan tarzı nedir?" sorusunun elimizdeki veriyle
+  // cevabı budur; dışarıdan hiçbir şey çekmeden hesaplanır.
+  function sanatciProfilleri(katalog) {
+    const harita = new Map();
+    (Array.isArray(katalog) ? katalog : []).forEach(t => {
+      const ad = String((t && t.artist) || '').trim();
+      if (!ad) return;
+      if (!harita.has(ad)) harita.set(ad, { sanatci: ad, parcalar: [], tonSayi: {}, makamlar: {}, bpmToplam: 0, bpmSayi: 0, enerjiToplam: 0, enerjiSayi: 0 });
+      const p = harita.get(ad);
+      p.parcalar.push(t);
+      if (t.camelot) p.tonSayi[t.camelot] = (p.tonSayi[t.camelot] || 0) + 1;
+      if (t.makam) p.makamlar[t.makam] = (p.makamlar[t.makam] || 0) + 1;
+      if (Number(t.bpm)) { p.bpmToplam += Number(t.bpm); p.bpmSayi++; }
+      if (Number(t.energy)) { p.enerjiToplam += Number(t.energy); p.enerjiSayi++; }
+    });
+    return [...harita.values()].map(p => {
+      const bpm = p.bpmSayi ? Math.round(p.bpmToplam / p.bpmSayi) : null;
+      const enerji = p.enerjiSayi ? Math.round(p.enerjiToplam / p.enerjiSayi) : null;
+      const enCokTonlar = Object.entries(p.tonSayi).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+      const enCokMakam = Object.keys(p.makamlar)[0] || null;
+      return {
+        sanatci: p.sanatci, parcalar: p.parcalar, bpm, enerji, tonSayi: p.tonSayi,
+        enCokTonlar, makamlar: Object.keys(p.makamlar),
+        tarz: tarzEtiketi({ bpm, energy: enerji, makam: enCokMakam })
+      };
+    }).sort((a, b) => b.parcalar.length - a.parcalar.length) ;
+  }
+
+  // Bir parça setin neresine girebilir? Tonu uyan ve hızı 5 BPM içinde kalan
+  // komşular listelenir; boş liste "bu parça sete girmez" demektir.
+  function settekiYeri(set, parca) {
+    return (Array.isArray(set) ? set : []).filter(s => s.id !== parca.id
+      && (relation(s.camelot, parca.camelot) || relation(parca.camelot, s.camelot))
+      && (yanYana(s, parca) || yanYana(parca, s)));
+  }
+
+  // Katalogdan, sete gerçekten girebilecek sanatçılar: her sanatçının setle hem
+  // tonu hem hızı uyan parçaları varsa önerilir. Dışarıya çıkmadan "bu tarz
+  // buraya uyar" diyebilmenin yolu.
+  function uyumluSanatcilar(set, katalog, adet) {
+    const sira = Array.isArray(set) ? set : [];
+    const settekiIdler = new Set(sira.map(t => t && t.id));
+    return sanatciProfilleri(katalog)
+      .map(p => {
+        const uyan = p.parcalar.filter(t => t && !settekiIdler.has(t.id) && settekiYeri(sira, t).length);
+        if (!uyan.length) return null;
+        const bpmlar = uyan.map(t => Number(t.bpm)).filter(Boolean);
+        return {
+          sanatci: p.sanatci, tarz: p.tarz, bpm: p.bpm, enerji: p.enerji,
+          parcalar: uyan,
+          enCokTonlar: p.enCokTonlar.filter(ton => uyan.some(t => t.camelot === ton)),
+          bpmMin: bpmlar.length ? Math.min(...bpmlar) : null,
+          bpmMax: bpmlar.length ? Math.max(...bpmlar) : null
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.parcalar.length - a.parcalar.length)
+      .slice(0, Number(adet) || 5);
+  }
+
   // Dış servis anahtarı yok: öneri gerçek şarkı listesi değil, arama
-  // bağlantısıdır. Sorgu ton + hız taşır, sonucu kullanıcı seçer.
+  // bağlantısıdır. Sorgu ton + hız taşır, sonucu kullanıcı seçer. Sanatçı ve
+  // tarz verilirse sorguya girer ("Mahmut Orhan benzeri melodic house …"),
+  // böylece öneri parçanın tarzında kalır.
   function aramaLinkleri(sorgu) {
     const kod = encodeURIComponent(String(sorgu == null ? '' : sorgu).trim());
     return {
@@ -325,13 +526,16 @@
     const hiz = (h.bpmMin && h.bpmMax)
       ? (h.bpmMin === h.bpmMax ? h.bpmMin + ' BPM' : h.bpmMin + '-' + h.bpmMax + ' BPM')
       : (h.bpm ? h.bpm + ' BPM' : '');
-    return [ton, hiz].filter(Boolean).join(' ') + ' mix';
+    const tarz = [h.sanatci ? String(h.sanatci) + ' benzeri' : '', h.tarz || ''].filter(Boolean).join(' ');
+    return [tarz, ton, hiz].filter(Boolean).join(' ') + ' mix';
   }
 
   return {
-    parseKey, relation, tempo, score, autoOrder, gecisler,
-    kopru, kopruTonlari, cikilanTonlar, girilenTonlar, uyumluTonlar,
+    parseKey, relation, tempo, score, autoOrder, gecisler, yanYana, inisCeza,
+    yay, yayPuanu, kopru, kopruTonlari, cikilanTonlar, girilenTonlar, uyumluTonlar,
     uymayanlar, setDisiKalanlar, aramaLinkleri, oneriSorgusu, zincirPuanu,
-    HIZ_TOLERANS, HIZ_SINIR, KOPUK_CEZA
+    tarzEtiketi, sanatciProfilleri, settekiYeri, uyumluSanatcilar,
+    HIZ_TOLERANS, HIZ_SINIR, HIZ_AYIR_CEZA, HIZ_COK_CEZA, KOPUK_CEZA,
+    INIS_TOLERANS, INIS_CEZA, ZIRVE_CEZA
   };
 });
