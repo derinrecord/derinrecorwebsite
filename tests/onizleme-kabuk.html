@@ -1288,8 +1288,11 @@
   function markaListesi(state, D, ui) {
     const q = norm(state.q);
     const now = ui.now();
+    // Arama marka adına olduğu kadar çalma listesi adına da bakar: "akşam
+    // kapanışı" yazan yönetici o listeyi taşıyan markayı bulmalı.
     const satirlar = D.brands
-      .filter(b => hit(q, b.name))
+      .filter(b => hit(q, b.name)
+        || (D.playlists || []).some(pl => pl.brand_id === b.id && hit(q, pl.name)))
       .map(b => {
         const k = kaynak(D, b.id);
         const subeler = D.players.filter(p => p.brand_id === b.id);

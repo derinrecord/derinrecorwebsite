@@ -1160,6 +1160,18 @@ test('çalma listeleri sekmesi kalktı, liste yönetimi marka sayfasında', () =
   assert.ok(!marka.includes('ŞUBELER VE ÇALDIKLARI'), 'şube durum tablosu kalmamalı');
 });
 
+// Marka araması çalma listesi adına da bakar: yönetici listeyi bilir, markayı
+// hatırlamaz. Eşleşmeyen marka çizilmez ki arama daraltısın.
+test('marka araması çalma listesi adına da bakar', () => {
+  const marka = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', q: 'brew' }), LISTE_D, ui).html;
+  assert.ok(marka.includes('Brew Lab'), 'marka adıyla eşleşen kalmalı');
+  assert.ok(!marka.includes('Mokka Coffee'), 'eşleşmeyen marka çizilmemeli');
+
+  const liste = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', q: 'akşam akışı' }), LISTE_D, ui).html;
+  assert.ok(liste.includes('Mokka Coffee'), 'liste adı o markayı bulmalı');
+  assert.ok(!liste.includes('Brew Lab'), 'listesi eşleşmeyen marka çizilmemeli');
+});
+
 // Şube çekmecesi atamanın tek giriş noktası: atanmış listeleri adlarıyla yazar,
 // pencereyi LİSTE ATA açar; özellik kurulmadıysa düğme çizilmez.
 test('şube çekmecesi atanmış listeleri gösterir ve atama penceresini açar', () => {
