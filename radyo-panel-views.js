@@ -1605,6 +1605,17 @@
   const subeYukluListeleri = (D, playerId) => (D.playerPlaylists || [])
     .filter(x => x.player_id === playerId);
 
+  // İki aşamalı seçim: yönetim havuza koyar, marka kendi panelinden seçer.
+  // Yönetici "10 liste atadım ama cihaz 4 liste gösteriyor" diye şaşırmasın:
+  // havuzun kaçının marka tarafından seçildiği satırda yazılır.
+  const markaSecimiOzeti = (D, playerId) => {
+    const havuz = subeYukluListeleri(D, playerId);
+    return {
+      toplam: havuz.length,
+      secili: havuz.filter(x => x.secili !== false).length
+    };
+  };
+
   function subeDurumTablosu(D, b) {
     const subeler = D.players.filter(p => p.brand_id === b.id);
     const genel = kaynak(D, b.id);
@@ -1632,6 +1643,11 @@
           ? chip('live', yukluAdlar.length + ' LİSTE', true)
             + `<span class="sub">${esc(yukluAdlar.slice(0, 2).join(', '))}${yukluAdlar.length > 2 ? ' +' + (yukluAdlar.length - 2) + ' liste' : ''}</span>`
           : chip('danger', 'LİSTE ATANMADI'));
+      // Havuzun tamamı seçili değilse markanın elediği listeler var demektir.
+      const secim = markaSecimiOzeti(D, p.id);
+      const markaNotu = D.subeListeleriVar && secim.toplam && secim.secili < secim.toplam
+        ? `<span class="sub">marka ${secim.secili}/${secim.toplam} seçti</span>`
+        : '';
       const dugme = D.subeListeleriVar
         ? `<button class="btn sm primary" data-act="sube-listeler" data-id="${esc(p.id)}" type="button">LİSTE ATA</button>`
         : '';
@@ -1643,7 +1659,7 @@
           ${k.tip ? `<span class="sub">${k.tip === 'liste' ? 'çalma listesi' : 'yayın klasörü'}</span>` : ''}</td>
         <td class="tight">${ozel.tip ? chip('gold', 'KENDİ SEÇİMİ', true)
           : (genel.tip ? chip('off', 'MARKA GENELİ') : chip('off', 'ATANMAMIŞ'))}</td>
-        <td class="tight"><div class="row-actions">${listeDurumu}${dugme}</div></td>
+        <td class="tight"><div class="row-actions">${listeDurumu}${dugme}</div>${markaNotu}</td>
       </tr>`);
     });
     return `<table>
@@ -1657,22 +1673,28 @@
   }
 
   // Şubeye liste yükleme penceresi: markanın listeleri onay kutularıyla
-  // sunulur. İşaretlenenler o şubenin cihazındaki seçicide görünür; hiçbiri
-  // işaretlenmezse şube çalmaz. Pencere yalnız "KAYDET" ile yazar.
+  // sunulur. İşaretlenenler o şubenin HAVUZUNA girer; marka kendi panelinden
+  // bu havuzun içinden seçer. Hiçbiri işaretlenmezse şube çalmaz.
+  // Pencere yalnız "KAYDET" ile yazar.
   function subeListePenceresi(D, ui, p) {
     const b = D.brands.find(x => x.id === p.brand_id);
     const listeler = (D.playlists || []).filter(pl => pl.brand_id === p.brand_id);
-    const yuklu = new Set(subeYukluListeleri(D, p.id).map(x => x.playlist_id));
+    const havuz = subeYukluListeleri(D, p.id);
+    const yuklu = new Set(havuz.map(x => x.playlist_id));
+    const seciliOlan = new Set(havuz.filter(x => x.secili !== false).map(x => x.playlist_id));
     const satirlar = listeler.map(pl => {
       const adet = D.playlistTracks.filter(x => x.playlist_id === pl.id).length;
+      const markaEledi = yuklu.has(pl.id) && !seciliOlan.has(pl.id);
       return `<label class="sube-liste">
         <input type="checkbox" value="${esc(pl.id)}" data-sube-liste${yuklu.has(pl.id) ? ' checked' : ''}>
-        <span><b>${esc(pl.name)}</b><span class="sub">${adet} parça</span></span>
+        <span><b>${esc(pl.name)}</b><span class="sub">${adet} parça${markaEledi ? ' · <b>marka seçmedi</b>' : ''}</span></span>
       </label>`;
     }).join('');
+    const secim = markaSecimiOzeti(D, p.id);
     return `
       <p class="sub">${esc(b ? b.name : 'Marka')} · <b>${esc(p.label)}</b> şubesine hangi çalma listelerini atıyorsun?
-        <b>Birden çok liste seçebilirsin.</b> Kafedeki personel seçicisi yalnız burada işaretlediklerini görür.</p>
+        <b>Birden çok liste seçebilirsin.</b> İşaretlediklerin bu şubenin havuzuna girer; marka kendi panelinden
+        havuzun içinden hangilerinin çalacağını seçer.</p>
       <div class="row" style="margin:12px 0">
         <button class="btn sm" data-act="sube-liste-hepsi" type="button">TÜMÜNÜ SEÇ</button>
         <button class="btn sm" data-act="sube-liste-hicbiri" type="button">HİÇBİRİNİ SEÇ</button>
@@ -1680,7 +1702,16 @@
       </div>
       ${listeler.length
         ? `<div class="sube-liste-kutu">${satirlar}</div>`
-        : '<div class="empty">Bu markanın henüz çalma listesi yok. Önce marka sayfasından liste oluştur.</div>'}`;
+        : '<div class="empty">Bu markanın henüz çalma listesi yok. Önce marka sayfasından liste oluştur.</div>'}
+      ${secim.toplam
+        ? `<hr class="divider">
+          <div class="row">
+            <span class="key">${ui.brandUrl(b ? b.slug : '')}?sube=${esc(p.id)}</span>
+            <button class="btn sm" data-act="copy" data-copy="${esc(ui.brandUrl(b ? b.slug : '') + '?sube=' + p.id)}" type="button">ŞUBE PANELİ LİNKİNİ KOPYALA</button>
+          </div>
+          <p class="sub">Bu link markayı doğrudan bu şubeye getirir: erişim kodunu giren marka yalnız ${esc(p.label)} şubesinin listelerini seçer.
+            Şu an havuzda <b>${secim.toplam}</b> liste var, marka bunlardan <b>${secim.secili}</b> tanesini seçmiş.</p>`
+        : '<p class="sub">Havuza henüz liste koymadın; marka panelinde seçilecek bir şey yok.</p>'}`;
   }
 
   // Elle atama formu. İki kutu da boş gelir: hiçbir seçim hazır yapılmaz, çünkü

@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=38"></script>
+<script src="radyo-panel-views.js?v=39"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -83,11 +83,13 @@
     // seçicisi yalnız burada işaretli listeleri gösterir. p3'e hiç liste
     // yüklenmemiş: o şube çalmaz, ekran bunu işaretler.
     playerPlaylists: [
-      { player_id: 'p1', playlist_id: 'l1', sort_order: 0 },
-      { player_id: 'p1', playlist_id: 'l3', sort_order: 1 },
-      { player_id: 'p1', playlist_id: 'l5', sort_order: 2 },
-      { player_id: 'p2', playlist_id: 'l3', sort_order: 0 },
-      { player_id: 'p4', playlist_id: 'l4', sort_order: 0 }
+      // secili: markanın kendi panelinden seçimi. İşareti kaldırılan liste o
+      // şubenin cihazında görünmez; p1'de bir liste marka tarafından elenmiş.
+      { player_id: 'p1', playlist_id: 'l1', sort_order: 0, secili: true },
+      { player_id: 'p1', playlist_id: 'l3', sort_order: 1, secili: true },
+      { player_id: 'p1', playlist_id: 'l5', sort_order: 2, secili: false },
+      { player_id: 'p2', playlist_id: 'l3', sort_order: 0, secili: true },
+      { player_id: 'p4', playlist_id: 'l4', sort_order: 0, secili: true }
     ],
     subeListeleriVar: true,
     playerBroadcast: [

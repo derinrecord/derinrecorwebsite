@@ -390,6 +390,110 @@ body{background:#0b0b0d;padding:22px;display:block}
   return;
 }
 
+// "marka" modu marka panelini (coffee-marka) önizler: erişim kodunun kilidi,
+// sunumun kendisi ve şube listesi seçimi bir arada. Gerçek sayfa gömülür,
+// yalnız sunucu taklit edilir. Taklit sunucu havuzu bellekte tutar: kaydedilen
+// seçim yeniden okunduğunda da görünür, yani seçimin kalıcı olduğu sınanır.
+//
+// Sorgu ekleri:  ?ab=0 (abonelik geçersiz) · ?kurulum=yok (fonksiyonlar yok)
+//                ?sube=p1 (şubeye özel link)
+if (senaryo === 'marka') {
+  const gom = dosya => 'data:text/css;base64,' + Buffer.from(oku(dosya)).toString('base64');
+  const sayfaHam = oku('coffee-marka.html');
+  const taklit = `
+<script>window.DERIN_CONFIG = { supabaseUrl: 'https://prova.test', supabasePublishableKey: 'prova' };</script>
+<script>
+// ---- Sunucu taklidi: marka paneli yalnız bu uçlarla konuşur ---------------
+(() => {
+  const q = new URLSearchParams(location.search);
+  const KURULUM = q.get('kurulum') !== 'yok';
+  const COD = 'PROVA';
+  const MARKA = {
+    brand_id: 'b1', name: 'Brew Lab', slug: 'onizleme-marka.html',
+    tagline: 'Üçüncü nesil kahve, ölçülü ritim.', accent_color: '#e8d15a',
+    roast_profile: null, tasting_notes: []
+  };
+  const P_LISTELER = [
+    { id: 'l1', name: 'Sabah Akışı', cover_path: null },
+    { id: 'l2', name: 'Berber Kuşağı', cover_path: null },
+    { id: 'l3', name: 'Spor Salonu — Enerji', cover_path: null },
+    { id: 'l4', name: 'Akşam Kapanış — Lo-fi', cover_path: null }
+  ];
+  const P_TRACK = {
+    l1: ['Filtre Sabah', 'Uzun Yol'], l2: ['Keskin Makas', 'Tıraş Ritmi'],
+    l3: ['Isınma', 'Sprint'], l4: ['Sokak Sessiz', 'Kapanış']
+  };
+  // Havuz: yönetimin bu şubeye attıkları + markanın seçimi.
+  let havuz = [
+    { player_id: 'p1', sube: 'Brew Lab — Alsancak', playlist_id: 'l1', liste: 'Sabah Akışı', secili: true, parca: 2, sira: 0 },
+    { player_id: 'p1', sube: 'Brew Lab — Alsancak', playlist_id: 'l2', liste: 'Berber Kuşağı', secili: true, parca: 2, sira: 1 },
+    { player_id: 'p1', sube: 'Brew Lab — Alsancak', playlist_id: 'l3', liste: 'Spor Salonu — Enerji', secili: false, parca: 2, sira: 2 },
+    { player_id: 'p2', sube: 'Brew Lab — Bornova', playlist_id: 'l1', liste: 'Sabah Akışı', secili: true, parca: 2, sira: 0 },
+    { player_id: 'p2', sube: 'Brew Lab — Bornova', playlist_id: 'l4', liste: 'Akşam Kapanış — Lo-fi', secili: true, parca: 2, sira: 1 }
+  ];
+  const abonelik = q.get('ab') !== '0';
+  const satir = (pl) => P_TRACK[pl.id].map((t, i) => ({
+    playlist_id: pl.id, name: pl.name, cover_path: null, created_at: '2026-09-01T09:00:00Z',
+    track_id: 't-' + pl.id + '-' + i, title: t, storage_path: pl.id + '/p' + i + '.wav',
+    track_cover: null, duration_sec: 200 + i * 10, sort_order: i
+  }));
+  const listeSatirlari = [].concat(...P_LISTELER.map(satir));
+  window.__prova = { kayitlar: [], havuz: () => havuz };
+
+  window.supabase = {
+    createClient: () => ({
+      rpc(ad, p) {
+        if (ad === 'coffee_brand_auth') {
+          return Promise.resolve(p.p_code === COD
+            ? { data: [MARKA], error: null }
+            : { data: [], error: null });
+        }
+        if (ad === 'coffee_brand_liste') return Promise.resolve({ data: listeSatirlari, error: null });
+        if (ad === 'coffee_brand_havuz') {
+          if (!KURULUM) return Promise.resolve({ data: null, error: { code: 'PGRST202', message: 'fonksiyon yok' } });
+          return Promise.resolve({ data: havuz.map(x => ({ ...x, abonelik: abonelik })), error: null });
+        }
+        if (ad === 'coffee_brand_secim') {
+          if (!abonelik) return Promise.resolve({ data: null, error: { message: 'Abonelik aktif olmadığı için seçim kaydedilemez.' } });
+          const secili = (p.p_playlist_ids || []).map(String);
+          havuz = havuz.map(x => x.player_id === p.p_player_id ? { ...x, secili: secili.includes(String(x.playlist_id)) } : x);
+          const adet = havuz.filter(x => x.player_id === p.p_player_id && x.secili).length;
+          window.__prova.kayitlar.push({ player_id: p.p_player_id, secili: secili, adet: adet });
+          console.log('coffee_brand_secim', JSON.stringify({ player_id: p.p_player_id, secili: secili }));
+          return Promise.resolve({ data: adet, error: null });
+        }
+        return Promise.resolve({ data: [], error: null });
+      },
+      storage: { from: () => ({ getPublicUrl: p => ({ data: { publicUrl: p ? 'data:,' : '' } }) }) },
+      from: () => ({
+        select: () => ({ eq: () => ({ order: () => ({ then: r => r({ data: [], error: null }) }) }) })
+      })
+    })
+  };
+})();
+</script>`;
+
+  let gomulu = sayfaHam
+    .replace(/(href)="\/branch\.css(?:\?[^"]*)?"/, '$1="' + gom('branch.css') + '"')
+    .replace(/(href)="\/auth\.css(?:\?[^"]*)?"/, '$1="' + gom('auth.css') + '"')
+    .replace(/(href)="\/glass\.css(?:\?[^"]*)?"/, '$1="' + gom('glass.css') + '"')
+    .replace(/(href)="\/marka-sunum\.css(?:\?[^"]*)?"/, '$1="' + gom('marka-sunum.css') + '"')
+    .replace(/<script src="\/config\.js"><\/script>/, '<script>window.DERIN_CONFIG = { supabaseUrl: \'https://prova.test\', supabasePublishableKey: \'prova\' };<\/script>')
+    .replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@[^"]+"><\/script>/, '')
+    .replace(/<script src="\/coffee-marka\.js\?v=[^"]+"><\/script>/, taklit + '\n<script>\n' + oku('coffee-marka.js') + '\n</script>');
+
+  // Gömme sessizce boşa düşerse prova stilsiz/sunucusuz açılır; bunun yerine dur.
+  ['branch.css', 'auth.css', 'glass.css', 'marka-sunum.css', 'coffee-marka.js'].forEach(dis => {
+    if (gomulu.includes('"/' + dis) || gomulu.includes('src="/' + dis)) {
+      throw new Error(dis + ' gömülmedi: prova sayfasının etiketi değişmiş, onizleme-olustur.js marka modunu güncelleyin');
+    }
+  });
+  if (!gomulu.includes('coffee_brand_havuz')) throw new Error('sunucu taklidi gömülmedi');
+  fs.writeFileSync(ciktiYolu, gomulu);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · marka paneli · ' + gomulu.length + ' bayt');
+  return;
+}
+
 // "kabuk" modu panelin bütün kabuğunu önizler: yan menü, üst çubuk ve seçili
 // ekran birlikte. Sekmeli bölümlerin menüde tek satır mı birkaç satır mı
 // olduğu ve hangi satırın işaretlendiği yalnız burada gözle görülür. Sayfa
