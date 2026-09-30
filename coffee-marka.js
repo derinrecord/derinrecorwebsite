@@ -381,6 +381,11 @@ function secimCiz() {
         <b>${safe(g.sube || 'Şube')}</b>
         <span class="mk-sub">${seciliAdet} / ${g.listeler.length} liste çalıyor</span>
       </div>
+      <div class="mk-secim-alt">
+        <button class="mk-btn2" type="button" data-sube-hepsi="${safe(g.player_id)}"${kilitli ? ' disabled' : ''}>TÜMÜNÜ SEÇ</button>
+        <button class="mk-btn2" type="button" data-sube-hicbiri="${safe(g.player_id)}"${kilitli ? ' disabled' : ''}>HİÇBİRİNİ SEÇ</button>
+        <span class="mk-sub">Hiçbiri işaretlenmezse bu şube çalmaz.</span>
+      </div>
       <div class="mk-secim-kutu">${satirlar}</div>
       ${kilitli ? `<p class="mk-bos">Aboneliğiniz aktif olmadığı için seçim kaydedilemez. Derin Record ile iletişime geçin.</p>` : ''}
       <div class="mk-secim-alt">
@@ -392,8 +397,8 @@ function secimCiz() {
 
   host.innerHTML = `<div class="mk-panel">
     <h3><span>${baslik}</span><span>istediğiniz kadar liste</span></h3>
-    <p class="mk-bos">Yönetimin bu şubeye atadığı listeler aşağıdadır. İşaretlediklerin bu şubede çalar,
-      işareti kaldırdıkların çalmaz. Hepsi kapanırsa o şubede müzik çalmaz.</p>
+    <p class="mk-bos">Derin Record bu şubeye hangi listeleri atadıysa aşağıdadır. <b>Birden çok liste seçebilirsiniz.</b>
+      İşaretledikleriniz bu şubede çalar, işareti kaldırdıklarınız çalmaz; kayıt yalnız <b>SEÇİMİ KAYDET</b> dediğinizde olur.</p>
     ${govde}
   </div>`;
 }
@@ -480,8 +485,21 @@ function bagla() {
   });
   byId('mk-secim').addEventListener('click', e => {
     const dugme = e.target.closest('[data-sube-kaydet]');
-    if (dugme) secimKaydet(dugme.dataset.subeKaydet, dugme).catch(err =>
-      durumYaz(dugme.dataset.subeKaydet, 'Kaydedilemedi: ' + (err.message || '')));
+    if (dugme) {
+      secimKaydet(dugme.dataset.subeKaydet, dugme).catch(err =>
+        durumYaz(dugme.dataset.subeKaydet, 'Kaydedilemedi: ' + (err.message || '')));
+      return;
+    }
+    // Toplu işaretleme kaydetmez: yalnız kutuları doldurur, kayıt SEÇİMİ
+    // KAYDET'e bırakılır. Böylece yanlışlıkla tümü seçilip kaydedilmiş olmaz.
+    const hepsi = e.target.closest('[data-sube-hepsi]');
+    const hicbiri = e.target.closest('[data-sube-hicbiri]');
+    if (!hepsi && !hicbiri) return;
+    const playerId = (hepsi || hicbiri).dataset[hepsi ? 'subeHepsi' : 'subeHicbiri'];
+    document.querySelectorAll('[data-sube]').forEach(k => {
+      if (es(k.dataset.sube, playerId)) k.checked = !!hepsi;
+    });
+    durumYaz(playerId, 'Henüz kaydedilmedi: SEÇİMİ KAYDET demeden değişmez.');
   });
 
   document.addEventListener('keydown', e => {

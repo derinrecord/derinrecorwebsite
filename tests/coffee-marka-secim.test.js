@@ -49,6 +49,23 @@ test('bir şubeye birden çok liste seçilebilir, hepsi kapanırsa söylenir', (
     'şube başlığında kaç listenin çaldığı yazılmalı');
 });
 
+// Marka panelindeki seçim, yönetim panelindeki şube penceresiyle aynı akıştır:
+// tek sütun satırlar ve toplu seçim kısayolları. Toplu işaretleme kaydetmez,
+// kayıt yine düğmeye bırakılır: yanlışlıkla "tümünü seç + kaydet" olmasın.
+test('toplu seçim kısayolları var, kayıt yine düğmeyle oluyor', () => {
+  assert.match(source, /data-sube-hepsi="\$\{safe\(g\.player_id\)\}"\$\{kilitli \? ' disabled' : ''\}>TÜMÜNÜ SEÇ</);
+  assert.match(source, /data-sube-hicbiri="\$\{safe\(g\.player_id\)\}"[\s\S]{0,40}HİÇBİRİNİ SEÇ</);
+  const blok = source.slice(source.indexOf("byId('mk-secim').addEventListener"), source.indexOf('// ---------- Açılış'));
+  assert.match(blok, /if \(es\(k\.dataset\.sube, playerId\)\) k\.checked = !!hepsi;/, 'yalnız o şubenin kutuları işaretlenmeli');
+  assert.ok(!/secimKaydet\(playerId/.test(blok), 'toplu seçim kendiliğinden kaydetmemeli');
+  assert.match(blok, /'Henüz kaydedilmedi: SEÇİMİ KAYDET demeden değişmez\.'/,
+    'kaydedilmediği açıkça söylenmeli');
+  // Yönetim panelindeki pencereyle aynı düzen: tek sütun, tam genişlik satırlar.
+  assert.match(css, /\.mk-secim-kutu\{margin:12px 0 14px\}/, 'satırlar tek sütunda akmamalı');
+  assert.match(css, /\.mk-btn2\{/, 'ikincil düğme stili olmalı');
+  assert.match(source, /Birden çok liste seçebilirsiniz\./, 'çoklu seçim açıkça yazılmalı');
+});
+
 // Kalıcı seçim aboneliği olan markanın hakkı: sunucu yazmayı reddeder, panel de
 // önceden söyler. Fonksiyon kurulmadıysa bölüm hiç görünmez (eksik kurulum
 // markaya hata gibi gösterilmez).
