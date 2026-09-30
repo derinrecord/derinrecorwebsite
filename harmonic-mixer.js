@@ -17,6 +17,7 @@
       byId('hm-login').onclick = () => a.open(); return; }
     if (a.profile?.role !== 'admin') { st.textContent = 'Bu araç yalnızca yöneticilere açıktır.'; return; }
     st.textContent = '';
+    ayarYukle();          // hedef hız tercihi tarayıcıdan okunur
     byId('hm-app').hidden = false;
     await load();
   }
@@ -119,6 +120,71 @@
       bpmMax: bpm ? bpm + H.HIZ_TOLERANS : null
     };
   };
+
+  // ---- Hedef hız ayarı ------------------------------------------------------
+  // Kullanıcının çalışma biçimi: "şu civardaki parçaları şu hıza sabitliyorum,
+  // hızlılar sonraki hızlı bölüm için". Ayar tarayıcıda saklanır ki her açılışta
+  // yeniden girilmesin; motorun varsayılanı nötr kalır.
+  const AYAR_ANAHTARI = 'derin-harmonik-hiz-ayari';
+  const VARSAYILAN_AYAR = { hedef: 126, tolerans: 4 };
+
+  function ayarYukle() {
+    let ayar = VARSAYILAN_AYAR;
+    try {
+      const ham = localStorage.getItem(AYAR_ANAHTARI);
+      if (ham) {
+        const okunan = JSON.parse(ham);
+        ayar = { hedef: Number(okunan.hedef) || null, tolerans: okunan.tolerans == null ? 4 : Number(okunan.tolerans) };
+      }
+    } catch (e) { /* gizli pencere ya da bozuk kayıt: varsayılanla devam */ }
+    H.hizAyari(ayar);
+    return ayar;
+  }
+
+  function ayarKaydet(ayar) {
+    H.hizAyari(ayar);
+    try {
+      localStorage.setItem(AYAR_ANAHTARI, JSON.stringify({ hedef: ayar.hedef, tolerans: ayar.tolerans }));
+    } catch (e) { /* saklanamazsa da ayar bu oturumda geçerli */ }
+  }
+
+  const BOLUM_ETIKETI = { giris: 'AÇILIŞ', ana: 'SABİT HIZ', hizli: 'HIZLI BÖLÜM' };
+
+  // Ayarlıyken hangi parça hangi bölüme düşüyor? Ekranda tek satırda gösterilir.
+  function bolumOzeti() {
+    const ayar = H.hizAyari();
+    if (!ayar.hedef) return '<p style="opacity:.6;font-size:13px">Hedef hız kapalı: sıralama yalnız 5 BPM kuralına bakar.</p>';
+    const say = { giris: [], ana: [], hizli: [] };
+    set.forEach(t => {
+      const ad = H.hizBolumu(t);
+      (say[ad] || []).push(t);
+    });
+    const sabit = set.filter(t => H.sabitlenen(t));
+    return `<p>Hedef: <b>${ayar.hedef} BPM</b> ± ${ayar.tolerans} BPM.
+        ${sabit.length ? `${sabit.length} parça hedefe sabitlenmiş sayılıyor:
+          ${sabit.slice(0, 6).map(t => `${safe(t.title)} (${t.bpm} → ${ayar.hedef})`).join(', ')}${sabit.length > 6 ? ' …' : ''}.` : 'Bu aralıkta parça yok.'}</p>
+      ${say.hizli.length ? `<p>Hızlı bölüm (setin sonuna): <b>${say.hizli.map(t => safe(t.title) + ' (' + t.bpm + ')').join(', ')}</b>.</p>`
+        : '<p style="opacity:.6">Hızlı bölüm boş.</p>'}
+      ${say.giris.length ? `<p>Açılış (setin başına): <b>${say.giris.map(t => safe(t.title) + ' (' + t.bpm + ')').join(', ')}</b>.</p>` : ''}`;
+  }
+
+  function hizAyariHtml() {
+    const ayar = H.hizAyari();
+    return `<section class="hm-panel" style="margin-top:20px">
+      <h2>HEDEF HIZ — BÖLÜMLÜ SET</h2>
+      <p style="font-size:12px;opacity:.65;margin:0 0 12px">
+        Ana bölümü tek hıza sabitliyorsan (ör. 122 civarı parçaları 126'da çalıyorsan)
+        bu aralıktaki parçalar <b>aynı hızda</b> sayılır — aralarında hız farkı kalmaz.
+        Hedefin üstünde kalanlar <b>setin sonundaki hızlı bölüme</b>, altında kalanlar açılışa ayrılır.</p>
+      <div class="hm-edit" style="border:0;padding-top:0;margin-top:0">
+        <input id="hz-hedef" type="number" value="${ayar.hedef || ''}" placeholder="Hedef BPM (126)">
+        <input id="hz-tol" type="number" value="${ayar.tolerans}" placeholder="± BPM">
+        <button id="hz-uygula">UYGULA</button>
+        <button id="hz-kapat" style="background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2)">KAPAT</button>
+      </div>
+      <div style="margin-top:12px">${bolumOzeti()}</div>
+    </section>`;
+  }
 
   const disLinkler = (sorgu, etiket) => {
     const l = H.aramaLinkleri(sorgu);
@@ -262,7 +328,8 @@
   function yayHtml() {
     if (set.length < 2) return '<p style="opacity:.5;font-size:13px">Yay için en az iki parça gerekir.</p>';
     const y = H.yay(set);
-    const satirlar = [`<p>Yay: <b>${safe(String(y.ilk))} → ${safe(String(y.son))} BPM</b> ·
+    const hedefHiz = H.hizAyari().hedef;
+    const satirlar = [`<p>Yay: <b>${safe(String(y.ilk))} → ${safe(String(y.son))} BPM</b>${hedefHiz ? ` (sabitlenen hızlar; ham ${y.ilkHam} → ${y.sonHam})` : ''} ·
       ${y.yukselen ? '<b>yükseliyor</b>' : 'zikzaklı'}.
       En hızlı parça <b>${safe(y.zirve.title)}</b> (${safe(String(y.zirve.bpm))} BPM),
       ${y.zirveYeri + 1}. sırada.</p>`];
@@ -431,7 +498,9 @@
         </div>
 
         <div>
-          <section class="hm-panel">
+          ${hizAyariHtml()}
+
+          <section class="hm-panel" style="margin-top:20px">
             <h2>OTOMATİK SIRALAMA</h2>
             <p style="font-size:12px;opacity:.65;margin:0 0 12px">
               Parçaları <b>setin tamamına</b> bakarak dizer: önce her başlangıç ve BPM sırası
@@ -500,10 +569,14 @@
               // Yay uyarısı: bu adım hızdan yavaşa dönüyor.
               const inis = g && g.inis
                 ? `<span class="hm-chip up">HIZ DÜŞÜYOR · ${g.inis.dusus} BPM</span>` : '';
+              // Hedef hıza sabitlenen ve hızlı bölüme kalan parçalar işaretlenir.
+              const bolumAdi = H.hizBolumu(t);
+              const bolum = bolumAdi
+                ? `<span class="hm-chip ${bolumAdi === 'hizli' ? 'up' : 'off'}">${BOLUM_ETIKETI[bolumAdi]}${bolumAdi === 'ana' ? ' · ' + H.hizAyari().hedef : ''}</span>` : '';
               return `<li draggable="true" data-idx="${i}" style="cursor:grab">
                 <span><strong>${safe(t.title)}</strong>
                   <small>${meta(t)}</small>
-                  <span class="hm-rel"><span class="hm-chip ${chipTur}">${safe(chipMetin)}</span>${hiz}${ayri}${inis}</span></span>
+                  <span class="hm-rel"><span class="hm-chip ${chipTur}">${safe(chipMetin)}</span>${hiz}${ayri}${inis}${bolum}</span></span>
                 <span style="display:flex;gap:8px;align-items:center">${keyChip(t)}
                 ${t.audio_path ? `<button data-play="${t.id}" data-path="${safe(t.audio_path)}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;cursor:pointer">▶</button>` : ''}
                 <button data-rm="${t.id}">ÇIKAR</button></span>
@@ -628,12 +701,15 @@
       // "uyumsuz" olarak ayrıca sayılıyor.
       const ayri = gecis.filter(g => g.iliski && !g.yanYana).length;
       const y = H.yay(set);
+      const ayar = H.hizAyari();
+      const bolum = H.hizBolumu(set[0]);
       return `${set.length} parça sıralandı.`
         + (sorun ? ` ${sorun} geçişte köprü gerekiyor.` : ' Bütün geçişler uyumlu.')
         + (ayri ? ` ${ayri} komşulukta ton uyuyor ama hız farkı 5 BPM'i aşıyor.` : '')
         + (y.inisSayi ? ` Yay ${y.inisSayi} yerde geriye düşüyor.`
           : (y.yukselen ? ' Set yavaştan hızlıya akıyor.'
-            : ' İlk yarı ikinci yarıdan hızlı; yay geriye dönüyor.'));
+            : ' İlk yarı ikinci yarıdan hızlı; yay geriye dönüyor.'))
+        + (ayar.hedef ? ` Bölümler: ${BOLUM_ETIKETI[bolum] || 'ana bölüm'} → … → ${BOLUM_ETIKETI[H.hizBolumu(set[set.length - 1])] || 'ana bölüm'} (${ayar.hedef} BPM'e sabit).` : '');
     };
 
     byId('hm-auto').onclick = () => {
@@ -707,6 +783,20 @@
         render();
       });
     });
+
+    // Hedef hız: ana bölümü tek hıza sabitleme.
+    byId('hz-uygula').onclick = () => {
+      const hedef = Number(byId('hz-hedef').value) || null;
+      const tolerans = byId('hz-tol').value === '' ? 4 : Number(byId('hz-tol').value);
+      ayarKaydet({ hedef, tolerans: isNaN(tolerans) ? 4 : tolerans });
+      if (set.length > 1) set = H.autoOrder(set);
+      render();
+      byId('hm-status').textContent = siralamaNotu();
+    };
+    byId('hz-kapat').onclick = () => {
+      ayarKaydet({ hedef: null, tolerans: 4 });
+      render();
+    };
 
     // Dış tarz önerisini yenile: önbellek ve durum sıfırlanır.
     const yenile = byId('tarz-yenile');

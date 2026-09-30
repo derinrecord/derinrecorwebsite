@@ -40,6 +40,47 @@
     return null;
   }
 
+  // ---- Hedef hız (parçaları tek hıza sabitleme) -------------------------------
+  // DJ çoğu zaman setin ana bölümünü tek hıza sabitler: "122 civarı parçaları
+  // 126'da çalıyorum" gibi. O zaman 122 ile 130 arasında duyulacak fark kalmaz —
+  // ikisi de 126'da çalınır. Motor da böyle saysın: hedefin ±tolerans içindeki
+  // parçalar hedef hızda kabul edilir, hedefin üstündekiler setin sonundaki
+  // hızlı bölüme ayrılır. Varsayılan kapalıdır; ayar ekrandan verilir.
+  const HEDEF_TOLERANS = 4;
+  let ayar = { hedef: null, tolerans: HEDEF_TOLERANS };
+
+  function hizAyari(yeni) {
+    if (yeni && typeof yeni === 'object') {
+      ayar = {
+        hedef: Number(yeni.hedef) || null,
+        tolerans: yeni.tolerans == null ? HEDEF_TOLERANS : Math.max(0, Number(yeni.tolerans) || 0)
+      };
+    }
+    return { hedef: ayar.hedef, tolerans: ayar.tolerans };
+  }
+
+  // Parçanın çalınacağı hız: hedef civarındaysa hedef, değilse kendi hızı.
+  function etkinBpm(deger) {
+    const bpm = Number(deger && deger.bpm) || 0;
+    if (!bpm || !ayar.hedef) return bpm;
+    return Math.abs(bpm - ayar.hedef) <= ayar.tolerans ? ayar.hedef : bpm;
+  }
+
+  // Parçanın setteki yeri: hedefin altı açılış, hedefteki ana bölüm, üstü hızlı
+  // bölüm. Hedef kapalıysa etiket yok.
+  function hizBolumu(parca) {
+    const bpm = Number(parca && parca.bpm) || 0;
+    if (!bpm || !ayar.hedef) return null;
+    const fark = bpm - ayar.hedef;
+    if (Math.abs(fark) <= ayar.tolerans) return 'ana';
+    return fark > 0 ? 'hizli' : 'giris';
+  }
+
+  // Sabitlenen parçalar "hedefe çekilmiş" sayılır: köprü önerisi de hedef hız
+  // üzerinden verilir, çünkü kullanıcı zaten orada çalacak.
+  const sabitlenen = parca => !!ayar.hedef && Number(parca && parca.bpm)
+    && Math.abs(Number(parca.bpm) - ayar.hedef) <= ayar.tolerans;
+
   // Tempo ölçüsü. Eşikler DJ pratiğinden: 3 BPM'e kadar fark duyulmaz, 5 BPM
   // perde kaydırmasıyla kapanır. 5 BPM'i aşan iki parça ton tutsa bile yan yana
   // konmaz: 6–12 BPM arası araya köprü ister, 12 BPM sonrası geçiş kendini belli
@@ -54,15 +95,18 @@
   const HIZ_COK_CEZA = 95;
 
   function tempo(a, b) {
-    const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
+    const x = etkinBpm(a), y = etkinBpm(b);
     if (!x || !y) return { fark: null, tip: 'bilinmiyor', ceza: 0 };
     const fark = Math.abs(x - y);
-    if (fark <= 3) return { fark, tip: 'aynı hız', ceza: 0 };
-    if (fark <= HIZ_TOLERANS) return { fark, tip: 'yakın hız', ceza: 3 };
-    if (fark <= HIZ_SINIR) return { fark, tip: 'hız kayması', ceza: HIZ_AYIR_CEZA };
+    const hamFark = Math.abs((Number(a && a.bpm) || 0) - (Number(b && b.bpm) || 0)) || fark;
+    // Sabitlenmiş çiftin gerçek farkı vardır ama kulakta yoktur; ölçü hedef hız
+    // üzerinden, gerçek fark "hamFark" olarak yanında taşınır.
+    if (fark <= 3) return { fark, hamFark, tip: 'aynı hız', ceza: 0 };
+    if (fark <= HIZ_TOLERANS) return { fark, hamFark, tip: 'yakın hız', ceza: 3 };
+    if (fark <= HIZ_SINIR) return { fark, hamFark, tip: 'hız kayması', ceza: HIZ_AYIR_CEZA };
     const yarim = Math.min(Math.abs(x * 2 - y), Math.abs(x - y * 2));
-    if (yarim <= 3) return { fark, tip: 'yarım/çift tempo', ceza: 6 };
-    return { fark, tip: 'uyumsuz hız', ceza: HIZ_COK_CEZA };
+    if (yarim <= 3) return { fark, hamFark, tip: 'yarım/çift tempo', ceza: 6 };
+    return { fark, hamFark, tip: 'uyumsuz hız', ceza: HIZ_COK_CEZA };
   }
 
   // İki parça yan yana konabilir mi? Ton ilişkisi olmalı ve hız farkı 5 BPM'i
@@ -89,14 +133,14 @@
   // Adım yönü: hızdan yavaşa dönmek yayı bozar. Tolerans içindeki küçük inişler
   // (aynı ton ilişkisindeki "yumuşak iniş" gibi) cezasız kalır.
   function inisCeza(a, b) {
-    const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
+    const x = etkinBpm(a), y = etkinBpm(b);
     if (!x || !y) return 0;
     const dusus = x - y;
     return dusus > INIS_TOLERANS ? (dusus - INIS_TOLERANS) * INIS_CEZA : 0;
   }
 
   const ortBpm = dizi => {
-    const v = dizi.map(t => Number(t && t.bpm) || 0).filter(Boolean);
+    const v = dizi.map(t => etkinBpm(t)).filter(Boolean);
     return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0;
   };
 
@@ -107,8 +151,8 @@
     const inisler = [];
     let inisToplam = 0;
     for (let i = 1; i < sira.length; i++) {
-      const x = Number(sira[i - 1] && sira[i - 1].bpm) || 0;
-      const y = Number(sira[i] && sira[i].bpm) || 0;
+      const x = etkinBpm(sira[i - 1]);
+      const y = etkinBpm(sira[i]);
       if (!x || !y) continue;
       if (x - y > INIS_TOLERANS) {
         inisler.push({ sira: i, onceki: sira[i - 1], sonraki: sira[i], dusus: x - y });
@@ -120,12 +164,12 @@
     const ikinciYari = ortBpm(sira.slice(yarim));
     let zirve = sira[0] || null, zirveYeri = 0, enYavas = sira[0] || null, enYavasYeri = 0;
     sira.forEach((t, i) => {
-      const v = Number(t && t.bpm) || 0;
+      const v = etkinBpm(t);
       if (!v) return;
       // Zirvede eşitlik varsa en sondaki sayılır: aynı hızdaki parçaların
       // sırası keyfi olduğu için set yaydan haksız ceza yememeli.
-      if (v >= (Number(zirve && zirve.bpm) || 0)) { zirve = t; zirveYeri = i; }
-      if (v < (Number(enYavas && enYavas.bpm) || Infinity)) { enYavas = t; enYavasYeri = i; }
+      if (v >= etkinBpm(zirve)) { zirve = t; zirveYeri = i; }
+      if (!etkinBpm(enYavas) || v < etkinBpm(enYavas)) { enYavas = t; enYavasYeri = i; }
     });
     const sonrasi = sira.length - 1 - zirveYeri;
     const izinli = Math.floor(sira.length * ZIRVE_PAYI);
@@ -134,8 +178,10 @@
     // Ceza yokken -0 sızmasın: ekranda ve testte "0" olarak okunsun.
     const puan = zirveCezasi + yarimCezasi ? -(zirveCezasi + yarimCezasi) : 0;
     return {
-      ilk: Number(sira[0] && sira[0].bpm) || null,
-      son: Number(sira[sira.length - 1] && sira[sira.length - 1].bpm) || null,
+      ilk: etkinBpm(sira[0]) || null,
+      son: etkinBpm(sira[sira.length - 1]) || null,
+      ilkHam: Number(sira[0] && sira[0].bpm) || null,
+      sonHam: Number(sira[sira.length - 1] && sira[sira.length - 1].bpm) || null,
       ilkYari: Math.round(ilkYari), ikinciYari: Math.round(ikinciYari),
       zirve, zirveYeri, zirveSonrasi: sonrasi, zirveCezasi,
       enYavas, enYavasYeri, yarimCezasi,
@@ -175,50 +221,24 @@
   // kurabilir; yay terimi yavaştan hızlıya olanı seçtirir.
   const zincirPuanu = sira =>
     sira.slice(1).reduce((toplam, x, i) => toplam + baglantiPuanu(sira[i], x), 0)
-    + yayPuanu(sira);
-
-  // Açgözlü zincir + iki-opt iyileştirme. Tonu olmayan parçalar sıralamaya
-  // girmez, sonunda kendi aralarındaki sırayı korur.
-  function autoOrder(list) {
-    const hepsi = Array.isArray(list) ? list.slice() : [];
-    const tonlu = hepsi.filter(t => parseKey(t && t.camelot));
-    const tonsuz = hepsi.filter(t => !parseKey(t && t.camelot));
-    if (tonlu.length < 2) return hepsi;
-
-    const greedy = start => {
-      const kalan = tonlu.filter(t => t.id !== start.id);
-      const sira = [start];
-      while (kalan.length) {
-        const son = sira[sira.length - 1];
-        let enIyi = -Infinity, enIdx = 0;
-        kalan.forEach((t, i) => {
-          const p = baglantiPuanu(son, t);
-          if (p > enIyi) { enIyi = p; enIdx = i; }
-        });
-        sira.push(kalan[enIdx]);
-        kalan.splice(enIdx, 1);
-      }
-      return sira;
-    };
-
-    let en = greedy(tonlu[0]), enPuan = zincirPuanu(en);
-    for (const baslangic of tonlu.slice(1)) {
-      const deneme = greedy(baslangic), p = zincirPuanu(deneme);
-      if (p > enPuan) { en = deneme; enPuan = p; }
-    }
-
-    // Yerel arama. Üç hamle denenir: iki parçanın yerini değiştirme (swap),
-    // bir parçayı başka yere kaydırma (insertion) ve bir bölütü ters çevirme
-    // (reversal). Zincir puanı simetrik değildir — 8A→9A ile 9A→8A aynı puanı
-    // vermez — bu yüzden yön de aranır. Yalnız swap, açgözlü çözümün
-    // yakınındaki yerel en iyide takılı kalıyordu; kaydırma ve ters çevirme
-    // onu gerçek en iyiye taşır. Her kabul puanı kesin artırdığı için döngü
-    // sonludur; tur sınırı yine de var.
+    + yayPuanu(sira);  // Yerel arama. Üç hamle denenir: yer değiştirme (swap), kaydırma (insertion)
+  // ve bölüt ters çevirme (reversal). Zincir puanı simetrik değildir — 8A→9A ile
+  // 9A→8A aynı puanı vermez — bu yüzden yön de aranır. Yalnız swap, açgözlü
+  // çözümün yakınındaki yerel en iyide takılı kalıyordu; kaydırma ve ters
+  // çevirme onu daha iyiye taşır. Her kabul puanı kesin artırdığı için döngü
+  // sonludur; tur sınırı yine de var.
+  //
+  // "kabul" verilirse hamle önce ona sorulur: blok düzeninde arama blokların
+  // yerini değiştiremez, yalnız içlerini iyileştirir.
+  function yerelArama(baslangic, kabul) {
+    let en = baslangic.slice();
+    let enPuan = zincirPuanu(en);
     const n = en.length;
     // Kaydırma O(n²) deneme × O(n) puan = O(n³); uzun setlerde yalnız
     // swap/reversal koşar (canlı set ~30 parça, sınır rahat yetiyor).
     const kaydirmaVar = n <= 60;
     const dene = dizi => {
+      if (kabul && !kabul(dizi)) return false;
       const p = zincirPuanu(dizi);
       if (p > enPuan + 1e-9) { en = dizi; enPuan = p; return true; }
       return false;
@@ -249,21 +269,97 @@
       }
       if (!iyilesti) break;
     }
+    return en;
+  }
 
-    // Tonu olmayan parçalar yerel puana giremez (komşuluk her yerde kopuk), ama
-    // tempoları var. Setin yayını bozmasınlar diye hız sırasına göre yerleştirilir:
-    // her parça, kendisinden yavaş olanların hemen ardına girer.
-    const sonuc = en.slice();
+  // Tonu olmayan parçalar yerel puana giremez (komşuluk her yerde kopuk), ama
+  // tempoları var. Setin yayını bozmasınlar diye hız sırasındaki yerlerine
+  // girerler: her parça, kendisinden yavaş olanların hemen ardına.
+  function hizYerlestir(sira, tonsuz) {
+    const sonuc = sira.slice();
     tonsuz.forEach(t => {
-      const v = Number(t && t.bpm) || 0;
+      const v = etkinBpm(t);
       let yer = sonuc.length;
       if (v) {
-        yer = sonuc.findIndex(x => (Number(x && x.bpm) || Infinity) > v);
+        yer = sonuc.findIndex(x => (etkinBpm(x) || Infinity) > v);
         if (yer < 0) yer = sonuc.length;
       }
       sonuc.splice(yer, 0, t);
     });
     return sonuc;
+  }
+
+  // Açgözlü zincir + yerel arama ile tek bir kümenin en iyi dizilimi: her
+  // başlangıç denenir, sonra zincir iyileştirilir.
+  function enIyiDizi(liste) {
+    const tonlu = liste.filter(t => parseKey(t && t.camelot));
+    const tonsuz = liste.filter(t => !parseKey(t && t.camelot));
+    if (tonlu.length < 2) return hizYerlestir(liste, []);
+    const greedy = start => {
+      const kalan = tonlu.filter(t => t.id !== start.id);
+      const sira = [start];
+      while (kalan.length) {
+        const son = sira[sira.length - 1];
+        let enIyi = -Infinity, enIdx = 0;
+        kalan.forEach((t, i) => {
+          const p = baglantiPuanu(son, t);
+          if (p > enIyi) { enIyi = p; enIdx = i; }
+        });
+        sira.push(kalan[enIdx]);
+        kalan.splice(enIdx, 1);
+      }
+      return sira;
+    };
+    let en = greedy(tonlu[0]), enPuan = zincirPuanu(en);
+    for (const baslangic of tonlu.slice(1)) {
+      const deneme = greedy(baslangic), p = zincirPuanu(deneme);
+      if (p > enPuan) { en = deneme; enPuan = p; }
+    }
+    return hizYerlestir(yerelArama(en), tonsuz);
+  }
+
+  // Hedef hız açıkken set üç bölümdür: açılış (hedefin altı), ana bölüm (hedefe
+  // sabitlenenler), hızlı bölüm (hedefin üstü). Kullanıcının kafasındaki sıra
+  // budur — "hızlılar sonraki hızlı bölüm için" — bu yüzden arama blokların
+  // yerini değiştirmez, yalnız içlerindeki dizilimi iyileştirir.
+  const BOLUM_SIRASI = ['giris', 'ana', 'hizli'];
+
+  function blokluDizi(hepsi) {
+    const bolumler = { giris: [], ana: [], hizli: [] };
+    hepsi.forEach(t => {
+      const ad = hizBolumu(t);
+      (ad && bolumler[ad] ? bolumler[ad] : bolumler.ana).push(t);
+    });
+    const parcalar = [];
+    BOLUM_SIRASI.forEach(ad => { parcalar.push(...enIyiDizi(bolumler[ad])); });
+
+    // Son cilalama: blok sırası korunurken (yalnız blok içi ve komşu blok
+    // sınırları) zincir puanı iyileştirilir.
+    const bolge = new Map();
+    BOLUM_SIRASI.forEach(ad => bolumler[ad].forEach(t => bolge.set(t.id, ad)));
+    const blokKoruyucu = dizi => {
+      let onceki = -1;
+      const gorulen = new Set();
+      for (const t of dizi) {
+        const sira = BOLUM_SIRASI.indexOf(bolge.get(t.id));
+        if (sira < onceki) return false;          // blok geriye dönemez
+        if (sira !== onceki) {
+          if (gorulen.has(sira)) return false;    // blok ikinci kez başlayamaz
+          gorulen.add(sira);
+          onceki = sira;
+        }
+      }
+      return true;
+    };
+    return yerelArama(parcalar, blokKoruyucu);
+  }
+
+  // Sıralama: hedef hız verilmişse bölüm bölüm (açılış → ana → hızlı), yoksa
+  // setin tamamı tek zincir olarak çözülür.
+  function autoOrder(list) {
+    const hepsi = Array.isArray(list) ? list.slice() : [];
+    if (ayar.hedef) return blokluDizi(hepsi);
+    return enIyiDizi(hepsi);
   }
 
   // Her geçişin okunur hâli: seviye 'iyi' | 'zorlama' | 'uyumsuz'.
@@ -285,7 +381,7 @@
         if (iliski) sorunlar.push('ton uyumlu ama ' + hiz.fark + ' BPM fark var');
       }
       // Yay yönü: set yavaştan hızlıya akmalı, bu adım geriye dönüyor.
-      const dusus = (Number(onceki && onceki.bpm) || 0) - (Number(sonraki && sonraki.bpm) || 0);
+      const dusus = etkinBpm(onceki) - etkinBpm(sonraki);
       const inis = dusus > INIS_TOLERANS ? { dusus, ceza: inisCeza(onceki, sonraki) } : null;
       if (inis) sorunlar.push('hızdan yavaşa dönüş (' + dusus + ' BPM)');
       const seviye = (!iliski || hiz.tip === 'uyumsuz hız') ? 'uyumsuz'
@@ -339,7 +435,7 @@
   // yol: her köprü kendi komşusunun hızına yakın olur, tonları da iki yaka
   // arasında zincir kurmalı (a → 1. köprü → 2. köprü → b).
   function ikiAdimYolu(a, b) {
-    const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
+    const x = etkinBpm(a), y = etkinBpm(b);
     const cikis = cikilanTonlar(a), giris = girilenTonlar(b);
     if (!cikis.length || !giris.length) return null;
     const ornek = [];
@@ -360,7 +456,7 @@
   // komşunun da toleransına giren kesişimdir; kesişim boşsa tek parça yetmez.
   function kopru(a, b) {
     const tonlar = kopruTonlari(a, b).map(x => x.ton).slice(0, 3);
-    const x = Number(a && a.bpm) || 0, y = Number(b && b.bpm) || 0;
+    const x = etkinBpm(a), y = etkinBpm(b);
     let bpmMin = null, bpmMax = null, tekParca = true, not = '';
     if (x && y) {
       const alt = Math.min(x, y), ust = Math.max(x, y);
@@ -532,6 +628,7 @@
 
   return {
     parseKey, relation, tempo, score, autoOrder, gecisler, yanYana, inisCeza,
+    hizAyari, etkinBpm, hizBolumu, sabitlenen,
     yay, yayPuanu, kopru, kopruTonlari, cikilanTonlar, girilenTonlar, uyumluTonlar,
     uymayanlar, setDisiKalanlar, aramaLinkleri, oneriSorgusu, zincirPuanu,
     tarzEtiketi, sanatciProfilleri, settekiYeri, uyumluSanatcilar,

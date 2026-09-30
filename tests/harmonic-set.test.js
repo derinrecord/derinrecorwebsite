@@ -220,6 +220,66 @@ test('sıralayıcı seti yavaştan hızlıya dizer', () => {
   assert.equal(H.zincirPuanu(sira), enIyiPuan(liste), adlar);
 });
 
+test('hedef hız açıkken yakın hızlar sabitlenmiş sayılır', () => {
+  const yakin = parca('a', '8A', 122), hizli = parca('b', '8A', 130);
+  assert.equal(H.yanYana(yakin, hizli), false, 'hedef kapalıyken 8 BPM uzak');
+  H.hizAyari({ hedef: 126, tolerans: 4 });
+  try {
+    assert.deepEqual(H.hizAyari(), { hedef: 126, tolerans: 4 });
+    assert.equal(H.etkinBpm(yakin), 126, 'hedef civarı hedefe çekilir');
+    assert.equal(H.etkinBpm(parca('c', '9A', 131)), 131, 'hedefin dışı kendi hızında kalır');
+    assert.equal(H.etkinBpm(parca('c', '9A', null)), 0);
+    assert.equal(H.hizBolumu(yakin), 'ana');
+    assert.equal(H.hizBolumu(parca('c', '9A', 96)), 'giris');
+    assert.equal(H.hizBolumu(parca('c', '9A', 131)), 'hizli');
+    assert.equal(H.hizBolumu({ camelot: '9A', bpm: null }), null);
+    assert.equal(H.sabitlenen(yakin), true);
+    assert.equal(H.sabitlenen(parca('c', '9A', 133)), false);
+
+    const t = H.tempo(yakin, hizli);
+    assert.equal(t.fark, 0, 'sabitlenen çift arasında duyulur fark yok');
+    assert.equal(t.hamFark, 8, 'gerçek fark yanında taşınır');
+    assert.equal(t.tip, 'aynı hız');
+    assert.equal(H.yanYana(yakin, hizli), true);
+    assert.equal(H.inisCeza(yakin, hizli), 0, 'sabitlenen çift yay cezası yemez');
+
+    // Köprü önerisi de hedef hız üzerinden verilir: kullanıcı zaten orada çalıyor.
+    const k = H.kopru(yakin, parca('c', '9A', 131));
+    assert.ok(Math.abs(k.bpmMin - 126) <= 5 && Math.abs(k.bpmMin - 131) <= 5,
+      'köprü hızı hedefe göre: ' + k.bpmMin);
+  } finally {
+    H.hizAyari({ hedef: null });
+  }
+  assert.equal(H.hizAyari().hedef, null, 'test sonunda ayar nötre döner');
+  assert.equal(H.etkinBpm(yakin), 122);
+});
+
+test('hedef hız açıkken set açılış → ana → hızlı bölüm diye dizilir', () => {
+  const liste = [
+    parca('kopuk', '4B', 96, 7), parca('yukselis', '10B', 126, 6), parca('sahil', '9B', 125, 5),
+    parca('gece', '9A', 124, 5), parca('kapadokya', '8A', 122, 4),
+    parca('hizli', '8A', 130, 6), parca('vardiya', '9A', 131, 6)
+  ];
+  H.hizAyari({ hedef: 126, tolerans: 4 });
+  try {
+    const sira = H.autoOrder(liste);
+    const adlar = sira.map(t => t.id + '(' + H.hizBolumu(t) + ')' + t.bpm).join(' → ');
+    const bolum = sira.map(t => ({ giris: 0, ana: 1, hizli: 2 })[H.hizBolumu(t)]);
+    assert.ok(bolum.every((v, i) => i === 0 || v >= bolum[i - 1]), 'blok sırası bozulmamalı: ' + adlar);
+    assert.equal(sira[0].id, 'kopuk', 'açılıştaki yavaş parça başta: ' + adlar);
+    assert.equal(sira[sira.length - 1].id, 'vardiya', 'hızlı bölüm sonda: ' + adlar);
+    const y = H.yay(sira);
+    assert.equal(y.inisSayi, 0, 'tek tek hız düşüşü olmamalı (plato düz): ' + adlar);
+    assert.equal(y.yukselen, true, adlar);
+    assert.equal(y.son, 131, 'set hızlı bölümde kapanır: ' + adlar);
+    // Sabitlenen komşular arasında hız farkı kalmadığı için geçişler "iyi".
+    const iyi = H.gecisler(sira).filter(g => g.seviye === 'iyi').length;
+    assert.ok(iyi >= 5, 'yalnız kopuk geçiş sorun olmalı: ' + adlar);
+  } finally {
+    H.hizAyari({ hedef: null });
+  }
+});
+
 test('geçişler üç seviyede okunur ve sorunu adıyla yazar', () => {
   const iyi = H.gecisler([parca('a', '8A', 120, 5), parca('b', '9A', 121, 6)])[0];
   assert.equal(iyi.seviye, 'iyi');
