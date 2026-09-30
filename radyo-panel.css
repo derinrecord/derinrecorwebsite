@@ -352,8 +352,16 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .sube-liste-kutu{display:grid;gap:8px;margin-top:4px;max-height:52vh;overflow:auto}
 .sube-liste{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;cursor:pointer}
 .sube-liste:hover{border-color:rgba(255,255,255,.2)}
-.sube-liste input{width:17px;height:17px;flex:0 0 auto;accent-color:var(--gold,#d8b25a)}
+/* Kutu kendi çizilir: tarayıcının varsayılan beyaz kutusu koyu panelde
+   yabancı duruyordu. İşaretsizken ince çerçeve, işaretliyken altın zemin. */
+.sube-liste input{appearance:none;-webkit-appearance:none;position:relative;width:17px;height:17px;flex:0 0 auto;margin:0;border:1px solid rgba(255,255,255,.35);border-radius:4px;background:rgba(255,255,255,.05);cursor:pointer}
+.sube-liste input:checked{border-color:var(--gold,#d8b25a);background:var(--gold,#d8b25a)}
+.sube-liste input:checked::after{content:'';position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #14130f;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.sube-liste input:focus-visible{outline:2px solid var(--gold,#d8b25a);outline-offset:2px}
 .sube-liste b{display:block;font-size:13.5px}
 .sube-liste .sub{display:block}
+/* Boş liste: atanabilir ama ses çıkarmaz, bu yüzden sarı çerçeveyle ayrılır. */
+.sube-liste.bos{border-color:rgba(240,161,50,.45)}
+.sube-liste.bos .sub{color:var(--warn,#f0a132)}
 
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

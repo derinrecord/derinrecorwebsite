@@ -342,9 +342,19 @@ test('panel şubeye liste yüklemeyi bağlar', () => {
   const blok = source.slice(source.indexOf('async function subeListeleriKaydet'), source.indexOf('// ---------- Çekmece'));
   assert.match(blok, /if \(!kullanici\.adminMi\) return hata\('Şube listesi yüklemek/,
     'yükleme yönetici kapısından geçmeli');
+  // Hedef de kaynak da elle: şubeler ayrı kutulardan okunur, hiçbiri seçilmezse
+  // kayıt yapılmaz.
+  assert.match(blok, /querySelectorAll\('\[data-sube-hedef\]'\)/, 'işaretli şubeler okunmalı');
+  assert.match(blok, /En az bir şube işaretle/, 'şubesiz kayıt engellenmeli');
   assert.match(blok, /querySelectorAll\('\[data-sube-liste\]'\)/, 'işaretli kutular okunmalı');
+  // Tek KAYDET, işaretli her şubeyi dolaşır: aynı liste kümesi hepsine yazılır.
+  assert.match(blok, /for \(const p of hedefler\)/, 'her işaretli şube için yazılmalı');
   assert.ok(blok.includes("from('player_playlists').insert("), 'işaretlenenler yazılmalı');
   assert.match(blok, /\.delete\(\)[\s\S]*?\.in\('playlist_id'/, 'işareti kaldırılanlar silinmeli');
+  // Boş liste kaydedilebilir; ama kayıttan sonra yönetici "çalıyor" sanmasın
+  // diye bildirim parçasız listeleri ayrıca sayar.
+  assert.match(blok, /bosSecilen/, 'parçasız seçilen listeler hesaplanmalı');
+  assert.match(blok, /listede hiç parça yok/, 'bildirim boş listeyi söylemeli');
 });
 
 // Veritabanı tarafı: tablo yalnız yöneticiye açık, cihaz listeleri şube

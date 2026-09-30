@@ -12,7 +12,7 @@
   .vercelignore sayesinde yayına girmez (*-prova.html).
 -->
 <link rel="stylesheet" href="auth.css">
-<link rel="stylesheet" href="radyo-panel.css?v=6">
+<link rel="stylesheet" href="radyo-panel.css?v=7">
 </head>
 <body>
 
@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=40"></script>
+<script src="radyo-panel-views.js?v=41"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -279,7 +279,18 @@
         baslik: p.label + ' · çalma listeleri',
         govde: V.subeListePenceresi(D, ui, p),
         onayMetni: 'KAYDET',
-        onOnay: () => bildir('Prova: ' + p.label + ' şubesinin listeleri kaydedilir.')
+        onOnay: () => {
+          // Provada yazma yok; gerçek panelin (radyo-yonetim.js · subeListeleriKaydet)
+          // mesajını taklit ederiz ki seçimlerin tuttuğu gözle görülsün.
+          const md = el('modal');
+          const hedefler = md ? [...md.querySelectorAll('[data-sube-hedef]')].filter(k => k.checked) : [];
+          if (!hedefler.length) return bildir('Prova: en az bir şube işaretle.');
+          const liste = md.querySelectorAll('[data-sube-liste]:checked').length;
+          const ad = hedefler.length === 1
+            ? (D.players.find(x => x.id === hedefler[0].value) || {}).label + ' şubesine'
+            : hedefler.length + ' şubeye';
+          bildir('Prova: ' + ad + ' ' + liste + ' liste atanır.');
+        }
       });
     }
     if (act === 'sube-liste-hepsi' || act === 'sube-liste-hicbiri') {

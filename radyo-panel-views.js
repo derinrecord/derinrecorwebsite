@@ -1657,31 +1657,61 @@
         : '<p class="sub">Şubeye birden çok çalma listesi atamak için supabase/radio-sube-listeleri.sql çalıştırılmalı. O zamana kadar her şube markanın bütün listelerini görür.</p>'}`;
   }
 
-  // Şubeye liste atama penceresi: markanın listeleri onay kutularıyla sunulur.
-  // İşaretlenenler o şubenin cihazında çalar; hiçbiri işaretlenmezse şube
-  // çalmaz. Atamayı yalnız yönetim yapar, pencere yalnız "KAYDET" ile yazar.
+  // Şube listeleri penceresi. İki adımın ikisi de elle: önce listeleri
+  // vereceğin şubeler (birden çok seçilebilir), sonra o şubelerde çalacak
+  // çalma listeleri. Penceresi açılan şube işaretli gelir; başka şubeleri de
+  // işaretlerse aynı liste kümesi hepsine yazılır. Hiçbir şey kendiliğinden
+  // atanmaz; pencere yalnız "KAYDET" ile yazar ve atamayı yalnız yönetim yapar.
   function subeListePenceresi(D, ui, p) {
     const b = D.brands.find(x => x.id === p.brand_id);
+    const subeler = D.players.filter(x => x.brand_id === p.brand_id);
     const listeler = (D.playlists || []).filter(pl => pl.brand_id === p.brand_id);
     const yuklu = new Set(subeYukluListeleri(D, p.id).map(x => x.playlist_id));
-    const satirlar = listeler.map(pl => {
-      const adet = D.playlistTracks.filter(x => x.playlist_id === pl.id).length;
+    const adedi = pl => D.playlistTracks.filter(x => x.playlist_id === pl.id).length;
+    // Boş liste atanabilir ama ses çıkarmaz. Satır sarıya boyanır ki yönetici
+    // "çalıyor" sanıp şubeyi tek başına boş bir listeyle bırakmasın.
+    const bosVar = listeler.some(pl => !adedi(pl));
+    const subeSatirlari = subeler.map(x => {
+      const adet = subeYukluListeleri(D, x.id).length;
       return `<label class="sube-liste">
+        <input type="checkbox" value="${esc(x.id)}" data-sube-hedef${x.id === p.id ? ' checked' : ''}>
+        <span><b>${esc(x.label)}</b><span class="sub">${adet ? adet + ' liste atanmış' : 'liste atanmadı'}</span></span>
+      </label>`;
+    }).join('');
+    const satirlar = listeler.map(pl => {
+      const adet = adedi(pl);
+      return `<label class="sube-liste${adet ? '' : ' bos'}">
         <input type="checkbox" value="${esc(pl.id)}" data-sube-liste${yuklu.has(pl.id) ? ' checked' : ''}>
-        <span><b>${esc(pl.name)}</b><span class="sub">${adet} parça</span></span>
+        <span><b>${esc(pl.name)}</b><span class="sub">${adet ? adet + ' parça' : 'boş liste · hiç parçası yok'}</span></span>
       </label>`;
     }).join('');
     return `
-      <p class="sub">${esc(b ? b.name : 'Marka')} · <b>${esc(p.label)}</b> şubesinde hangi çalma listeleri çalsın?
-        <b>Birden çok liste seçebilirsin.</b> Kafedeki personel seçicisi yalnız burada işaretlediklerini görür.</p>
-      <div class="row" style="margin:12px 0">
-        <button class="btn sm" data-act="sube-liste-hepsi" type="button">TÜMÜNÜ SEÇ</button>
-        <button class="btn sm" data-act="sube-liste-hicbiri" type="button">HİÇBİRİNİ SEÇ</button>
-        <span class="sub">Hiçbiri işaretlenmezse bu şube çalmaz.</span>
+      <div class="block">
+        <p class="sub">${esc(b ? b.name : 'Marka')} · <b>${esc(p.label)}</b> şubesinden açtın.
+          Listeleri kime vereceğini ve ne çalacağını <b>sen seçiyorsun</b>; kayıt yalnız <b>KAYDET</b> dediğinde olur.</p>
       </div>
-      ${listeler.length
-        ? `<div class="sube-liste-kutu">${satirlar}</div>`
-        : '<div class="empty">Bu markanın henüz çalma listesi yok. Önce marka sayfasından liste oluştur.</div>'}`;
+      <div class="block">
+        <h4>1 · ŞUBELER</h4>
+        <p class="sub">Açtığın şube işaretli. Aynı listeleri başka şubelere de vereceksen onları da işaretle:
+          işaretlediğin her şubenin ataması buradaki seçimle <b>baştan kurulur</b>.</p>
+        <div class="sube-liste-kutu">${subeSatirlari || bos(1, 'Bu markanın şubesi yok.')}</div>
+      </div>
+      <div class="block">
+        <h4>2 · ÇALMA LİSTELERİ</h4>
+        <p class="sub">İşaretlediğin listeler yukarıdaki şubelerin kafedeki personel seçicisinde görünür.
+          <b>Birden çok liste seçebilirsin.</b></p>
+        <div class="row" style="margin:12px 0">
+          <button class="btn sm" data-act="sube-liste-hepsi" type="button">TÜMÜNÜ SEÇ</button>
+          <button class="btn sm" data-act="sube-liste-hicbiri" type="button">HİÇBİRİNİ SEÇ</button>
+          <span class="sub">Hiçbiri işaretlenmezse işaretli şubeler çalmaz.</span>
+        </div>
+        ${bosVar
+          ? '<p class="sub">Sarı işaretli listelerin hiç parçası yok; yalnız onları atarsan şube sessiz kalır.</p>'
+          : ''}
+        ${listeler.length
+          ? `<div class="sube-liste-kutu">${satirlar}</div>`
+          : '<div class="empty">Bu markanın henüz çalma listesi yok. Önce marka sayfasından liste oluştur.</div>'}
+      </div>`;
   }
 
   // Elle atama formu. İki kutu da boş gelir: hiçbir seçim hazır yapılmaz, çünkü

@@ -1224,6 +1224,22 @@ test('şube satırı yüklenen listeleri gösterir ve yükleme penceresini açar
   const l2 = pencere.slice(pencere.indexOf('value="l2"'));
   assert.ok(!l2.slice(0, 200).includes('checked'), 'yüklenmemiş liste boş gelmeli');
   assert.ok(!pencere.includes('Brew Gündüz'), 'başka markanın listesi sunulmamalı');
+  // 1 · ŞUBELER: penceresi açılan şube işaretli gelir, kardeşleri elle seçilir.
+  assert.ok(pencere.includes('1 · ŞUBELER') && pencere.includes('2 · ÇALMA LİSTELERİ'),
+    'iki adım ayrı başlıklarla verilmeli');
+  assert.ok(pencere.includes('data-sube-hedef'), 'şubeler elle işaretlenebilmeli');
+  assert.ok(/value="p1" data-sube-hedef checked/.test(pencere), 'açılan şube işaretli gelmeli');
+  assert.ok(/value="p2" data-sube-hedef(?! checked)/.test(pencere), 'diğer şube kendiliğinden seçilmemeli');
+  assert.ok(pencere.includes('Alsancak'), 'markanın bütün şubeleri sunulmalı');
+  assert.ok(!pencere.includes('Kahve Durağı'), 'başka markanın şubesi sunulmamalı');
+  // Parçasız liste atanabilir ama ses çıkarmaz: satır sarı işaretlenir ve
+  // pencerenin kendisi bu tuzağı yazıyla söyler.
+  assert.ok(pencere.includes('sube-liste bos'), 'parçasız liste sarı işaretlenmeli');
+  assert.ok(pencere.includes('boş liste · hiç parçası yok'), 'boş listenin nedeni yazılmalı');
+  assert.ok(pencere.includes('şube sessiz kalır'), 'boş liste uyarısı pencereye girmeli');
+  const dolu = V.subeListePenceresi({ ...Dsiz, playlists: [Dsiz.playlists[0]] }, ui, Dsiz.players[0]);
+  assert.ok(!dolu.includes('sube-liste bos') && !dolu.includes('şube sessiz kalır'),
+    'her liste doluysa uyarı çıkmamalı');
 
   // Özellik kurulmadan (SQL çalışmadan) sütun ve düğme çizilmez.
   const kapali = V.gorunum(durum({ nav: 'musteri', sub: 'listeler', acik: { 'listeler:marka:b1': true } }), LISTE_D, ui).html;
@@ -1251,10 +1267,14 @@ test('şube listesi ataması tek katmanlı ve okunur', () => {
   assert.ok(!/marka \d+\/\d+ seçti/.test(html), 'markanın ayrı seçimi diye bir katman yok');
 
   const pencere = V.subeListePenceresi(Dsecim, ui, Dsecim.players[0]);
-  assert.ok(pencere.includes('Kafedeki personel seçicisi yalnız burada işaretlediklerini görür'),
+  assert.ok(pencere.includes('kafedeki personel seçicisinde görünür'),
     'işaretlenen listenin çalacağı yazılmalı');
+  assert.ok(pencere.includes('kayıt yalnız <b>KAYDET</b> dediğinde olur'),
+    'her şeyin elle ve KAYDET ile yazıldığı söylenmeli');
   assert.ok(!pencere.includes('?sube='), 'marka paneli yönlendirmesi kalmamalı');
   assert.ok(!pencere.includes('marka seçmedi'), 'marka seçimi işareti kalmamalı');
+  // Atama baştan kurulur: işaretlenmeyen liste o şubeden düşer, bunu yazmalı.
+  assert.ok(pencere.includes('baştan kurulur'), 'mevcut atamanın yenileneceği yazılmalı');
 });
 
 // Listeler klasörde yönetilmez: oluşturma/silme ve detay marka sayfasında kalır.

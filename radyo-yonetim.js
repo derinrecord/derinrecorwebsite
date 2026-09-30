@@ -217,39 +217,52 @@
 
 
   // ---------- Şube listeleri ----------
-  // Penceredeki işaretli listeler o şubenin yükledikleridir. Yükleme sırası,
-  // markanın liste sırasına değil işaretleme sırasına göre eklenir: sonradan
-  // işaretlenenler listenin sonuna düşer, mevcutların sırası bozulmaz.
-  async function subeListeleriKaydet(playerId) {
+  // Pencerede işaretlenen şubelerin (birden çok olabilir) ataması, işaretlenen
+  // çalma listeleriyle baştan kurulur: işaretlenmeyen listeler o şubeden
+  // kaldırılır. Yükleme sırası markanın liste sırasına değil işaretleme sırasına
+  // göre listenin sonuna eklenir, mevcutların sırası bozulmaz. Hiçbir şey
+  // kendiliğinden atanmaz; yazma yalnız KAYDET düğmesiyle olur.
+  async function subeListeleriKaydet() {
     if (!kullanici.adminMi) return hata('Şube listesi yüklemek yönetici yetkisi ister.');
-    const p = D.players.find(x => x.id === playerId);
-    if (!p) return hata('Şube bulunamadı.');
     const md = el('modal');
     if (!md) return;
+    const hedefler = [...md.querySelectorAll('[data-sube-hedef]')]
+      .filter(k => k.checked).map(k => k.value)
+      .map(pid => D.players.find(x => x.id === pid)).filter(Boolean);
+    if (!hedefler.length) return hata('En az bir şube işaretle.');
     const secilen = [...md.querySelectorAll('[data-sube-liste]')]
       .filter(k => k.checked).map(k => k.value);
-    const yuklu = (D.playerPlaylists || []).filter(x => x.player_id === playerId)
-      .map(x => x.playlist_id);
-    const eklenecek = secilen.filter(x => !yuklu.includes(x));
-    const kaldirilacak = yuklu.filter(x => !secilen.includes(x));
+    // Boş liste kaydedilebilir ama ses çıkarmaz: yönetici kaydettikten sonra
+    // "çalıyor" sanmasın diye bildirim bunu ayrıca söyler.
+    const bosSecilen = secilen.filter(id => !D.playlistTracks.some(x => x.playlist_id === id));
 
-    if (eklenecek.length) {
-      const { error } = await client.from('player_playlists').insert(
-        eklenecek.map((playlistId, i) => ({
-          player_id: p.id, playlist_id: playlistId, sort_order: yuklu.length + i
-        })));
-      if (error) return hata('Listeler yüklenemedi: ' + error.message);
-    }
-    if (kaldirilacak.length) {
-      const { error } = await client.from('player_playlists').delete()
-        .eq('player_id', p.id).in('playlist_id', kaldirilacak);
-      if (error) return hata('Listeler kaldırılamadı: ' + error.message);
+    for (const p of hedefler) {
+      const yuklu = (D.playerPlaylists || []).filter(x => x.player_id === p.id)
+        .map(x => x.playlist_id);
+      const eklenecek = secilen.filter(x => !yuklu.includes(x));
+      const kaldirilacak = yuklu.filter(x => !secilen.includes(x));
+      if (eklenecek.length) {
+        const { error } = await client.from('player_playlists').insert(
+          eklenecek.map((playlistId, i) => ({
+            player_id: p.id, playlist_id: playlistId, sort_order: yuklu.length + i
+          })));
+        if (error) return hata(p.label + ' · listeler yüklenemedi: ' + error.message);
+      }
+      if (kaldirilacak.length) {
+        const { error } = await client.from('player_playlists').delete()
+          .eq('player_id', p.id).in('playlist_id', kaldirilacak);
+        if (error) return hata(p.label + ' · listeler kaldırılamadı: ' + error.message);
+      }
     }
     pencereKapat();
     await yenile(false);
+    const hedefMetni = hedefler.length === 1
+      ? hedefler[0].label + ' şubesine'
+      : hedefler.length + ' şubeye';
     bildir(!secilen.length
-      ? p.label + ' şubesinde liste kalmadı; bu şube çalmayacak.'
-      : p.label + ' şubesine ' + secilen.length + ' liste atandı.');
+      ? hedefMetni + ' liste kalmadı; bu şubeler çalmayacak.'
+      : hedefMetni + ' ' + secilen.length + ' liste atandı.'
+        + (bosSecilen.length ? ' Uyarı: ' + bosSecilen.length + ' listede hiç parça yok.' : ''));
   }
 
   // ---------- Çekmece ----------
@@ -1551,7 +1564,8 @@
 
       // --- şube listeleri (supabase/radio-sube-listeleri.sql) ---
       // Şubeye liste atamak yayını değiştirmez: yalnız o şubenin cihazındaki
-      // personel seçicisini belirler. Hiçbiri atanmazsa şube çalmaz.
+      // personel seçicisini belirler. Pencerede şube de liste de elle seçilir;
+      // hiçbiri atanmazsa şube çalmaz.
       case 'sube-listeler': {
         const p = D.players.find(x => x.id === id);
         if (!p) return hata('Şube bulunamadı.');
@@ -1560,7 +1574,7 @@
           baslik: p.label + ' · çalma listeleri',
           govde: V.subeListePenceresi(D, ui, p),
           onayMetni: 'KAYDET',
-          onOnay: () => subeListeleriKaydet(p.id)
+          onOnay: () => subeListeleriKaydet()
         });
         return;
       }
