@@ -701,8 +701,11 @@
     if (!t.eksik.length) return `<span class="sub">Temel şema hazır: ${t.toplam} tablo okundu.</span>`;
     return `<div class="uyari-serit kurulum" style="margin:0 0 14px">
       <span class="chip danger">TEMEL ŞEMA EKSİK</span>
-      <div class="uyari-govde"><b>${t.eksik.length} tablo Supabase'de yok</b>
-        <span class="sub">Panel bunlar olmadan çalışmaz. Kurulum adımları: <b>supabase/kurulum.md</b></span></div>
+      <div class="uyari-govde"><b>${t.eksik.length} tablo Supabase'de yok: ${esc(t.eksik.map(x => x[1]).join(', '))}</b>
+        <span class="sub">Panel bunlar olmadan çalışmaz; temel tablolar <b>derin-record.sql</b> ile kurulur.</span></div>
+      <div class="uyari-dugmeler">
+        <button class="btn sm" data-act="kurulum-rehber" type="button">KURULUM REHBERİ</button>
+      </div>
     </div>`;
   }
 
@@ -1271,6 +1274,7 @@
         ${temelSatir(D)}
         <div class="row" style="margin-bottom:14px">
           <button class="btn sm primary" data-act="kurulum-yenile" type="button">DURUMU YENİDEN KONTROL ET</button>
+          <button class="btn sm" data-act="kurulum-rehber" type="button">KURULUM REHBERİ</button>
           <span class="sub">SQL'i çalıştırdıktan sonra sayfayı yenilemeden denetler.</span>
         </div>
         <table>

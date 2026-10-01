@@ -1329,6 +1329,7 @@ test('kurulum ekranı her dosyayı kurulu/kurulmadı/denenmedi olarak listeler',
   assert.ok(html.includes('radio-erisim.sql') && html.includes('radio-yayin-durdurma.sql'),
     'oynatıcı tarafı SQL dosyaları da listelenmeli');
   assert.ok(html.includes('data-act="kurulum-yenile"'), 'yeniden kontrol düğmesi olmalı');
+  assert.ok(html.includes('data-act="kurulum-rehber"'), 'kurulum rehberi düğmesi olmalı');
   // Özet sayaçları: üç durumun toplamı her zaman dosya sayısına eşit olmalı.
   const ozet = V.kurulumOzet(KD);
   assert.equal(ozet.toplam, anahtarlar.length);
@@ -1406,6 +1407,12 @@ test('temel şema eksikse adıyla söylenir ve şeritte öne geçer', () => {
   const serit = V.kurulumSeridi(KD);
   assert.ok(serit.includes('TEMEL ŞEMA EKSİK'), 'temel şema uyarısı görünmeli');
   assert.ok(serit.includes('Yayın klasörleri'), 'eksik tablonun adı yazılmalı');
+  // Kurulum ekranında temel şema uyarısı rehbere köprü vermeli (uyarı bloğu,
+  // altındaki genel düğme sırasına kadar daraltılarak sınanır).
+  const ekran = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), KD, ui).html;
+  const blok = ekran.slice(ekran.indexOf('TEMEL ŞEMA EKSİK'), ekran.indexOf('DURUMU YENİDEN KONTROL ET'));
+  assert.ok(blok.includes('data-act="kurulum-rehber"'), 'temel şema uyarısından rehber açılmalı');
+  assert.ok(blok.includes('radio_folders') || blok.includes('Yayın klasörleri'), 'eksik tablo adı uyarıda yazılmalı');
   assert.ok(!serit.includes('KURULUM EKSİK'), 'temel şema varken opsiyonel şerit geri plana düşer');
 });
 

@@ -227,12 +227,14 @@
 
 
   // ---------- Kurulum durumu ----------
-  // Eksik bir SQL dosyasının içeriğini panelden okunur/kopyalanır hale getirir:
-  // yönetici Supabase SQL Editor'e yapıştırıp bir kez çalıştırır. Dosya depodan
-  // (public) raw olarak çekilir; ağ yoksa panel yol gösterir, hata vermez.
-  async function kurulumSqlGoster(dosya) {
-    if (!/^[a-z0-9-]+\.sql$/.test(dosya || '')) return hata('Geçersiz dosya adı.');
-    pencere({ baslik: dosya, govde: '<p class="sub">SQL yükleniyor…</p>', gizleOnay: true, kapatMetni: 'KAPAT' });
+  // Depodaki bir kurulum dosyasını (SQL ya da rehber) panelden okunur/kopyalanır
+  // hale getirir: yönetici Supabase SQL Editor'e yapıştırıp bir kez çalıştırır.
+  // Dosya depodan (public) raw olarak çekilir; ağ yoksa panel yol gösterir,
+  // hata vermez.
+  async function kurulumDosyaGoster(dosya) {
+    if (!/^[a-z0-9-]+\.(sql|md)$/.test(dosya || '')) return hata('Geçersiz dosya adı.');
+    const sqlMi = /\.sql$/.test(dosya);
+    pencere({ baslik: dosya, govde: '<p class="sub">Yükleniyor…</p>', gizleOnay: true, kapatMetni: 'KAPAT' });
     let metin = '';
     try {
       const yanit = await fetch('https://raw.githubusercontent.com/derinrecord/derinrecorwebsite/main/supabase/' + dosya);
@@ -241,15 +243,17 @@
     const govde = el('modal').querySelector('.modal-body');
     if (!govde) return;
     if (!metin) {
-      govde.innerHTML = `<p class="sub">Dosya okunamadı. Supabase SQL Editor'de depodaki <b>supabase/${esc(dosya)}</b> içeriğini yapıştırın.</p>`;
+      govde.innerHTML = `<p class="sub">Dosya okunamadı. Depodaki <b>supabase/${esc(dosya)}</b> içeriğini açıp kullanın.</p>`;
       return;
     }
     govde.innerHTML = `
-      <p class="sub">Bu SQL'i Supabase SQL Editor'de bir kez çalıştırın: özellik açılır, kurulum uyarısı kaybolur.</p>
-      <textarea id="kurulum-sql" readonly rows="16" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5">${esc(metin)}</textarea>
+      <p class="sub">${sqlMi
+        ? "Bu SQL'i Supabase SQL Editor'de bir kez çalıştırın: özellik açılır, kurulum uyarısı kaybolur."
+        : 'Kurulum adımları; her adımı sırayla uygulayın.'}</p>
+      <textarea id="kurulum-sql" readonly rows="18" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5">${esc(metin)}</textarea>
       <div class="row" style="margin-top:10px">
-        <button class="btn sm primary" data-act="kurulum-sql-kopyala" type="button">SQL'İ KOPYALA</button>
-        <span class="sub">Kopyaladıktan sonra Supabase → SQL Editor → Run.</span>
+        <button class="btn sm primary" data-act="kurulum-sql-kopyala" type="button">${sqlMi ? "SQL'İ KOPYALA" : 'METNİ KOPYALA'}</button>
+        <span class="sub">${sqlMi ? 'Kopyaladıktan sonra Supabase → SQL Editor → Run.' : 'Adımları takip edin.'}</span>
       </div>`;
   }
 
@@ -959,7 +963,8 @@
         git('#/kurulum');
         return;
       }
-      case 'kurulum-sql': return kurulumSqlGoster(hedef.dataset.id);
+      case 'kurulum-sql': return kurulumDosyaGoster(hedef.dataset.id);
+      case 'kurulum-rehber': return kurulumDosyaGoster('kurulum.md');
       case 'kurulum-yenile': {
         // SQL çalıştırıldıktan sonra sayfayı yenilemeye gerek kalmasın: bütün
         // tabloları yeniden yoklar ve sonucu bildirir.
