@@ -1309,17 +1309,10 @@ test('yan menüde kurulum durumu satırı görünür', () => {
 });
 
 test('kurulum ekranı her dosyayı kurulu/kurulmadı/denenmedi olarak listeler', () => {
-  const KD = {
-    ...D,
-    kurulum: {
-      'radio-sube-listeleri.sql': true,
-      'radio-subeye-ozel-yayin.sql': false,
-      'radio-baglanti-gecmisi.sql': true,
-      'radio-yayin-baslat.sql': false,
-      'radio-calan-parca.sql': true,
-      'radio-liste-bildirimi.sql': null
-    }
-  };
+  // Dosya sayısı zamanla artabilir; testi listeye bağlı kurarız.
+  const anahtarlar = V.KURULUM.map(x => x.anahtar);
+  const KD = { ...D, kurulum: {} };
+  anahtarlar.forEach((a, i) => { KD.kurulum[a] = i % 3 === 0 ? true : (i % 3 === 1 ? false : null); });
   const html = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), KD, ui).html;
   assert.ok(html.includes('KURULUM DURUMU'), 'bölüm başlığı çizilmeli');
   // Dosya adları birebir görünür ki yönetici hangi SQL dosyasını çalıştıracağını bilsin.
@@ -1332,10 +1325,16 @@ test('kurulum ekranı her dosyayı kurulu/kurulmadı/denenmedi olarak listeler',
     'eksik dosyanın SQL düğmesi olmalı');
   assert.ok(!html.includes('data-act="kurulum-sql" data-id="radio-sube-listeleri.sql"'),
     'kurulu dosya için SQL düğmesi çizilmemeli');
+  // Oyuncu tarafı fonksiyon dosyaları da listede olmalı.
+  assert.ok(html.includes('radio-erisim.sql') && html.includes('radio-yayin-durdurma.sql'),
+    'oynatıcı tarafı SQL dosyaları da listelenmeli');
   assert.ok(html.includes('data-act="kurulum-yenile"'), 'yeniden kontrol düğmesi olmalı');
-  // Özet sayaçları: 3 kurulu, 2 eksik, 1 denenmedi.
+  // Özet sayaçları: üç durumun toplamı her zaman dosya sayısına eşit olmalı.
   const ozet = V.kurulumOzet(KD);
-  assert.deepEqual(ozet, { kurulu: 3, eksik: 2, denenmedi: 1, toplam: 6 });
+  assert.equal(ozet.toplam, anahtarlar.length);
+  assert.equal(ozet.kurulu + ozet.eksik + ozet.denenmedi, anahtarlar.length);
+  assert.equal(ozet.kurulu, anahtarlar.filter((_, i) => i % 3 === 0).length);
+  assert.equal(ozet.eksik, anahtarlar.filter((_, i) => i % 3 === 1).length);
 });
 
 test('kurulum verisi yokken ekran çökmez, hepsi denenmedi sayılır', () => {
@@ -1367,6 +1366,13 @@ test('eksik kurulum üst şeritte özetlenir ve kurulum ekranına köprü verir'
     'eksik özelliklerin adları yazılmalı');
   assert.ok(!serit.includes('Bağlantı geçmişi'), 'kurulu özellik şeritte anılmamalı');
   assert.ok(serit.includes('data-act="kurulum-ac"'), 'şeritten kurulum ekranı açılmalı');
+});
+
+test('kurulum eksiği menüde kırmızı rozet olarak okunur', () => {
+  const html = V.nav(durum({ nav: 'kurulum', sub: 'kurulum' }), { kurulumEksik: 2 }, { ad: 'Yönetici' });
+  assert.ok(/class="say uyari">2<\/span>/.test(html), 'eksik sayısı menüde rozet olmalı');
+  const yok = V.nav(durum({ nav: 'canli', sub: 'subeler' }), { kurulumEksik: null, sessiz: null }, { ad: 'Yönetici' });
+  assert.ok(!/class="say uyari"/.test(yok), 'eksik yokken rozet çizilmemeli');
 });
 
 // Kurulum ekranı yöneticiye dosya adı verir; ad yanlışsa yönetici olmayan bir

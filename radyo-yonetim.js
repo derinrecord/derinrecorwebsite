@@ -38,7 +38,8 @@
     kurulum: {
       'radio-sube-listeleri.sql': null, 'radio-subeye-ozel-yayin.sql': null,
       'radio-baglanti-gecmisi.sql': null, 'radio-yayin-baslat.sql': null,
-      'radio-calan-parca.sql': null, 'radio-liste-bildirimi.sql': null
+      'radio-calan-parca.sql': null, 'radio-liste-bildirimi.sql': null,
+      'radio-erisim.sql': null, 'radio-yayin-durdurma.sql': null
     }
   };
   const state = {
@@ -388,7 +389,10 @@
       // geçmiş ekranını aramadan nerede iş olduğunu görsün.
       olaySorun: V.olaySorunSayi(D) || null,
       // Mesai içinde şu an susan şube: menüde kırmızı rozet, üstte şerit.
-      sessiz: V.sessizSayi(D) || null
+      sessiz: V.sessizSayi(D) || null,
+      // Kurulum eksiği varsa menü satırında kırmızı rozet: yönetici ekranı
+      // açmadan kaç özelliğin kapalı olduğunu görsün.
+      kurulumEksik: V.kurulumOzet(D).eksik || null
     };
   }
 
@@ -422,6 +426,18 @@
   }
 
   // ---------- Veri ----------
+  // Bir Supabase fonksiyonunun kurulu olup olmadığını yoklar. true: var,
+  // false: yok (42883), null: bilinmiyor (yetki/ağ hatası). Yan etkisi yoktur:
+  // yalnız okuma yapan fonksiyonlar sahte bir anahtarla çağrılır.
+  async function rpcVarMi(fn, args) {
+    try {
+      const { error } = await client.rpc(fn, args);
+      if (!error) return true;
+      if (error.code === '42883' || /does not exist/i.test(error.message || '')) return false;
+      return null;
+    } catch { return null; }
+  }
+
   async function veriYukle() {
     const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
@@ -496,6 +512,14 @@
         .select('brand_id,start_track_id').limit(1);
       D.kurulum['radio-yayin-baslat.sql'] = !deneme.error;
     } catch { D.kurulum['radio-yayin-baslat.sql'] = false; }
+
+    // Oyuncu tarafı fonksiyonlar (supabase/radio-erisim.sql, radio-yayin-durdurma.sql)
+    // tablo değil fonksiyon oldukları için RPC ile yoklanır. Fonksiyon yokken
+    // Supabase 42883 ("function does not exist") döner. Başka hata (yetki vb.)
+    // gelirse "denenmedi" bırakılır: yanlış alarm verilmez.
+    const sahteAnahtar = '00000000-0000-4000-8000-000000000000';
+    D.kurulum['radio-erisim.sql'] = await rpcVarMi('radio_listeler', { p_player_key: sahteAnahtar });
+    D.kurulum['radio-yayin-durdurma.sql'] = await rpcVarMi('radio_yayin_durumu', { p_player_key: sahteAnahtar });
 
     // Şubeye yüklenen listeler (supabase/radio-sube-listeleri.sql). Tablo henüz
     // kurulmadıysa sorgu hata döner: o zaman şube satırında yükleme sütunu

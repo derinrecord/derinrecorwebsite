@@ -898,7 +898,7 @@
         ${oge('musteri', 'talepler', 'Talepler', 'Gelen başvurular', counts.requests, ikonlar.talep)}
 
         <div class="nav-title">SİSTEM</div>
-        ${oge('kurulum', 'kurulum', 'Kurulum durumu', 'Veritabanı ve özellikler', null, ikonlar.kurulum)}
+        ${oge('kurulum', 'kurulum', 'Kurulum durumu', 'Veritabanı ve özellikler', null, ikonlar.kurulum, counts.kurulumEksik)}
       </nav>
       <div class="rail-foot">
         <div class="who"><i>${esc((kullanici && kullanici.basHarf) || 'DR')}</i>
@@ -1174,7 +1174,11 @@
     { anahtar: 'radio-calan-parca.sql', ad: 'Şu an çalan parça',
       aciklama: 'Cihazın hangi parçayı çaldığını panele bildirir.', etki: 'Canlı durum' },
     { anahtar: 'radio-liste-bildirimi.sql', ad: 'Çalan liste bildirimi',
-      aciklama: 'Çalan parçanın hangi listeden geldiğini panele bildirir.', etki: 'Canlı durum' }
+      aciklama: 'Çalan parçanın hangi listeden geldiğini panele bildirir.', etki: 'Canlı durum' },
+    { anahtar: 'radio-erisim.sql', ad: 'Şube erişim kapısı',
+      aciklama: 'Şube linki ve sunum kodu doğrulanmadan katalog okunamaz; içerik dışarıya kapanır.', etki: 'Güvenlik · oynatıcı' },
+    { anahtar: 'radio-yayin-durdurma.sql', ad: 'Yayın durumu ayrımı',
+      aciklama: '“Yayın yok” cevabının sebebini ayırır: durdurulmuş mu, marka mı kapalı, abonelik mi bitti.', etki: 'Oynatıcı' }
   ];
 
   function kurulumDurum(durum) {
