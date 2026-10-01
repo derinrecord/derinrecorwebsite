@@ -322,6 +322,42 @@ test('çalma listesi detayı sıra düğmelerini uçlarda kapatır', () => {
   assert.ok(html.includes('AKIŞ (2)'));
 });
 
+// Sıra düğmelerinin kilidi listenin gerçek ucuna bakmalı: arama açıkken
+// eşleşen ilk satır, listenin ilk satırı değilse yukarı taşınabilmelidir.
+// Satır ayrıca parça kimliğini taşır ki oynatıcı çalan satırı işaretleyebilsin.
+test('çalma listesinde arama sıra düğmelerini yanlış kilitlemez', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openPlaylist: 'l1', q: 'İkinci' }), D, ui);
+  assert.ok(!html.includes('data-kayit="x1"'), 'eşleşmeyen satır süzülmeli');
+  const i2 = html.indexOf('data-kayit="x2"');
+  assert.ok(i2 > -1, 'eşleşen satır çizilmeli');
+  const satir = html.slice(html.lastIndexOf('<tr', i2), html.indexOf('</tr>', i2));
+  assert.ok(satir.includes('data-id="t2"'), 'satır çalan vurgusu için parça kimliğini taşımalı');
+  const up = satir.slice(satir.indexOf('data-act="ptrack-up"'));
+  assert.ok(!up.slice(0, up.indexOf('>')).includes('disabled'), 'ikinci satırın yukarısı açık olmalı');
+  const down = satir.slice(satir.indexOf('data-act="ptrack-down"'));
+  assert.ok(down.slice(0, down.indexOf('>')).includes('disabled'), 'son satırın aşağısı kapalı olmalı');
+});
+
+// Liste sırası sürükleyerek de değiştirilebilir: satırlar taşınabilir olmalı ve
+// başlıkta sıra kolonu için boş bir hücre bulunmalı (klasör parçalarıyla aynı his).
+test('çalma listesi satırları sürüklenebilir ve başlığı sıra kolonunu taşır', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openPlaylist: 'l1' }), D, ui);
+  assert.ok(html.includes('<tr draggable="true"'), 'liste satırları sürüklenebilir olmalı');
+  assert.ok(html.includes('title="Sürükleyerek sırala"'), 'sürükleme tutamacı görünmeli');
+  const bas = html.slice(html.indexOf('<thead>'), html.indexOf('</thead>'));
+  assert.equal((bas.match(/<th>/g) || []).length, 6, 'başlık sıra kolonu için boş hücreyi taşımalı');
+  assert.ok(html.includes('↑ ↓ düğmeleriyle değiştirebilirsin'), 'sürükleme ipucu yazılmalı');
+});
+
+// Link adı (slug) olmayan eski markada `/coffee/` boş link üretip kırık sunum
+// sayfasına götürmek yerine yöneticiyi link adı kaydetmeye yönlendiririz.
+test('link adı olmayan markada sunum linki yerine uyarı çıkar', () => {
+  const slugsuz = { ...D, brands: [{ ...D.brands[0], slug: null }] };
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), slugsuz, ui);
+  assert.ok(!html.includes('coffee/'), 'slug\'sız markada kırık link üretilmemeli');
+  assert.ok(html.includes('link adı'), 'yönetici link adı kaydetmeye yönlendirilmeli');
+});
+
 // Kapaklar elle yerleştirilir: yönetim indirdiği görseli kendi seçer. Pencerede
 // seçilen görsel KAYDEDİLMEDEN önce görünmeli ki hangi görselin hangi parçaya
 // gittiği karışmasın; mevcut kapak varsa kaldırma yolu da olmalı.
@@ -1261,5 +1297,98 @@ test('bulunamayan liste marka listesine düşer', () => {
   const html = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1', openPlaylist: 'yok' }), LISTE_D, ui).html;
   assert.ok(html.includes('MARKALAR'), 'marka listesi çizilmeli');
   assert.ok(!html.includes('data-act="list-addtrack"'), 'olmayan listenin detayı açılmamalı');
+});
+
+// Kurulum durumu: panelin opsiyonel SQL dosyalarına dayanan özellikleri tek
+// ekranda görünür; yönetici eksik dosyayı dağınık hata mesajlarından değil,
+// buradan anlar.
+test('yan menüde kurulum durumu satırı görünür', () => {
+  const html = V.nav(durum({ nav: 'kurulum', sub: 'kurulum' }), { players: 1, folders: 1 }, { ad: 'Yönetici' });
+  assert.ok(html.includes('data-nav="kurulum" data-sub="kurulum"'), 'kurulum menüde olmalı');
+  assert.ok(html.includes('Kurulum durumu'), 'menü başlığı yazılmalı');
+});
+
+test('kurulum ekranı her dosyayı kurulu/kurulmadı/denenmedi olarak listeler', () => {
+  const KD = {
+    ...D,
+    kurulum: {
+      'radio-sube-listeleri.sql': true,
+      'radio-subeye-ozel-yayin.sql': false,
+      'radio-baglanti-gecmisi.sql': true,
+      'radio-yayin-baslat.sql': false,
+      'radio-calan-parca.sql': true,
+      'radio-liste-bildirimi.sql': null
+    }
+  };
+  const html = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), KD, ui).html;
+  assert.ok(html.includes('KURULUM DURUMU'), 'bölüm başlığı çizilmeli');
+  // Dosya adları birebir görünür ki yönetici hangi SQL dosyasını çalıştıracağını bilsin.
+  V.KURULUM.forEach(x => assert.ok(html.includes(x.anahtar), `${x.anahtar} listelenmeli`));
+  assert.ok(html.includes('KURULU'), 'kurulu chip yazılmalı');
+  assert.ok(html.includes('KURULMADI'), 'eksik chip yazılmalı');
+  assert.ok(html.includes('DENENMEDİ'), 'denenmedi chip yazılmalı');
+  // Eksik dosyanın SQL'i panelden görülebilsin; kurulu dosya için düğme çizilmesin.
+  assert.ok(html.includes('data-act="kurulum-sql" data-id="radio-subeye-ozel-yayin.sql"'),
+    'eksik dosyanın SQL düğmesi olmalı');
+  assert.ok(!html.includes('data-act="kurulum-sql" data-id="radio-sube-listeleri.sql"'),
+    'kurulu dosya için SQL düğmesi çizilmemeli');
+  assert.ok(html.includes('data-act="kurulum-yenile"'), 'yeniden kontrol düğmesi olmalı');
+  // Özet sayaçları: 3 kurulu, 2 eksik, 1 denenmedi.
+  const ozet = V.kurulumOzet(KD);
+  assert.deepEqual(ozet, { kurulu: 3, eksik: 2, denenmedi: 1, toplam: 6 });
+});
+
+test('kurulum verisi yokken ekran çökmez, hepsi denenmedi sayılır', () => {
+  const html = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), D, ui).html;
+  assert.ok(html.includes('KURULUM DURUMU'), 'veri gelmeden de ekran çizilmeli');
+  const ozet = V.kurulumOzet(D);
+  assert.equal(ozet.denenmedi, V.KURULUM.length, 'veri yoksa hepsi denenmedi olmalı');
+  assert.equal(ozet.kurulu, 0);
+});
+
+// Üst şerit: eksik kurulum yöneticinin gözünden kaçmasın; şerit doğrudan
+// kurulum ekranına köprü verir.
+test('eksik kurulum üst şeritte özetlenir ve kurulum ekranına köprü verir', () => {
+  const KD = {
+    ...D,
+    kurulum: {
+      'radio-sube-listeleri.sql': true,
+      'radio-subeye-ozel-yayin.sql': false,
+      'radio-baglanti-gecmisi.sql': true,
+      'radio-yayin-baslat.sql': null,
+      'radio-calan-parca.sql': true,
+      'radio-liste-bildirimi.sql': false
+    }
+  };
+  const serit = V.kurulumSeridi(KD);
+  assert.ok(serit.includes('KURULUM EKSİK'), 'şerit başlığı çizilmeli');
+  assert.ok(serit.includes('2 özellik kapalı'), 'eksik sayısı yazılmalı');
+  assert.ok(serit.includes('Şubeye özel yayın') && serit.includes('Çalan liste bildirimi'),
+    'eksik özelliklerin adları yazılmalı');
+  assert.ok(!serit.includes('Bağlantı geçmişi'), 'kurulu özellik şeritte anılmamalı');
+  assert.ok(serit.includes('data-act="kurulum-ac"'), 'şeritten kurulum ekranı açılmalı');
+});
+
+// Kurulum ekranı yöneticiye dosya adı verir; ad yanlışsa yönetici olmayan bir
+// dosyayı aramaya başlar. Liste ile depoyu burada bağlarız.
+test('kurulum ekranındaki her SQL dosyası depoda gerçekten var', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  V.KURULUM.forEach(x => {
+    const yol = path.join(__dirname, '..', 'supabase', x.anahtar);
+    assert.ok(fs.existsSync(yol), `${x.anahtar} supabase/ içinde bulunmalı`);
+  });
+  // Kurulum ekranındaki dosya adları benzersiz olmalı: aynı anahtar iki satırı
+  // birden işaretlerse durum karışır.
+  const anahtarlar = V.KURULUM.map(x => x.anahtar);
+  assert.equal(new Set(anahtarlar).size, anahtarlar.length, 'dosya adları benzersiz olmalı');
+});
+
+test('eksik kurulum yokken üst şerit hiç çizilmez', () => {
+  const tam = { ...D, kurulum: {} };
+  V.KURULUM.forEach(x => { tam.kurulum[x.anahtar] = true; });
+  assert.equal(V.kurulumSeridi(tam), '', 'hepsi kuruluyken şerit boş olmalı');
+  // Kurulum verisi henüz gelmediyse de şerit çizilmez: yanlış alarm olmasın.
+  assert.equal(V.kurulumSeridi(D), '', 'veri yokken şerit çizilmemeli');
 });
 
