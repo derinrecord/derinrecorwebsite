@@ -12,7 +12,7 @@
   .vercelignore sayesinde yayına girmez (*-prova.html).
 -->
 <link rel="stylesheet" href="auth.css">
-<link rel="stylesheet" href="radyo-panel.css?v=7">
+<link rel="stylesheet" href="radyo-panel.css?v=10">
 </head>
 <body>
 
@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=43"></script>
+<script src="radyo-panel-views.js?v=45"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -208,6 +208,47 @@
   }
   const cekmeceKapat = () => { el('drawer').classList.remove('open'); el('backdrop').classList.remove('open'); };
 
+  // Sürükleyerek sıralama: prova sunucuya yazmaz, örnek verinin sırasını bellekte
+  // değiştirir. Gerçek panelin (radyo-yonetim.js · satirSuruklemeBagla) kuralını da
+  // gösterir: arama açıkken sıralama kapalıdır.
+  function suruklemeBagla() {
+    const satirlar = Array.from(document.querySelectorAll('#view tr[draggable="true"]'));
+    if (!satirlar.length) return;
+    let tasinan = null;
+    satirlar.forEach(satir => {
+      satir.addEventListener('dragstart', () => {
+        if (state.q) { bildir('Arama açıkken sıralama kapalı. Aramayı temizleyin.'); return; }
+        tasinan = satir; satir.classList.add('tasiyor');
+      });
+      satir.addEventListener('dragend', () => { satir.classList.remove('tasiyor'); tasinan = null; });
+      satir.addEventListener('dragover', e => { if (tasinan && tasinan !== satir) e.preventDefault(); });
+      satir.addEventListener('drop', e => {
+        e.preventDefault();
+        if (!tasinan || tasinan === satir) return;
+        // `data-kayit` taşıyan satır çalma listesidir; yalnız `data-id` taşıyan
+        // satır klasör parçasıdır. Sıra doğru listeye yazılmalı.
+        const tur = tasinan.dataset.kayit ? 'playlist' : 'track';
+        const govde = satir.parentElement;
+        const yerler = Array.from(govde.children);
+        const kaynak = yerler.indexOf(tasinan), hedef = yerler.indexOf(satir);
+        if (kaynak < 0 || hedef < 0) return;
+        govde.removeChild(tasinan);
+        govde.insertBefore(tasinan, hedef > kaynak ? satir.nextSibling : satir);
+        tasinan = null;
+        const sira = Array.from(govde.children)
+          .map(r => tur === 'playlist' ? r.dataset.kayit : r.dataset.id).filter(Boolean);
+        sirayiYaz(sira, tur);
+      });
+    });
+  }
+
+  function sirayiYaz(sira, tur) {
+    const kayitlar = tur === 'playlist' ? D.playlistTracks : D.tracks;
+    sira.forEach((id, i) => { const k = kayitlar.find(x => x.id === id); if (k) k.sort_order = i; });
+    bildir('Prova: sıra bellekte güncellendi — gerçek panelde Supabase’e yazılır.');
+    ciz();
+  }
+
   function ciz() {
     el('rail').innerHTML = V.nav(state, sayimlar(), { ad: 'Derin Record', alt: 'yonetici@derinrecord.com', basHarf: 'DR' });
     const g = V.gorunum(state, D, ui);
@@ -216,6 +257,7 @@
     el('view').innerHTML = g.html;
     const bagli = D.players.filter(p => V.canliMi(p, Date.now())).length;
     el('live-text').textContent = bagli + ' şube bağlı';
+    suruklemeBagla();
   }
 
   const HASH = () => {
@@ -432,6 +474,9 @@
     state.q = e.target.value;
     const g = V.gorunum(state, D, ui);
     el('view').innerHTML = g.html;
+    // Arama açıkken sürükleme kapalıdır; yine de bağlarız ki arama temizlenince
+    // sayfa yenilenmeden sıralama yeniden çalışsın.
+    suruklemeBagla();
   });
 
   // Ekran görselleri / paylaşılabilir bağlantılar: ?v=... ve &ek=...
