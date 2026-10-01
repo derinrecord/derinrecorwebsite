@@ -926,6 +926,16 @@
         return;
       }
       case 'kurulum-sql': return kurulumSqlGoster(hedef.dataset.id);
+      case 'kurulum-yenile': {
+        // SQL çalıştırıldıktan sonra sayfayı yenilemeye gerek kalmasın: bütün
+        // tabloları yeniden yoklar ve sonucu bildirir.
+        await yenile();
+        const o = V.kurulumOzet(D);
+        bildir(o.eksik
+          ? `Yeniden denendi: ${o.eksik} dosya hâlâ eksik.`
+          : `Kurulum tamam: ${o.kurulu}/${o.toplam} dosya kurulu.`, o.eksik ? 'err' : null);
+        return;
+      }
       case 'kurulum-sql-kopyala': {
         const ta = el('modal').querySelector('#kurulum-sql');
         if (!ta) return;
