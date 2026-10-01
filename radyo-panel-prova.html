@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=46"></script>
+<script src="radyo-panel-views.js?v=48"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -270,6 +270,7 @@
     if (state.nav === 'icerik') return state.sub === 'anonslar' ? '#/anons' : '#/klasorler';
     if (state.sub === 'abonelikler') return '#/abonelikler';
     if (state.sub === 'talepler') return '#/talepler';
+    if (state.nav === 'kurulum') return '#/kurulum';
     return '#/markalar';
   };
 
@@ -492,7 +493,8 @@
     'marka-detay': { nav: 'musteri', sub: 'markalar', openBrand: 'b1' },
     'liste-detay': { nav: 'musteri', sub: 'markalar', openBrand: 'b1', openPlaylist: 'l1' },
     abonelikler: { nav: 'musteri', sub: 'abonelikler' },
-    talepler: { nav: 'musteri', sub: 'talepler' }
+    talepler: { nav: 'musteri', sub: 'talepler' },
+    kurulum: { nav: 'kurulum', sub: 'kurulum' }
   };
   const p = new URLSearchParams(location.search);
   const istenen = p.get('v');

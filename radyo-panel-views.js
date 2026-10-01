@@ -635,6 +635,26 @@
     </div>`;
   }
 
+  // Kurulum eksikleri için üst şerit: opsiyonel SQL dosyalarından çalıştırılmamış
+  // olanlar varsa tek satırda özetler ve kurulum ekranına köprü verir. Eksik
+  // yokken (ya da veri gelmeden) boş döner; panel hiçbir şey göstermez.
+  function kurulumSeridi(D) {
+    const harita = (D && D.kurulum) || {};
+    const eksik = KURULUM.filter(x => harita[x.anahtar] === false);
+    if (!eksik.length) return '';
+    const adlar = eksik.map(x => x.ad).join(', ');
+    return `<div class="uyari-serit kurulum">
+      <span class="chip gold">KURULUM EKSİK</span>
+      <div class="uyari-govde">
+        <b>${eksik.length} özellik kapalı: ${esc(adlar)}</b>
+        <span class="sub">Bu özellikler ilgili SQL dosyası çalıştırılana kadar kendini gizler.</span>
+      </div>
+      <div class="uyari-dugmeler">
+        <button class="btn sm primary" data-act="kurulum-ac" type="button">KURULUMU AÇ</button>
+      </div>
+    </div>`;
+  }
+
   // Kafe bağlantı geçmişi ekranı: şu anki durum + son 24 saatin özeti + olay
   // çizelgesi. Sahadaki “yayın neden durdu?” sorusu tek ekranda cevaplanır.
   function gecmisView(state, D, ui) {
@@ -1139,7 +1159,9 @@
       return `<tr>
         <td><b>${esc(x.ad)}</b><span class="sub">${esc(x.etki)}</span></td>
         <td class="tight">${kurulumDurum(durum)}</td>
-        <td class="tight"><code>${esc(x.anahtar)}</code></td>
+        <td class="tight"><code>${esc(x.anahtar)}</code>${durum === false
+          ? `<div class="row-actions" style="margin-top:8px;justify-content:flex-start"><button class="btn sm" data-act="kurulum-sql" data-id="${esc(x.anahtar)}" type="button">SQL'İ GÖSTER</button></div>`
+          : ''}</td>
         <td><span class="sub">${esc(x.aciklama)}</span></td>
       </tr>`;
     }).join('');
@@ -2347,6 +2369,7 @@
     sessizSayi: sessizSayi,
     sureCumle: sureCumle,
     uyariSeridi: uyariSeridi,
+    kurulumSeridi: kurulumSeridi,
     kapakYok: kapakYok,
     kapakPenceresi: kapakPenceresi,
     subeListePenceresi: subeListePenceresi,

@@ -225,6 +225,33 @@
   }
 
 
+  // ---------- Kurulum durumu ----------
+  // Eksik bir SQL dosyasının içeriğini panelden okunur/kopyalanır hale getirir:
+  // yönetici Supabase SQL Editor'e yapıştırıp bir kez çalıştırır. Dosya depodan
+  // (public) raw olarak çekilir; ağ yoksa panel yol gösterir, hata vermez.
+  async function kurulumSqlGoster(dosya) {
+    if (!/^[a-z0-9-]+\.sql$/.test(dosya || '')) return hata('Geçersiz dosya adı.');
+    pencere({ baslik: dosya, govde: '<p class="sub">SQL yükleniyor…</p>', gizleOnay: true, kapatMetni: 'KAPAT' });
+    let metin = '';
+    try {
+      const yanit = await fetch('https://raw.githubusercontent.com/derinrecord/derinrecorwebsite/main/supabase/' + dosya);
+      if (yanit.ok) metin = await yanit.text();
+    } catch { /* ağ yok / engelli: aşağıdaki yönlendirme gösterilir */ }
+    const govde = el('modal').querySelector('.modal-body');
+    if (!govde) return;
+    if (!metin) {
+      govde.innerHTML = `<p class="sub">Dosya okunamadı. Supabase SQL Editor'de depodaki <b>supabase/${esc(dosya)}</b> içeriğini yapıştırın.</p>`;
+      return;
+    }
+    govde.innerHTML = `
+      <p class="sub">Bu SQL'i Supabase SQL Editor'de bir kez çalıştırın: özellik açılır, kurulum uyarısı kaybolur.</p>
+      <textarea id="kurulum-sql" readonly rows="16" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5">${esc(metin)}</textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sm primary" data-act="kurulum-sql-kopyala" type="button">SQL'İ KOPYALA</button>
+        <span class="sub">Kopyaladıktan sonra Supabase → SQL Editor → Run.</span>
+      </div>`;
+  }
+
   // ---------- Şube listeleri ----------
   // Pencerede işaretlenen şubelerin (birden çok olabilir) ataması, işaretlenen
   // çalma listeleriyle baştan kurulur: işaretlenmeyen listeler o şubeden
@@ -370,7 +397,7 @@
   function seritYaz() {
     const kutu = el('uyari');
     if (!kutu) return;
-    const html = V.uyariSeridi(D, ui);
+    const html = V.kurulumSeridi(D) + V.uyariSeridi(D, ui);
     kutu.innerHTML = html;
     kutu.hidden = !html;
   }
@@ -890,6 +917,24 @@
     switch (act) {
       // --- pencere / çekmece / genel ---
       case 'modal-close': return pencereKapat();
+      case 'kurulum-ac': {
+        // Üstteki "kurulum eksik" şeridi: doğrudan kurulum ekranına götürür.
+        cekmeceKapat();
+        state.nav = 'kurulum'; state.sub = 'kurulum';
+        state.q = ''; el('search').value = '';
+        git('#/kurulum');
+        return;
+      }
+      case 'kurulum-sql': return kurulumSqlGoster(hedef.dataset.id);
+      case 'kurulum-sql-kopyala': {
+        const ta = el('modal').querySelector('#kurulum-sql');
+        if (!ta) return;
+        try {
+          await navigator.clipboard.writeText(ta.value);
+          bildir('SQL kopyalandı; Supabase SQL Editor\'de çalıştırın.');
+        } catch { ta.select(); bildir('Otomatik kopyalanamadı; metni elle kopyalayın.', 'err'); }
+        return;
+      }
       case 'gecmis-ac': {
         // Çekmecedeki "tüm geçmişi aç" düğmesi: geçmiş ekranına geçerken şubeyi
         // arama kutusuna yazarız, böylece çizelge o şubeye odaklanır.
