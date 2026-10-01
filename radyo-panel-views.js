@@ -793,7 +793,8 @@
     const MENU_SATIRLARI = {
       canli: ['subeler'],
       icerik: ['klasorler', 'anonslar'],
-      musteri: ['markalar', 'abonelikler', 'talepler']
+      musteri: ['markalar', 'abonelikler', 'talepler'],
+      kurulum: ['kurulum']
     };
     const aktifMi = (nav, sub) => state.nav === nav
       && (state.sub === sub || !(MENU_SATIRLARI[nav] || []).includes(state.sub));
@@ -812,6 +813,7 @@
       abonelik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/></svg>',
       talep: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="3"/></svg>',
       saglik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>',
+      kurulum: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 01-5.4 5.4L5 16l3 3 4.3-4.3a4 4 0 005.4-5.4l-2.3 2.3-2-2z"/></svg>',
       gecmis: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
       yayin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.6l6 3.4-6 3.4z"/></svg>'
     };
@@ -832,6 +834,9 @@
         ${oge('musteri', 'markalar', 'Markalar', 'Şubeler, listeler ve yayın', counts.brands, ikonlar.marka)}
         ${oge('musteri', 'abonelikler', 'Abonelikler', 'Paket ve süreler', null, ikonlar.abonelik)}
         ${oge('musteri', 'talepler', 'Talepler', 'Gelen başvurular', counts.requests, ikonlar.talep)}
+
+        <div class="nav-title">SİSTEM</div>
+        ${oge('kurulum', 'kurulum', 'Kurulum durumu', 'Veritabanı ve özellikler', null, ikonlar.kurulum)}
       </nav>
       <div class="rail-foot">
         <div class="who"><i>${esc((kullanici && kullanici.basHarf) || 'DR')}</i>
@@ -850,7 +855,8 @@
     'icerik/anonslar': ['Anonslar', 'Mikrofonla kaydedilen duyurular'],
     'musteri/markalar': ['Markalar', 'Şubeler, yayın linkleri ve çalma listeleri'],
     'musteri/abonelikler': ['Abonelikler', 'Paketler, deneme ve lisans süreleri'],
-    'musteri/talepler': ['Talepler', 'Kahve markalarından gelen başvurular']
+    'musteri/talepler': ['Talepler', 'Kahve markalarından gelen başvurular'],
+    'kurulum/kurulum': ['Kurulum durumu', 'Panelin hangi özellikleri açık; eksik SQL dosyaları tek ekranda']
   };
   const ALT_SEKME = { klasorler: 'Yayın klasörleri', anonslar: 'Anonslar' };
 
@@ -1085,6 +1091,74 @@
         <table>
           <thead><tr><th>ŞUBE</th><th>DURUM</th><th>YAYIN İÇERİĞİ</th><th>SUNUCU</th><th></th></tr></thead>
           <tbody>${satirlar || bos(5, D.players.length ? 'Aramayla eşleşen şube yok.' : 'Henüz şube yok.')}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // ---------- KURULUM DURUMU ----------
+  // Panelin bazı bölümleri Supabase'de opsiyonel SQL dosyasına dayanır
+  // (supabase/*.sql). Dosya çalıştırılmadıysa ilgili özellik sessizce kapanır;
+  // yönetici eksikliği ancak dağınık hata mesajlarından sezer. Bu ekran
+  // hangisinin kurulu olduğunu tek yerde, dosya adıyla birlikte gösterir.
+  const KURULUM = [
+    { anahtar: 'radio-sube-listeleri.sql', ad: 'Şubeye liste yükleme',
+      aciklama: 'Şube cihazında gösterilecek çalma listelerini panele taşır.', etki: 'Canlı durum · şube çekmecesi' },
+    { anahtar: 'radio-subeye-ozel-yayin.sql', ad: 'Şubeye özel yayın',
+      aciklama: 'Bir şubeyi markanın genel yayınından ayırıp kendi kaynağını çaldırır.', etki: 'Yayın başlat' },
+    { anahtar: 'radio-baglanti-gecmisi.sql', ad: 'Bağlantı geçmişi',
+      aciklama: 'Kim açtı, kim durdurdu; çalışma süresi ve haftalık trend tabloları.', etki: 'Bağlantı geçmişi' },
+    { anahtar: 'radio-yayin-baslat.sql', ad: 'Yayın başlangıç parçası',
+      aciklama: 'Yayını seçilen parçadan başlatmayı sağlar.', etki: 'Yayın başlat' },
+    { anahtar: 'radio-calan-parca.sql', ad: 'Şu an çalan parça',
+      aciklama: 'Cihazın hangi parçayı çaldığını panele bildirir.', etki: 'Canlı durum' },
+    { anahtar: 'radio-liste-bildirimi.sql', ad: 'Çalan liste bildirimi',
+      aciklama: 'Çalan parçanın hangi listeden geldiğini panele bildirir.', etki: 'Canlı durum' }
+  ];
+
+  function kurulumDurum(durum) {
+    if (durum === true) return chip('live', 'KURULU', true);
+    if (durum === false) return chip('danger', 'KURULMADI');
+    return chip('off', 'DENENMEDİ');
+  }
+
+  function kurulumOzet(D) {
+    const harita = (D && D.kurulum) || {};
+    return {
+      kurulu: KURULUM.filter(x => harita[x.anahtar] === true).length,
+      eksik: KURULUM.filter(x => harita[x.anahtar] === false).length,
+      denenmedi: KURULUM.filter(x => harita[x.anahtar] == null).length,
+      toplam: KURULUM.length
+    };
+  }
+
+  function kurulumView(state, D, ui) {
+    const harita = (D && D.kurulum) || {};
+    const ozet = kurulumOzet(D);
+    const satirlar = KURULUM.map(x => {
+      const durum = harita[x.anahtar];
+      return `<tr>
+        <td><b>${esc(x.ad)}</b><span class="sub">${esc(x.etki)}</span></td>
+        <td class="tight">${kurulumDurum(durum)}</td>
+        <td class="tight"><code>${esc(x.anahtar)}</code></td>
+        <td><span class="sub">${esc(x.aciklama)}</span></td>
+      </tr>`;
+    }).join('');
+
+    return `
+      <div class="tiles">
+        <div class="tile"><span>KURULU</span><b>${ozet.kurulu}</b><small>${ozet.toplam} opsiyonel dosyadan</small></div>
+        <div class="tile ${ozet.eksik ? 'danger' : ''}"><span>EKSİK</span><b>${ozet.eksik}</b><small>çalıştırılması beklenen</small></div>
+        <div class="tile ${ozet.denenmedi ? 'gold' : ''}"><span>DENENMEDİ</span><b>${ozet.denenmedi}</b><small>veri bekleniyor</small></div>
+        <div class="tile"><span>OKUNAN</span><b>${(D.players || []).length + (D.folders || []).length}</b><small>şube ve klasör kaydı</small></div>
+      </div>
+      <div class="panel">
+        <h3>KURULUM DURUMU <span>${ozet.kurulu}/${ozet.toplam} kurulu</span></h3>
+        <p class="panel-sub">Panelin bazı bölümleri Supabase'de ayrı SQL dosyası gerektirir. Kurulmayan bir özellik hata vermez;
+          kendini gizler ya da “önce SQL çalıştırın” der. Eksik gördüğünüz satırın dosyasını Supabase SQL Editor'de bir kez
+          çalıştırmanız yeterlidir. Aşağıdaki liste, sayfa açılırken yapılan denemelerin sonucudur.</p>
+        <table>
+          <thead><tr><th>ÖZELLİK</th><th>DURUM</th><th>SQL DOSYASI</th><th>AÇIKLAMA</th></tr></thead>
+          <tbody>${satirlar}</tbody>
         </table>
       </div>`;
   }
@@ -2024,6 +2098,7 @@
         : (state.sub === 'anonslar' ? anonsListesi(state, D, ui) : klasorListesi(state, D, ui));
       return kabuk(sekmeler(state, D) + govde);
     }
+    if (state.nav === 'kurulum') return kabuk(kurulumView(state, D, ui));
     let govde;
     if (state.openPlaylist) govde = listeDetay(state, D, ui);
     else if (state.openBrand) govde = markaDetay(state, D, ui);
@@ -2238,6 +2313,10 @@
     saglikOzet: saglikOzet,
     saglikView: saglikView,
     saglikChip: saglikChip,
+    kurulumView: kurulumView,
+    kurulumOzet: kurulumOzet,
+    kurulumDurum: kurulumDurum,
+    KURULUM: KURULUM,
     goreli: goreli,
     yayinHucresi: yayinHucresi,
     parcaTaze: parcaTaze,

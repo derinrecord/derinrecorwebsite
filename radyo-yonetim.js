@@ -30,7 +30,16 @@
     // Şubeye yüklenen listeler (supabase/radio-sube-listeleri.sql). Tablo
     // kurulmadıysa özellik kapalı kalır: panel sütunu çizmez, cihaz bugünkü gibi
     // markanın bütün listelerini gösterir.
-    playerPlaylists: [], subeListeleriVar: false
+    playerPlaylists: [], subeListeleriVar: false,
+    // Çalıştırılan opsiyonel SQL dosyaları (supabase/*.sql). Panel bölümleri
+    // bunlara dayanır; hangisi kurulu değilse "Kurulum durumu" ekranında tek
+    // yerde görünür (bkz. radyoPanelViews.kurulumView). Anahtarlar SQL dosya
+    // adıdır, değer true/false/null (null: henüz denenmedi).
+    kurulum: {
+      'radio-sube-listeleri.sql': null, 'radio-subeye-ozel-yayin.sql': null,
+      'radio-baglanti-gecmisi.sql': null, 'radio-yayin-baslat.sql': null,
+      'radio-calan-parca.sql': null, 'radio-liste-bildirimi.sql': null
+    }
   };
   const state = {
     nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '',
@@ -289,7 +298,8 @@
     anons: { nav: 'icerik', sub: 'anonslar' },
     markalar: { nav: 'musteri', sub: 'markalar' },
     abonelikler: { nav: 'musteri', sub: 'abonelikler' },
-    talepler: { nav: 'musteri', sub: 'talepler' }
+    talepler: { nav: 'musteri', sub: 'talepler' },
+    kurulum: { nav: 'kurulum', sub: 'kurulum' }
   };
 
   function hashCoz() {
@@ -332,6 +342,7 @@
     if (state.nav === 'icerik') return state.sub === 'anonslar' ? '#/anons' : '#/klasorler';
     if (state.sub === 'abonelikler') return '#/abonelikler';
     if (state.sub === 'talepler') return '#/talepler';
+    if (state.nav === 'kurulum') return '#/kurulum';
     return '#/markalar';
   }
 
@@ -417,6 +428,12 @@
       requests: D.requests
     };
 
+    // Opsiyonel tabloların kurulu olup olmadığını ana sorguların hatasından
+    // çıkarırız: tablo yoksa Supabase "relation does not exist" döndürür.
+    D.kurulum = D.kurulum || {};
+    D.kurulum['radio-subeye-ozel-yayin.sql'] = !playerBroadcast.error;
+    D.kurulum['radio-baglanti-gecmisi.sql'] = !olaylar.error;
+
     // Çalan parça ve çalma listesi alanları sonradan eklendi
     // (supabase/radio-calan-parca.sql, supabase/radio-liste-bildirimi.sql).
     // Henüz eklenmemişse sorgu hata döner; o zaman oynatıcı da liste bildirmez
@@ -428,13 +445,30 @@
       let calanlar = await client.from('brand_players')
         .select('id,now_title,now_at,now_playlist_id,now_playlist_name');
       if (calanlar.error) {
+        D.kurulum['radio-liste-bildirimi.sql'] = false;
         calanlar = await client.from('brand_players').select('id,now_title,now_at');
+      } else {
+        D.kurulum['radio-liste-bildirimi.sql'] = true;
       }
-      if (!calanlar.error && Array.isArray(calanlar.data)) {
-        const harita = new Map(calanlar.data.map(x => [x.id, x]));
-        D.players = D.players.map(p => Object.assign({}, p, harita.get(p.id) || {}));
+      if (calanlar.error) {
+        D.kurulum['radio-calan-parca.sql'] = false;
+      } else {
+        D.kurulum['radio-calan-parca.sql'] = true;
+        if (Array.isArray(calanlar.data)) {
+          const harita = new Map(calanlar.data.map(x => [x.id, x]));
+          D.players = D.players.map(p => Object.assign({}, p, harita.get(p.id) || {}));
+        }
       }
     } catch { /* alanlar daha eklenmemiş: sorun değil */ }
+
+    // Yayın başlangıç parçası (supabase/radio-yayin-baslat.sql): brand_broadcast
+    // ve player_broadcast tablolarına start_track_id kolonu ekler. Kolon yoksa
+    // yayın başlatırken başlangıç parçası kaydedilemez, sessizce yok sayılırız.
+    try {
+      const deneme = await client.from('brand_broadcast')
+        .select('brand_id,start_track_id').limit(1);
+      D.kurulum['radio-yayin-baslat.sql'] = !deneme.error;
+    } catch { D.kurulum['radio-yayin-baslat.sql'] = false; }
 
     // Şubeye yüklenen listeler (supabase/radio-sube-listeleri.sql). Tablo henüz
     // kurulmadıysa sorgu hata döner: o zaman şube satırında yükleme sütunu
@@ -443,6 +477,7 @@
     try {
       const yuklu = await client.from('player_playlists')
         .select('player_id,playlist_id,sort_order').order('sort_order');
+      D.kurulum['radio-sube-listeleri.sql'] = !yuklu.error;
       if (!yuklu.error && Array.isArray(yuklu.data)) {
         D.playerPlaylists = yuklu.data;
         D.subeListeleriVar = true;
