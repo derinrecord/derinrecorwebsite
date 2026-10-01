@@ -752,9 +752,17 @@
 
   function sureOku(dosya) {
     return new Promise(res => {
-      const a = new Audio(URL.createObjectURL(dosya));
+      // Süreyi okumak için üretilen blob adresini iş bitince bırakırız; çok
+      // parça yükleyen bir oturumda bellekte birikmesin.
+      const url = URL.createObjectURL(dosya);
+      const a = new Audio(url);
       let bitti = false;
-      const tamam = v => { if (!bitti) { bitti = true; res(v); } };
+      const tamam = v => {
+        if (bitti) return;
+        bitti = true;
+        URL.revokeObjectURL(url);
+        res(v);
+      };
       a.onloadedmetadata = () => tamam(Math.round(a.duration) || null);
       a.onerror = () => tamam(null);
       setTimeout(() => tamam(null), 8000);

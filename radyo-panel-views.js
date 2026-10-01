@@ -1674,15 +1674,20 @@
 
     const satirlar = gorunen.map((r, i) => {
       const klasor = D.folders.find(f => f.id === r.t.folder_id);
-      return `<tr data-idx="${i}" data-kayit="${esc(r.x.id)}">
-        <td class="no">${String(kayitlar.indexOf(r) + 1).padStart(2, '0')}</td>
+      // Sıra düğmelerinin kilidi, süzülmüş satır sırasına değil listenin gerçek
+      // sırasına bakar: arama açıkken eşleşen ilk satır listenin ilk satırı
+      // olmayabilir, o zaman yukarı taşınabilmelidir. `data-id` satıra parça
+      // kimliğini koyar (oynatıcı çalan satırı bununla işaretler).
+      const gi = kayitlar.indexOf(r);
+      return `<tr data-idx="${i}" data-id="${esc(r.t.id)}" data-kayit="${esc(r.x.id)}">
+        <td class="no">${String(gi + 1).padStart(2, '0')}</td>
         <td><b>${esc(clean(r.t.title))}</b>${kapakYok(r.t) ? ' ' + chip('gold', 'KAPAK YOK') : ''}</td>
         <td class="tight">${klasor ? chip('off', klasor.name) : chip('off', 'klasör silinmiş')}</td>
         <td class="tight">${mmss(r.t.duration_sec)}</td>
         <td><div class="row-actions">
           <button class="btn sm" data-act="ptrack-play" data-id="${esc(r.t.id)}" type="button">DİNLE</button>
-          <button class="btn sm" data-act="ptrack-up" data-id="${esc(r.x.id)}" ${i === 0 ? 'disabled' : ''} type="button">↑</button>
-          <button class="btn sm" data-act="ptrack-down" data-id="${esc(r.x.id)}" ${i === gorunen.length - 1 ? 'disabled' : ''} type="button">↓</button>
+          <button class="btn sm" data-act="ptrack-up" data-id="${esc(r.x.id)}" ${gi <= 0 ? 'disabled' : ''} type="button">↑</button>
+          <button class="btn sm" data-act="ptrack-down" data-id="${esc(r.x.id)}" ${gi === kayitlar.length - 1 ? 'disabled' : ''} type="button">↓</button>
           <button class="btn sm danger" data-act="ptrack-del" data-id="${esc(r.x.id)}" type="button">ÇIKAR</button>
         </div></td>
       </tr>`;
