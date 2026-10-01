@@ -791,6 +791,10 @@
       satir.addEventListener('drop', async e => {
         e.preventDefault();
         if (!tasinan || tasinan === satir) return;
+        // Satır `data-kayit` taşıyorsa çalma listesi kaydıdır
+        // (brand_playlist_tracks), yalnız `data-id` taşıyorsa klasör parçasıdır
+        // (radio_tracks): sıra doğru tabloya yazılmalı.
+        const tur = tasinan.dataset.kayit ? 'playlist' : 'track';
         const govde = satir.parentElement;
         const yerler = Array.from(govde.children);
         const kaynak = yerler.indexOf(tasinan), hedef = yerler.indexOf(satir);
@@ -798,18 +802,25 @@
         govde.removeChild(tasinan);
         govde.insertBefore(tasinan, hedef > kaynak ? satir.nextSibling : satir);
         tasinan = null;
-        const yeniSira = Array.from(govde.children).map(r => r.dataset.id).filter(Boolean);
-        await sirayiKaydet(yeniSira);
+        const yeniSira = Array.from(govde.children)
+          .map(r => tur === 'playlist' ? r.dataset.kayit : r.dataset.id).filter(Boolean);
+        await sirayiKaydet(yeniSira, tur);
       });
     });
   }
 
-  async function sirayiKaydet(idlistesi) {
-    const guncellemeler = idlistesi.map((id, i) => client.from('radio_tracks').update({ sort_order: i }).eq('id', id));
+  async function sirayiKaydet(idlistesi, tur) {
+    const tablo = tur === 'playlist' ? 'brand_playlist_tracks' : 'radio_tracks';
+    const guncellemeler = idlistesi.map((id, i) => client.from(tablo).update({ sort_order: i }).eq('id', id));
     const sonuclar = await Promise.all(guncellemeler);
     const hataVar = sonuclar.find(s => s.error);
     if (hataVar) { hata('Sıra kaydedilemedi: ' + hataVar.error.message); return; }
-    D.tracks.forEach(t => { const i = idlistesi.indexOf(t.id); if (i > -1) t.sort_order = i; });
+    // Bellekteki sıra da güncellenir ki yeni çizim doğru sırayı göstersin.
+    if (tur === 'playlist') {
+      D.playlistTracks.forEach(x => { const i = idlistesi.indexOf(x.id); if (i > -1) x.sort_order = i; });
+    } else {
+      D.tracks.forEach(t => { const i = idlistesi.indexOf(t.id); if (i > -1) t.sort_order = i; });
+    }
     bildir('Sıra güncellendi.');
     ciz();
   }
