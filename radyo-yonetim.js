@@ -471,6 +471,16 @@
       requests: D.requests
     };
 
+    // Temel şema: panelin çalışması için şart olan tablolar. Biri yoksa panel
+    // boş görünür ama nedeni yazmaz; bu bayraklar kurulum ekranında ve üst
+    // şeritte konuşur (bkz. radyoPanelViews.temelSema).
+    D.temel = {
+      brands: !brands.error, radio_folders: !folders.error, radio_tracks: !tracks.error,
+      brand_players: !players.error, brand_broadcast: !broadcast.error,
+      radio_announcements: !announcements.error, brand_playlists: !playlists.error,
+      brand_playlist_tracks: !playlistTracks.error
+    };
+
     // Opsiyonel tabloların kurulu olup olmadığını ana sorguların hatasından
     // çıkarırız: tablo yoksa Supabase "relation does not exist" döndürür.
     D.kurulum = D.kurulum || {};

@@ -635,12 +635,56 @@
     </div>`;
   }
 
-  // Kurulum eksikleri için üst şerit: opsiyonel SQL dosyalarından çalıştırılmamış
-  // olanlar varsa tek satırda özetler ve kurulum ekranına köprü verir. Eksik
-  // yokken (ya da veri gelmeden) boş döner; panel hiçbir şey göstermez.
+  // Temel şema: panelin çalışması için şart olan tablolar. Bunlar Supabase'de
+  // yoksa panel boş görünür; eksikliği burada adıyla söylenir (opsiyonel SQL
+  // dosyalarının aksine bunların panel tarafı bir "çalıştır" düğmesi yoktur).
+  const TEMEL_TABLOLAR = [
+    ['brands', 'Markalar'], ['radio_folders', 'Yayın klasörleri'], ['radio_tracks', 'Parçalar'],
+    ['brand_players', 'Şubeler'], ['brand_broadcast', 'Canlı yayın kaydı'],
+    ['radio_announcements', 'Anonslar'], ['brand_playlists', 'Çalma listeleri'],
+    ['brand_playlist_tracks', 'Liste parçaları']
+  ];
+
+  function temelSema(D) {
+    const harita = (D && D.temel) || {};
+    const eksik = TEMEL_TABLOLAR.filter(x => harita[x[0]] === false);
+    return { harita: harita, eksik: eksik, kurulu: TEMEL_TABLOLAR.length - eksik.length, toplam: TEMEL_TABLOLAR.length };
+  }
+
+  // Kurulum ekranının üstünde küçük bir satır: temel şema hazırsa tek cümle,
+  // eksikse adıyla liste. Veri gelmemişse hiçbir şey çizilmez.
+  function temelSatir(D) {
+    const t = temelSema(D);
+    if (!t.harita || !Object.keys(t.harita).length) return '';
+    if (!t.eksik.length) return `<span class="sub">Temel şema hazır: ${t.toplam} tablo okundu.</span>`;
+    return `<div class="uyari-serit kurulum" style="margin:0 0 14px">
+      <span class="chip danger">TEMEL ŞEMA EKSİK</span>
+      <div class="uyari-govde"><b>${t.eksik.length} tablo Supabase'de yok</b>
+        <span class="sub">Panel bunlar olmadan çalışmaz. Kurulum adımları: <b>supabase/kurulum.md</b></span></div>
+    </div>`;
+  }
+
+  // Kurulum eksikleri için üst şerit: temel şema ya da opsiyonel SQL dosyaları
+  // eksikse tek satırda özetler ve kurulum ekranına köprü verir. Eksik yokken
+  // (ya da veri gelmeden) boş döner; panel hiçbir şey göstermez.
   function kurulumSeridi(D) {
+    const t = temelSema(D);
     const harita = (D && D.kurulum) || {};
     const eksik = KURULUM.filter(x => harita[x.anahtar] === false);
+    // Temel şema eksiği daha ağır bastığı için tek şeritte o gösterilir: yönetici
+    // önce panelin neden boş olduğunu öğrenmeli.
+    if (t.eksik.length) {
+      return `<div class="uyari-serit kurulum">
+        <span class="chip danger">TEMEL ŞEMA EKSİK</span>
+        <div class="uyari-govde">
+          <b>${t.eksik.length} tablo Supabase'de yok: ${esc(t.eksik.map(x => x[1]).join(', '))}</b>
+          <span class="sub">Panel bu tablolar olmadan çalışmaz. Kurulum adımları için supabase/kurulum.md dosyasına bakın.</span>
+        </div>
+        <div class="uyari-dugmeler">
+          <button class="btn sm primary" data-act="kurulum-ac" type="button">KURULUMU AÇ</button>
+        </div>
+      </div>`;
+    }
     if (!eksik.length) return '';
     const adlar = eksik.map(x => x.ad).join(', ');
     return `<div class="uyari-serit kurulum">
@@ -1182,6 +1226,7 @@
         <p class="panel-sub">Panelin bazı bölümleri Supabase'de ayrı SQL dosyası gerektirir. Kurulmayan bir özellik hata vermez;
           kendini gizler ya da “önce SQL çalıştırın” der. Eksik gördüğünüz satırın dosyasını Supabase SQL Editor'de bir kez
           çalıştırmanız yeterlidir. Aşağıdaki liste, sayfa açılırken yapılan denemelerin sonucudur.</p>
+        ${temelSatir(D)}
         <div class="row" style="margin-bottom:14px">
           <button class="btn sm primary" data-act="kurulum-yenile" type="button">DURUMU YENİDEN KONTROL ET</button>
           <span class="sub">SQL'i çalıştırdıktan sonra sayfayı yenilemeden denetler.</span>
@@ -2345,6 +2390,8 @@
     saglikChip: saglikChip,
     kurulumView: kurulumView,
     kurulumOzet: kurulumOzet,
+    temelSema: temelSema,
+    TEMEL_TABLOLAR: TEMEL_TABLOLAR,
     kurulumDurum: kurulumDurum,
     KURULUM: KURULUM,
     goreli: goreli,

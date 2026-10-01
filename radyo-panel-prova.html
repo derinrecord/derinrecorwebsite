@@ -39,7 +39,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=50"></script>
+<script src="radyo-panel-views.js?v=51"></script>
 <script>
 (() => {
   const V = window.DerinRadyoViews;
@@ -141,7 +141,18 @@
     requests: [
       { id: 'r1', company: 'Kahve Durağı — Bursa', contact_name: 'Elif Yılmaz', email: 'merhaba@kahveduragi.com', phone: '0532 000 00 00', branch_count: 4, message: '4 şube için kurumsal radyo', status: 'new', created_at: iso(-5400000) },
       { id: 'r2', company: 'Roast & Co.', contact_name: 'Deniz Ak', email: 'info@roastco.com', phone: null, branch_count: 2, message: 'Deneme yayını istiyor', status: 'contacted', created_at: iso(-2 * GUN) }
-    ]
+    ],
+    // Kurulum durumu (gerçek panelde Supabase yoklamasından gelir).
+    temel: {
+      brands: true, radio_folders: true, radio_tracks: true, brand_players: true,
+      brand_broadcast: true, radio_announcements: true, brand_playlists: true, brand_playlist_tracks: true
+    },
+    kurulum: {
+      'radio-sube-listeleri.sql': true, 'radio-subeye-ozel-yayin.sql': false,
+      'radio-baglanti-gecmisi.sql': true, 'radio-yayin-baslat.sql': false,
+      'radio-calan-parca.sql': true, 'radio-liste-bildirimi.sql': true,
+      'radio-erisim.sql': false, 'radio-yayin-durdurma.sql': true
+    }
   };
 
   const ui = {
@@ -158,7 +169,8 @@
 
   const sayimlar = () => ({
     players: D.players.length, folders: D.folders.length, announcements: D.announcements.length,
-    brands: D.brands.length, playlists: D.playlists.length, requests: D.requests.length
+    brands: D.brands.length, playlists: D.playlists.length, requests: D.requests.length,
+    kurulumEksik: V.kurulumOzet(D).eksik || null
   });
 
   const state = {

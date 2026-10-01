@@ -1390,6 +1390,41 @@ test('kurulum ekranındaki her SQL dosyası depoda gerçekten var', () => {
   assert.equal(new Set(anahtarlar).size, anahtarlar.length, 'dosya adları benzersiz olmalı');
 });
 
+// Temel şema: panelin çalışması için şart olan tablolar. Eksikse opsiyonel
+// kurulumdan önce, adıyla söylenmeli; panelin neden boş olduğu anlaşılmalı.
+test('temel şema eksikse adıyla söylenir ve şeritte öne geçer', () => {
+  const temel = {};
+  V.TEMEL_TABLOLAR.forEach(([t]) => { temel[t] = true; });
+  temel.radio_folders = false;
+  const KD = { ...D, temel: temel, kurulum: { 'radio-subeye-ozel-yayin.sql': false } };
+
+  const s = V.temelSema(KD);
+  assert.equal(s.eksik.length, 1);
+  assert.equal(s.eksik[0][0], 'radio_folders');
+  assert.equal(s.kurulu, V.TEMEL_TABLOLAR.length - 1);
+
+  const serit = V.kurulumSeridi(KD);
+  assert.ok(serit.includes('TEMEL ŞEMA EKSİK'), 'temel şema uyarısı görünmeli');
+  assert.ok(serit.includes('Yayın klasörleri'), 'eksik tablonun adı yazılmalı');
+  assert.ok(!serit.includes('KURULUM EKSİK'), 'temel şema varken opsiyonel şerit geri plana düşer');
+});
+
+test('temel şema hazırken kurulum ekranı bunu söyler, şerit boş kalır', () => {
+  const tam = { ...D, temel: {}, kurulum: {} };
+  V.TEMEL_TABLOLAR.forEach(([t]) => { tam.temel[t] = true; });
+  V.KURULUM.forEach(x => { tam.kurulum[x.anahtar] = true; });
+  const html = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), tam, ui).html;
+  assert.ok(html.includes('Temel şema hazır'), 'hazır cümlesi yazılmalı');
+  assert.equal(V.kurulumSeridi(tam), '', 'her şey hazırken şerit çizilmemeli');
+});
+
+test('temel şema verisi yokken ne satır ne şerit çizilir', () => {
+  assert.equal(V.temelSema(D).eksik.length, 0);
+  assert.equal(V.kurulumSeridi(D), '', 'veri yokken şerit çizilmemeli');
+  const html = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), D, ui).html;
+  assert.ok(!html.includes('TEMEL ŞEMA EKSİK'), 'veri yokken yanlış alarm olmamalı');
+});
+
 test('eksik kurulum yokken üst şerit hiç çizilmez', () => {
   const tam = { ...D, kurulum: {} };
   V.KURULUM.forEach(x => { tam.kurulum[x.anahtar] = true; });
