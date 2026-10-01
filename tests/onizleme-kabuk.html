@@ -1185,7 +1185,7 @@
     const satirlar = gorunen.map((t, i) => `<tr draggable="true" data-act="track-open"
         data-id="${esc(t.id)}" data-idx="${i}" data-sira="${esc(t.sort_order == null ? '' : t.sort_order)}">
       <td class="no">${String(liste.indexOf(t) + 1).padStart(2, '0')}</td>
-      <td class="tight"><span class="drag" title="Sürükleyerek sırala">⋮⋮</span></td>
+      <td class="tight"><span class="drag" title="Sürükleyerek sırala" aria-hidden="true">⋮⋮</span></td>
       <td><div class="cell-main"><span class="cover">${t.cover_path
         ? `<img src="${esc(kapakYolu(t.cover_path, ui))}" alt="" loading="lazy">` : '♪'}</span>
         <span><b>${esc(clean(t.title))}</b><span class="sub">${esc(t.storage_path)}</span>${kapakYok(t)
@@ -1280,7 +1280,10 @@
       </div>
       <div class="panel">
         <h3>KAYITLAR (${D.announcements.length})</h3>
-        <table><tbody>${satirlar || bos(2, 'Henüz anons kaydı yok.')}</tbody></table>
+        <table>
+          <thead><tr><th>ANONS</th><th></th></tr></thead>
+          <tbody>${satirlar || bos(2, 'Henüz anons kaydı yok.')}</tbody>
+        </table>
       </div>`;
   }
 
@@ -1546,9 +1549,11 @@
           : 'Bu markanın henüz erişim kodu yok.'}</span>
         <hr class="divider">
         <div class="row">
-          <span class="key">${esc(ui.brandUrl(b.slug))}</span>
-          <button class="btn sm" data-act="copy" data-copy="${esc(ui.brandUrl(b.slug))}" type="button">LİNKİ KOPYALA</button>
-          <a class="btn sm" href="${esc(ui.brandUrl(b.slug))}" target="_blank" rel="noopener">SUNUMU AÇ ↗</a>
+          ${b.slug
+            ? `<span class="key">${esc(ui.brandUrl(b.slug))}</span>
+              <button class="btn sm" data-act="copy" data-copy="${esc(ui.brandUrl(b.slug))}" type="button">LİNKİ KOPYALA</button>
+              <a class="btn sm" href="${esc(ui.brandUrl(b.slug))}" target="_blank" rel="noopener">SUNUMU AÇ ↗</a>`
+            : '<span class="sub">Sunum linki için önce yukarıdan bir <b>link adı</b> kaydedin.</span>'}
           ${b.access_code ? `<button class="btn sm" data-act="copy" data-copy="${esc(b.access_code)}" type="button">KODU KOPYALA</button>` : ''}
         </div>
       </div>
@@ -1594,7 +1599,10 @@
         ozet: anonslar.length
           ? `Son anons ${esc(goreli(anonslar[0].created_at, now))} · “${esc(anonslar[0].label || 'Anons')}”`
           : 'Bu markaya henüz anons gönderilmedi.',
-        icerik: `<table><tbody>${anonsSatirlari || bos(2, 'Bu markaya henüz anons gönderilmedi.')}</tbody></table>`,
+        icerik: `<table>
+            <thead><tr><th>ANONS</th><th></th></tr></thead>
+            <tbody>${anonsSatirlari || bos(2, 'Bu markaya henüz anons gönderilmedi.')}</tbody>
+          </table>`,
         alt: `<div class="row" style="margin-top:14px">
           <button class="btn" data-act="mic" data-id="${esc(b.id)}" type="button">🎙 MİKROFONU AÇ</button>
           <span class="sub">Anons, markanın bütün şubelerinde çalan akışın önüne girer.</span>
@@ -1607,7 +1615,10 @@
           ? `Son deneme ${esc(goreli(denemeler[0].created_at, now))} · ${sonBasarisiz
             ? sonBasarisiz + ' başarısız (son 24 saat)' : 'son 24 saatte başarısız deneme yok'}`
           : 'Bu markanın sunum sayfasına giriş denemesi olmadı.',
-        icerik: `<table><tbody>${denemeSatirlari || bos(3, 'Bu markanın sunum sayfasına giriş denemesi olmadı.')}</tbody></table>`
+        icerik: `<table>
+            <thead><tr><th>SONUÇ</th><th>ZAMAN</th><th>IP</th></tr></thead>
+            <tbody>${denemeSatirlari || bos(3, 'Bu markanın sunum sayfasına giriş denemesi olmadı.')}</tbody>
+          </table>`
       })}
 
       ${katliBolum({
@@ -1716,15 +1727,21 @@
 
     const satirlar = gorunen.map((r, i) => {
       const klasor = D.folders.find(f => f.id === r.t.folder_id);
-      return `<tr data-idx="${i}" data-kayit="${esc(r.x.id)}">
-        <td class="no">${String(kayitlar.indexOf(r) + 1).padStart(2, '0')}</td>
+      // Sıra düğmelerinin kilidi, süzülmüş satır sırasına değil listenin gerçek
+      // sırasına bakar: arama açıkken eşleşen ilk satır listenin ilk satırı
+      // olmayabilir, o zaman yukarı taşınabilmelidir. `data-id` satıra parça
+      // kimliğini koyar (oynatıcı çalan satırı bununla işaretler).
+      const gi = kayitlar.indexOf(r);
+      return `<tr draggable="true" data-idx="${i}" data-id="${esc(r.t.id)}" data-kayit="${esc(r.x.id)}">
+        <td class="no">${String(gi + 1).padStart(2, '0')}</td>
+        <td class="tight"><span class="drag" title="Sürükleyerek sırala" aria-hidden="true">⋮⋮</span></td>
         <td><b>${esc(clean(r.t.title))}</b>${kapakYok(r.t) ? ' ' + chip('gold', 'KAPAK YOK') : ''}</td>
         <td class="tight">${klasor ? chip('off', klasor.name) : chip('off', 'klasör silinmiş')}</td>
         <td class="tight">${mmss(r.t.duration_sec)}</td>
         <td><div class="row-actions">
           <button class="btn sm" data-act="ptrack-play" data-id="${esc(r.t.id)}" type="button">DİNLE</button>
-          <button class="btn sm" data-act="ptrack-up" data-id="${esc(r.x.id)}" ${i === 0 ? 'disabled' : ''} type="button">↑</button>
-          <button class="btn sm" data-act="ptrack-down" data-id="${esc(r.x.id)}" ${i === gorunen.length - 1 ? 'disabled' : ''} type="button">↓</button>
+          <button class="btn sm" data-act="ptrack-up" data-id="${esc(r.x.id)}" ${gi <= 0 ? 'disabled' : ''} aria-label="Yukarı taşı" type="button">↑</button>
+          <button class="btn sm" data-act="ptrack-down" data-id="${esc(r.x.id)}" ${gi === kayitlar.length - 1 ? 'disabled' : ''} aria-label="Aşağı taşı" type="button">↓</button>
           <button class="btn sm danger" data-act="ptrack-del" data-id="${esc(r.x.id)}" type="button">ÇIKAR</button>
         </div></td>
       </tr>`;
@@ -1762,9 +1779,10 @@
       <div class="panel">
         <h3>AKIŞ (${kayitlar.length})${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</h3>
         <table>
-          <thead><tr><th>#</th><th>PARÇA</th><th>KAYNAK KLASÖR</th><th>SÜRE</th><th></th></tr></thead>
-          <tbody>${satirlar || bos(5, kayitlar.length ? 'Aramayla eşleşen parça yok.' : 'Liste boş. “+ ŞARKI EKLE” ile klasörlerden parça seç.')}</tbody>
+          <thead><tr><th>#</th><th></th><th>PARÇA</th><th>KAYNAK KLASÖR</th><th>SÜRE</th><th></th></tr></thead>
+          <tbody>${satirlar || bos(6, kayitlar.length ? 'Aramayla eşleşen parça yok.' : 'Liste boş. “+ ŞARKI EKLE” ile klasörlerden parça seç.')}</tbody>
         </table>
+        ${kayitlar.length > 1 ? '<p class="panel-sub" style="margin:12px 0 0">Sırayı ⋮⋮ tutamacından sürükleyerek ya da ↑ ↓ düğmeleriyle değiştirebilirsin.</p>' : ''}
       </div>`;
   }
 
@@ -2157,8 +2175,11 @@
         <p class="sub">Bu şubede son olaylar. Duraklama satırındaki taraf, yayını kimin durdurduğunu söyler.</p>
         <p class="sub"><b>${esc(calismaOzeti(D, p, now))}</b></p>
         <div data-yerel-katli hidden>
-          <table><tbody>${olayTablosu(D, ui, { playerId: p.id, yer: false }, 12)
-            || bos(3, 'Bu şube için henüz olay kaydı yok.')}</tbody></table>
+          <table>
+            <thead><tr><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>
+            <tbody>${olayTablosu(D, ui, { playerId: p.id, yer: false }, 12)
+              || bos(3, 'Bu şube için henüz olay kaydı yok.')}</tbody>
+          </table>
           <div class="row" style="margin-top:12px">
             <button class="btn sm" data-act="gecmis-ac" data-q="${esc(p.label)}" type="button">TÜM GEÇMİŞİ AÇ</button>
           </div>
