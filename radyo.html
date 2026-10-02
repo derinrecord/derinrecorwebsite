@@ -71,7 +71,7 @@
         position:relative;z-index:1}
 
   h1#brand{margin:8px 0 4px;font-size:clamp(23px,6vw,28px);font-weight:900;letter-spacing:-.02em}
-  .sub{margin:0 0 18px;font-size:13.5px;color:var(--muted)}
+  .sub{margin:0 0 18px;font-size:14px;color:var(--muted)}
   .now{margin:16px 0 4px;font-size:19px;font-weight:900;min-height:26px}
   .folder{color:var(--muted);font-size:13px;min-height:20px}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);
@@ -109,6 +109,9 @@
   .playlist::-webkit-scrollbar{width:8px}
   .playlist::-webkit-scrollbar-track{background:rgba(244,241,233,.07)}
   .playlist::-webkit-scrollbar-thumb{background:var(--pink)}
+  /* Liste boşken (henüz parça gelmedi) üst çizgi tek başına kalıp başıboş bir
+     ayraç gibi görünürdü: tamamen gizle. */
+  .playlist:empty{display:none}
 
   button{margin-top:22px;padding:15px 32px;border:0;cursor:pointer;font:inherit;font-size:13px;
         font-weight:900;letter-spacing:.16em;color:var(--ink);background:var(--yellow);
@@ -120,10 +123,13 @@
   .tani{margin-top:12px;font-size:12px;letter-spacing:.04em;display:inline-block;
         padding:7px 13px;user-select:all;color:var(--cream);
         background:rgba(255,53,46,.12);border:1px dashed rgba(255,53,46,.5)}
-  .hours{margin-top:14px;font-size:11.5px;letter-spacing:.14em;color:var(--muted)}
-  .liste{margin-top:18px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
-  .liste label{font-size:10.5px;letter-spacing:.22em;font-weight:900;color:var(--yellow)}
-  .liste select{appearance:none;-webkit-appearance:none;padding:11px 16px;font:inherit;font-size:13px;
+  .hours{margin-top:14px;font-size:12.5px;letter-spacing:.14em;color:var(--muted)}
+  /* Personelin tek etkileşimli kontrolü: durum satırlarından çizgiyle ayrılıp
+     büyütülür ki tablette bir bakışta "buradan liste seçilir" densin. */
+  .liste{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);
+        display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+  .liste label{font-size:12px;letter-spacing:.18em;font-weight:900;color:var(--yellow)}
+  .liste select{appearance:none;-webkit-appearance:none;padding:13px 18px;font:inherit;font-size:14px;
         color:var(--cream);cursor:pointer;max-width:100%;background:var(--ink);
         border:2px solid var(--line-2)}
   .liste select:focus{outline:none;border-color:var(--yellow);box-shadow:0 0 0 3px rgba(216,187,44,.25)}
