@@ -407,18 +407,28 @@ if (senaryo === 'marka') {
     tagline: 'Üçüncü nesil kahve, ölçülü ritim.', accent_color: '#e8d15a',
     roast_profile: null, tasting_notes: []
   };
+  // Kapaklar: sunumun görsel zenginliği (liste kapağı, kahraman arka planı,
+  // alt çubuk) önizlemede görünsün diye her listeye yol veriyoruz; gerçek
+  // görsel yerine satır içi SVG üretilir, prova ağa çıkmaz.
   const P_LISTELER = [
-    { id: 'l1', name: 'Sabah Akışı', cover_path: null },
-    { id: 'l2', name: 'Berber Kuşağı', cover_path: null },
-    { id: 'l3', name: 'Spor Salonu — Enerji', cover_path: null },
-    { id: 'l4', name: 'Akşam Kapanış — Lo-fi', cover_path: null }
+    { id: 'l1', name: 'Sabah Akışı', cover_path: 'onizleme/l1.svg' },
+    { id: 'l2', name: 'Berber Kuşağı', cover_path: 'onizleme/l2.svg' },
+    { id: 'l3', name: 'Spor Salonu — Enerji', cover_path: 'onizleme/l3.svg' },
+    { id: 'l4', name: 'Akşam Kapanış — Lo-fi', cover_path: 'onizleme/l4.svg' }
   ];
   const P_TRACK = {
     l1: ['Filtre Sabah', 'Uzun Yol'], l2: ['Keskin Makas', 'Tıraş Ritmi'],
     l3: ['Isınma', 'Sprint'], l4: ['Sokak Sessiz', 'Kapanış']
   };
+  const kapakSvg = yol => 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360">' +
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="#5f4d24"/><stop offset="1" stop-color="#141416"/>' +
+    '</linearGradient></defs><rect width="360" height="360" fill="url(#g)"/>' +
+    '<circle cx="180" cy="180" r="64" fill="none" stroke="#e8d15a" stroke-opacity=".5" stroke-width="3"/>' +
+    '<circle cx="180" cy="180" r="13" fill="#e8d15a" fill-opacity=".7"/></svg>');
   const satir = (pl) => P_TRACK[pl.id].map((t, i) => ({
-    playlist_id: pl.id, name: pl.name, cover_path: null, created_at: '2026-09-01T09:00:00Z',
+    playlist_id: pl.id, name: pl.name, cover_path: pl.cover_path, created_at: '2026-09-01T09:00:00Z',
     track_id: 't-' + pl.id + '-' + i, title: t, storage_path: pl.id + '/p' + i + '.wav',
     track_cover: null, duration_sec: 200 + i * 10, sort_order: i
   }));
@@ -435,7 +445,7 @@ if (senaryo === 'marka') {
         if (ad === 'coffee_brand_liste') return Promise.resolve({ data: listeSatirlari, error: null });
         return Promise.resolve({ data: [], error: null });
       },
-      storage: { from: () => ({ getPublicUrl: p => ({ data: { publicUrl: p ? 'data:,' : '' } }) }) },
+      storage: { from: () => ({ getPublicUrl: p => ({ data: { publicUrl: p ? kapakSvg(p) : '' } }) }) },
       from: () => ({
         select: () => ({ eq: () => ({ order: () => ({ then: r => r({ data: [], error: null }) }) }) })
       })

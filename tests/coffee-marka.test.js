@@ -72,6 +72,30 @@ test('sunum marka kapağını varsayılan görsel olarak kullanır', () => {
   assert.ok(!/throw /.test(blok), 'fonksiyon yoksa çökmeden devam etmeli');
 });
 
+// Alt mini oynatıcı: kısa listelerde/uzun kaydırmada "şu an çalan" hep gözde
+// olsun. Sahne ekrandan çıkınca belirir, aynı parçayı gösterir ve kumandaları
+// ikinci bir çalma mantığı kurmadan sahne düğmelerine delege eder.
+test('sunumda alt mini oynatıcı sahneyle aynı parçayı ve kumandaları paylaşır', () => {
+  assert.match(source, /id="mk-dock"/, 'alt çubuk çizilmeli');
+  assert.match(source, /function dockYaz\(t\)/, 'çubuk sahneyle beslenmeli');
+  assert.match(source, /IntersectionObserver/, 'görünürlüğe göre açılıp kapanmalı');
+  assert.match(source, /dok\.classList\.toggle\('acik', !gorunur && kuyruk\.length > 0\)/,
+    'sahne görünürken değil, liste varken açılmalı');
+  // Kumandalar sahnenin düğmelerine delege edilmeli: tek çalma mantığı.
+  assert.match(source, /dokOyna\.onclick = \(\) => byId\('mk-oyna'\)\.click\(\)/);
+  assert.match(source, /byId\('mk-dock-ileri'\)\.onclick = \(\) => byId\('mk-ileri'\)\.click\(\)/);
+  assert.match(css, /\.mk-dock\.acik\{/, 'çubuk açık durumu stillenmeli');
+});
+
+// Kahraman görseli: marka/liste fotoğrafı varsa arka plana çok soluk serilir,
+// yoksa bölüm yalın kalır (boş kutu çizilmez).
+test('kahraman, varsa marka görselini arka plana serer', () => {
+  assert.match(source, /markaKapak \|\| \(listeler\.find\(l => l\.cover_path\) \|\| \{\}\)\.cover_path/,
+    'marka kapağı, yoksa ilk kapaklı liste seçilmeli');
+  assert.match(source, /class="mk-hero-bg"/, 'arka plan katmanı çizilmeli');
+  assert.match(css, /\.mk-hero-bg\{/, 'katman stillenmeli');
+});
+
 // Sunum kolonu, cam başlıkla (`min(1180px,94vw)`) aynı genişlikte ortalanmalı.
 // admin-main'in 70rem sınırı bırakılırsa .mk-shell kapsayıcısından taşar: dar
 // masaüstü genişliklerinde yatay kaydırma çubuğu çıkar ve içerik sağa yaslanır.

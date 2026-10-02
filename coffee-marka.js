@@ -173,6 +173,20 @@ audio.addEventListener('error', () => {
 // Kullanıcı duraklattıysa yarı kalan fade'i bitir ki ses kapalı kalmasın.
 audio.addEventListener('pause', () => { if (!gecisVar) { iptalFade(); audio.volume = seviye; } });
 
+// Alt mini oynatıcı: sahne ekrandan çıkınca beliren "şu an çalan" çubuğu.
+// Kapak, başlık ve liste adını sahneyle aynı yerden besler.
+function dockYaz(t) {
+  const kp = t ? (t.cover_path || t._playlistCover || markaKapak) : null;
+  const art = byId('mk-dock-art');
+  if (art) art.innerHTML = kapak(kp)
+    ? `<img src="${safe(kapak(kp))}" alt="">`
+    : '<span class="ph" aria-hidden="true">♪</span>';
+  const bas = byId('mk-dock-baslik');
+  if (bas) bas.textContent = t ? clean(t.title) : '—';
+  const alt = byId('mk-dock-alt');
+  if (alt) alt.textContent = t ? (t._playlistName || '') : '';
+}
+
 // ---------- Sahne (görsel fade) ----------
 function sahneYaz(t) {
   const stage = byId('mk-stage');
@@ -186,6 +200,7 @@ function sahneYaz(t) {
 }
 
 function doldur(t) {
+  dockYaz(t);
   const stage = byId('mk-stage');
   if (!stage) return;
   const art = byId('mk-art');
@@ -290,8 +305,13 @@ function ciz(brand, plist) {
     ...(Array.isArray(brand.tasting_notes) ? brand.tasting_notes : [])
   ].filter(Boolean);
 
+  // Kahraman arka planı: marka kapağı varsa o, yoksa ilk kapağı olan liste.
+  // Fotoğraf yoksa bölüm tamamen yalın kalır (boş bir kutu çizilmez).
+  const kahraman = markaKapak || (listeler.find(l => l.cover_path) || {}).cover_path || null;
+
   app.innerHTML = `
 <section class="mk-hero mk-shell">
+  ${kahraman ? `<div class="mk-hero-bg" aria-hidden="true" style="background-image:url('${safe(kapak(kahraman))}')"></div>` : ''}
   <p class="mk-eyebrow" id="mk-selam">DERİN RECORD</p>
   <h1>${safe(brand.name)}<br><span>İÇİN KURGULANDI.</span></h1>
   ${brand.tagline ? `<p class="mk-tag">${safe(brand.tagline)}</p>` : ''}
@@ -345,6 +365,16 @@ function ciz(brand, plist) {
     <span>DERİN RECORD · ÖZEL SUNUM</span>
     <span>${new Date().getFullYear()}</span>
   </div>
+
+  <div class="mk-dock" id="mk-dock" role="region" aria-label="Şu an çalan">
+    <span class="mk-dock-art" id="mk-dock-art"><span class="ph" aria-hidden="true">♪</span></span>
+    <span class="mk-dock-meta"><b id="mk-dock-baslik">—</b><span id="mk-dock-alt"></span></span>
+    <span class="mk-dock-cmds">
+      <button id="mk-dock-geri" type="button" aria-label="Önceki">⏮</button>
+      <button class="mk-dock-main" id="mk-dock-oyna" type="button" aria-label="Oynat">▶</button>
+      <button id="mk-dock-ileri" type="button" aria-label="Sonraki">⏭</button>
+    </span>
+  </div>
 </section>`;
 
   istatistikCiz(brand);
@@ -395,8 +425,16 @@ function bagla() {
       audio.pause();
     }
   };
-  audio.addEventListener('play', () => { byId('mk-oyna').textContent = '⏸'; });
-  audio.addEventListener('pause', () => { byId('mk-oyna').textContent = '▶'; });
+  // Oynat/duraklat ikonu iki kumandada da (sahne + alt çubuk) aynı kalsın.
+  const oynaIkon = () => {
+    const im = audio.paused ? '▶' : '⏸';
+    byId('mk-oyna').textContent = im;
+    const d = byId('mk-dock-oyna');
+    if (d) d.textContent = im;
+  };
+  audio.addEventListener('play', oynaIkon);
+  audio.addEventListener('pause', oynaIkon);
+  oynaIkon();
 
   // Karışık çal aç/kapa: sıra yeniden kurulur, o an çalan parça korunur.
   const karisikDugme = byId('mk-karisik');
@@ -425,6 +463,23 @@ function bagla() {
     else if (e.key === 'ArrowLeft') byId('mk-geri').click();
     else if (e.key === ' ') { e.preventDefault(); byId('mk-oyna').click(); }
   });
+
+  // Alt mini oynatıcı: sahne görünürken gizli kalır, aşağı kaydırınca belirir.
+  // Kumandalar sahneyle aynı düğmelere delege edilir; ikinci bir çalma mantığı yok.
+  const dok = byId('mk-dock');
+  const dokOyna = byId('mk-dock-oyna');
+  if (dokOyna) {
+    byId('mk-dock-geri').onclick = () => byId('mk-geri').click();
+    byId('mk-dock-ileri').onclick = () => byId('mk-ileri').click();
+    dokOyna.onclick = () => byId('mk-oyna').click();
+  }
+  const sahne = byId('mk-stage');
+  if (dok && sahne && 'IntersectionObserver' in window) {
+    new IntersectionObserver(girisler => {
+      const gorunur = girisler[0].isIntersecting;
+      dok.classList.toggle('acik', !gorunur && kuyruk.length > 0);
+    }, { threshold: 0.12 }).observe(sahne);
+  }
 }
 
 function detayGoster(t) {

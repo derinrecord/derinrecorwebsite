@@ -14,6 +14,9 @@
      1180/94vw genişliğinde) hizasız kalıyordu. Sunum kendi kolon genişliğini
      .mk-shell ile yönettiği için bu sınırı burada kaldırırız. */
   max-width:none; padding-left:0; padding-right:0;
+  /* Alt mini oynatıcı sabit durur; sayfanın son satırlarını örtmesin diye
+     sayfa altında onun boyu kadar nefes bırakırız. */
+  padding-bottom:96px;
 }
 
 /* ---------- Kapak / kilit ekranı ---------- */
@@ -41,7 +44,14 @@
 .mk-shell{width:min(1180px,94vw);margin:0 auto}
 
 /* ---------- Kahraman ---------- */
-.mk-hero{position:relative;padding:clamp(30px,5vw,58px) 0 26px}
+.mk-hero{position:relative;isolation:isolate;padding:clamp(30px,5vw,58px) 0 26px}
+/* Marka/ liste fotoğrafı kahramanın arkasına çok soluk serilir: sayfayı
+   zenginleştirir ama başlığın okunurluğunu bozmaz. Fotoğraf yoksa hiç çizilmez. */
+.mk-hero-bg{position:absolute;left:50%;top:-34%;transform:translateX(-50%);z-index:-1;
+  width:min(1180px,100vw);height:118%;background-size:cover;background-position:center;
+  opacity:.24;filter:saturate(160%) contrast(104%);pointer-events:none;
+  -webkit-mask-image:radial-gradient(128% 96% at 50% 0%,#000 0%,transparent 74%);
+  mask-image:radial-gradient(128% 96% at 50% 0%,#000 0%,transparent 74%)}
 .mk-hero::before{content:"";position:absolute;left:-14%;top:-40%;width:min(560px,70vw);height:min(560px,70vw);
   border-radius:50%;background:radial-gradient(circle,var(--mk-accent),transparent 66%);
   opacity:.20;filter:blur(70px);pointer-events:none}
@@ -85,6 +95,10 @@
 .mk-art img{width:100%;height:100%;object-fit:cover;display:block}
 .mk-art .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   font-size:52px;opacity:.3}
+.mk-art{transition:box-shadow .5s ease}
+/* Ses akarken kapak altın bir hâleyle nefes alır: "çalıyor" tek bakışta belli. */
+.mk-stage.caliyor .mk-art{box-shadow:0 24px 54px rgba(0,0,0,.55),0 0 0 1px rgba(232,209,90,.42),
+  0 0 46px rgba(232,209,90,.26),inset 0 1px 0 rgba(255,255,255,.24)}
 .mk-art::after{content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(160deg,rgba(255,255,255,.18),transparent 46%)}
 .mk-live{position:absolute;left:14px;top:14px;z-index:2;display:flex;align-items:center;gap:7px;
@@ -194,6 +208,31 @@
   display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
   font-size:11px;letter-spacing:.14em;opacity:.42}
 
+/* ---------- Alt mini oynatıcı ---------- */
+/* Sahne ekrandan çıkınca alt köşede belirir; kumandalar sahneyle aynıdır. */
+.mk-dock{position:fixed;left:50%;bottom:18px;z-index:99997;
+  display:flex;align-items:center;gap:14px;width:min(680px,92vw);
+  padding:10px 12px 10px 10px;border-radius:20px;
+  background:linear-gradient(150deg,rgba(26,26,30,.94),rgba(15,15,18,.94));
+  border:1px solid var(--mk-line);box-shadow:0 20px 50px rgba(0,0,0,.6);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);
+  opacity:0;pointer-events:none;transform:translateX(-50%) translateY(16px);
+  transition:opacity .3s ease,transform .3s ease}
+.mk-dock.acik{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.mk-dock-art{width:46px;height:46px;border-radius:12px;flex:0 0 auto;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;font-size:18px;opacity:.8;
+  background:rgba(255,255,255,.08)}
+.mk-dock-art img{width:100%;height:100%;object-fit:cover;display:block}
+.mk-dock-meta{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px;text-align:left}
+.mk-dock-meta b{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk-dock-meta span{font-size:11px;opacity:.55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk-dock-cmds{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.mk-dock-cmds button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:15px;opacity:.75;
+  transition:opacity .2s,transform .2s}
+.mk-dock-cmds button:hover{opacity:1;transform:scale(1.1)}
+.mk-dock-cmds .mk-dock-main{width:40px;height:40px;border-radius:50%;opacity:1;font-size:14px;color:#131313;
+  background:linear-gradient(145deg,#e9d364,#bfa32c);box-shadow:0 10px 24px rgba(0,0,0,.5)}
+
 /* ---------- Duyarlı ---------- */
 @media(max-width:820px){
   .mk-stage{grid-template-columns:1fr;text-align:center}
@@ -211,5 +250,5 @@
 }
 @media(prefers-reduced-motion:reduce){
   .mk-live i,.mk-eq i,.mk-ov{animation:none}
-  .mk-art,.mk-meta .mk-icerik,.mk-tab,.mk-item{transition:none}
+  .mk-art,.mk-meta .mk-icerik,.mk-tab,.mk-item,.mk-dock{transition:none}
 }
