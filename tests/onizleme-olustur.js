@@ -454,6 +454,10 @@ if (senaryo === 'marka') {
 })();
 </script>`;
 
+  // Filigran da tek dosyaya gömülür: önizleme kardeş varlıkları yükleyemez.
+  const filigran = 'data:image/png;base64,' + fs.readFileSync(path.join(kok, 'assets/logo-filigran.png')).toString('base64');
+  const markaJs = oku('coffee-marka.js').split('/assets/logo-filigran.png').join(filigran);
+
   let gomulu = sayfaHam
     .replace(/(href)="\/branch\.css(?:\?[^"]*)?"/, '$1="' + gom('branch.css') + '"')
     .replace(/(href)="\/auth\.css(?:\?[^"]*)?"/, '$1="' + gom('auth.css') + '"')
@@ -461,7 +465,7 @@ if (senaryo === 'marka') {
     .replace(/(href)="\/marka-sunum\.css(?:\?[^"]*)?"/, '$1="' + gom('marka-sunum.css') + '"')
     .replace(/<script src="\/config\.js"><\/script>/, '<script>window.DERIN_CONFIG = { supabaseUrl: \'https://prova.test\', supabasePublishableKey: \'prova\' };<\/script>')
     .replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@[^"]+"><\/script>/, '')
-    .replace(/<script src="\/coffee-marka\.js\?v=[^"]+"><\/script>/, taklit + '\n<script>\n' + oku('coffee-marka.js') + '\n</script>');
+    .replace(/<script src="\/coffee-marka\.js\?v=[^"]+"><\/script>/, taklit + '\n<script>\n' + markaJs + '\n</script>');
 
   // Gömme sessizce boşa düşerse prova stilsiz/sunucusuz açılır; bunun yerine dur.
   ['branch.css', 'auth.css', 'glass.css', 'marka-sunum.css', 'coffee-marka.js'].forEach(dis => {
@@ -470,6 +474,7 @@ if (senaryo === 'marka') {
     }
   });
   if (!gomulu.includes('coffee_brand_liste')) throw new Error('sunucu taklidi gömülmedi');
+  if (!gomulu.includes('data:image/png;base64,')) throw new Error('filigran satır içine alınmadı');
   fs.writeFileSync(ciktiYolu, gomulu);
   console.log(path.relative(kok, ciktiYolu) + ' yazıldı · marka paneli · ' + gomulu.length + ' bayt');
   return;

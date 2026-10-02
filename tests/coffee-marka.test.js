@@ -87,13 +87,15 @@ test('sunumda alt mini oynatıcı sahneyle aynı parçayı ve kumandaları payla
   assert.match(css, /\.mk-dock\.acik\{/, 'çubuk açık durumu stillenmeli');
 });
 
-// Kahraman görseli: marka/liste fotoğrafı varsa arka plana çok soluk serilir,
-// yoksa bölüm yalın kalır (boş kutu çizilmez).
-test('kahraman, varsa marka görselini arka plana serer', () => {
-  assert.match(source, /markaKapak \|\| \(listeler\.find\(l => l\.cover_path\) \|\| \{\}\)\.cover_path/,
-    'marka kapağı, yoksa ilk kapaklı liste seçilmeli');
-  assert.match(source, /class="mk-hero-bg"/, 'arka plan katmanı çizilmeli');
-  assert.match(css, /\.mk-hero-bg\{/, 'katman stillenmeli');
+// Kahraman filigranı: Derin Record logosu marka adının arkasına çok soluk
+// oturur. Görsel şeffaf olmalı (siyah zemini atılmış) ki ekranın koyu zeminiyle
+// karışım kipine gerek kalmadan kaynaşsın.
+test('kahraman, Derin Record logosunu başlığın arkasına filigran olarak serer', () => {
+  assert.match(source, /class="mk-hero-logo"/, 'filigran katmanı çizilmeli');
+  assert.match(source, /\/assets\/logo-filigran\.png/, 'şeffaf logo kullanılmalı');
+  assert.match(css, /\.mk-hero-logo\{/, 'filigran stillenmeli');
+  assert.match(css, /\.mk-hero-logo\{[^}]*opacity:\.18/, 'filigran soluk kalmalı');
+  assert.match(css, /\.mk-hero-logo img\{/, 'görsel satır içi değil, katmandan boyutlanmalı');
 });
 
 // Sunum kolonu, cam başlıkla (`min(1180px,94vw)`) aynı genişlikte ortalanmalı.

@@ -44,14 +44,16 @@
 .mk-shell{width:min(1180px,94vw);margin:0 auto}
 
 /* ---------- Kahraman ---------- */
-.mk-hero{position:relative;isolation:isolate;padding:clamp(30px,5vw,58px) 0 26px}
-/* Marka/ liste fotoğrafı kahramanın arkasına çok soluk serilir: sayfayı
-   zenginleştirir ama başlığın okunurluğunu bozmaz. Fotoğraf yoksa hiç çizilmez. */
-.mk-hero-bg{position:absolute;left:50%;top:-34%;transform:translateX(-50%);z-index:-1;
-  width:min(1180px,100vw);height:118%;background-size:cover;background-position:center;
-  opacity:.24;filter:saturate(160%) contrast(104%);pointer-events:none;
-  -webkit-mask-image:radial-gradient(128% 96% at 50% 0%,#000 0%,transparent 74%);
-  mask-image:radial-gradient(128% 96% at 50% 0%,#000 0%,transparent 74%)}
+.mk-hero{position:relative;padding:clamp(30px,5vw,58px) 0 26px}
+/* Derin Record filigranı: marka adının ("… İÇİN KURGULANDI.") arkasına çok
+   soluk oturur, okunurluğu bozmaz. Görselin siyah zemini şeffaflaştırılmıştır
+   (assets/logo-filigran.png), ek karışım kipi gerekmez. DOM'da içerikten önce
+   geldiği için z-index'e ihtiyaç duymadan arkada kalır. */
+.mk-hero-logo{position:absolute;left:-4%;top:-18%;width:min(620px,68vw);
+  opacity:.18;pointer-events:none;
+  -webkit-mask-image:radial-gradient(74% 72% at 46% 46%,#000 24%,transparent 78%);
+  mask-image:radial-gradient(74% 72% at 46% 46%,#000 24%,transparent 78%)}
+.mk-hero-logo img{display:block;width:100%;height:auto}
 .mk-hero::before{content:"";position:absolute;left:-14%;top:-40%;width:min(560px,70vw);height:min(560px,70vw);
   border-radius:50%;background:radial-gradient(circle,var(--mk-accent),transparent 66%);
   opacity:.20;filter:blur(70px);pointer-events:none}
@@ -241,6 +243,7 @@
   .mk-vol{margin:0 auto}
   .mk-meta{max-width:none}
   .mk-hero::before{left:-30%}
+  .mk-hero-logo{left:-16%;top:-6%;width:min(440px,88vw);opacity:.15}
 }
 @media(max-width:560px){
   .mk-list-head,.mk-item{grid-template-columns:26px 1fr 52px;gap:10px}

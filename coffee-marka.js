@@ -305,13 +305,9 @@ function ciz(brand, plist) {
     ...(Array.isArray(brand.tasting_notes) ? brand.tasting_notes : [])
   ].filter(Boolean);
 
-  // Kahraman arka planı: marka kapağı varsa o, yoksa ilk kapağı olan liste.
-  // Fotoğraf yoksa bölüm tamamen yalın kalır (boş bir kutu çizilmez).
-  const kahraman = markaKapak || (listeler.find(l => l.cover_path) || {}).cover_path || null;
-
   app.innerHTML = `
 <section class="mk-hero mk-shell">
-  ${kahraman ? `<div class="mk-hero-bg" aria-hidden="true" style="background-image:url('${safe(kapak(kahraman))}')"></div>` : ''}
+  <div class="mk-hero-logo" aria-hidden="true"><img src="/assets/logo-filigran.png" alt=""></div>
   <p class="mk-eyebrow" id="mk-selam">DERİN RECORD</p>
   <h1>${safe(brand.name)}<br><span>İÇİN KURGULANDI.</span></h1>
   ${brand.tagline ? `<p class="mk-tag">${safe(brand.tagline)}</p>` : ''}
