@@ -975,7 +975,8 @@ test('oynatıcı ve sunum sayfası katalog verisini sunucu fonksiyonundan ister'
 test('kapatma dosyası katalog tablolarının hepsini dışarıya kapatır', () => {
   const sql = fs.readFileSync(path.join(KOK, 'supabase', 'radio-erisim-kapat.sql'), 'utf8');
   ['radio_folders', 'radio_tracks', 'brand_playlists', 'brand_playlist_tracks',
-    'brand_broadcast', 'player_broadcast', 'radio_announcements'].forEach(tablo => {
+    'brand_broadcast', 'player_broadcast', 'radio_announcements',
+    'brand_players'].forEach(tablo => {
     assert.ok(sql.includes('revoke select on public.' + tablo),
       tablo + ' dışarıya kapatılmalı');
   });
