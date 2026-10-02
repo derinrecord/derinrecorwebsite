@@ -41,3 +41,15 @@ test('seçim bölümünden kalan stil yok', () => {
   const acik = (css.match(/{/g) || []).length, kapali = (css.match(/}/g) || []).length;
   assert.equal(acik, kapali, 'CSS blokları dengeli olmalı');
 });
+
+// Sunum kolonu, cam başlıkla (`min(1180px,94vw)`) aynı genişlikte ortalanmalı.
+// admin-main'in 70rem sınırı bırakılırsa .mk-shell kapsayıcısından taşar: dar
+// masaüstü genişliklerinde yatay kaydırma çubuğu çıkar ve içerik sağa yaslanır.
+test('sunum kolonu kapsayıcıdan taşmaz, cam başlıkla hizalanır', () => {
+  assert.match(css, /\.mk-shell\{[^}]*width:min\(1180px,94vw\)/,
+    'kolon genişliği başlıkla aynı olmalı');
+  const mkRoot = css.slice(css.indexOf('.mk-root{'), css.indexOf('.mk-lock{'));
+  assert.match(mkRoot, /max-width:none/, 'admin-main sınırı kaldırılmalı');
+  assert.match(mkRoot, /padding-left:0/, 'sol dolgu sıfırlanmalı');
+  assert.match(mkRoot, /padding-right:0/, 'sağ dolgu sıfırlanmalı');
+});

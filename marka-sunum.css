@@ -8,6 +8,12 @@
   --mk-line:rgba(255,255,255,.16);
   --mk-glass:linear-gradient(150deg,rgba(255,255,255,.12),rgba(255,255,255,.035));
   padding-bottom:56px;
+  /* admin-main'in 70rem sınırı + 20px dolgusu, sunumun min(1180px,94vw)
+     kabuğuna dar geliyordu: kabuk kapsayıcısından taşıp sağa yaslanıyor, dar
+     ekranlarda yatay kaydırma çubuğu çıkarıyor ve cam başlıkla (aynı
+     1180/94vw genişliğinde) hizasız kalıyordu. Sunum kendi kolon genişliğini
+     .mk-shell ile yönettiği için bu sınırı burada kaldırırız. */
+  max-width:none; padding-left:0; padding-right:0;
 }
 
 /* ---------- Kapak / kilit ekranı ---------- */
