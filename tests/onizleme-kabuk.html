@@ -1653,11 +1653,18 @@
       const kapaksiz = D.playlistTracks.filter(x => x.playlist_id === pl.id)
         .map(x => D.tracks.find(t => t.id === x.track_id)).filter(kapakYok).length;
       const kullanan = D.broadcast.filter(x => x.playlist_id === pl.id).length + subeKullanan(D, pl.id);
+      // Liste kapakları markaya özeldir: parça görselleri yüklendiği gibi kalır,
+      // yalnız bu markanın listesinin kapağı satırdan elle ayarlanır. KAPAK düğmesi
+      // satırı açmadan doğrudan kapak penceresini açar (tıklama en yakın
+      // [data-act]'ı bulur), böylece listeler markaya yüklendikten hemen sonra
+      // kapakları tek tek elle yerleştirilebilir.
       return `<tr class="selectable" data-act="list-open" data-id="${esc(pl.id)}">
-        <td><b>${esc(pl.name)}</b><span class="sub">${esc(pl.description || 'açıklama yok')}${kapakYok(pl) ? ' · kapağı yok' : ''}</span></td>
+        <td><div class="cell-main">${kapakHucre(pl.cover_path, ui, '🎧', 'gold')}
+          <span><b>${esc(pl.name)}</b><span class="sub">${esc(pl.description || 'açıklama yok')}${kapakYok(pl) ? ' · kapağı yok' : ''}</span></span></div></td>
         <td class="tight">${adet} parça${kapaksiz ? ' · ' + kapaksiz + ' kapağı yok' : ''}</td>
         <td class="tight">${kullanan ? chip('live', 'YAYINDA', true) : chip('off', 'kullanılmıyor')}</td>
         <td><div class="row-actions">
+          <button class="btn sm" data-act="list-img" data-id="${esc(pl.id)}" type="button">KAPAK</button>
           <button class="btn sm" data-act="list-open" data-id="${esc(pl.id)}" type="button">AÇ ›</button>
           <button class="btn sm danger" data-act="list-del" data-id="${esc(pl.id)}" type="button">SİL</button>
         </div></td>
@@ -1760,7 +1767,8 @@
 
       <div class="panel" style="margin-bottom:18px">
         <h3>ÇALMA LİSTELERİ (${listeler.length})</h3>
-        <p class="panel-sub">Listedeki değişiklikler yalnızca bu markayı etkiler; genel klasörler değişmez.</p>
+        <p class="panel-sub">Listedeki değişiklikler yalnızca bu markayı etkiler; genel klasörler değişmez.
+          Kapak satırdaki <b>KAPAK</b> düğmesiyle elle ayarlanır; parça görselleri yüklendiği gibi kalır.</p>
         <table>
           <thead><tr><th>LİSTE</th><th>PARÇA</th><th>DURUM</th><th></th></tr></thead>
           <tbody>${listeSatirlari || bos(4, 'Bu markanın henüz çalma listesi yok.')}</tbody>

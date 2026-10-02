@@ -390,6 +390,18 @@ test('parça, liste ve klasör kapakları panelden yerleştirilebilir', () => {
   assert.ok(kapakliHtml.includes('KAPAĞI DEĞİŞTİR'));
 });
 
+// Marka sayfasındaki çalma listesi satırından tek tıkla kapak ayarlanabilmeli:
+// listeler markaya yüklendikten sonra kapaklar satır üzerinden elle yerleştirilir,
+// satırı açmak (list-open) gerekmez. Parça kapaklarına dokunulmaz.
+test('marka sayfası liste satırı kapağı elle ayarlamayı sağlar', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), D, ui);
+  const satir = html.slice(html.indexOf('data-act="list-open"'), html.indexOf('YENİ LİSTE ADI'));
+  assert.ok(satir.includes('data-act="list-img"'), 'liste satırında KAPAK düğmesi olmalı');
+  assert.ok(satir.includes('>KAPAK<'), 'düğme ne yaptığını söylemeli');
+  assert.ok(satir.includes('class="cell-main"'), 'satırda kapak görseli için hücre olmalı');
+  assert.ok(!html.includes('data-act="track-img"'), 'marka sayfasında parça kapağı akışı çıkmaz');
+});
+
 // Liste adı yazımı sahaya çıkıyor (panelde, müşteri sunumunda ve personelin
 // cihazındaki seçicide). Panelden düzeltilebilmesi için alan bulunmalı ve mevcut
 // ad önceden dolu gelmeli.
