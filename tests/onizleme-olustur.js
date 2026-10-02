@@ -455,8 +455,8 @@ if (senaryo === 'marka') {
 </script>`;
 
   // Filigran da tek dosyaya gömülür: önizleme kardeş varlıkları yükleyemez.
-  const filigran = 'data:image/png;base64,' + fs.readFileSync(path.join(kok, 'assets/logo-filigran.png')).toString('base64');
-  const markaJs = oku('coffee-marka.js').split('/assets/logo-filigran.png').join(filigran);
+  const filigran = 'data:image/png;base64,' + fs.readFileSync(path.join(kok, 'assets/kaset-filigran.png')).toString('base64');
+  const markaJs = oku('coffee-marka.js').split('/assets/kaset-filigran.png').join(filigran);
 
   let gomulu = sayfaHam
     .replace(/(href)="\/branch\.css(?:\?[^"]*)?"/, '$1="' + gom('branch.css') + '"')

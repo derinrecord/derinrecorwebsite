@@ -45,14 +45,17 @@
 
 /* ---------- Kahraman ---------- */
 .mk-hero{position:relative;padding:clamp(30px,5vw,58px) 0 26px}
-/* Derin Record filigranı: marka adının ("… İÇİN KURGULANDI.") arkasına çok
-   soluk oturur, okunurluğu bozmaz. Görselin siyah zemini şeffaflaştırılmıştır
-   (assets/logo-filigran.png), ek karışım kipi gerekmez. DOM'da içerikten önce
+/* Derin Record kaset işareti: marka adının arkasına çok soluk oturur.
+   Görselin siyah zemini şeffaflaştırılmıştır (assets/kaset-filigran.png),
+   ek karışım kipi gerekmez. Bilinçli olarak logonun YALNIZ kaset kısmı
+   kullanılır: "DERİN RECORD" yazısı marka adının üstüne binip iki yazıyı
+   okunmaz kılıyordu. Başlık sola yaslı olduğu için işaret sağ tarafa
+   kaydırılır, böylece harflerin üstüne denk gelmez. DOM'da içerikten önce
    geldiği için z-index'e ihtiyaç duymadan arkada kalır. */
-.mk-hero-logo{position:absolute;left:-4%;top:-18%;width:min(620px,68vw);
-  opacity:.18;pointer-events:none;
-  -webkit-mask-image:radial-gradient(74% 72% at 46% 46%,#000 24%,transparent 78%);
-  mask-image:radial-gradient(74% 72% at 46% 46%,#000 24%,transparent 78%)}
+.mk-hero-logo{position:absolute;right:0;top:-10%;width:min(440px,44vw);
+  opacity:.15;pointer-events:none;
+  -webkit-mask-image:linear-gradient(104deg,transparent 0%,#000 44%);
+  mask-image:linear-gradient(104deg,transparent 0%,#000 44%)}
 .mk-hero-logo img{display:block;width:100%;height:auto}
 .mk-hero::before{content:"";position:absolute;left:-14%;top:-40%;width:min(560px,70vw);height:min(560px,70vw);
   border-radius:50%;background:radial-gradient(circle,var(--mk-accent),transparent 66%);
@@ -243,9 +246,13 @@
   .mk-vol{margin:0 auto}
   .mk-meta{max-width:none}
   .mk-hero::before{left:-30%}
-  .mk-hero-logo{left:-16%;top:-6%;width:min(440px,88vw);opacity:.15}
+  .mk-hero-logo{top:-4%;right:0;width:min(260px,58vw);opacity:.12}
 }
 @media(max-width:560px){
+  /* Telefonda başlık neredeyse bütün genişliği kaplar: filigran ister istemez
+     harflerin üstüne biner. Marka adını okunur tutmak için burada gizlenir;
+     üst şeritteki DERİN RECORD yazısı markayı zaten taşıyor. */
+  .mk-hero-logo{display:none}
   .mk-list-head,.mk-item{grid-template-columns:26px 1fr 52px;gap:10px}
   .mk-item .ttl img,.mk-item .ttl .ph{width:28px;height:28px}
   .mk-item .ttl .ad{font-size:13px}

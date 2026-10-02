@@ -307,7 +307,7 @@ function ciz(brand, plist) {
 
   app.innerHTML = `
 <section class="mk-hero mk-shell">
-  <div class="mk-hero-logo" aria-hidden="true"><img src="/assets/logo-filigran.png" alt=""></div>
+  <div class="mk-hero-logo" aria-hidden="true"><img src="/assets/kaset-filigran.png" alt=""></div>
   <p class="mk-eyebrow" id="mk-selam">DERİN RECORD</p>
   <h1>${safe(brand.name)}<br><span>İÇİN KURGULANDI.</span></h1>
   ${brand.tagline ? `<p class="mk-tag">${safe(brand.tagline)}</p>` : ''}
