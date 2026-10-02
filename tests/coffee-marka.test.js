@@ -87,18 +87,16 @@ test('sunumda alt mini oynatıcı sahneyle aynı parçayı ve kumandaları payla
   assert.match(css, /\.mk-dock\.acik\{/, 'çubuk açık durumu stillenmeli');
 });
 
-// Kahraman filigranı: kaset ve "DERİN RECORD" yazısı birlikte, marka adının
-// üstüne binmeden sağdaki boş şeritte durur. Görsel şeffaf olmalı (siyah
-// zemini atılmış) ki karışım kipine gerek kalmasın; marka adının okunurluğu
-// bozulmasın diye genişlik 24vw ile sınırlıdır.
-test('kahraman, Derin Record filigranını başlığın sağına serer', () => {
+// Kahraman filigranı: yalnız kaset işareti (yazısız) marka adının sağındaki boş
+// alanda durur. Görsel şeffaf olmalı (siyah zemini atılmış) ki karışım kipine
+// gerek kalmasın; sol kenarı maskeyle eritilir, böylece harflere binmez.
+test('kahraman, yalnız kaset işaretini filigran olarak serer', () => {
   assert.match(source, /class="mk-hero-logo"/, 'filigran katmanı çizilmeli');
-  assert.match(source, /\/assets\/derin-filigran\.png/, 'şeffaf filigran kullanılmalı');
+  assert.match(source, /\/assets\/kaset-filigran\.png/, 'kaset işareti kullanılmalı');
   assert.match(css, /\.mk-hero-logo\{/, 'filigran stillenmeli');
   assert.match(css, /\.mk-hero-logo\{[^}]*right:0/, 'işaret başlığın sağındaki boş alanda durmalı');
-  assert.match(css, /\.mk-hero-logo\{[^}]*width:min\(400px,24vw\)/,
-    'genişlik başlıkla çakışmayacak şekilde sınırlı olmalı');
-  assert.match(css, /\.mk-hero-logo\{[^}]*opacity:\.26/, 'filigran soluk ama seçilebilir kalmalı');
+  assert.match(css, /\.mk-hero-logo\{[^}]*opacity:\.15/, 'filigran soluk kalmalı');
+  assert.match(css, /\.mk-hero-logo\{[^}]*mask-image:linear-gradient/, 'sol kenarı eritilmeli');
   assert.match(css, /\.mk-hero-logo img\{/, 'görsel satır içi değil, katmandan boyutlanmalı');
 });
 
