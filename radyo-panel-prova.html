@@ -49,9 +49,9 @@
   // Örnek veri — Supabase tablolarının kolon adlarıyla aynı.
   const D = {
     brands: [
-      { id: 'b1', name: 'Mokka Coffee', slug: 'mokka-coffee', access_code: 'MOKKA2026', is_active: true },
-      { id: 'b2', name: 'Brew Lab', slug: 'brew-lab', access_code: 'BREW2026', is_active: true },
-      { id: 'b3', name: 'Kahve Durağı', slug: 'kahve-duragi', access_code: null, is_active: true }
+      { id: 'b1', name: 'Mokka Coffee', slug: 'mokka-coffee', access_code: 'MOKKA2026', is_active: true, cover_path: 'markalar/b1.jpg' },
+      { id: 'b2', name: 'Brew Lab', slug: 'brew-lab', access_code: 'BREW2026', is_active: true, cover_path: null },
+      { id: 'b3', name: 'Kahve Durağı', slug: 'kahve-duragi', access_code: null, is_active: true, cover_path: null }
     ],
     folders: [
       { id: 'f1', name: 'Sabah Açılış — Ambient', description: 'Yumuşak giriş, düşük tempo', cover_path: null, shuffle: true },
@@ -151,7 +151,8 @@
       'radio-sube-listeleri.sql': true, 'radio-subeye-ozel-yayin.sql': false,
       'radio-baglanti-gecmisi.sql': true, 'radio-yayin-baslat.sql': false,
       'radio-calan-parca.sql': true, 'radio-liste-bildirimi.sql': true,
-      'radio-erisim.sql': false, 'radio-yayin-durdurma.sql': true
+      'radio-erisim.sql': false, 'radio-yayin-durdurma.sql': true,
+      'marka-kapagi.sql': true
     }
   };
 

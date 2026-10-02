@@ -40,6 +40,9 @@ let karisik = false;
 // Fiilen çalınacak sıra: kuyruğa indeksler. Karışık kapalıyken doğal sıra.
 let duzen = [];
 let acikListe = null;
+// Markaya özel kapak (supabase/marka-kapagi.sql): kendi kapağı olmayan liste
+// ve parçalar için varsayılan görsel. Fonksiyon yoksa null kalır.
+let markaKapak = null;
 let seviye = 1;
 let gecisVar = false;
 let fadeZaman = null;
@@ -195,7 +198,7 @@ function doldur(t) {
     stage.classList.remove('caliyor');
     return;
   }
-  const kapakPath = t.cover_path || t._playlistCover;
+  const kapakPath = t.cover_path || t._playlistCover || markaKapak;
   art.innerHTML = kapak(kapakPath)
     ? `<img src="${safe(kapak(kapakPath))}" alt="">`
     : '<div class="ph">♪</div>';
@@ -425,7 +428,7 @@ function bagla() {
 }
 
 function detayGoster(t) {
-  const kapakPath = t.cover_path || t._playlistCover;
+  const kapakPath = t.cover_path || t._playlistCover || markaKapak;
   const ov = document.createElement('div');
   ov.className = 'mk-ov';
   ov.innerHTML = `
@@ -458,6 +461,13 @@ async function ac(kod) {
     return;
   }
   const brand = data[0];
+
+  // Marka kapağı: sunumda kendi görseli olmayan liste/parçaların varsayılanı.
+  // Fonksiyon kurulmadıysa (supabase/marka-kapagi.sql) sessizce atlanır.
+  try {
+    const k = await client.rpc('coffee_brand_kapak', { p_slug: slug, p_code: kod });
+    if (k && !k.error && typeof k.data === 'string' && k.data) markaKapak = k.data;
+  } catch { /* fonksiyon yok: marka kapağı kullanılmaz */ }
 
   // Listeler ve parçalar: katalog tabloları dışarıya (girişsiz ziyaretçiye)
   // kapatıldığı için sunum sayfası veriyi, erişim kodunu sunucuda doğrulayan

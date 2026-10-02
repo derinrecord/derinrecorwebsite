@@ -1183,7 +1183,9 @@
     { anahtar: 'radio-erisim.sql', ad: 'Şube erişim kapısı',
       aciklama: 'Şube linki ve sunum kodu doğrulanmadan katalog okunamaz; içerik dışarıya kapanır.', etki: 'Güvenlik · oynatıcı' },
     { anahtar: 'radio-yayin-durdurma.sql', ad: 'Yayın durumu ayrımı',
-      aciklama: '“Yayın yok” cevabının sebebini ayırır: durdurulmuş mu, marka mı kapalı, abonelik mi bitti.', etki: 'Oynatıcı' }
+      aciklama: '“Yayın yok” cevabının sebebini ayırır: durdurulmuş mu, marka mı kapalı, abonelik mi bitti.', etki: 'Oynatıcı' },
+    { anahtar: 'marka-kapagi.sql', ad: 'Marka kapağı',
+      aciklama: 'Marka başına bir görsel; kendi kapağı olmayan liste ve parçaların varsayılanı olur.', etki: 'Markalar · sunum' }
   ];
 
   function kurulumDurum(durum) {
@@ -1536,6 +1538,10 @@
       </div>`;
   }
 
+  // Marka kapağı, supabase/marka-kapagi.sql kuruluysa kullanılabilir. Kolon
+  // yokken bölüm hiç çizilmez: kaydedilemeyecek bir düğme göstermeyiz.
+  const markaKapagiVar = D => !!(((D && D.kurulum) || {})['marka-kapagi.sql']);
+
   function markaDetay(state, D, ui) {
     const b = D.brands.find(x => x.id === state.openBrand);
     if (!b) return markaListesi(state, D, ui);
@@ -1680,6 +1686,18 @@
           ${b.access_code ? `<button class="btn sm" data-act="copy" data-copy="${esc(b.access_code)}" type="button">KODU KOPYALA</button>` : ''}
         </div>
       </div>
+
+      ${markaKapagiVar(D) ? `
+      <div class="panel" style="margin-bottom:18px">
+        <h3>MARKA KAPAĞI</h3>
+        <p class="panel-sub">Markaya ait görsel; kendi kapağı olmayan liste ve parçalar için varsayılan olur ve müşteri
+          sunumunda gösterilir. Kapak yalnızca bu markayı etkiler; parça ve klasör görselleri değişmez.</p>
+        <div class="row">
+          ${kapakHucre(b.cover_path, ui, '🏷️')}
+          <button class="btn" data-act="brand-cover" data-id="${esc(b.id)}" type="button">${b.cover_path ? 'KAPAĞI DEĞİŞTİR' : 'KAPAK YERLEŞTİR'}</button>
+          <span class="sub">${b.cover_path ? 'Kapak yerleştirildi.' : 'Bu markanın henüz kapağı yok; sunumda simge görünür.'}</span>
+        </div>
+      </div>` : ''}
 
       <div class="panel" style="margin-bottom:18px">
         <h3>ŞUBELER (${subeler.length})</h3>

@@ -486,6 +486,27 @@ test('eksik kurulum dosyaları tek SQL olarak birleştirilir', () => {
   assert.ok(!/throw /.test(blok), 'ağ yoksa çökmeden yol göstermeli');
 });
 
+// Marka kapağı: panel markaya ait görseli elle yerleştirebilmeli; kapak yalnız
+// o markayı etkiler, parça/klasör görsellerine dokunmaz.
+test('panel marka kapağını elle yerleştirir', () => {
+  assert.match(source, /case 'brand-cover'/, 'marka kapağı düğmesi işlenmeli');
+  const blok = source.slice(source.indexOf("case 'brand-cover'"), source.indexOf("case 'list-img'"));
+  assert.match(blok, /from\('brands'\)\.update\(\{ cover_path: yol \}\)/, 'kapak brands.cover_path alanına yazılmalı');
+  assert.ok(blok.includes("onEk: 'markalar'"), 'kapak kendi klasörüne yüklenmeli');
+  assert.match(blok, /kapakDosyaSil\(b\.cover_path\)/, 'kaldırılan kapağın dosyası temizlenmeli');
+  // Kolon yoklaması: kurulmadıysa özellik kapanmalı, ana yükleme bozulmamalı.
+  assert.match(source, /D\.kurulum\['marka-kapagi\.sql'\]/);
+});
+
+// Kurulum dosyası gerçekten kolonu ve okuma fonksiyonunu kurmalı: panelin
+// gösterdiği düğme yalnız bu dosya çalıştırıldığında işe yarar.
+test('marka kapağı kurulum dosyası kolonu ve okuma fonksiyonunu kurar', () => {
+  const sql = fs.readFileSync(require.resolve('../supabase/marka-kapagi.sql'), 'utf8');
+  assert.match(sql, /alter table public\.brands add column if not exists cover_path text/);
+  assert.match(sql, /create or replace function public\.coffee_brand_kapak/);
+  assert.match(sql, /grant execute on function public\.coffee_brand_kapak/);
+});
+
 // Katalog kapısını kapatma: erişim kapısı kurulduktan sonra panel, kataloğu
 // dışarıya kapatan SQL'i gösterebilmeli; kapatma sırası (fonksiyonlar önce)
 // yöneticiye açıkça hatırlatılmalı.

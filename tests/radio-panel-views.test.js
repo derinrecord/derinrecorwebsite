@@ -1366,6 +1366,19 @@ test('katalog kapısını kapatma adımı yalnız erişim kapısı kuruluyken ç
   assert.ok(!yok.includes('data-act="kurulum-kapat-sql"'), 'erişim kapısı kurulu değilken kapatma adımı gizlenmeli');
 });
 
+// Marka kapağı: supabase/marka-kapagi.sql kuruluyken marka sayfasında elle
+// yükleme bölümü çizilir; kolon yokken hiç çizilmez (kaydedilemeyecek bir düğme
+// göstermeyiz).
+test('marka kapağı bölümü yalnız kuruluyken çizilir', () => {
+  const KD = { ...D, kurulum: { 'marka-kapagi.sql': true } };
+  const html = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), KD, ui).html;
+  assert.ok(html.includes('MARKA KAPAĞI'), 'kuruluyken bölüm çizilmeli');
+  assert.ok(html.includes('data-act="brand-cover" data-id="b1"'), 'kapak düğmesi marka id ile çizilmeli');
+
+  const yok = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), D, ui).html;
+  assert.ok(!yok.includes('data-act="brand-cover"'), 'kurulu değilken bölüm çizilmemeli');
+});
+
 test('kurulum verisi yokken ekran çökmez, hepsi denenmedi sayılır', () => {
   const html = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), D, ui).html;
   assert.ok(html.includes('KURULUM DURUMU'), 'veri gelmeden de ekran çizilmeli');

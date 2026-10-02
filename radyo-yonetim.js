@@ -39,7 +39,8 @@
       'radio-sube-listeleri.sql': null, 'radio-subeye-ozel-yayin.sql': null,
       'radio-baglanti-gecmisi.sql': null, 'radio-yayin-baslat.sql': null,
       'radio-calan-parca.sql': null, 'radio-liste-bildirimi.sql': null,
-      'radio-erisim.sql': null, 'radio-yayin-durdurma.sql': null
+      'radio-erisim.sql': null, 'radio-yayin-durdurma.sql': null,
+      'marka-kapagi.sql': null
     }
   };
   const state = {
@@ -613,6 +614,21 @@
         D.subeListeleriVar = true;
       }
     } catch { /* tablo kurulmamış: yükleme özelliği kapalı kalır */ }
+
+    // Marka kapağı (supabase/marka-kapagi.sql). Kolon eklenmemişse sorgu 42703
+    // ("column does not exist") döner: özellik kapalı kalır, marka sayfasında
+    // kapak bölümü hiç çizilmez. Ayrı ve hataya toleranslı tutulur ki ana
+    // yükleme bundan etkilenmesin.
+    try {
+      const kapak = await client.from('brands').select('id,cover_path');
+      if (kapak.error) {
+        D.kurulum['marka-kapagi.sql'] = false;
+      } else {
+        D.kurulum['marka-kapagi.sql'] = true;
+        const harita = new Map((kapak.data || []).map(x => [x.id, x.cover_path]));
+        D.brands.forEach(b => { b.cover_path = harita.get(b.id) ?? null; });
+      }
+    } catch { /* kolon yok: marka kapağı kapalı */ }
   }
 
   // sessiz: yalnızca Canlı durum ekranı kendini tazeler; form girdileriniz
@@ -1839,6 +1855,27 @@
         if (error) return hata('Ad kaydedilemedi: ' + error.message);
         await yenile(false);
         bildir('Liste adı güncellendi. Açık duran oynatıcılar yeni adı birkaç dakika içinde kendiliğinden alır.');
+        return;
+      }
+      case 'brand-cover': {
+        const b = D.brands.find(x => x.id === id);
+        if (!b) return;
+        kapakPenceresiAc({
+          baslik: 'Marka kapağı',
+          alt: b.name,
+          kapak: b.cover_path,
+          onEk: 'markalar',
+          kaydet: async yol => {
+            const { error } = await client.from('brands').update({ cover_path: yol }).eq('id', b.id);
+            return error ? 'Kapak kaydedilemedi: ' + error.message : null;
+          },
+          kaldir: b.cover_path ? async () => {
+            const { error } = await client.from('brands').update({ cover_path: null }).eq('id', b.id);
+            if (error) return hata('Kapak kaldırılamadı: ' + error.message);
+            await kapakDosyaSil(b.cover_path);
+            pencereKapat(); await yenile(false); bildir('Kapak kaldırıldı.');
+          } : null
+        });
         return;
       }
       case 'list-img': {

@@ -61,6 +61,17 @@ test('sunumda karışık çal seçeneği çalma sırasını değiştirir', () =>
   assert.match(css, /\.mk-shuffle\[aria-pressed="true"\]/, 'açıkken belirginleşmeli');
 });
 
+// Marka kapağı (supabase/marka-kapagi.sql): sunum, markaya ait görseli kendi
+// kapağı olmayan liste/parçaların varsayılanı olarak kullanmalı. Fonksiyon
+// kurulmadıysa sessizce atlanmalı; sunum bozulmamalı.
+test('sunum marka kapağını varsayılan görsel olarak kullanır', () => {
+  assert.match(source, /rpc\('coffee_brand_kapak', \{ p_slug: slug, p_code: kod \}\)/);
+  assert.match(source, /t\.cover_path \|\| t\._playlistCover \|\| markaKapak/, 'marka kapağı en son yedek olmalı');
+  const i = source.indexOf('coffee_brand_kapak');
+  const blok = source.slice(Math.max(0, i - 220), i + 260);
+  assert.ok(!/throw /.test(blok), 'fonksiyon yoksa çökmeden devam etmeli');
+});
+
 // Sunum kolonu, cam başlıkla (`min(1180px,94vw)`) aynı genişlikte ortalanmalı.
 // admin-main'in 70rem sınırı bırakılırsa .mk-shell kapsayıcısından taşar: dar
 // masaüstü genişliklerinde yatay kaydırma çubuğu çıkar ve içerik sağa yaslanır.
