@@ -45,17 +45,15 @@
 
 /* ---------- Kahraman ---------- */
 .mk-hero{position:relative;padding:clamp(30px,5vw,58px) 0 26px}
-/* Derin Record kaset işareti: marka adının arkasına çok soluk oturur.
-   Görselin siyah zemini şeffaflaştırılmıştır (assets/kaset-filigran.png),
-   ek karışım kipi gerekmez. Bilinçli olarak logonun YALNIZ kaset kısmı
-   kullanılır: "DERİN RECORD" yazısı marka adının üstüne binip iki yazıyı
-   okunmaz kılıyordu. Başlık sola yaslı olduğu için işaret sağ tarafa
-   kaydırılır, böylece harflerin üstüne denk gelmez. DOM'da içerikten önce
-   geldiği için z-index'e ihtiyaç duymadan arkada kalır. */
-.mk-hero-logo{position:absolute;right:0;top:-10%;width:min(440px,44vw);
-  opacity:.15;pointer-events:none;
-  -webkit-mask-image:linear-gradient(104deg,transparent 0%,#000 44%);
-  mask-image:linear-gradient(104deg,transparent 0%,#000 44%)}
+/* Derin Record filigranı: kaset + "DERİN RECORD" yazısı birlikte, şeffaf
+   zeminde (assets/derin-filigran.png; dalga formu kırpılıp atıldı). Ek karışım
+   kipi gerekmez. Başlık sola yaslı ve satırları sayfa genişliğinin ~%69'unu
+   kapladığı için sağda ~%25'lik boş bir şerit kalır: işaret oraya oturtulur,
+   böylece marka adıyla hiç çakışmaz ve maske gerekmez. Genişlik bu yüzden
+   24vw ile sınırlıdır (1024px'te en dar boşluk ~24.8vw). DOM'da içerikten
+   önce geldiği için z-index'e ihtiyaç duymadan arkada kalır. */
+.mk-hero-logo{position:absolute;right:0;top:50%;transform:translateY(-50%);
+  width:min(400px,24vw);opacity:.26;pointer-events:none}
 .mk-hero-logo img{display:block;width:100%;height:auto}
 .mk-hero::before{content:"";position:absolute;left:-14%;top:-40%;width:min(560px,70vw);height:min(560px,70vw);
   border-radius:50%;background:radial-gradient(circle,var(--mk-accent),transparent 66%);
@@ -246,7 +244,7 @@
   .mk-vol{margin:0 auto}
   .mk-meta{max-width:none}
   .mk-hero::before{left:-30%}
-  .mk-hero-logo{top:-4%;right:0;width:min(260px,58vw);opacity:.12}
+
 }
 @media(max-width:560px){
   /* Telefonda başlık neredeyse bütün genişliği kaplar: filigran ister istemez
