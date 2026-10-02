@@ -42,6 +42,25 @@ test('seçim bölümünden kalan stil yok', () => {
   assert.equal(acik, kapali, 'CSS blokları dengeli olmalı');
 });
 
+// Karışık çal: müşteri sunumda listeyi karıştırıp dinleyebilmeli. Düğme yalnız
+// görünmekle kalmamalı; çalma SIRASINI gerçekten değiştirmeli ve o an çalan
+// parçayı kaybetmemeli (karışık açılınca başa dönmesin).
+test('sunumda karışık çal seçeneği çalma sırasını değiştirir', () => {
+  assert.match(source, /id="mk-karisik"/, 'karışık düğmesi çizilmeli');
+  assert.match(source, /function duzenKur\(\)/, 'çalma sırası kurulmalı');
+  assert.match(source, /if \(!karisik\) return idx/, 'karışık kapalıyken doğal sıra dönmeli');
+  assert.match(source, /Math\.random\(\)/, 'karışık sıra rastgele olmalı');
+  // Sıradaki parça doğal komşu değil, kurulu sıradaki komşu olmalı.
+  const sonraki = source.slice(source.indexOf('function sonraki('), source.indexOf('function kaynakYukle('));
+  assert.match(sonraki, /duzen\.indexOf\(sira\)/, 'sıra kuruludan okunmalı');
+  assert.match(sonraki, /duzen\[\(p \+ yon/, 'komşu kurulu sıradan seçilmeli');
+  // Düğme bağlanmalı ve açık/kapalı durumu erişilebilir biçimde yansıtılmalı.
+  assert.match(source, /byId\('mk-karisik'\)/, 'düğme bağlanmalı');
+  assert.match(source, /aria-pressed/, 'durum erişilebilir olmalı');
+  assert.match(source, /idx\.unshift\(sira\)/, 'çalan parça sıranın başında kalmalı');
+  assert.match(css, /\.mk-shuffle\[aria-pressed="true"\]/, 'açıkken belirginleşmeli');
+});
+
 // Sunum kolonu, cam başlıkla (`min(1180px,94vw)`) aynı genişlikte ortalanmalı.
 // admin-main'in 70rem sınırı bırakılırsa .mk-shell kapsayıcısından taşar: dar
 // masaüstü genişliklerinde yatay kaydırma çubuğu çıkar ve içerik sağa yaslanır.

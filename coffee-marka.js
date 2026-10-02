@@ -34,6 +34,11 @@ const EN_KISA = 8;         // saniyeden kısa parçalarda uçtan geçiş yapılm
 let listeler = [];
 let kuyruk = [];
 let sira = -1;
+// "Karışık çal": müşteri sunumda kendisi açar. Sunucu listeleri sıralı gelir
+// (coffee_brand_liste shuffle döndürmez), o yüzden varsayılan kapalıdır.
+let karisik = false;
+// Fiilen çalınacak sıra: kuyruğa indeksler. Karışık kapalıyken doğal sıra.
+let duzen = [];
 let acikListe = null;
 let seviye = 1;
 let gecisVar = false;
@@ -62,9 +67,32 @@ function fade(hedef, ms) {
 }
 
 // ---------- Kuyruk ----------
+// Kuyruğun çalma sırasını kurar. Karışık kapalıyken doğal sıra (0,1,2…) döner;
+// açıkken Fisher-Yates ile karıştırılır ve o an çalan parça başa alınır ki
+// "sonraki" bulunduğu yerden devam etsin (başa dönmüş gibi hissettirmesin).
+function duzenKur() {
+  const n = kuyruk.length;
+  const idx = Array.from({ length: n }, (_, i) => i);
+  if (!karisik) return idx;
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [idx[i], idx[j]] = [idx[j], idx[i]];
+  }
+  if (sira >= 0 && sira < n) {
+    const k = idx.indexOf(sira);
+    if (k > 0) { idx.splice(k, 1); idx.unshift(sira); }
+  }
+  return idx;
+}
+
+// Sıradaki/önceki parça: doğal komşu değil, kurulu sıradaki komşu. Karışık
+// açıkken bu yüzden rastgele akar; kapalıyken eskisi gibi art arda gider.
 function sonraki(yon) {
   if (!kuyruk.length) return -1;
-  return (sira + yon + kuyruk.length) % kuyruk.length;
+  if (duzen.length !== kuyruk.length) duzen = duzenKur();
+  const p = duzen.indexOf(sira);
+  if (p < 0) return duzen[0] ?? -1;
+  return duzen[(p + yon + duzen.length) % duzen.length];
 }
 
 function kaynakYukle(t, baslangic) {
@@ -290,6 +318,14 @@ function ciz(brand, plist) {
         <button id="mk-geri" type="button" aria-label="Önceki">⏮</button>
         <button class="mk-main" id="mk-oyna" type="button" aria-label="Oynat">▶</button>
         <button id="mk-ileri" type="button" aria-label="Sonraki">⏭</button>
+        <button class="mk-shuffle" id="mk-karisik" type="button" aria-pressed="${karisik}"
+          aria-label="Karışık çal" title="Karışık çal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/>
+            <path d="M15 15l6 6"/><path d="M4 4l5 5"/>
+          </svg>
+        </button>
         <div class="mk-vol">🔊<input type="range" id="mk-ses" min="0" max="100" value="100" aria-label="Ses"></div>
       </div>
       <p class="mk-sub" id="mk-durum" style="margin-top:14px"></p>
@@ -311,6 +347,7 @@ function ciz(brand, plist) {
   istatistikCiz(brand);
   acikListe = listeler[0] || null;
   kuyruk = acikListe ? acikListe._tracks : [];
+  duzen = [];
   tabsCiz();
   listeCiz();
   doldur(kuyruk[0] || null);
@@ -328,6 +365,7 @@ function bagla() {
     const devam = !audio.paused && !!audio.src;
     acikListe = pl;
     kuyruk = pl._tracks;
+    duzen = [];
     sira = -1;
     tabsCiz();
     listeCiz();
@@ -356,6 +394,15 @@ function bagla() {
   };
   audio.addEventListener('play', () => { byId('mk-oyna').textContent = '⏸'; });
   audio.addEventListener('pause', () => { byId('mk-oyna').textContent = '▶'; });
+
+  // Karışık çal aç/kapa: sıra yeniden kurulur, o an çalan parça korunur.
+  const karisikDugme = byId('mk-karisik');
+  if (karisikDugme) karisikDugme.onclick = () => {
+    karisik = !karisik;
+    karisikDugme.setAttribute('aria-pressed', karisik ? 'true' : 'false');
+    duzen = duzenKur();
+    durum(karisik ? 'Karışık çalma açık.' : 'Karışık çalma kapalı.');
+  };
 
   byId('mk-ileri').onclick = () => { const i = sonraki(1); if (i >= 0) gecisCal(i); };
   byId('mk-geri').onclick = () => {

@@ -117,6 +117,14 @@
 .mk-cmds button:hover{opacity:1;transform:scale(1.12)}
 .mk-cmds .mk-main{width:58px;height:58px;border-radius:50%;opacity:1;font-size:19px;color:#131313;
   background:linear-gradient(145deg,#e9d364,#bfa32c);box-shadow:0 14px 32px rgba(0,0,0,.5)}
+/* Karışık çal: diğer kontrol gibi soluk durur, açıkken altın çerçeveyle belirginleşir. */
+.mk-cmds .mk-shuffle{display:inline-flex;align-items:center;justify-content:center;
+  width:42px;height:42px;padding:0;border-radius:50%;
+  border:1px solid var(--mk-line);background:rgba(255,255,255,.05)}
+.mk-cmds .mk-shuffle svg{width:18px;height:18px}
+.mk-cmds .mk-shuffle:hover{border-color:rgba(255,255,255,.34)}
+.mk-cmds .mk-shuffle[aria-pressed="true"]{opacity:1;color:var(--mk-accent);
+  border-color:var(--mk-accent);background:rgba(232,209,90,.14)}
 .mk-vol{display:flex;align-items:center;gap:9px;font-size:14px;opacity:.6;margin-left:auto}
 .mk-vol input[type=range]{width:110px;-webkit-appearance:none;appearance:none;height:4px;border-radius:99px;
   background:rgba(255,255,255,.18);cursor:pointer}
