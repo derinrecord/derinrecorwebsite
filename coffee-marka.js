@@ -309,7 +309,7 @@ function ciz(brand, plist) {
 <section class="mk-hero mk-shell">
   <div class="mk-hero-logo" aria-hidden="true"><img src="/assets/derin-filigran.png" alt=""></div>
   <p class="mk-eyebrow" id="mk-selam">DERİN RECORD</p>
-  <h1>${safe(brand.name)}<br><span>İÇİN KURGULANDI.</span></h1>
+  <h1>${safe(brand.name)}</h1>
   ${brand.tagline ? `<p class="mk-tag">${safe(brand.tagline)}</p>` : ''}
   ${notlar.length ? `<div class="mk-notes">${notlar.map(n => `<span class="mk-note">${safe(n)}</span>`).join('')}</div>` : ''}
   <div class="mk-stats" id="mk-stats"></div>

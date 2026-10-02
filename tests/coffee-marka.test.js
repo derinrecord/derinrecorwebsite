@@ -102,6 +102,14 @@ test('kahraman, Derin Record filigranını başlığın sağına serer', () => {
   assert.match(css, /\.mk-hero-logo img\{/, 'görsel satır içi değil, katmandan boyutlanmalı');
 });
 
+// Başlık yalnız marka adını gösterir: marka adının altındaki
+// "İÇİN KURGULANDI." satırı kaldırıldı. Kullanılmayan stili de bırakmıyoruz.
+test('başlık yalnız marka adını gösterir', () => {
+  assert.match(source, /<h1>\$\{safe\(brand\.name\)\}<\/h1>/, 'başlık marka adı olmalı');
+  assert.ok(!/İÇİN KURGULANDI/.test(source), 'kaldırılan satır geri sızmamalı');
+  assert.ok(!/\.mk-hero h1 span/.test(css), 'kullanılmayan başlık stili kalmamalı');
+});
+
 // Sunum kolonu, cam başlıkla (`min(1180px,94vw)`) aynı genişlikte ortalanmalı.
 // admin-main'in 70rem sınırı bırakılırsa .mk-shell kapsayıcısından taşar: dar
 // masaüstü genişliklerinde yatay kaydırma çubuğu çıkar ve içerik sağa yaslanır.

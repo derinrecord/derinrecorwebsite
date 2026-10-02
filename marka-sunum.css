@@ -47,11 +47,11 @@
 .mk-hero{position:relative;padding:clamp(30px,5vw,58px) 0 26px}
 /* Derin Record filigranı: kaset + "DERİN RECORD" yazısı birlikte, şeffaf
    zeminde (assets/derin-filigran.png; dalga formu kırpılıp atıldı). Ek karışım
-   kipi gerekmez. Başlık sola yaslı ve satırları sayfa genişliğinin ~%69'unu
-   kapladığı için sağda ~%25'lik boş bir şerit kalır: işaret oraya oturtulur,
-   böylece marka adıyla hiç çakışmaz ve maske gerekmez. Genişlik bu yüzden
-   24vw ile sınırlıdır (1024px'te en dar boşluk ~24.8vw). DOM'da içerikten
-   önce geldiği için z-index'e ihtiyaç duymadan arkada kalır. */
+   kipi gerekmez. Başlık sola yaslı ve marka adı uzun olabildiği için işaret
+   sağ kenara oturtulur; böylece marka adıyla çakışmaz ve maske gerekmez.
+   Genişlik bu yüzden 24vw ile sınırlıdır: dar masaüstü genişliklerinde metinle
+   işaret arasında kalan boş şerit ~%25'in altına inmez. DOM'da içerikten önce
+   geldiği için z-index'e ihtiyaç duymadan arkada kalır. */
 .mk-hero-logo{position:absolute;right:0;top:50%;transform:translateY(-50%);
   width:min(400px,24vw);opacity:.26;pointer-events:none}
 .mk-hero-logo img{display:block;width:100%;height:auto}
@@ -60,8 +60,7 @@
   opacity:.20;filter:blur(70px);pointer-events:none}
 .mk-eyebrow{position:relative;margin:0;font-size:11px;letter-spacing:.28em;opacity:.6}
 .mk-hero h1{position:relative;margin:14px 0 18px;font-size:clamp(36px,8vw,84px);line-height:.92;
-  letter-spacing:-.04em;font-weight:900}
-.mk-hero h1 span{color:var(--mk-accent)}
+  letter-spacing:-.04em;font-weight:900;overflow-wrap:anywhere}
 .mk-tag{position:relative;max-width:620px;margin:0;font-size:16px;line-height:1.75;opacity:.8}
 .mk-notes{position:relative;display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
 .mk-note{padding:7px 15px;border-radius:999px;font-size:11.5px;letter-spacing:.06em;
