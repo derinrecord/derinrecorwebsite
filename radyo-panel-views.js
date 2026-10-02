@@ -1231,9 +1231,12 @@
           çalıştırmanız yeterlidir. Aşağıdaki liste, sayfa açılırken yapılan denemelerin sonucudur.</p>
         ${temelSatir(D)}
         <div class="row" style="margin-bottom:14px">
-          <button class="btn sm primary" data-act="kurulum-yenile" type="button">DURUMU YENİDEN KONTROL ET</button>
+          ${ozet.eksik ? `<button class="btn sm primary" data-act="kurulum-tumu" type="button">EKSİKLERİ TEK SQL'DE GÖSTER</button>` : ''}
+          <button class="btn sm${ozet.eksik ? '' : ' primary'}" data-act="kurulum-yenile" type="button">DURUMU YENİDEN KONTROL ET</button>
           <button class="btn sm" data-act="kurulum-rehber" type="button">KURULUM REHBERİ</button>
-          <span class="sub">SQL'i çalıştırdıktan sonra sayfayı yenilemeden denetler.</span>
+          <span class="sub">${ozet.eksik
+            ? 'Eksik dosyaları tek metinde birleştirir: kopyalayıp SQL Editor\'de bir kez çalıştırın, sonra yeniden kontrol edin.'
+            : 'SQL\'i çalıştırdıktan sonra sayfayı yenilemeden denetler.'}</span>
         </div>
         <table>
           <thead><tr><th>ÖZELLİK</th><th>DURUM</th><th>SQL DOSYASI</th><th>AÇIKLAMA</th></tr></thead>

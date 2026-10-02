@@ -257,6 +257,41 @@
       </div>`;
   }
 
+  // Eksik kurulum dosyalarının hepsini tek metinde birleştirir: yönetici tek
+  // kopyala-yapıştır ile SQL Editor'de hepsini sırayla çalıştırabilsin. Dosyalar
+  // KURULUM sırasına göre (bağımlılık gözetilerek) dizilir ve aralarına yorum
+  // başlığı konur. Ağ yoksa yol gösterir, hata vermez.
+  async function kurulumTumEksikGoster() {
+    const harita = (D && D.kurulum) || {};
+    const eksikler = (V.KURULUM || []).filter(x => harita[x.anahtar] === false);
+    if (!eksikler.length) return bildir('Eksik kurulum yok.');
+    pencere({ baslik: 'Eksik kurulum (' + eksikler.length + ')', govde: '<p class="sub">Yükleniyor…</p>', gizleOnay: true, kapatMetni: 'KAPAT' });
+    const parcalar = [];
+    for (const x of eksikler) {
+      try {
+        const y = await fetch('https://raw.githubusercontent.com/derinrecord/derinrecorwebsite/main/supabase/' + x.anahtar);
+        if (y.ok) parcalar.push('-- ===== supabase/' + x.anahtar + ' — ' + x.ad + ' =====\n' + (await y.text()).trim());
+      } catch { /* ağ yok / engelli: aşağıdaki yönlendirme gösterilir */ }
+    }
+    const govde = el('modal').querySelector('.modal-body');
+    if (!govde) return;
+    if (!parcalar.length) {
+      govde.innerHTML = `<p class="sub">Dosyalar okunamadı. Depodaki <b>supabase/</b> klasöründeki ${esc(eksikler.map(x => x.anahtar).join(', '))} dosyalarını açıp kullanın.</p>`;
+      return;
+    }
+    const metin = '-- Derin Record: eksik kurulum dosyaları (' + parcalar.length + '/' + eksikler.length + ')\n'
+      + '-- Supabase → SQL Editor → yapıştır → Run. Sonra panelde "DURUMU YENİDEN KONTROL ET".\n\n'
+      + parcalar.join('\n\n');
+    govde.innerHTML = `
+      <p class="sub">${parcalar.length} dosya tek metinde birleştirildi. Supabase → SQL Editor'e yapıştırıp bir kez çalıştırın;
+        ardından panelde <b>DURUMU YENİDEN KONTROL ET</b>'e basın. Dosyalar güvenli sırada (bağımlılık gözetilerek) dizildi.</p>
+      <textarea id="kurulum-sql" readonly rows="20" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5">${esc(metin)}</textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sm primary" data-act="kurulum-sql-kopyala" type="button">TÜMÜNÜ KOPYALA</button>
+        <span class="sub">Kopyaladıktan sonra Supabase → SQL Editor → Run.</span>
+      </div>`;
+  }
+
   // ---------- Şube listeleri ----------
   // Pencerede işaretlenen şubelerin (birden çok olabilir) ataması, işaretlenen
   // çalma listeleriyle baştan kurulur: işaretlenmeyen listeler o şubeden
@@ -964,6 +999,7 @@
         return;
       }
       case 'kurulum-sql': return kurulumDosyaGoster(hedef.dataset.id);
+      case 'kurulum-tumu': return kurulumTumEksikGoster();
       case 'kurulum-rehber': return kurulumDosyaGoster('kurulum.md');
       case 'kurulum-yenile': {
         // SQL çalıştırıldıktan sonra sayfayı yenilemeye gerek kalmasın: bütün
