@@ -1338,6 +1338,34 @@ test('kurulum ekranı her dosyayı kurulu/kurulmadı/denenmedi olarak listeler',
   assert.equal(ozet.eksik, anahtarlar.filter((_, i) => i % 3 === 1).length);
 });
 
+// "Eksikleri tek SQL'de göster": eksik varsa tek kopyala-yapıştır'lık düğme
+// çizilmeli; eksik yokken düğme gizlenmeli (boş bir metin göstermesin).
+test('eksikleri tek SQL olarak gösterme düğmesi yalnız eksik varken çizilir', () => {
+  const KD = { ...D, kurulum: {} };
+  V.KURULUM.forEach((x, i) => { KD.kurulum[x.anahtar] = i === 0 ? true : (i === 1 ? false : null); });
+  const eksikVar = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), KD, ui).html;
+  assert.ok(eksikVar.includes('data-act="kurulum-tumu"'), 'eksik varken tek-SQL düğmesi olmalı');
+
+  const temiz = { ...D, kurulum: {} };
+  V.KURULUM.forEach(x => { temiz.kurulum[x.anahtar] = true; });
+  const eksikYok = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), temiz, ui).html;
+  assert.ok(!eksikYok.includes('data-act="kurulum-tumu"'), 'eksik yokken düğme gizlenmeli');
+});
+
+// "Son adım — katalog kapısı": şube erişim kapısı kurulduğunda panel, kataloğu
+// dışarıya kapatan dosyayı hatırlatmalı; kapı kurulu değilken bu adım gizlenmeli
+// (henüz güvenle kapatılamaz).
+test('katalog kapısını kapatma adımı yalnız erişim kapısı kuruluyken çizilir', () => {
+  const acik = { ...D, kurulum: { 'radio-erisim.sql': true } };
+  const html = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), acik, ui).html;
+  assert.ok(html.includes('data-act="kurulum-kapat-sql"'), 'erişim kapısı kuruluyken kapatma düğmesi olmalı');
+  assert.ok(html.includes('KATALOG KAPISI'), 'kapatma adımı başlığı çizilmeli');
+
+  const kapali = { ...D, kurulum: { 'radio-erisim.sql': false } };
+  const yok = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), kapali, ui).html;
+  assert.ok(!yok.includes('data-act="kurulum-kapat-sql"'), 'erişim kapısı kurulu değilken kapatma adımı gizlenmeli');
+});
+
 test('kurulum verisi yokken ekran çökmez, hepsi denenmedi sayılır', () => {
   const html = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), D, ui).html;
   assert.ok(html.includes('KURULUM DURUMU'), 'veri gelmeden de ekran çizilmeli');

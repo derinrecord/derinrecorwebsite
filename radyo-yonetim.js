@@ -292,6 +292,36 @@
       </div>`;
   }
 
+  // Katalog kapısını kapatma SQL'ini gösterir: şube erişim kapısı kurulduktan
+  // sonra katalog tabloları girişsiz ziyaretçiye kapatılır. Sıra önemlidir;
+  // pencere bunu açıkça uyarır. Dosya yeniden kullanılan #kurulum-sql
+  // alanına yazılır, kopyalama düğmesi ortak çalışır.
+  async function kurulumKapatGoster() {
+    const hedef = 'radio-erisim-kapat.sql';
+    pencere({ baslik: 'Katalog kapısını kapat', govde: '<p class="sub">Yükleniyor…</p>', gizleOnay: true, kapatMetni: 'KAPAT' });
+    let metin = '';
+    try {
+      const yanit = await fetch('https://raw.githubusercontent.com/derinrecord/derinrecorwebsite/main/supabase/' + hedef);
+      if (yanit.ok) metin = await yanit.text();
+    } catch { /* ağ yok / engelli: aşağıdaki yönlendirme gösterilir */ }
+    const govde = el('modal').querySelector('.modal-body');
+    if (!govde) return;
+    if (!metin) {
+      govde.innerHTML = `<p class="sub">Dosya okunamadı. Depodaki <b>supabase/${esc(hedef)}</b> içeriğini açıp kullanın.</p>`;
+      return;
+    }
+    govde.innerHTML = `
+      <p class="sub"><b>Son adım.</b> Bu dosya katalog tablolarını girişsiz ziyaretçiye kapatır: müzik listesi ve ses
+        dosyası adresleri dışarıdan okunamaz hâle gelir. Yönetici girişi (bu panel) etkilenmez.</p>
+      <p class="sub">Kapıyı ancak oynatıcı ve sunum sayfası yeni fonksiyonlarla birkaç dakika çalıştıktan sonra kapatın;
+        aksi hâlde kafe cihazı bir sonraki yenilemede personel liste seçiciyi kaybeder (müzik çalmaya devam eder).</p>
+      <textarea id="kurulum-sql" readonly rows="18" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5">${esc(metin)}</textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sm primary" data-act="kurulum-sql-kopyala" type="button">SQL'İ KOPYALA</button>
+        <span class="sub">Kopyaladıktan sonra Supabase → SQL Editor → Run.</span>
+      </div>`;
+  }
+
   // ---------- Şube listeleri ----------
   // Pencerede işaretlenen şubelerin (birden çok olabilir) ataması, işaretlenen
   // çalma listeleriyle baştan kurulur: işaretlenmeyen listeler o şubeden
@@ -1000,6 +1030,7 @@
       }
       case 'kurulum-sql': return kurulumDosyaGoster(hedef.dataset.id);
       case 'kurulum-tumu': return kurulumTumEksikGoster();
+      case 'kurulum-kapat-sql': return kurulumKapatGoster();
       case 'kurulum-rehber': return kurulumDosyaGoster('kurulum.md');
       case 'kurulum-yenile': {
         // SQL çalıştırıldıktan sonra sayfayı yenilemeye gerek kalmasın: bütün

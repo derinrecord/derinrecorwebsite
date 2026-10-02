@@ -470,6 +470,36 @@ test('geçmişi silme yalnız yöneticiye açık ve yalnız olay tablosunu kapsa
   assert.match(source, /bağlantı geçmişi kayıtları silinir/);
 });
 
+// Eksik kurulumu hızlı tamamlama: panel, eksik SQL dosyalarını tek metinde
+// birleştirip kopyalatabilmeli; yönetici SQL Editor'e tek seferde yapıştırsın.
+test('eksik kurulum dosyaları tek SQL olarak birleştirilir', () => {
+  assert.match(source, /case 'kurulum-tumu'/, 'tek-SQL düğmesi işlenmeli');
+  const blok = source.slice(source.indexOf('function kurulumTumEksikGoster'),
+    source.indexOf('// ---------- Şube listeleri ----------'));
+  assert.ok(blok.includes('V.KURULUM') && blok.includes('=== false'),
+    'yalnız eksik dosyalar toplanmalı');
+  assert.ok(blok.includes('raw.githubusercontent.com') && blok.includes('supabase/'),
+    'dosyalar depodan okunmalı');
+  assert.ok(blok.includes('join('), 'dosyalar tek metinde birleştirilmeli');
+  assert.ok(blok.includes('kurulum-sql-kopyala'), 'birleşik metin kopyalanabilmeli');
+  // Ağ yoksa hata vermek yerine yol göstermeli.
+  assert.ok(!/throw /.test(blok), 'ağ yoksa çökmeden yol göstermeli');
+});
+
+// Katalog kapısını kapatma: erişim kapısı kurulduktan sonra panel, kataloğu
+// dışarıya kapatan SQL'i gösterebilmeli; kapatma sırası (fonksiyonlar önce)
+// yöneticiye açıkça hatırlatılmalı.
+test('katalog kapısını kapatma SQL\'i panelden gösterilir ve sırası uyarılır', () => {
+  assert.match(source, /case 'kurulum-kapat-sql'/, 'kapatma düğmesi işlenmeli');
+  const blok = source.slice(source.indexOf('function kurulumKapatGoster'),
+    source.indexOf('// ---------- Şube listeleri ----------'));
+  assert.ok(blok.includes('radio-erisim-kapat.sql'), 'kapatma dosyası okunmalı');
+  assert.ok(blok.includes('raw.githubusercontent.com') && blok.includes('supabase/'), 'dosya depodan okunmalı');
+  assert.ok(blok.includes('kurulum-sql-kopyala'), 'SQL kopyalanabilmeli');
+  assert.ok(/kapıyı ancak/i.test(blok), 'kapatma sıra uyarısı verilmeli');
+  assert.ok(!/throw /.test(blok), 'ağ yoksa çökmeden yol göstermeli');
+});
+
 // Veritabanı tarafı: silme izni yalnız yönetici oturumuna verilir; oynatıcı
 // (anon) ne okur ne siler.
 test('geçmiş silme izni veritabanında yalnız yöneticide', () => {

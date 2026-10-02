@@ -1242,7 +1242,16 @@
           <thead><tr><th>ÖZELLİK</th><th>DURUM</th><th>SQL DOSYASI</th><th>AÇIKLAMA</th></tr></thead>
           <tbody>${satirlar}</tbody>
         </table>
-      </div>`;
+      </div>
+      ${harita['radio-erisim.sql'] === true ? `
+      <div class="panel" style="margin-top:18px">
+        <h3>SON ADIM — KATALOG KAPISI <span>güvenlik</span></h3>
+        <p class="panel-sub">Şube erişim kapısı (<code>radio-erisim.sql</code>) kuruldu. Şimdi müzik kataloğunu dışarıya
+          kapatabilirsiniz: girişsiz ziyaretçi artık şube çalma listesini ve ses dosyası adreslerini okuyamaz. Yönetici
+          girişi (bu panel) ve kafe cihazının çalması etkilenmez. Kapıyı, oynatıcı ve sunum sayfası yeni fonksiyonlarla
+          birkaç dakika çalıştıktan sonra kapatın.</p>
+        <button class="btn sm" data-act="kurulum-kapat-sql" type="button">KAPATMA SQL'İNİ GÖSTER</button>
+      </div>` : ''}`;
   }
 
   // ---------- YAYIN KLASÖRLERİ ----------
