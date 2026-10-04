@@ -18,7 +18,8 @@ const bekle = ms => new Promise(done => setTimeout(done, ms));
 const client = window.supabase.createClient(
   window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
 const slug = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
-const urly = (kova, p) => p ? client.storage.from(kova).getPublicUrl(p).data.publicUrl : null;
+// Kapak ve ses Cloudflare R2'den gelir (bkz. r2-depo.js).
+const urly = (kova, p) => window.DerinR2.adres(kova, p);
 const kapak = p => urly('radio-covers', p);
 const ses = p => urly('radio-audio', p);
 

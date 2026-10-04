@@ -268,6 +268,8 @@
       channel: () => kanal
     })
   };
+  // Provada gerçek R2'ye gidilmez; adresler sahte önekle üretilir.
+  window.DerinR2 = { adres: (kova, p) => (p ? 'prova://' + kova + '/' + p : null) };
   window.__provaBilgi = () => JSON.stringify({
     senaryo, baslik: secili.baslik, aciklama: secili.aciklama,
     secili_liste: (() => { try { return localStorage.getItem('derin_record_liste_' + ANAHTAR); } catch { return null; } })(),
@@ -297,6 +299,6 @@
 })();
 </script>
 <script src="radio-playlist-queue.js?v=20260926a"></script>
-<script src="radyo.js?v=20260928g"></script>
+<script src="radyo.js?v=20261004a"></script>
 </body>
 </html>

@@ -80,9 +80,10 @@
   // ---------- Yardımcılar ----------
   const siteRoot = () => location.href.split('#')[0].split('?')[0].replace(/[^/]*$/, '');
   const ui = {
-    cover: p => client.storage.from('radio-covers').getPublicUrl(p).data.publicUrl,
-    ses: p => client.storage.from('radio-audio').getPublicUrl(p).data.publicUrl,
-    anons: p => client.storage.from('radio-announcements').getPublicUrl(p).data.publicUrl,
+    // Ses, kapak ve anonslar Cloudflare R2'de duruyor (bkz. r2-depo.js).
+    cover: p => window.DerinR2.adres('radio-covers', p),
+    ses: p => window.DerinR2.adres('radio-audio', p),
+    anons: p => window.DerinR2.adres('radio-announcements', p),
     playerBase: () => siteRoot() + 'radyo.html?key=',
     brandUrl: slug => siteRoot() + 'coffee/' + encodeURIComponent(slug || ''),
     accept: () => (Ses ? Ses.accept() : 'audio/*'),
@@ -135,8 +136,7 @@
   async function kapakYukle(dosya, onEk) {
     const uzanti = ((dosya.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')) || 'jpg';
     const yol = onEk + '/' + crypto.randomUUID() + '.' + uzanti;
-    const up = await client.storage.from(KAPAK_BUCKET)
-      .upload(yol, dosya, { contentType: dosya.type || 'image/jpeg' });
+    const up = await window.DerinR2.yukle(KAPAK_BUCKET, yol, dosya, dosya.type || 'image/jpeg');
     return up.error ? { hata: 'Görsel yüklenemedi: ' + up.error.message } : { yol: yol };
   }
 
@@ -144,7 +144,7 @@
   // depoda kimsenin görmediği eski görseller birikir.
   async function kapakDosyaSil(yol) {
     if (!yol) return;
-    try { await client.storage.from(KAPAK_BUCKET).remove([yol]); } catch { /* dosya yoksa sorun değil */ }
+    try { await window.DerinR2.sil(KAPAK_BUCKET, [yol]); } catch { /* dosya yoksa sorun değil */ }
   }
 
   // s: { baslik, alt, kapak (depo yolu), onEk (depo klasörü), kaydet(yol), kaldir() }
@@ -853,7 +853,7 @@
       const blob = new Blob(recParcalari, { type: tip });
       const uzanti = tip.includes('mp4') ? 'mp4' : 'webm';
       const yol = `${brandId}/${Date.now()}.${uzanti}`;
-      const up = await client.storage.from('radio-announcements').upload(yol, blob, { contentType: blob.type });
+      const up = await window.DerinR2.yukle('radio-announcements', yol, blob, blob.type);
       if (up.error) { if (mesaj) mesaj.textContent = 'Yükleme hatası: ' + up.error.message; return; }
       const etiket = document.getElementById('mik-label') ? document.getElementById('mik-label').value.trim() : '';
       const { error } = await client.from('radio_announcements').insert({
@@ -894,8 +894,8 @@
       const taban = V.clean(dosya.name).replace(/\.[^.]+$/, '');
       const temelYol = `${folderId}/${Date.now()}-${slugify(taban) || 'parca'}`;
       const sonuc = await Ses.parcaliYukle({
-        yukle: (yol, dilim, tip) => client.storage.from('radio-audio').upload(yol, dilim, { contentType: tip }),
-        sil: yollar => client.storage.from('radio-audio').remove(yollar)
+        yukle: (yol, dilim, tip) => window.DerinR2.yukle('radio-audio', yol, dilim, tip),
+        sil: yollar => window.DerinR2.sil('radio-audio', yollar)
       }, temelYol, dosya, (i, n) => {
         if (n > 1) mesaj.textContent = `Yükleniyor… ${biten + 1}/${dosyalar.length} · parça ${i}/${n}`;
       });
@@ -914,7 +914,7 @@
       if (error) {
         atlanan++;
         ilkHata = ilkHata || ('Kayıt oluşturulamadı: ' + error.message);
-        await client.storage.from('radio-audio').remove(Ses.parcalariCoz(sonuc.path).map(p => p.path));
+        await window.DerinR2.sil('radio-audio', Ses.parcalariCoz(sonuc.path).map(p => p.path));
         continue;
       }
       biten++;
@@ -1494,7 +1494,7 @@
         })) return;
         if (Ses && parcalar.length) {
           const yollar = parcalar.flatMap(t => Ses.parcalariCoz(t.storage_path).map(p => p.path));
-          await client.storage.from('radio-audio').remove(yollar);
+          await window.DerinR2.sil('radio-audio', yollar);
         }
         // Kapaklar da birlikte gitsin: klasörün ve parçaların görselleri
         // depoda sahipsiz kalmasın.
@@ -1646,7 +1646,7 @@
           govde: `“${t ? esc(V.clean(t.title)) : 'Parça'}” listeden çıkarılır ve ses dosyası depodan silinir.`,
           onayMetni: 'PARÇAYI SİL'
         })) return;
-        if (Ses) await client.storage.from('radio-audio').remove(Ses.parcalariCoz(hedef.dataset.path || (t && t.storage_path)).map(p => p.path));
+        if (Ses) await window.DerinR2.sil('radio-audio', Ses.parcalariCoz(hedef.dataset.path || (t && t.storage_path)).map(p => p.path));
         if (t && t.cover_path) await kapakDosyaSil(t.cover_path);
         const { error } = await client.from('radio_tracks').delete().eq('id', id);
         if (error) return hata('Parça silinemedi: ' + error.message);
@@ -1672,7 +1672,7 @@
       }
       case 'anons-del': {
         if (!await onaySor({ baslik: 'Anons silinsin mi?', govde: 'Kayıt silinir ve şubeler artık çalamaz.', onayMetni: 'ANONSU SİL' })) return;
-        await client.storage.from('radio-announcements').remove([hedef.dataset.path]);
+        await window.DerinR2.sil('radio-announcements', [hedef.dataset.path]);
         const { error } = await client.from('radio_announcements').delete().eq('id', id);
         if (error) return hata('Anons silinemedi: ' + error.message);
         await yenile(false); bildir('Anons silindi.');

@@ -146,9 +146,11 @@
     return calanListe && calanListe.ad ? ad + ' · ' + calanListe.ad : ad;
   };
 
-  const audioUrl = path => client.storage.from('radio-audio').getPublicUrl(path).data.publicUrl;
-  const coverUrl = path => client.storage.from('radio-covers').getPublicUrl(path).data.publicUrl;
-  const anonsUrl = path => client.storage.from('radio-announcements').getPublicUrl(path).data.publicUrl;
+  // Ses, kapak ve anonslar Cloudflare R2'de duruyor (bkz. r2-depo.js).
+  // Veritabanındaki yollar değişmedi; yalnızca adresi kuran yer değişti.
+  const audioUrl = path => window.DerinR2.adres('radio-audio', path);
+  const coverUrl = path => window.DerinR2.adres('radio-covers', path);
+  const anonsUrl = path => window.DerinR2.adres('radio-announcements', path);
 
   function renderPlaylist(tracks) {
     const list = byId('playlist');
