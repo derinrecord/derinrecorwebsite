@@ -57,10 +57,23 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
     if (!overlay) { overlay = document.createElement('div'); overlay.className = 'auth-overlay'; document.body.append(overlay); }
     if (!configured) { overlay.innerHTML = '<section class="auth-card"><button class="auth-close">KAPAT</button><h2>HESAP SİSTEMİ HAZIRLANIYOR</h2><p>Yönetici, Supabase bağlantı bilgilerini ekledikten sonra e-posta ve şifreyle kayıt/giriş açılacak.</p></section>'; overlay.hidden=false; overlay.querySelector('.auth-close').onclick=()=>overlay.hidden=true; return; }
     const signup = mode === 'signup';
-    overlay.innerHTML = `<section class="auth-card"><button class="auth-close" type="button">KAPAT</button><h2>${signup ? 'ANTRENÖR KAYDI' : 'HESABINA GİR'}</h2><p>${signup ? 'Kaydın yönetici onayından sonra demo erişimin açılır.' : 'Demo notlarına ulaşmak için giriş yap.'}</p><form class="auth-form">${signup ? '<label>AD SOYAD<input name="name" autocomplete="name" required></label>' : ''}<label>E-POSTA<input name="email" type="email" autocomplete="email" required></label><label>ŞİFRE<input name="password" type="password" minlength="8" autocomplete="${signup ? 'new-password' : 'current-password'}" required></label><button class="auth-submit">${signup ? 'KAYIT OL' : 'GİRİŞ YAP'}</button></form><button class="auth-switch" type="button">${signup ? 'Zaten hesabın var mı? Giriş yap' : 'Hesabın yok mu? Antrenör olarak kayıt ol'}</button><p class="auth-message"></p></section>`;
+    overlay.innerHTML = `<section class="auth-card"><button class="auth-close" type="button">KAPAT</button><h2>${signup ? 'ANTRENÖR KAYDI' : 'HESABINA GİR'}</h2><p>${signup ? 'Kaydın yönetici onayından sonra demo erişimin açılır.' : 'Demo notlarına ulaşmak için giriş yap.'}</p><form class="auth-form">${signup ? '<label>AD SOYAD<input name="name" autocomplete="name" required></label>' : ''}<label>E-POSTA<input name="email" type="email" autocomplete="email" required></label><label>ŞİFRE<input name="password" type="password" minlength="8" autocomplete="${signup ? 'new-password' : 'current-password'}" required></label><button class="auth-submit">${signup ? 'KAYIT OL' : 'GİRİŞ YAP'}</button></form><button class="auth-switch" type="button">${signup ? 'Zaten hesabın var mı? Giriş yap' : 'Hesabın yok mu? Antrenör olarak kayıt ol'}</button>${signup ? '' : '<button class="auth-switch auth-forgot" type="button">Şifreni mi unuttun?</button>'}<p class="auth-message"></p></section>`;
     overlay.hidden = false;
     overlay.querySelector('.auth-close').onclick = () => overlay.hidden = true;
     overlay.querySelector('.auth-switch').onclick = () => openAuth(signup ? 'login' : 'signup');
+    const forgot = overlay.querySelector('.auth-forgot');
+    if (forgot) forgot.onclick = async () => {
+      const message = overlay.querySelector('.auth-message');
+      const emailInput = overlay.querySelector('input[name="email"]');
+      const email = String(emailInput.value || '').trim();
+      if (!email) { message.textContent = 'Önce e-posta adresini yaz, sonra bu bağlantıya bas.'; emailInput.focus(); return; }
+      forgot.disabled = true; message.textContent = 'Sıfırlama bağlantısı gönderiliyor…';
+      const { error } = await state.client.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/sifre-yenile.html` });
+      forgot.disabled = false;
+      message.textContent = error
+        ? error.message
+        : 'Bu adres kayıtlıysa sıfırlama bağlantısı gönderildi. Gelen kutunu ve spam klasörünü kontrol et.';
+    };
     overlay.querySelector('.auth-form').onsubmit = async event => {
       event.preventDefault(); const form = new FormData(event.currentTarget), message = overlay.querySelector('.auth-message'); message.textContent = 'Kontrol ediliyor…';
       const email = String(form.get('email')).trim(), password = String(form.get('password'));

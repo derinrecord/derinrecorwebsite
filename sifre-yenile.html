@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Şifre Yenile — Derin Record</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
+  <link rel="stylesheet" href="branch.css">
+  <link rel="stylesheet" href="glass.css?v=2" />
+  <link rel="stylesheet" href="auth.css">
+  <style>
+    .sy-main { max-width: 520px; margin: 0 auto; padding: 48px 20px 80px; }
+    .sy-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.12);
+               border-radius: 18px; padding: 28px 24px; }
+    .sy-card label { display: block; margin: 18px 0 0; font-size: 12px; letter-spacing: .08em; opacity: .75; }
+    .sy-card input { width: 100%; margin-top: 8px; padding: 12px 14px; border-radius: 10px;
+                     border: 1px solid rgba(255,255,255,.18); background: rgba(0,0,0,.35);
+                     color: inherit; font: inherit; }
+    .sy-card button { width: 100%; margin-top: 24px; padding: 13px; border: 0; border-radius: 10px;
+                      background: #e8d15a; color: #17131a; font-weight: 700; letter-spacing: .06em;
+                      cursor: pointer; }
+    .sy-card button[disabled] { opacity: .55; cursor: default; }
+    .sy-msg { margin-top: 16px; font-size: 14px; line-height: 1.5; min-height: 1.2em; }
+    .sy-msg.err { color: #ff8a8a; }
+    .sy-msg.ok { color: #8ae2a4; }
+    .sy-hint { font-size: 13px; opacity: .6; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="header">
+    <a class="home" href="index.html"><span>←</span> ANA SAYFA</a>
+    <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+  </header>
+  <main class="sy-main">
+    <p class="eyebrow">HESAP</p>
+    <h1>ŞİFRENİ<br><span>YENİLE.</span></h1>
+    <section class="sy-card">
+      <div id="sy-durum" class="sy-msg">Bağlantı kontrol ediliyor…</div>
+      <form id="sy-form" hidden>
+        <label>YENİ ŞİFRE
+          <input name="password" type="password" minlength="8" autocomplete="new-password" required>
+        </label>
+        <label>YENİ ŞİFRE (TEKRAR)
+          <input name="password2" type="password" minlength="8" autocomplete="new-password" required>
+        </label>
+        <p class="sy-hint">En az 8 karakter olmalı.</p>
+        <button type="submit">ŞİFREYİ GÜNCELLE</button>
+      </form>
+      <p id="sy-sonuc" class="sy-msg"></p>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+  <script src="auth.js?v=20261004"></script>
+  <script>
+  (() => {
+    const durum = document.getElementById('sy-durum');
+    const form = document.getElementById('sy-form');
+    const sonuc = document.getElementById('sy-sonuc');
+
+    const yaz = (el, metin, tip) => { el.textContent = metin; el.className = 'sy-msg' + (tip ? ' ' + tip : ''); };
+
+    (async () => {
+      if (!window.DerinAuth) { yaz(durum, 'Hesap sistemi yüklenemedi.', 'err'); return; }
+      await window.DerinAuth.ready;
+      const client = window.DerinAuth.client;
+      if (!client) { yaz(durum, 'Hesap sistemi yapılandırılmamış.', 'err'); return; }
+
+      // Sifre sifirlama baglantisi acildiginda auth.js istemcisi (detectSessionInUrl)
+      // adresteki belirteci okuyup gecici bir oturum kurar. Oturum yoksa baglanti
+      // ya kullanilmis ya da suresi dolmustur.
+      const { data } = await client.auth.getSession();
+      if (!data.session) {
+        yaz(durum, 'Bu bağlantı geçersiz ya da süresi dolmuş. Giriş ekranından "Şifreni mi unuttun?" ile yeni bağlantı iste.', 'err');
+        return;
+      }
+
+      yaz(durum, 'Bağlantı doğrulandı. Yeni şifreni belirle.', 'ok');
+      form.hidden = false;
+
+      form.onsubmit = async event => {
+        event.preventDefault();
+        const f = new FormData(form);
+        const p1 = String(f.get('password')), p2 = String(f.get('password2'));
+        if (p1 !== p2) { yaz(sonuc, 'İki şifre birbirini tutmuyor.', 'err'); return; }
+        if (p1.length < 8) { yaz(sonuc, 'Şifre en az 8 karakter olmalı.', 'err'); return; }
+
+        const dugme = form.querySelector('button');
+        dugme.disabled = true;
+        yaz(sonuc, 'Güncelleniyor…');
+
+        const { error } = await client.auth.updateUser({ password: p1 });
+        if (error) { dugme.disabled = false; yaz(sonuc, error.message, 'err'); return; }
+
+        form.hidden = true;
+        yaz(durum, '', '');
+        yaz(sonuc, 'Şifren güncellendi. Birkaç saniye içinde ana sayfaya yönlendirileceksin, yeni şifrenle giriş yapabilirsin.', 'ok');
+        await client.auth.signOut();
+        setTimeout(() => { location.href = 'index.html'; }, 3000);
+      };
+    })();
+  })();
+  </script>
+</body>
+</html>
