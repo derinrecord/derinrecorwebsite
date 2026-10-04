@@ -1,9 +1,11 @@
-// Vercel sunucu fonksiyonu — R2'ye yükleme izni üretir.
+// Vercel sunucu fonksiyonu — R2 için kısa süreli yetki adresi üretir.
 //
 // Neden var: R2'nin gizli anahtarı tarayıcıya konulamaz; konulsa siteyi açan
 // herkes müzik dosyalarını değiştirebilir. Bu fonksiyon anahtarı sunucuda
 // tutar, isteği yapanın yönetici olduğunu Supabase'e doğrulatır ve yalnızca
-// tek bir dosya için, kısa süreli bir yükleme adresi döndürür.
+// tek bir dosya için, kısa süreli bir adres döndürür.
+//
+// Gövde: { key: "radyo/...", islem: "yukle" | "sil" }  (islem boşsa "yukle")
 //
 // Gerekli ortam değişkenleri (Vercel → Settings → Environment Variables):
 //   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
@@ -15,10 +17,10 @@ const crypto = require('crypto');
 const SUPABASE_URL = 'https://abqhakgoluntpzgfyjye.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_FrRGXIb3-x8-Lzx1Ijg75w_teFbP2oa';
 
-// İzin verilen klasörler. Panel yalnızca bu öneklere yazabilir.
+// İzin verilen klasörler. Panel yalnızca bu öneklere dokunabilir.
 const IZINLI_ONEK = ['radyo/', 'kapak/', 'anons/', 'dj/', 'proje/'];
 
-const SURE = 300; // yükleme adresinin geçerlilik süresi (saniye)
+const SURE = 300; // adresin geçerlilik süresi (saniye)
 
 // --- AWS imza yardımcıları (R2, S3 ile uyumlu) ---
 const hmac = (key, str) => crypto.createHmac('sha256', key).update(str, 'utf8').digest();
@@ -26,17 +28,15 @@ const sha256hex = str => crypto.createHash('sha256').update(str, 'utf8').digest(
 // RFC 3986: encodeURIComponent'in kaçırdığı karakterleri de kodlar
 const enc = s => encodeURIComponent(s).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 
-function imzaliYuklemeAdresi({ accountId, accessKeyId, secretAccessKey, bucket, key, host }) {
+function imzaliAdres({ accessKeyId, secretAccessKey, bucket, key, host, yontem }) {
   const bolge = 'auto', servis = 's3';
 
   const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
   const gun = amzDate.slice(0, 8);
   const kapsam = `${gun}/${bolge}/${servis}/aws4_request`;
 
-  // Ozel alan adi dogrudan kovaya bagli oldugu icin yolda kova adi yer almaz.
-  // Ham S3 ucunda ise yol /kova/anahtar seklindedir.
-  const ozelAlan = host !== `${accountId}.r2.cloudflarestorage.com`;
-  const yol = (ozelAlan ? '' : '/' + enc(bucket)) + '/' + key.split('/').map(enc).join('/');
+  // Ham S3 ucunda yol /kova/anahtar şeklindedir.
+  const yol = '/' + enc(bucket) + '/' + key.split('/').map(enc).join('/');
 
   const sorgu = [
     ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
@@ -47,7 +47,7 @@ function imzaliYuklemeAdresi({ accountId, accessKeyId, secretAccessKey, bucket, 
   ].sort((a, b) => (a[0] < b[0] ? -1 : 1))
    .map(([k, v]) => `${enc(k)}=${enc(v)}`).join('&');
 
-  const kanonik = ['PUT', yol, sorgu, `host:${host}\n`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
+  const kanonik = [yontem, yol, sorgu, `host:${host}\n`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
   const imzalanacak = ['AWS4-HMAC-SHA256', amzDate, kapsam, sha256hex(kanonik)].join('\n');
 
   const kGun = hmac('AWS4' + secretAccessKey, gun);
@@ -56,8 +56,7 @@ function imzaliYuklemeAdresi({ accountId, accessKeyId, secretAccessKey, bucket, 
   const kImza = hmac(kServis, 'aws4_request');
   const imza = crypto.createHmac('sha256', kImza).update(imzalanacak, 'utf8').digest('hex');
 
-  const adres = `https://${host}${yol}?${sorgu}&X-Amz-Signature=${imza}`;
-  return { adres, kanonik, imzalanacak };
+  return `https://${host}${yol}?${sorgu}&X-Amz-Signature=${imza}`;
 }
 
 // --- İstek işleyici ---
@@ -100,44 +99,13 @@ module.exports = async (req, res) => {
   // Gövde
   let govde = req.body;
   if (typeof govde === 'string') { try { govde = JSON.parse(govde); } catch (e) { govde = {}; } }
+  const key = String((govde && govde.key) || '');
+  const islem = String((govde && govde.islem) || 'yukle');
 
-  // Teşhis modu: imzayı sunucudan dener. Tarayıcı araya girmediği için
-  // CORS engeli ile imza hatasını birbirinden ayırır.
-  if (govde && govde.sinama === true) {
-    const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-    const imzali = imzaliYuklemeAdresi({
-      accountId: R2_ACCOUNT_ID, accessKeyId: R2_ACCESS_KEY_ID,
-      secretAccessKey: R2_SECRET_ACCESS_KEY, bucket: R2_BUCKET,
-      key: 'radyo/sunucu-sinamasi.txt', host
-    });
-    let durum = null, yanit = null;
-    try {
-      const y = await fetch(imzali.adres, { method: 'PUT', body: 'sunucu sinamasi' });
-      durum = y.status; yanit = (await y.text()).slice(0, 1600);
-    } catch (e) {
-      durum = 'baglanti-hatasi'; yanit = String(e && e.message);
-    }
-    // Anahtarin kendisi degil, yalnizca bicim bilgisi dondurulur: bastaki/sondaki
-    // bosluk ya da satir sonu gibi kopyalama hatalarini gorebilmek icin.
-    const sk = R2_SECRET_ACCESS_KEY;
-    res.status(200).json({
-      durum, yanit,
-      benimKanonik: imzali.kanonik,
-      benimImzalanacak: imzali.imzalanacak,
-      anahtarBicimi: {
-        kimlikUzunluk: R2_ACCESS_KEY_ID.length,
-        kimlikTemiz: R2_ACCESS_KEY_ID === R2_ACCESS_KEY_ID.trim(),
-        gizliUzunluk: sk.length,
-        gizliTemiz: sk === sk.trim(),
-        gizliSadeceOnaltilik: /^[0-9a-f]+$/.test(sk),
-        kova: R2_BUCKET,
-        hesapUzunluk: R2_ACCOUNT_ID.length
-      }
-    });
+  if (islem !== 'yukle' && islem !== 'sil') {
+    res.status(400).json({ hata: 'Geçersiz işlem.' });
     return;
   }
-
-  const key = String((govde && govde.key) || '');
 
   // Yol denetimi: üst klasöre çıkma, mutlak yol ve izinsiz klasör reddedilir.
   if (!key || key.length > 400 || key.includes('..') || key.startsWith('/') || key.includes('\\')) {
@@ -149,17 +117,16 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const imzali = imzaliYuklemeAdresi({
-    accountId: R2_ACCOUNT_ID,
+  const adres = imzaliAdres({
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
     bucket: R2_BUCKET,
     key,
-    // Yukleme yalnizca S3 ucuna yapilabilir. R2'nin ozel alan adlari (ornegin
-    // muzik.derinrecord.com) sadece okuma icindir; PUT kabul etmezler.
-    // Dinleme/indirme tarafi ozel alan adini kullanmaya devam eder.
-    host: `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+    // Yükleme ve silme yalnızca S3 ucuna yapılabilir. R2'nin özel alan adları
+    // (muzik.derinrecord.com) sadece okuma içindir; PUT/DELETE kabul etmezler.
+    host: `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    yontem: islem === 'sil' ? 'DELETE' : 'PUT'
   });
 
-  res.status(200).json({ adres: imzali.adres, key, saniye: SURE });
+  res.status(200).json({ adres, key, islem, saniye: SURE });
 };
