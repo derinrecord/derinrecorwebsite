@@ -26,15 +26,17 @@ const sha256hex = str => crypto.createHash('sha256').update(str, 'utf8').digest(
 // RFC 3986: encodeURIComponent'in kaçırdığı karakterleri de kodlar
 const enc = s => encodeURIComponent(s).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 
-function imzaliYuklemeAdresi({ accountId, accessKeyId, secretAccessKey, bucket, key }) {
-  const host = `${accountId}.r2.cloudflarestorage.com`;
+function imzaliYuklemeAdresi({ accountId, accessKeyId, secretAccessKey, bucket, key, host }) {
   const bolge = 'auto', servis = 's3';
 
   const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
   const gun = amzDate.slice(0, 8);
   const kapsam = `${gun}/${bolge}/${servis}/aws4_request`;
 
-  const yol = '/' + enc(bucket) + '/' + key.split('/').map(enc).join('/');
+  // Ozel alan adi dogrudan kovaya bagli oldugu icin yolda kova adi yer almaz.
+  // Ham S3 ucunda ise yol /kova/anahtar seklindedir.
+  const ozelAlan = host !== `${accountId}.r2.cloudflarestorage.com`;
+  const yol = (ozelAlan ? '' : '/' + enc(bucket)) + '/' + key.split('/').map(enc).join('/');
 
   const sorgu = [
     ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
@@ -114,7 +116,10 @@ module.exports = async (req, res) => {
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
     bucket: R2_BUCKET,
-    key
+    key,
+    // Tarayicidan yukleme ozel alan adi uzerinden yapilir: kovanin CORS
+    // politikasi yalnizca orada gecerli, ham S3 ucunda tarayici engelliyor.
+    host: process.env.R2_PUBLIC_HOST || 'muzik.derinrecord.com'
   });
 
   res.status(200).json({ adres, key, saniye: SURE });
