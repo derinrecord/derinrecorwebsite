@@ -1,0 +1,18 @@
+/* Hukuki metin sayfaları — aydınlatma, gizlilik, sözleşme */
+.hk-main { max-width: 760px; margin: 0 auto; padding: 40px 20px 90px; }
+.hk-main h1 { margin-bottom: 6px; }
+.hk-tarih { font-size: 13px; opacity: .55; margin: 0 0 28px; }
+.hk-main h2 { font-size: 17px; letter-spacing: .02em; margin: 34px 0 10px; }
+.hk-main h3 { font-size: 15px; margin: 22px 0 8px; opacity: .9; }
+.hk-main p, .hk-main li { font-size: 15px; line-height: 1.72; opacity: .86; }
+.hk-main ul, .hk-main ol { padding-left: 20px; margin: 10px 0; }
+.hk-main li { margin: 6px 0; }
+.hk-main a { color: #e8d15a; }
+.hk-tablo { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+.hk-tablo th, .hk-tablo td { text-align: left; padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,.12); vertical-align: top; }
+.hk-tablo th { opacity: .6; font-weight: 600; letter-spacing: .04em; font-size: 12px; text-transform: uppercase; }
+.hk-kutu { border: 1px solid rgba(232,209,90,.35); background: rgba(232,209,90,.07);
+           border-radius: 12px; padding: 16px 18px; margin: 22px 0; }
+.hk-kutu p { margin: 0; font-size: 14px; }
+.hk-alt { margin-top: 44px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: 14px; }
+.hk-alt a { margin-right: 16px; }
