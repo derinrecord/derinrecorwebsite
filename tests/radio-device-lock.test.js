@@ -225,7 +225,10 @@ async function calistir(senaryo) {
       anonsSesleri.push(src);
       return { play: () => Promise.resolve(), pause() {}, onended: null, onerror: null };
     },
-    DERIN_CONFIG: { supabaseUrl: 'https://prova.test', supabasePublishableKey: 'prova' }
+    DERIN_CONFIG: { supabaseUrl: 'https://prova.test', supabasePublishableKey: 'prova' },
+    // Ses, kapak ve anonslar R2'den gelir (r2-depo.js). Provada ağa çıkılmaz;
+    // adresler sahte önekle üretilir, böylece hangi yolun istendiği görülür.
+    DerinR2: { adres: (kova, p) => (p ? 'prova://' + kova + '/' + p : null) }
   };
   icerik.window = icerik;
   icerik.globalThis = icerik;

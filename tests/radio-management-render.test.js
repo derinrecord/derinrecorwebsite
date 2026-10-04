@@ -193,7 +193,8 @@ test('panel liste adını düzenleyip kaydedebilir', () => {
 test('panel kapakları elle yerleştirir ve eskisini depodan temizler', () => {
   ['cover-open', 'track-img', 'list-img', 'kapak-sil'].forEach(act =>
     assert.ok(source.includes(`case '${act}'`), `${act} işlenmeli`));
-  assert.ok(source.includes("storage.from('radio-covers')"), 'kapaklar radio-covers kovasına yüklenmeli');
+  assert.ok(source.includes("DerinR2.yukle(KAPAK_BUCKET"), 'kapaklar R2\'deki radio-covers klasörüne yüklenmeli');
+  assert.ok(source.includes("KAPAK_BUCKET = 'radio-covers'"), 'kapak kovası radio-covers olmalı');
   ['radio_tracks', 'brand_playlists', 'radio_folders'].forEach(tablo =>
     assert.ok(new RegExp('from\\(' + "'" + tablo + "'" + '\\)\\.update\\(\\{ cover_path: yol \\}\\)').test(source),
       `${tablo} kapağı kaydedilmeli`));

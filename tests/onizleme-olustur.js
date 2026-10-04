@@ -451,6 +451,12 @@ if (senaryo === 'marka') {
       })
     })
   };
+  // Önizlemede gerçek R2'ye çıkılmaz: kapak yerel SVG, ses kapalı.
+  window.DerinR2 = {
+    adres: (kova, p) => (p ? (kova === 'radio-covers' ? kapakSvg(p) : '') : null),
+    yukle: () => Promise.resolve({ error: { message: 'Önizleme: yazma kapalı.' } }),
+    sil: () => Promise.resolve({ error: null })
+  };
 })();
 </script>`;
 
@@ -465,6 +471,8 @@ if (senaryo === 'marka') {
     .replace(/(href)="\/marka-sunum\.css(?:\?[^"]*)?"/, '$1="' + gom('marka-sunum.css') + '"')
     .replace(/<script src="\/config\.js"><\/script>/, '<script>window.DERIN_CONFIG = { supabaseUrl: \'https://prova.test\', supabasePublishableKey: \'prova\' };<\/script>')
     .replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@[^"]+"><\/script>/, '')
+    // r2-depo.js önizlemeye gömülmez; sahte DerinR2'yi zaten taklit bloğu kurar.
+    .replace(/<script src="\/r2-depo\.js\?v=[^"]+"><\/script>\n?/, '')
     .replace(/<script src="\/coffee-marka\.js\?v=[^"]+"><\/script>/, taklit + '\n<script>\n' + markaJs + '\n</script>');
 
   // Gömme sessizce boşa düşerse prova stilsiz/sunucusuz açılır; bunun yerine dur.
@@ -552,6 +560,12 @@ if (senaryo === 'harmonik') {
     profile: { role: 'admin' }, open: () => {},
     client: { from: tablo, storage: { from: () => kova } }
   };
+  // Önizlemede ses kapalı; R2 adresleri üretilmez.
+  window.DerinR2 = {
+    adres: () => null,
+    yukle: () => Promise.resolve({ error: yazmaKapali }),
+    sil: () => Promise.resolve({ error: null })
+  };
 })();
 </script>`;
   // Önce dağınık bir set kurulur: köprü kutuları ve uyumsuz panel hemen görünür.
@@ -622,6 +636,10 @@ sayfa = sayfa
   .replace(/<script src="config\.js"><\/script>\n?/, '')
   .replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@[^"]+"><\/script>\n?/, '')
   // Sürüm damgası değişebilir; sabit metne bağlanmayalım.
+  // Önizleme tek dosyadır, yanındaki r2-depo.js'i yükleyemez. Gerçek R2'ye de
+  // çıkılmaz: adresler sahte önekle üretilir, ses zaten çalmaz.
+  .replace(/<script src="r2-depo\.js\?v=[^"]+"><\/script>/,
+    "<script>window.DerinR2 = { adres: function (kova, p) { return p ? 'prova://' + kova + '/' + p : null; } };</script>")
   .replace(/<script src="radio-playlist-queue\.js\?v=[^"]+"><\/script>/, '<script>\n' + kuyruk + '\n</script>')
   .replace(/<script src="radyo\.js\?v=[^"]+"><\/script>/, '<script>\n' + radyo + '\n</script>');
 
