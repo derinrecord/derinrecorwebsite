@@ -99,6 +99,28 @@ module.exports = async (req, res) => {
   // Gövde
   let govde = req.body;
   if (typeof govde === 'string') { try { govde = JSON.parse(govde); } catch (e) { govde = {}; } }
+
+  // Teşhis modu: imzayı sunucudan dener. Tarayıcı araya girmediği için
+  // CORS engeli ile imza hatasını birbirinden ayırır.
+  if (govde && govde.sinama === true) {
+    const sonuc = [];
+    for (const host of [`${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`]) {
+      const adres = imzaliYuklemeAdresi({
+        accountId: R2_ACCOUNT_ID, accessKeyId: R2_ACCESS_KEY_ID,
+        secretAccessKey: R2_SECRET_ACCESS_KEY, bucket: R2_BUCKET,
+        key: 'radyo/sunucu-sinamasi.txt', host
+      });
+      try {
+        const y = await fetch(adres, { method: 'PUT', body: 'sunucu sinamasi' });
+        sonuc.push({ host, durum: y.status, yanit: (await y.text()).slice(0, 400) });
+      } catch (e) {
+        sonuc.push({ host, durum: 'baglanti-hatasi', yanit: String(e && e.message) });
+      }
+    }
+    res.status(200).json({ sinama: sonuc });
+    return;
+  }
+
   const key = String((govde && govde.key) || '');
 
   // Yol denetimi: üst klasöre çıkma, mutlak yol ve izinsiz klasör reddedilir.
@@ -117,9 +139,10 @@ module.exports = async (req, res) => {
     secretAccessKey: R2_SECRET_ACCESS_KEY,
     bucket: R2_BUCKET,
     key,
-    // Tarayicidan yukleme ozel alan adi uzerinden yapilir: kovanin CORS
-    // politikasi yalnizca orada gecerli, ham S3 ucunda tarayici engelliyor.
-    host: process.env.R2_PUBLIC_HOST || 'muzik.derinrecord.com'
+    // Yukleme yalnizca S3 ucuna yapilabilir. R2'nin ozel alan adlari (ornegin
+    // muzik.derinrecord.com) sadece okuma icindir; PUT kabul etmezler.
+    // Dinleme/indirme tarafi ozel alan adini kullanmaya devam eder.
+    host: `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
   });
 
   res.status(200).json({ adres, key, saniye: SURE });
