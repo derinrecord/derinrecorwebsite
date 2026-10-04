@@ -56,7 +56,8 @@ function imzaliYuklemeAdresi({ accountId, accessKeyId, secretAccessKey, bucket, 
   const kImza = hmac(kServis, 'aws4_request');
   const imza = crypto.createHmac('sha256', kImza).update(imzalanacak, 'utf8').digest('hex');
 
-  return `https://${host}${yol}?${sorgu}&X-Amz-Signature=${imza}`;
+  const adres = `https://${host}${yol}?${sorgu}&X-Amz-Signature=${imza}`;
+  return { adres, kanonik, imzalanacak };
 }
 
 // --- İstek işleyici ---
@@ -103,21 +104,36 @@ module.exports = async (req, res) => {
   // Teşhis modu: imzayı sunucudan dener. Tarayıcı araya girmediği için
   // CORS engeli ile imza hatasını birbirinden ayırır.
   if (govde && govde.sinama === true) {
-    const sonuc = [];
-    for (const host of [`${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`]) {
-      const adres = imzaliYuklemeAdresi({
-        accountId: R2_ACCOUNT_ID, accessKeyId: R2_ACCESS_KEY_ID,
-        secretAccessKey: R2_SECRET_ACCESS_KEY, bucket: R2_BUCKET,
-        key: 'radyo/sunucu-sinamasi.txt', host
-      });
-      try {
-        const y = await fetch(adres, { method: 'PUT', body: 'sunucu sinamasi' });
-        sonuc.push({ host, durum: y.status, yanit: (await y.text()).slice(0, 400) });
-      } catch (e) {
-        sonuc.push({ host, durum: 'baglanti-hatasi', yanit: String(e && e.message) });
-      }
+    const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+    const imzali = imzaliYuklemeAdresi({
+      accountId: R2_ACCOUNT_ID, accessKeyId: R2_ACCESS_KEY_ID,
+      secretAccessKey: R2_SECRET_ACCESS_KEY, bucket: R2_BUCKET,
+      key: 'radyo/sunucu-sinamasi.txt', host
+    });
+    let durum = null, yanit = null;
+    try {
+      const y = await fetch(imzali.adres, { method: 'PUT', body: 'sunucu sinamasi' });
+      durum = y.status; yanit = (await y.text()).slice(0, 1600);
+    } catch (e) {
+      durum = 'baglanti-hatasi'; yanit = String(e && e.message);
     }
-    res.status(200).json({ sinama: sonuc });
+    // Anahtarin kendisi degil, yalnizca bicim bilgisi dondurulur: bastaki/sondaki
+    // bosluk ya da satir sonu gibi kopyalama hatalarini gorebilmek icin.
+    const sk = R2_SECRET_ACCESS_KEY;
+    res.status(200).json({
+      durum, yanit,
+      benimKanonik: imzali.kanonik,
+      benimImzalanacak: imzali.imzalanacak,
+      anahtarBicimi: {
+        kimlikUzunluk: R2_ACCESS_KEY_ID.length,
+        kimlikTemiz: R2_ACCESS_KEY_ID === R2_ACCESS_KEY_ID.trim(),
+        gizliUzunluk: sk.length,
+        gizliTemiz: sk === sk.trim(),
+        gizliSadeceOnaltilik: /^[0-9a-f]+$/.test(sk),
+        kova: R2_BUCKET,
+        hesapUzunluk: R2_ACCOUNT_ID.length
+      }
+    });
     return;
   }
 
@@ -133,7 +149,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const adres = imzaliYuklemeAdresi({
+  const imzali = imzaliYuklemeAdresi({
     accountId: R2_ACCOUNT_ID,
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
@@ -145,5 +161,5 @@ module.exports = async (req, res) => {
     host: `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
   });
 
-  res.status(200).json({ adres, key, saniye: SURE });
+  res.status(200).json({ adres: imzali.adres, key, saniye: SURE });
 };
