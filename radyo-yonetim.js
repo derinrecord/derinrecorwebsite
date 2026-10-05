@@ -1186,14 +1186,26 @@
         return ciz();
       }
       case 'plan-odeme-kaydet': return planGirOdeme(id);
-      case 'plan-odeme-aktar': {
-        // "takvime ekle": abonelikten gelen satırı, düzenlenebilir bir ödeme
-        // kaydına çevirir. Sonrasında tutarını değiştirebilir, silebilirsin.
-        const parcalar = String(id).split(':');
-        const iso = parcalar.shift();
-        const tutar = Number(parcalar.pop());
-        const marka = parcalar.join(':');
-        return planYaz('ekle', { gun: iso, tur: 'odeme', metin: '', marka: marka, tutar: tutar, sira: planSiradaki(iso, 'odeme') });
+      case 'plan-odeme-durum': {
+        // Abonelikten gelen bir ödemeyi elle işaretler: ödendi / ödenmedi.
+        // İlk işarette o güne bir 'odeme' satırı düşer (böylece geçmişe
+        // kaydolur ve ÖDEME GEÇMİŞİ'nde görünür); sonraki tıklamalar aynı
+        // satırın bitti işaretini değiştirir. Bugünü geçen bir ödeme
+        // işaretlenmezse sütunda "gecikmiş" olarak kalır.
+        // id: "<gun>:<durum>:<marka(kodlanmış)>:<tutar>"
+        const p = String(id).split(':');
+        const iso = p[0], durum = p[1];
+        const tutar = Number(p[3]);
+        let marka = p[2] || '';
+        try { marka = decodeURIComponent(marka); } catch { /* bozuk kod: olduğu gibi kullan */ }
+        if (!iso || !durum) return;
+        const mevcut = (D.planItems || []).find(x => x.tur === 'odeme' && x.gun === iso && x.marka === marka);
+        if (mevcut) return planYaz('guncelle', { id: mevcut.id, bitti: durum === 'odendi' });
+        return planYaz('ekle', {
+          gun: iso, tur: 'odeme', metin: '', marka: marka,
+          tutar: isFinite(tutar) ? tutar : 0, bitti: durum === 'odendi',
+          sira: planSiradaki(iso, 'odeme')
+        });
       }
       case 'plan-isaret': {
         const satir = (D.planItems || []).find(x => x.id === id);

@@ -228,6 +228,82 @@ test('hatasız satırda tekrar dene düğmesi çıkmaz', () => {
   assert.ok(!h.includes('data-act="plan-tekrar"'));
 });
 
+// ---------- Ödeme işareti ve geçmiş ----------
+// Abonelikten gelen ödemeler canlı okunur; ödendi/ödenmedi işareti ise
+// plan_maddeleri'ne bir 'odeme' satırı yazar. Böylece geçmişe bakınca kimin
+// ödediği kalıcı olarak görülür.
+
+test('yaklaşan ödeme satırında ödendi/ödenmedi düğmeleri basılır', () => {
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, ile({ planItems: [] }), UI);
+  assert.ok(h.includes('data-act="plan-odeme-durum"'), 'işaret düğmesi olmalı');
+  assert.ok(h.includes('>ödendi</button>'));
+  assert.ok(h.includes('>ödenmedi</button>'));
+});
+
+test('işaretlenmiş ödeme sütunda seçili gelir', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, D2, UI);
+  assert.ok(/d-odendi secili/.test(h), 'ödendi işareti seçili görünmeli');
+  assert.ok(!/d-odenmedi secili/.test(h));
+});
+
+test('günü geçmiş ve işaretlenmemiş ödeme listede kalır ve gecikmiş görünür', () => {
+  // Abonelik dönemi geçmişte; satır kaybolmamalı, yoksa işaretlemek
+  // imkânsızlaşır ve ödemenin yapılıp yapılmadığı kayda geçmez.
+  const DD2 = Object.assign({}, DD, { subscriptions: [
+    { brand_id: 'b1', plan_id: 'tek', branch_count: 1, current_end: '2026-09-20T00:00:00Z', canceled_at: null }
+  ] });
+  const o = P.yaklasanOdemeler(DD2, '2026-10-05', 60);
+  assert.equal(o.length, 1, 'geçmiş dönem listede olmalı');
+  assert.equal(o[0].gecmis, true);
+  const h = P.takvimView({ planYil: 2026, planAy: 9 }, Object.assign(DD2, { planItems: [] }), UI);
+  assert.ok(h.includes('gecikmis'), 'işaretlenmemiş geçmiş ödeme vurgulanmalı');
+});
+
+test('ödeme durumu gün ve marka eşleşmesinden bulunur', () => {
+  const m = [
+    { gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', bitti: true },
+    { gun: '2026-11-28', tur: 'odeme', marka: 'starbucks', bitti: false }
+  ];
+  assert.equal(P.odemeDurumu(m, { iso: '2026-10-27', marka: 'Chemex' }), 'odendi');
+  assert.equal(P.odemeDurumu(m, { iso: '2026-11-28', marka: 'starbucks' }), 'odenmedi');
+  assert.equal(P.odemeDurumu(m, { iso: '2026-10-27', marka: 'Başka' }), null);
+  assert.equal(P.odemeDurumu(null, { iso: '2026-10-27', marka: 'Chemex' }), null);
+});
+
+test('ödeme geçmişi en yeni gün en üstte, özet doğru sayar', () => {
+  const m = [
+    { id: 'a', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true },
+    { id: 'b', gun: '2026-09-20', tur: 'odeme', marka: 'Uzak', tutar: 6000, bitti: false },
+    { id: 'c', gun: '2026-09-20', tur: 'madde', metin: 'iş', bitti: false }
+  ];
+  const g = P.odemeGecmisi(m);
+  assert.deepEqual(g.map(x => x.gun), ['2026-10-27', '2026-09-20'], 'yalnız ödemeler, yeni önce');
+  assert.deepEqual(P.odemeOzeti(m), { toplam: 2, odendi: 1, odenmedi: 1 });
+});
+
+test('ödeme geçmişi bölümü işaretli ödemeleri basar', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 },
+    { id: 'o2', gun: '2026-09-20', tur: 'odeme', marka: 'Uzak', tutar: 6000, bitti: false, metin: '', sira: 0 }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, D2, UI);
+  assert.ok(h.includes('ÖDEME GEÇMİŞİ'));
+  assert.ok(h.includes('2 kayıt · 1 ödendi · 1 ödenmedi'));
+  assert.ok(/class="plan-gecmis"/.test(h), 'geçmiş sarmalayıcısı olmalı (CSS buna bağlı)');
+  assert.ok(h.includes('plan-gecmis-liste'));
+  assert.ok(h.includes('Chemex'));
+  assert.ok(h.includes('Uzak'));
+});
+
+test('işaretlenmiş ödeme yokken geçmiş bölümü yönlendirir, çökmez', () => {
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, ile({ planItems: [] }), UI);
+  assert.ok(h.includes('Henüz işaretlenmiş ödeme yok'));
+  assert.ok(!h.includes('plan-gecmis-liste'));
+});
+
 // ---------- Panele bağlanma ----------
 // Takvimin gövdesi ayrı dosyada; panele yalnız birkaç satırla tanıtılıyor.
 // Bu testler o bağlantının kopmadığını kaynak üzerinden doğrular.
@@ -252,7 +328,7 @@ test('panel plan eylemlerini karşılıyor', () => {
   // plan-not bir tıklama değil, metin alanı: switch yerine yazma
   // dinleyicisinde seçiciyle yakalanıyor. Bu yüzden tırnak türüne
   // bakmıyoruz — önemli olan eylemin karşılanması.
-  ['plan-gun', 'plan-ay', 'plan-yeni', 'plan-yeni-kapat', 'plan-odeme-kaydet', 'plan-sil', 'plan-isaret', 'plan-katla', 'plan-odeme-aktar', 'plan-not', 'plan-tekrar']
+  ['plan-gun', 'plan-ay', 'plan-yeni', 'plan-yeni-kapat', 'plan-odeme-kaydet', 'plan-sil', 'plan-isaret', 'plan-katla', 'plan-odeme-durum', 'plan-not', 'plan-tekrar']
     .forEach(act => assert.ok(panelKaynak.includes(act), act + ' işlenmeli'));
 });
 

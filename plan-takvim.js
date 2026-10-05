@@ -54,8 +54,14 @@
   //
   // İptal edilmiş abonelik gizlenmez, etiketlenir — veriyi olduğu gibi
   // göstermek sessizce filtrelemekten iyidir.
-  function yaklasanOdemeler(D, bugunIso, gunSayisi) {
-    const son = gunEkle(bugunIso, gunSayisi == null ? 60 : gunSayisi);
+  function yaklasanOdemeler(D, bugunIso, gunSayisi, geriGunSayisi) {
+    const ileri = gunSayisi == null ? 60 : gunSayisi;
+    // Geçmiş dönemler de listede kalır: ödemesi gelip işaretlenmemiş bir satır,
+    // kullanıcı onu işaretleyene kadar gözden kaçmasın diye. Aksi hâlde gün
+    // geçince satır kendiliğinden kaybolur ve hatırlanması imkânsızlaşırdı.
+    const geri = geriGunSayisi == null ? 180 : geriGunSayisi;
+    const bas = gunEkle(bugunIso, -geri);
+    const son = gunEkle(bugunIso, ileri);
     const markaAdi = id => {
       const b = (D.brands || []).find(x => x.id === id);
       return b ? b.name : '—';
@@ -70,11 +76,43 @@
           iso: iso,
           marka: markaAdi(s.brand_id),
           tutar: p && p.per_branch ? fiyat * Number(s.branch_count || 1) : fiyat,
-          iptal: !!s.canceled_at
+          iptal: !!s.canceled_at,
+          gecmis: iso < bugunIso
         };
       })
-      .filter(o => o.iso >= bugunIso && o.iso <= son)
+      .filter(o => o.iso >= bas && o.iso <= son)
       .sort((a, b) => (a.iso < b.iso ? -1 : a.iso > b.iso ? 1 : 0));
+  }
+
+  // Bir abonelik ödemesinin işaretlenip işaretlenmediği. Abonelikten gelen
+  // satır plan_maddeleri'nde tutulmaz; ancak kullanıcı işaretleyince o güne
+  // bir 'odeme' satırı düşer. Eşleşme gün + marka üzerinden yapılır.
+  // Dönüş: 'odendi' | 'odenmedi' | null (henüz işaretlenmemiş).
+  function odemeDurumu(maddeler, o) {
+    const kayit = (maddeler || []).find(x => x.tur === 'odeme' && x.gun === o.iso && x.marka === o.marka);
+    if (!kayit) return null;
+    return kayit.bitti ? 'odendi' : 'odenmedi';
+  }
+
+  // Elle işaretlenmiş tüm ödemeler (plan_maddeleri'ndeki 'odeme' satırları),
+  // en yeni gün en üstte. Geçmişe bakınca kimin ödediği buradan görülür.
+  function odemeGecmisi(maddeler) {
+    return (maddeler || [])
+      .filter(x => x.tur === 'odeme')
+      .map(x => ({
+        id: x.id,
+        gun: x.gun,
+        marka: x.marka || x.metin || '—',
+        tutar: Number(x.tutar || 0),
+        bitti: !!x.bitti
+      }))
+      .sort((a, b) => (a.gun === b.gun ? 0 : a.gun < b.gun ? 1 : -1));
+  }
+
+  function odemeOzeti(maddeler) {
+    const liste = odemeGecmisi(maddeler);
+    const odendi = liste.filter(x => x.bitti).length;
+    return { toplam: liste.length, odendi: odendi, odenmedi: liste.length - odendi };
   }
 
   // Kullanıcıdan gelen her metin buradan geçer. Projedeki her dosyada
@@ -206,17 +244,45 @@
     };
 
     const odemeler = yaklasanOdemeler(D || {}, bugun, 60);
+    // İşaret düğmesinin taşıdığı bilgi: gün, durum, marka (kodlanmış), tutar.
+    // Marka içinde ':' geçebilir; encodeURIComponent bunun için şart.
+    const durumId = (o, durum) => `${o.iso}:${durum}:${encodeURIComponent(o.marka)}:${o.tutar}`;
     const odemeSutun = odemeler.length
-      ? `<ul class="plan-odeme-liste">${odemeler.map(o => `
-          <li${o.iptal ? ' class="iptal"' : ''}>
+      ? `<ul class="plan-odeme-liste">${odemeler.map(o => {
+          const durum = odemeDurumu(maddeler, o);
+          const gecikmis = o.gecmis && !durum;
+          const sinif = [o.iptal ? 'iptal' : '', o.gecmis ? 'gecmis' : '', gecikmis ? 'gecikmis' : '']
+            .filter(Boolean).join(' ');
+          return `<li${sinif ? ` class="${sinif}"` : ''}>
             <span class="t">${esc(o.iso)}</span>
             <span class="m">${esc(o.marka)}</span>
             <b>${para(o.tutar)} ₺</b>
             ${o.iptal ? '<small>iptal edilmiş</small>' : ''}
-            <button class="aktar" type="button"
-              data-act="plan-odeme-aktar" data-id="${esc(o.iso + ':' + o.marka + ':' + o.tutar)}">takvime ekle</button>
-          </li>`).join('')}</ul>`
+            ${gecikmis ? '<small class="gec">gecikmiş — işaretle</small>' : ''}
+            <div class="plan-durum">
+              <button class="d-odendi${durum === 'odendi' ? ' secili' : ''}" type="button"
+                data-act="plan-odeme-durum" data-id="${esc(durumId(o, 'odendi'))}">ödendi</button>
+              <button class="d-odenmedi${durum === 'odenmedi' ? ' secili' : ''}" type="button"
+                data-act="plan-odeme-durum" data-id="${esc(durumId(o, 'odenmedi'))}">ödenmedi</button>
+            </div>
+          </li>`;
+        }).join('')}</ul>`
       : '<p class="bos">Önümüzdeki 60 günde ödemesi gelen abonelik yok.</p>';
+
+    const gecmisListe = odemeGecmisi(maddeler);
+    const ozet = odemeOzeti(maddeler);
+    const gecmisSutun = gecmisListe.length
+      ? `<div class="plan-gecmis">
+        <p class="ozet">${ozet.toplam} kayıt · ${ozet.odendi} ödendi · ${ozet.odenmedi} ödenmedi</p>
+        <ul class="plan-gecmis-liste">${gecmisListe.map(g => `
+          <li class="${g.bitti ? 'odendi' : 'odenmedi'}">
+            <span class="t">${esc(g.gun)}</span>
+            <span class="m">${esc(g.marka)}</span>
+            <b>${para(g.tutar)} ₺</b>
+            <i>${g.bitti ? 'ödendi' : 'ödenmedi'}</i>
+          </li>`).join('')}</ul>
+      </div>`
+      : '<p class="bos">Henüz işaretlenmiş ödeme yok. Yukarıdaki bir satırı “ödendi” ya da “ödenmedi” diye işaretle.</p>';
 
     return `<div class="plan-sarmal">
       <div class="plan-ana">
@@ -231,6 +297,7 @@
       </div>
       <aside class="plan-yan">
         ${bolum('yaklasan', 'YAKLAŞAN ÖDEMELER', odemeSutun, katli.indexOf('yaklasan') !== -1)}
+        ${bolum('gecmis', 'ÖDEME GEÇMİŞİ', gecmisSutun, katli.indexOf('gecmis') !== -1)}
       </aside>
     </div>`;
   }
@@ -240,6 +307,9 @@
     gunOzeti: gunOzeti,
     gunEkle: gunEkle,
     yaklasanOdemeler: yaklasanOdemeler,
+    odemeDurumu: odemeDurumu,
+    odemeGecmisi: odemeGecmisi,
+    odemeOzeti: odemeOzeti,
     takvimView: takvimView
   };
 
