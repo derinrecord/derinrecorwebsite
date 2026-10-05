@@ -520,7 +520,10 @@
       bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true);
       return;
     }
-    await yenile(true);
+    // Sessiz yenileme (yenile(true)) yalnız yan menüyü tazeler, içeriği
+    // çizmez. Burada kullanıcı bir madde ekledi ya da sildi: listenin hemen
+    // güncellenmesi gerekiyor, yoksa kayıt gider ama ekran eski kalır.
+    await yenile();
   }
 
   state.planKatli = planKatliOku();
