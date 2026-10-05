@@ -506,7 +506,14 @@
     const depo = client.from('plan_maddeleri');
     try {
       if (islem === 'ekle') return (await depo.insert(veri)).error || null;
-      if (islem === 'guncelle') return (await depo.update({ bitti: veri.bitti, updated_at: new Date().toISOString() }).eq('id', veri.id)).error || null;
+      if (islem === 'guncelle') {
+        // Yalnız gönderilen alanlar yazılır: işaret değişikliği 'bitti' taşır,
+        // satır düzenleme ise 'marka'/'tutar'. Birini diğerinin üstüne yazmak
+        // (ör. düzenlemede bitti'yi false yapmak) veriyi bozar.
+        const degisim = { updated_at: new Date().toISOString() };
+        ['bitti', 'marka', 'tutar', 'metin'].forEach(a => { if (a in veri) degisim[a] = veri[a]; });
+        return (await depo.update(degisim).eq('id', veri.id)).error || null;
+      }
       if (islem === 'sil') return (await depo.delete().eq('id', veri.id)).error || null;
       if (islem === 'not') {
         const mevcut = (D.planItems || []).find(x => x.gun === veri.gun && x.tur === 'not');
@@ -578,6 +585,27 @@
     return planGirOdeme(iso);
   }
 
+  // Açık düzenleme formunu okur ve satırı günceller. Marka ve tutar birlikte
+  // yazılır; biri boş/geçersizse kayıt yapılmaz ve alan odakta kalır, böylece
+  // yarısı kaydedilmiş bir satır oluşmaz.
+  async function planDuzenleKaydet(id) {
+    const satir = (D.planItems || []).find(x => x.id === id);
+    if (!satir) return;
+    const markaKutu = el('view').querySelector('[data-plan-duzenle="odeme-marka"]');
+    const tutarKutu = el('view').querySelector('[data-plan-duzenle="odeme-tutar"]');
+    const marka = (markaKutu ? markaKutu.value : '').trim();
+    const tutar = Number(String(tutarKutu ? tutarKutu.value : '').replace(',', '.'));
+    if (!marka) { bildir('Marka / açıklama gerekli.', 'err'); if (markaKutu) markaKutu.focus(); return; }
+    if (!isFinite(tutar)) { bildir('Tutar sayı olmalı.', 'err'); if (tutarKutu) tutarKutu.focus(); return; }
+    // Kayıt düşerse form açık ve yazılan değerler ekranda kalır: yeniden
+    // çizim ancak başarıdan sonra olur, sessiz kayıp olmaz. planYaz burada
+    // kullanılmaz, çünkü o başarısızlıkta da çizer ve formu kapatırdı.
+    const hata = await planYazDene('guncelle', { id: id, marka: marka, tutar: tutar });
+    if (hata) { bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true); return; }
+    state.planDuzenle = null;
+    await yenile();
+  }
+
   state.planKatli = planKatliOku();
 
   function ciz() {
@@ -595,6 +623,12 @@
     if (state.planYeni) {
       const alan = el('view').querySelector('[data-plan-gir]');
       if (alan) alan.focus();
+    }
+    // Satır düzenleme açıksa odak marka alanına gider ve metin seçili gelir:
+    // kullanıcı doğrudan üstüne yazabilsin. Önce marka, sonra tutar.
+    if (state.planDuzenle) {
+      const alan = el('view').querySelector('[data-plan-duzenle]');
+      if (alan) { alan.focus(); if (alan.select) alan.select(); }
     }
     const now = Date.now();
     const caliyor = D.players.filter(p => p.is_playing && V.canliMi(p, now)).length;
@@ -1154,8 +1188,30 @@
       // Kaydet düğmesi yok: her değişiklik anında gider. Yazma başarısız
       // olursa kullanıcıya söylenir; sessizce yutulmaz.
       case 'plan-gun': {
+        // Bir güne girilir: ay ızgarası yerine o günün sekmesi açılır. Aynı
+        // güne tekrar basmak da geri döndürür (klavye/dokunmatik kolaylığı).
         state.planAcikGun = state.planAcikGun === id ? null : id;
         state.planYeni = null;
+        state.planDuzenle = null;
+        return ciz();
+      }
+      case 'plan-gun-kapat': {
+        state.planAcikGun = null;
+        state.planYeni = null;
+        state.planDuzenle = null;
+        return ciz();
+      }
+      case 'plan-gun-kaydir': {
+        // Gün görünümünde gün gün ilerle/geri git. Ay sınırı aşılırsa ay
+        // başlığı da kayar; kullanıcı geri döndüğünde doğru ay açılır.
+        if (!state.planAcikGun) return;
+        const p = String(state.planAcikGun).slice(0, 10).split('-').map(Number);
+        const d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + (id === 'onceki' ? -1 : 1)));
+        state.planAcikGun = d.toISOString().slice(0, 10);
+        state.planYil = d.getUTCFullYear();
+        state.planAy = d.getUTCMonth() + 1;
+        state.planYeni = null;
+        state.planDuzenle = null;
         return ciz();
       }
       case 'plan-ay': {
@@ -1166,6 +1222,14 @@
         if (a < 1) { a = 12; y -= 1; } else if (a > 12) { a = 1; y += 1; }
         state.planYil = y; state.planAy = a;
         state.planYeni = null;
+        state.planDuzenle = null;
+        return ciz();
+      }
+      case 'plan-durum': {
+        // Ödeme listelerini süzer. Seçili süzgece tekrar basmak süzgeci
+        // kaldırır (seçili → Tümü); böylece "ödenmemişleri gör" ile
+        // "hepsini gör" arasında tek düğmeyle gidilir.
+        state.planDurum = (state.planDurum === id) ? '' : (id || '');
         return ciz();
       }
       case 'plan-katla': {
@@ -1186,6 +1250,18 @@
         return ciz();
       }
       case 'plan-odeme-kaydet': return planGirOdeme(id);
+      case 'plan-duzenle': {
+        // Ödeme satırında kalem simgesi: satır yerinde form olur. Aynı satıra
+        // tekrar basmak düzenlemeyi kapatır (aynı satırda takılı kalmasın).
+        state.planDuzenle = state.planDuzenle === id ? null : id;
+        state.planYeni = null;
+        return ciz();
+      }
+      case 'plan-duzenle-kapat': {
+        state.planDuzenle = null;
+        return ciz();
+      }
+      case 'plan-duzenle-kaydet': return planDuzenleKaydet(id);
       case 'plan-odeme-durum': {
         // Abonelikten gelen bir ödemeyi elle işaretler: ödendi / ödenmedi.
         // İlk işarette o güne bir 'odeme' satırı düşer (böylece geçmişe
@@ -2253,12 +2329,31 @@
   // Not alanı: yazmayı bıraktıktan 1 saniye sonra kaydedilir. Her tuşta
   // sunucuya gitmek hem gereksiz hem de yazarken takılmaya yol açar.
   let planNotSayac = null;
+  let planAraSayac = null;
   document.addEventListener('input', e => {
-    const alan = e.target.closest('[data-act="plan-not"]');
-    if (!alan) return;
-    const gun = alan.dataset.id, metin = alan.value;
-    clearTimeout(planNotSayac);
-    planNotSayac = setTimeout(() => planYaz('not', { gun: gun, metin: metin }), 1000);
+    const not = e.target.closest('[data-act="plan-not"]');
+    if (not) {
+      const gun = not.dataset.id, metin = not.value;
+      clearTimeout(planNotSayac);
+      planNotSayac = setTimeout(() => planYaz('not', { gun: gun, metin: metin }), 1000);
+      return;
+    }
+    const ara = e.target.closest('[data-act="plan-arama"]');
+    if (!ara) return;
+    // Arama her tuşta değil, yazma durunca süzülür; aksi hâlde ekran sürekli
+    // yeniden çizilir. Yeniden çizim odağı düşürdüğü için odağı ve imleci geri
+    // veriyoruz — yoksa kullanıcı ikinci harfi yazamaz.
+    const imlec = ara.selectionStart;
+    clearTimeout(planAraSayac);
+    planAraSayac = setTimeout(() => {
+      state.planAra = ara.value;
+      ciz();
+      const yeni = el('view').querySelector('[data-act="plan-arama"]');
+      if (yeni) {
+        yeni.focus();
+        try { yeni.setSelectionRange(imlec, imlec); } catch (err) { /* desteklenmezse sorun değil */ }
+      }
+    }, 220);
   });
 
   document.addEventListener('change', async e => {
@@ -2323,9 +2418,18 @@
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { pencereKapat(); cekmeceKapat(); }
+    if (!e.target || !e.target.closest || !client) return;
     // Satır içi plan formunda Enter: maddeyi kaydeder, ödemede ilerletir.
-    const alan = e.target && e.target.closest ? e.target.closest('[data-plan-gir]') : null;
-    if (alan && e.key === 'Enter' && client) { e.preventDefault(); planGirEnter(alan); }
+    const alan = e.target.closest('[data-plan-gir]');
+    if (alan && e.key === 'Enter') { e.preventDefault(); planGirEnter(alan); return; }
+    // Düzenleme formunda Enter: kaydeder. Alanlar data-id taşımaz; satırdaki
+    // kaydet düğmesinden okunur ki id tek yerde kalsın.
+    const duzenle = e.target.closest('[data-plan-duzenle]');
+    if (duzenle && e.key === 'Enter') {
+      e.preventDefault();
+      const dugme = duzenle.closest('.plan-satir') && duzenle.closest('.plan-satir').querySelector('[data-act="plan-duzenle-kaydet"]');
+      planDuzenleKaydet(dugme ? dugme.dataset.id : '');
+    }
   });
   el('backdrop').onclick = cekmeceKapat;
   el('search').addEventListener('input', e => {

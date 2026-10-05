@@ -41,6 +41,36 @@
     return { toplam: gunun.length, bitti: gunun.filter(m => m.bitti).length };
   }
 
+  // Takvim hücresinin içindeki detaylar. Kare boş durmasın diye gün kısaca
+  // özetlenir: iş ilerlemesi, o günün ödeme tutarı ve ilk kaydın kısa metni.
+  // Not bir iş değildir ama varlığı önizlemede kendini gösterir.
+  function gunBilgi(maddeler, iso) {
+    const gunun = (maddeler || []).filter(m => m.gun === iso);
+    const isler = gunun.filter(m => m.tur === 'madde');
+    const odemeler = gunun.filter(m => m.tur === 'odeme');
+    const not = gunun.find(m => m.tur === 'not');
+    const isMetni = isler.map(m => m.metin).find(m => m && String(m).trim());
+    const odemeAdi = odemeler.map(o => o.marka || o.metin).find(m => m && String(m).trim());
+    const notMetni = not && not.metin && String(not.metin).trim() ? not.metin : '';
+    return {
+      isToplam: isler.length,
+      isBitti: isler.filter(m => m.bitti).length,
+      odemeToplam: odemeler.reduce((t, o) => t + Number(o.tutar || 0), 0),
+      odemeAdet: odemeler.length,
+      varNot: !!notMetni,
+      onizleme: isMetni || odemeAdi || notMetni || ''
+    };
+  }
+
+  // "2026-10-27" → "27 Ekim 2026 · Salı". UTC üzerinden okunur ki saat
+  // dilimi günü kaydırmasın (aylikIzgara ile aynı kural).
+  function gunEtiketi(iso) {
+    const p = String(iso || '').slice(0, 10).split('-').map(Number);
+    if (p.length !== 3 || !p[0] || !p[1] || !p[2]) return String(iso || '');
+    const d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+    return `${p[2]} ${AYLAR_ADI[p[1] - 1]} ${p[0]} · ${GUNLER[(d.getUTCDay() + 6) % 7]}`;
+  }
+
   // iso metinlerini gün ekleyerek kaydırır. Karşılaştırmalar da metin
   // üzerinden yapılabiliyor: YYYY-AA-GG'de sözlük sırası tarih sırasıyla aynı.
   function gunEkle(iso, gun) {
@@ -115,6 +145,106 @@
     return { toplam: liste.length, odendi: odendi, odenmedi: liste.length - odendi };
   }
 
+  // ---------- Ödeme takip özeti ----------
+  // Abonelikten beklenen ödemelerle elle girilen ödemeler tek listede
+  // birleştirilir. İki kaynak aynı ödemeyi gösterebilir (abonelik ödemesi
+  // işaretlenince plan_maddeleri'ne bir 'odeme' satırı düşer); bu yüzden
+  // gün + marka üzerinden tekilleştirilir, yoksa tutar iki kez sayılırdı.
+  function odemeKalemleri(D, maddeler, bugunIso, ileri, geri) {
+    const beklenen = yaklasanOdemeler(D || {}, bugunIso,
+      ileri == null ? 400 : ileri, geri == null ? 400 : geri);
+    const gorulen = {};
+    const liste = [];
+    beklenen.forEach(o => {
+      const durum = odemeDurumu(maddeler, o);
+      gorulen[o.iso + '|' + norm(o.marka)] = true;
+      liste.push({
+        iso: o.iso, marka: o.marka, tutar: Number(o.tutar || 0),
+        iptal: !!o.iptal, gecmis: !!o.gecmis,
+        bitti: durum === 'odendi', isaretli: durum !== null, kaynak: 'abonelik'
+      });
+    });
+    (maddeler || []).filter(x => x.tur === 'odeme').forEach(x => {
+      const marka = x.marka || x.metin || '—';
+      if (gorulen[x.gun + '|' + norm(marka)]) return; // aboneliğin aynası
+      liste.push({
+        iso: x.gun, marka: marka, tutar: Number(x.tutar || 0),
+        iptal: false, gecmis: x.gun < bugunIso,
+        bitti: !!x.bitti, isaretli: true, kaynak: 'elle'
+      });
+    });
+    return liste.sort((a, b) => (a.iso < b.iso ? -1 : a.iso > b.iso ? 1 : 0));
+  }
+
+  // Bir ayın ödeme özeti: tahsil edilen, bekleyen, gecikmiş. İptal edilmiş
+  // abonelikler hiçbir sayıma girmez — etiketli gösterilirler ama takip
+  // listesini şişirmesinler.
+  function aylikOzet(D, maddeler, yil, ay, bugunIso) {
+    const onek = yil + '-' + iki(ay);
+    const kalemler = odemeKalemleri(D, maddeler, bugunIso, 800, 800)
+      .filter(k => !k.iptal && k.iso.slice(0, 7) === onek);
+    const topla = l => l.reduce((t, k) => t + k.tutar, 0);
+    const tahsil = kalemler.filter(k => k.bitti);
+    const bekleyen = kalemler.filter(k => !k.bitti);
+    const gecikmis = bekleyen.filter(k => k.gecmis);
+    return {
+      adet: kalemler.length, toplam: topla(kalemler),
+      tahsil: topla(tahsil), tahsilAdet: tahsil.length,
+      bekleyen: topla(bekleyen), bekleyenAdet: bekleyen.length,
+      gecikmis: topla(gecikmis), gecikmisAdet: gecikmis.length
+    };
+  }
+
+  // Son n ayın tahsilat trendi: her ay için tahsil edilen ve bekleyen tutar.
+  // Geçmiş aylarda "bekleyen" pratikte tahsil edilmemiş demektir; yine de
+  // ayrı gösterilir, çünkü geç gelen bir ödeme kayda geçtiğinde ayın rengi
+  // değişir. Ölçek, en büyük sütunun tam genişlik olmasıyla kurulur.
+  function tahsilatTrendi(D, maddeler, bugunIso, aySayisi) {
+    const n = aySayisi || 12;
+    const parcalar = bugunIso.slice(0, 7).split('-');
+    const y0 = +parcalar[0], a0 = +parcalar[1];
+    const kalemler = odemeKalemleri(D, maddeler, bugunIso, 800, 800).filter(k => !k.iptal);
+    const aylar = [];
+    for (let i = n - 1; i >= 0; i--) {
+      let y = y0, a = a0 - i;
+      while (a < 1) { a += 12; y -= 1; }
+      const onek = y + '-' + iki(a);
+      const ayin = kalemler.filter(k => k.iso.slice(0, 7) === onek);
+      const tahsil = ayin.filter(k => k.bitti).reduce((t, k) => t + k.tutar, 0);
+      const bekleyen = ayin.filter(k => !k.bitti).reduce((t, k) => t + k.tutar, 0);
+      aylar.push({ onek: onek, yil: y, ay: a, etiket: AYLAR[a - 1].slice(0, 3), tahsil: tahsil, bekleyen: bekleyen });
+    }
+    const enBuyuk = aylar.reduce((m, x) => Math.max(m, x.tahsil, x.bekleyen), 0);
+    return {
+      aylar: aylar, enBuyuk: enBuyuk, yil: y0,
+      yilToplam: aylar.filter(x => x.yil === y0).reduce((t, x) => t + x.tahsil, 0)
+    };
+  }
+
+  // Bekleyen abonelik ödemesi filtreye uyuyor mu?
+  //  odendi   → yalnız ödendi işaretliler
+  //  odenmedi → yalnız "ödenmedi" işaretliler
+  //  gecikmis → günü geçmiş ve ödendi işaretlenmemiş olanlar
+  function kalemUyuyor(o, maddeler, filtre, bugunIso) {
+    if (filtre.q && !norm(o.marka).includes(filtre.q)) return false;
+    if (!filtre.durum) return true;
+    const durum = odemeDurumu(maddeler, o);
+    if (filtre.durum === 'odendi') return durum === 'odendi';
+    if (filtre.durum === 'odenmedi') return durum === 'odenmedi';
+    if (filtre.durum === 'gecikmis') return o.iso < bugunIso && durum !== 'odendi';
+    return true;
+  }
+
+  // Ödeme geçmişindeki bir satır filtreye uyuyor mu? Geçmişteki her satır
+  // zaten işaretlenmiştir; gecikmiş = ödenmemiş.
+  function gecmisUyuyor(g, filtre) {
+    if (filtre.q && !norm(g.marka).includes(filtre.q)) return false;
+    if (!filtre.durum) return true;
+    if (filtre.durum === 'odendi') return !!g.bitti;
+    if (filtre.durum === 'odenmedi' || filtre.durum === 'gecikmis') return !g.bitti;
+    return true;
+  }
+
   // Kullanıcıdan gelen her metin buradan geçer. Projedeki her dosyada
   // kendi yereli var; takvim de kendi kopyasını taşıyor.
   const esc = s => String(s == null ? '' : s)
@@ -123,9 +253,19 @@
 
   const para = n => Number(n || 0).toLocaleString('tr-TR');
 
+  // Marka eşleştirmesi ve arama harf büyüklüğünden bağımsız olmalı ("Chemex"
+  // ile "chemex" aynı). Türkçe küçültme yereli kullanılıyor; "İ"→"i" doğru
+  // çevrilsin diye varsayılan yerel yeterli değil.
+  const norm = v => String(v == null ? '' : v).trim().toLocaleLowerCase('tr');
+
   const AYLAR = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN',
     'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+  // Gün başlığı cümle içinde geçtiği için ay adı düz yazılır ("27 Ekim 2026").
+  const AYLAR_ADI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
   const HAFTA = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+  // Gün başlığında tam ad kullanılır: "27 Ekim 2026 · Salı".
+  const GUNLER = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
   // Katlanabilir bölüm. Katlıyken içerik hiç basılmaz — gizlenmiş DOM
   // değil, olmayan DOM; ekran da hafifler.
@@ -155,12 +295,28 @@
     </li>`;
   }
 
-  function odemeSatiri(o) {
+  // Ödeme satırı. duzenleId bu satırsa normal görünüm yerine yerinde açılan
+  // marka + tutar formu basılır. Tutarı sonradan değiştirebilmek önemli:
+  // havale eksik ya da geç geldiğinde kayıt gerçeği yansıtsın, yalnız ödendi
+  // işareti yeterli olmasın. Kaydedilemeyen (yerel) satırda düzenleme yoktur;
+  // orada zaten "tekrar dene" vardır.
+  function odemeSatiri(o, duzenleId) {
+    if (o.id === duzenleId) {
+      return `<li class="plan-satir odeme duzenliyor${o.hata ? ' hata' : ''}">
+        <input class="plan-gir" data-plan-duzenle="odeme-marka" type="text" autocomplete="off"
+          value="${esc(o.marka || o.metin || '')}" placeholder="Marka / açıklama">
+        <input class="plan-gir tutar" data-plan-duzenle="odeme-tutar" type="text" inputmode="decimal"
+          autocomplete="off" value="${esc(o.tutar == null ? '' : o.tutar)}" placeholder="Tutar ₺">
+        <button class="plan-kaydet" data-act="plan-duzenle-kaydet" data-id="${esc(o.id)}" type="button">kaydet</button>
+        <button class="plan-vazgec" data-act="plan-duzenle-kapat" type="button" aria-label="Vazgeç">×</button>
+      </li>`;
+    }
     return `<li class="plan-satir odeme${o.bitti ? ' bitti' : ''}${o.hata ? ' hata' : ''}">
       <button class="kutu" data-act="plan-isaret" data-id="${esc(o.id)}" type="button"
         aria-label="${o.bitti ? 'Ödenmedi işaretle' : 'Ödendi işaretle'}">${o.bitti ? '✓' : ''}</button>
       <span class="metin">${esc(o.marka || o.metin)}</span>
       <b class="tutar">${para(o.tutar)} ₺</b>
+      ${o.hata ? '' : `<button class="duzenle" data-act="plan-duzenle" data-id="${esc(o.id)}" type="button" aria-label="Düzenle">✎</button>`}
       <button class="sil" data-act="plan-sil" data-id="${esc(o.id)}" type="button" aria-label="Sil">×</button>
       ${hataSatiri(o)}
     </li>`;
@@ -209,21 +365,23 @@
   // Açık günün paneli. Her bölüm ayrı katlanır; eklenen her şey silinebilir.
   // yeniTur: açık olan satır içi ekleme formu ('madde' | 'odeme' | null).
   // beklenen: o güne abonelikten düşen, henüz işaretlenmemiş ödemeler.
-  function gunPaneli(iso, maddeler, katli, yeniTur, beklenen) {
+  // duzenleId: düzenlenen ödeme satırının id'si (yoksa null).
+  function gunPaneli(iso, maddeler, katli, yeniTur, beklenen, duzenleId) {
     const gunun = maddeler.filter(m => m.gun === iso);
     const isler = gunun.filter(m => m.tur === 'madde').sort((a, b) => (a.sira || 0) - (b.sira || 0));
     const odemeler = gunun.filter(m => m.tur === 'odeme').sort((a, b) => (a.sira || 0) - (b.sira || 0));
     const not = gunun.find(m => m.tur === 'not');
     const k = ad => katli.indexOf(ad) !== -1;
 
+    // Tarih başlığı artık gün sekmesinin üst şeridinde yazılır; burada
+    // yinelenmez, yalnız bölümler açılır.
     return `<div class="plan-gun-paneli" data-gun="${esc(iso)}">
-      <h3>${esc(iso)}</h3>
       ${bolum('maddeler', 'YAPILACAKLAR', `
         <ul class="plan-liste">${isler.map(maddeSatiri).join('')}</ul>
         ${ekleFormu('madde', iso, yeniTur)}
       `, k('maddeler'))}
       ${bolum('odemeler', 'ÖDEMELER', `
-        <ul class="plan-liste">${odemeler.map(odemeSatiri).join('')}${(beklenen || []).map(beklenenSatiri).join('')}</ul>
+        <ul class="plan-liste">${odemeler.map(o => odemeSatiri(o, duzenleId)).join('')}${(beklenen || []).map(beklenenSatiri).join('')}</ul>
         ${ekleFormu('odeme', iso, yeniTur)}
       `, k('odemeler'))}
       ${bolum('not', 'NOT', `
@@ -256,17 +414,29 @@
     const maddeler = (D && D.planItems) || [];
     const katli = s.planKatli || [];
 
+    // Hücre yalnız gün numarası değil, o güne dair kısa bir özet de taşır:
+    // iş ilerlemesi (rozet), toplam ödeme tutarı ve ilk kaydın metni. Böylece
+    // kareye bakınca ne olduğu anlaşılır; detayı görmek için içine girilir.
     const hucre = h => {
-      const o = gunOzeti(maddeler, h.iso);
+      const b = gunBilgi(maddeler, h.iso);
       const acik = s.planAcikGun === h.iso;
-      const rozet = o.toplam ? `<i class="rozet">${o.bitti}/${o.toplam}</i>` : '';
+      const rozet = b.isToplam ? `<i class="rozet">${b.isBitti}/${b.isToplam}</i>` : '';
+      const tutar = b.odemeToplam ? `<i class="h-tutar">${para(b.odemeToplam)} ₺</i>` : '';
+      const onizleme = b.onizleme ? `<span class="h-not">${esc(b.onizleme)}</span>` : '';
+      const alt = (tutar || onizleme) ? `<span class="hucre-alt">${tutar}${onizleme}</span>` : '';
+      const etiket = gunEtiketi(h.iso) + (b.isToplam ? ` · ${b.isBitti}/${b.isToplam} iş` : '')
+        + (b.odemeToplam ? ` · ${para(b.odemeToplam)} ₺` : '');
       return `<button class="plan-hucre${h.ayIcinde ? '' : ' disari'}${h.iso === bugun ? ' bugun' : ''}${acik ? ' acik' : ''}"
-        data-act="plan-gun" data-id="${h.iso}" type="button">
-        <span class="gun">${h.gunNo}</span>${rozet}
+        data-act="plan-gun" data-id="${h.iso}" type="button" aria-label="${esc(etiket)}">
+        <span class="hucre-ust"><span class="gun">${h.gunNo}</span>${rozet}</span>${alt}
       </button>`;
     };
 
-    const odemeler = yaklasanOdemeler(D || {}, bugun, 60);
+    // Ödeme listeleri marka araması ve durum süzgeciyle daraltılır. Süzgeç
+    // boşken tüm liste görünür, yani varsayılan davranış değişmez.
+    const filtre = { q: norm(s.planAra), durum: s.planDurum || '' };
+    const odemeler = yaklasanOdemeler(D || {}, bugun, 60)
+      .filter(o => kalemUyuyor(o, maddeler, filtre, bugun));
     // İşaret düğmesinin taşıdığı bilgi: gün, durum, marka (kodlanmış), tutar.
     // Marka içinde ':' geçebilir; encodeURIComponent bunun için şart.
     const durumId = (o, durum) => `${o.iso}:${durum}:${encodeURIComponent(o.marka)}:${o.tutar}`;
@@ -295,10 +465,18 @@
             </div>
           </li>`;
         }).join('')}</ul>`
-      : '<p class="bos">Önümüzdeki 60 günde ödemesi gelen abonelik yok.</p>';
+      : `<p class="bos">${(filtre.q || filtre.durum)
+        ? 'Filtreyle eşleşen bekleyen ödeme yok.'
+        : 'Önümüzdeki 60 günde ödemesi gelen abonelik yok.'}</p>`;
 
-    const gecmisListe = odemeGecmisi(maddeler);
-    const ozet = odemeOzeti(maddeler);
+    // Geçmiş listesi de aynı süzgeçten geçer; özet satırı filtrelenmiş
+    // listenin sayısını yazsın diye özet filtreden sonra hesaplanır.
+    const gecmisListe = odemeGecmisi(maddeler).filter(g => gecmisUyuyor(g, filtre));
+    const ozet = {
+      toplam: gecmisListe.length,
+      odendi: gecmisListe.filter(g => g.bitti).length
+    };
+    ozet.odenmedi = ozet.toplam - ozet.odendi;
     const gecmisSutun = gecmisListe.length
       ? `<div class="plan-gecmis">
         <p class="ozet">${ozet.toplam} kayıt · ${ozet.odendi} ödendi · ${ozet.odenmedi} ödenmedi</p>
@@ -310,34 +488,104 @@
             <i>${g.bitti ? 'ödendi' : 'ödenmedi'}</i>
           </li>`).join('')}</ul>
       </div>`
-      : '<p class="bos">Henüz işaretlenmiş ödeme yok. Yukarıdaki bir satırı “ödendi” ya da “ödenmedi” diye işaretle.</p>';
+      : `<p class="bos">${(filtre.q || filtre.durum)
+        ? 'Filtreyle eşleşen işaretli ödeme yok.'
+        : 'Henüz işaretlenmiş ödeme yok. Yukarıdaki bir satırı “ödendi” ya da “ödenmedi” diye işaretle.'}</p>`;
 
-    return `<div class="plan-sarmal">
-      <div class="plan-ana">
-        <div class="plan-ay-bas">
+    // Özet şeridi: görüntülenen ayın tahsil edilen, bekleyen ve gecikmiş
+    // tutarları. Abonelik kaydı bozuk/iptal olsa bile sayı uydurulmaz; iptal
+    // edilenler sayıma girmez.
+    const ayOzet = aylikOzet(D || {}, maddeler, yil, ay, bugun);
+    const ozetSeridi = `<div class="tiles plan-ozet">
+      <div class="tile gold"><span>TAHSİL EDİLEN</span><b>${para(ayOzet.tahsil)} ₺</b>
+        <small>${ayOzet.tahsilAdet} ödeme · ${AYLAR[ay - 1]} ${yil}</small></div>
+      <div class="tile"><span>BEKLEYEN</span><b>${para(ayOzet.bekleyen)} ₺</b>
+        <small>${ayOzet.bekleyenAdet} ödeme · bu ay</small></div>
+      <div class="tile${ayOzet.gecikmisAdet ? ' danger' : ''}"><span>GECİKMİŞ</span><b>${para(ayOzet.gecikmis)} ₺</b>
+        <small>${ayOzet.gecikmisAdet ? ayOzet.gecikmisAdet + ' ödeme · işaretlenmemiş' : 'gecikmiş ödeme yok'}</small></div>
+    </div>`;
+
+    // Filtre çubuğu ödeme listelerinin üstünde durur. Arama kutusu odak
+    // kaybetmesin diye girdi işleyicisi yeniden çizimden sonra odağı geri verir
+    // (bkz. radyo-yonetim.js).
+    const filtreCubugu = `<div class="plan-filtre">
+      <input class="plan-filtre-gir" data-act="plan-arama" type="text" autocomplete="off"
+        placeholder="Marka ara…" value="${esc(s.planAra || '')}">
+      ${[['', 'Tümü'], ['odendi', 'Ödendi'], ['odenmedi', 'Ödenmedi'], ['gecikmis', 'Gecikmiş']]
+        .map(x => `<button class="plan-filtre-btn${(s.planDurum || '') === x[0] ? ' secili' : ''}"
+          data-act="plan-durum" data-id="${x[0]}" type="button">${x[1]}</button>`).join('')}
+    </div>`;
+
+    // Tahsilat trendi: son 12 ayın tahsil edilen ve bekleyen tutarları. Ölçek
+    // en büyük sütuna göre kurulur, böylece çubuklar birbirine göre okunur.
+    const trend = tahsilatTrendi(D || {}, maddeler, bugun, 12);
+    const trendSutun = `<div class="plan-trend">
+      <p class="ozet">${trend.yil} yılında tahsil edilen: <b>${para(trend.yilToplam)} ₺</b></p>
+      <ul class="plan-trend-liste">${trend.aylar.map(t => {
+        const yuzde = trend.enBuyuk ? Math.round(t.tahsil / trend.enBuyuk * 100) : 0;
+        const bekYuzde = trend.enBuyuk ? Math.round(t.bekleyen / trend.enBuyuk * 100) : 0;
+        const simdi = t.onek === bugun.slice(0, 7);
+        return `<li${simdi ? ' class="simdi"' : ''}>
+          <span class="ay">${esc(t.etiket)}</span>
+          <span class="cubuk"><i style="width:${yuzde}%"></i><i class="bek" style="width:${bekYuzde}%"></i></span>
+          <b>${para(t.tahsil)} ₺</b>
+        </li>`;
+      }).join('')}</ul>
+    </div>`;
+
+    // Bir güne girildiğinde ay ızgarası yerine o günün sekmesi açılır: başlıkta
+    // geri düğmesi (aya dön) ve gün gün gezinme okları durur. Ay görünümünde ise
+    // ızgara basılır — hücrelerin içi artık detay taşır.
+    const acikGun = s.planAcikGun || null;
+    const govde = acikGun
+      ? `<div class="plan-gun-bas">
+          <button class="plan-geri" data-act="plan-gun-kapat" type="button">‹ ${esc(AYLAR[ay - 1] + ' ' + yil)}</button>
+          <b>${esc(gunEtiketi(acikGun))}</b>
+          <span class="plan-gun-kaydir">
+            <button data-act="plan-gun-kaydir" data-id="onceki" type="button" aria-label="Önceki gün">‹</button>
+            <button data-act="plan-gun-kaydir" data-id="sonraki" type="button" aria-label="Sonraki gün">›</button>
+          </span>
+        </div>
+        ${gunPaneli(acikGun, maddeler, katli, yeniTur(s), acikGunBeklenen(acikGun, D || {}, maddeler), s.planDuzenle || null)}`
+      : `<div class="plan-ay-bas">
           <button data-act="plan-ay" data-id="onceki" type="button" aria-label="Önceki ay">‹</button>
           <b>${AYLAR[ay - 1]} ${yil}</b>
           <button data-act="plan-ay" data-id="sonraki" type="button" aria-label="Sonraki ay">›</button>
         </div>
         <div class="plan-hafta">${HAFTA.map(g => `<span>${g}</span>`).join('')}</div>
-        <div class="plan-izgara">${aylikIzgara(yil, ay).map(hucre).join('')}</div>
-        ${s.planAcikGun ? gunPaneli(s.planAcikGun, maddeler, katli, yeniTur(s), acikGunBeklenen(s.planAcikGun, D || {}, maddeler)) : ''}
+        <div class="plan-izgara">${aylikIzgara(yil, ay).map(hucre).join('')}</div>`;
+
+    return `<div class="plan-sayfa">
+      ${ozetSeridi}
+      <div class="plan-sarmal">
+      <div class="plan-ana">
+        ${govde}
       </div>
       <aside class="plan-yan">
+        ${filtreCubugu}
         ${bolum('yaklasan', 'YAKLAŞAN ÖDEMELER', odemeSutun, katli.indexOf('yaklasan') !== -1)}
         ${bolum('gecmis', 'ÖDEME GEÇMİŞİ', gecmisSutun, katli.indexOf('gecmis') !== -1)}
+        ${bolum('trend', 'TAHSİLAT TRENDİ (12 AY)', trendSutun, katli.indexOf('trend') !== -1)}
       </aside>
+      </div>
     </div>`;
   }
 
   const api = {
     aylikIzgara: aylikIzgara,
     gunOzeti: gunOzeti,
+    gunBilgi: gunBilgi,
+    gunEtiketi: gunEtiketi,
     gunEkle: gunEkle,
     yaklasanOdemeler: yaklasanOdemeler,
     odemeDurumu: odemeDurumu,
     odemeGecmisi: odemeGecmisi,
     odemeOzeti: odemeOzeti,
+    odemeKalemleri: odemeKalemleri,
+    aylikOzet: aylikOzet,
+    tahsilatTrendi: tahsilatTrendi,
+    kalemUyuyor: kalemUyuyor,
+    gecmisUyuyor: gecmisUyuyor,
     takvimView: takvimView
   };
 

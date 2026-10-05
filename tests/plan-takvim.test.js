@@ -52,6 +52,41 @@ test('gün özeti yalnız maddeleri sayar, notu saymaz', () => {
   assert.deepEqual(P.gunOzeti(m, '2026-10-29'), { toplam: 0, bitti: 0 });
 });
 
+// ---------- Hücre detayı ve gün etiketi ----------
+// Kareler boş durmasın: günün iş ilerlemesi, ödeme tutarı ve ilk kaydın kısa
+// metni hücreye basılır. Detayı görmek için kareye tıklanıp güne girilir.
+
+test('gün bilgisi iş ilerlemesini, ödeme toplamını ve önizlemeyi verir', () => {
+  const m = [
+    { gun: '2026-10-27', tur: 'madde', metin: 'Fatura gönder', bitti: true },
+    { gun: '2026-10-27', tur: 'madde', metin: 'Liste güncelle', bitti: false },
+    { gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: false },
+    { gun: '2026-10-27', tur: 'not', metin: 'havale bekleniyor', bitti: false }
+  ];
+  const b = P.gunBilgi(m, '2026-10-27');
+  assert.equal(b.isToplam, 2);
+  assert.equal(b.isBitti, 1);
+  assert.equal(b.odemeToplam, 2000);
+  assert.equal(b.odemeAdet, 1);
+  assert.equal(b.varNot, true);
+  assert.equal(b.onizleme, 'Fatura gönder', 'ilk iş metni önizlenmeli');
+});
+
+test('gün bilgisi notu iş saymaz, yalnız önizlemede gösterir', () => {
+  const m = [{ gun: '2026-10-27', tur: 'not', metin: 'havale bekleniyor', bitti: false }];
+  const b = P.gunBilgi(m, '2026-10-27');
+  assert.equal(b.isToplam, 0);
+  assert.equal(b.odemeToplam, 0);
+  assert.equal(b.varNot, true);
+  assert.equal(b.onizleme, 'havale bekleniyor');
+});
+
+test('gün etiketi tarihi ve haftanın gününü yazar', () => {
+  assert.equal(P.gunEtiketi('2026-10-27'), '27 Ekim 2026 · Salı');
+  assert.equal(P.gunEtiketi('2026-10-05'), '5 Ekim 2026 · Pazartesi');
+  assert.equal(P.gunEtiketi(''), '');
+});
+
 // ---------- Yaklaşan ödemeler ----------
 // Aboneliklerden canlı okunur, plan_maddeleri'nde tutulmaz. Abonelik tarihi
 // değişince takvim de değişsin diye.
@@ -111,6 +146,32 @@ test('görünüm ayın günlerini ve rozeti basar', () => {
   assert.ok(h.includes('data-act="plan-gun"'));
   assert.ok(h.includes('data-id="2026-10-27"'));
   assert.ok(h.includes('1/2'));
+});
+
+test('ay görünümünde hücre içi detaylar basılır', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: false, metin: '', sira: 0 },
+    { id: 'p1', gun: '2026-10-27', tur: 'madde', metin: 'Fatura gönder', bitti: false, sira: 0 }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, D2, UI);
+  assert.ok(h.includes('plan-izgara'), 'ay görünümünde ızgara olmalı');
+  assert.ok(h.includes('h-tutar'), 'hücrede tutar etiketi olmalı');
+  assert.ok(h.includes('2.000 ₺'), 'tutar hücrede görünmeli');
+  assert.ok(h.includes('Fatura gönder'), 'ilk kaydın önizlemesi hücrede olmalı');
+});
+
+test('güne girilince ay ızgarası yerine gün sekmesi açılır', () => {
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, ile({ planItems: [] }), UI);
+  assert.ok(!h.includes('plan-izgara'), 'gün sekmesinde ay ızgarası basılmamalı');
+  assert.ok(h.includes('data-act="plan-gun-kapat"'), 'aya dön düğmesi olmalı');
+  assert.ok(h.includes('data-act="plan-gun-kaydir"'), 'gün gezinme düğmeleri olmalı');
+  assert.ok(h.includes('plan-gun-paneli'), 'gün paneli açılmalı');
+  assert.ok(h.includes('27 Ekim 2026 · Salı'), 'başlıkta tarih ve gün olmalı');
+});
+
+test('aya dön düğmesi ay adını taşır', () => {
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, ile({ planItems: [] }), UI);
+  assert.ok(h.includes('‹ EKİM 2026'), 'geri düğmesi hedef ayı yazmalı');
 });
 
 test('açık günün maddeleri ve notu görünür', () => {
@@ -357,6 +418,66 @@ test('işaretlenmiş ödeme yokken geçmiş bölümü yönlendirir, çökmez', (
   assert.ok(!h.includes('plan-gecmis-liste'));
 });
 
+// ---------- Satır düzenleme ----------
+// Ödeme satırının markası ve tutarı sonradan değiştirilebilir: havale eksik
+// ya da geç geldiğinde kayıt gerçeği yansıtsın. Kalem simgesi satırı yerinde
+// forma çevirir; düzenleme açıkken normal satır görünümü kaybolur.
+
+test('ödeme satırında düzenle düğmesi çıkar', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, D2, UI);
+  assert.ok(h.includes('data-act="plan-duzenle"'), 'düzenle düğmesi olmalı');
+  assert.ok(h.includes('aria-label="Düzenle"'));
+});
+
+test('düzenleme açıkken satır yerinde forma dönüşür', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 }
+  ] });
+  const h = P.takvimView(
+    { planYil: 2026, planAy: 10, planAcikGun: '2026-10-27', planDuzenle: 'o1' }, D2, UI);
+  assert.ok(h.includes('data-plan-duzenle="odeme-marka"'), 'marka alanı olmalı');
+  assert.ok(h.includes('data-plan-duzenle="odeme-tutar"'), 'tutar alanı olmalı');
+  assert.ok(h.includes('data-act="plan-duzenle-kaydet"'), 'kaydet düğmesi olmalı');
+  assert.ok(h.includes('data-act="plan-duzenle-kapat"'), 'vazgeç düğmesi olmalı');
+  assert.ok(/class="plan-satir[^"]*duzenliyor/.test(h), 'satır düzenleme hâlinde işaretlenmeli');
+  assert.ok(!h.includes('data-act="plan-duzenle"'), 'normal satır düğmesi basılmamalı');
+});
+
+test('düzenleme formu mevcut marka ve tutarı taşır', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 }
+  ] });
+  const h = P.takvimView(
+    { planYil: 2026, planAy: 10, planAcikGun: '2026-10-27', planDuzenle: 'o1' }, D2, UI);
+  assert.ok(/value="Chemex"/.test(h), 'marka alanı dolu gelmeli');
+  assert.ok(/value="2000"/.test(h), 'tutar alanı dolu gelmeli');
+});
+
+test('başka satır düzenlenirken bu satır normal kalır', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: false, metin: '', sira: 0 },
+    { id: 'o2', gun: '2026-10-27', tur: 'odeme', marka: 'Kira', tutar: 12500, bitti: false, metin: '', sira: 1 }
+  ] });
+  const h = P.takvimView(
+    { planYil: 2026, planAy: 10, planAcikGun: '2026-10-27', planDuzenle: 'o2' }, D2, UI);
+  assert.ok(/value="Kira"/.test(h), 'yalnız seçili satır form olmalı');
+  assert.ok(h.includes('data-act="plan-duzenle"'), 'diğer satırda düzenle düğmesi kalmalı');
+});
+
+test('kaydedilemeyen satırda düzenle düğmesi çıkmaz', () => {
+  // Böyle bir satırın gerçek id'si yok (yerel-…); düzenleme yanlış satıra
+  // yazardı. Orada zaten "tekrar dene" var.
+  const D2 = ile({ planItems: [
+    { id: 'yerel-2', gun: '2026-10-27', tur: 'odeme', marka: 'Elle Marka', tutar: 1800, bitti: false, metin: '', sira: 0, hata: 'ağ hatası' }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, D2, UI);
+  assert.ok(!h.includes('data-act="plan-duzenle"'), 'hata satırında düzenleme olmamalı');
+  assert.ok(h.includes('data-act="plan-tekrar"'));
+});
+
 // ---------- Panele bağlanma ----------
 // Takvimin gövdesi ayrı dosyada; panele yalnız birkaç satırla tanıtılıyor.
 // Bu testler o bağlantının kopmadığını kaynak üzerinden doğrular.
@@ -381,8 +502,26 @@ test('panel plan eylemlerini karşılıyor', () => {
   // plan-not bir tıklama değil, metin alanı: switch yerine yazma
   // dinleyicisinde seçiciyle yakalanıyor. Bu yüzden tırnak türüne
   // bakmıyoruz — önemli olan eylemin karşılanması.
-  ['plan-gun', 'plan-ay', 'plan-yeni', 'plan-yeni-kapat', 'plan-odeme-kaydet', 'plan-sil', 'plan-isaret', 'plan-katla', 'plan-odeme-durum', 'plan-not', 'plan-tekrar']
+  ['plan-gun', 'plan-gun-kapat', 'plan-gun-kaydir', 'plan-ay', 'plan-yeni', 'plan-yeni-kapat', 'plan-odeme-kaydet', 'plan-duzenle', 'plan-duzenle-kapat', 'plan-duzenle-kaydet', 'plan-sil', 'plan-isaret', 'plan-katla', 'plan-odeme-durum', 'plan-not', 'plan-tekrar']
     .forEach(act => assert.ok(panelKaynak.includes(act), act + ' işlenmeli'));
+});
+
+test('düzenleme kaydı marka ve tutarı birlikte yazar', () => {
+  // Satır düzenleme, işaret değişikliğinden farklı iki alan taşır. Güncelleme
+  // yazıcısı yalnız 'bitti' yazsaydı marka/tutar değişikliği sessizce düşerdi.
+  assert.ok(panelKaynak.includes('planDuzenleKaydet'), 'planDuzenleKaydet bulunmalı');
+  const m = panelKaynak.match(/async function planYazDene\([\s\S]*?\n  \}/);
+  assert.ok(m, 'planYazDene gövdesi bulunmalı');
+  assert.ok(/marka/.test(m[0]) && /tutar/.test(m[0]), 'güncelleme marka ve tutarı kapsamalı');
+  assert.ok(/'marka' in veri|'tutar' in veri|a in veri/.test(m[0]), 'yalnız gönderilen alanlar yazılmalı');
+});
+
+test('düzenleme formunda Enter kaydeder', () => {
+  // Alanlar data-id taşımaz; id satırdaki kaydet düğmesinden okunur.
+  const m = panelKaynak.match(/document\.addEventListener\('keydown'[\s\S]*?\n  \}\);/);
+  assert.ok(m, 'keydown dinleyicisi bulunmalı');
+  assert.ok(m[0].includes('data-plan-duzenle'), 'düzenleme alanı yakalanmalı');
+  assert.ok(/planDuzenleKaydet/.test(m[0]), 'Enter planDuzenleKaydet çağırmalı');
 });
 
 test('plan ekleme tarayıcı prompt() penceresi kullanmaz', () => {
@@ -471,4 +610,138 @@ test('günde tek not veritabanında da tek: kısmi tekil indeks var', () => {
   // tekil indeks bunu veritabanında garanti eder.
   const sql = fs.readFileSync(require.resolve('../supabase/plan-takvimi.sql'), 'utf8');
   assert.match(sql, /create unique index if not exists plan_maddeleri_gunluk_not_idx[\s\S]*?where tur = 'not'/);
+});
+
+// ---------- Ödeme takip özeti ----------
+// Abonelikten gelen ödeme işaretlenince plan_maddeleri'ne bir 'odeme' satırı
+// düşer. İki kaynak aynı ödemeyi gösterdiği için tutar iki kez sayılmamalı:
+// özet şeridinde "2.000" iki kere toplanırsa tahsilat yanlış okunur.
+
+test('ödeme kalemleri abonelik ve elle satırı tekilleştirir', () => {
+  const m = [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 },
+    { id: 'x', gun: '2026-10-10', tur: 'odeme', marka: 'Başka', tutar: 500, bitti: false, metin: '', sira: 0 }
+  ];
+  const k = P.odemeKalemleri(DD, m, '2026-10-05', 400, 400);
+  const chemex = k.filter(x => x.marka === 'Chemex');
+  assert.equal(chemex.length, 1, 'abonelik ödemesi iki kez sayılmamalı');
+  assert.equal(chemex[0].bitti, true, 'işaret elle satırdan okunmalı');
+  assert.equal(chemex[0].kaynak, 'abonelik');
+  assert.ok(k.some(x => x.marka === 'Başka' && x.kaynak === 'elle'));
+});
+
+// Aynı markanın farklı günlerdeki iki ödemesi ayrı kalem kalmalı; tekilleştirme
+// yalnız gün + marka aynıyken devreye girer.
+test('farklı gün aynı marka iki ayrı kalem', () => {
+  const m = [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 },
+    { id: 'o2', gun: '2026-11-27', tur: 'odeme', marka: 'Chemex', tutar: 1800, bitti: false, metin: '', sira: 0 }
+  ];
+  const k = P.odemeKalemleri(DD, m, '2026-10-05', 400, 400).filter(x => x.marka === 'Chemex');
+  assert.equal(k.length, 2);
+});
+
+test('aylık özet tahsil/bekleyen/gecikmişi sayar', () => {
+  const m = [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 },
+    { id: 'o2', gun: '2026-10-01', tur: 'odeme', marka: 'Elle', tutar: 500, bitti: false, metin: '', sira: 0 }
+  ];
+  const o = P.aylikOzet(DD, m, 2026, 10, '2026-10-05');
+  assert.equal(o.tahsil, 2000);
+  assert.equal(o.tahsilAdet, 1);
+  assert.equal(o.bekleyen, 500);
+  assert.equal(o.gecikmis, 500, 'günü geçmiş ödenmemiş ödeme gecikmiş sayılmalı');
+  assert.equal(o.gecikmisAdet, 1);
+});
+
+// Kasım ayında Chemex'in 27 Ekim tahsilatı sayılmamalı: şerit her ay için ayrı.
+test('aylık özet yalnız o ayın kalemlerini toplar', () => {
+  const m = [{ id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 }];
+  const o = P.aylikOzet(DD, m, 2026, 11, '2026-10-05');
+  assert.equal(o.tahsil, 0);
+  assert.equal(o.gecikmis, 0);
+});
+
+test('iptal edilmiş abonelik özet sayımına girmez', () => {
+  const o = P.aylikOzet(DD, [], 2026, 11, '2026-10-05');
+  // Kasım'da yalnız iptal edilmiş starbucks aboneliği var: hiçbir tutar sayılmaz.
+  assert.equal(o.toplam, 0);
+  assert.equal(o.bekleyen, 0);
+});
+
+// ---------- Tahsilat trendi ----------
+
+test('tahsilat trendi son 12 ayı üretir ve yıl toplamını verir', () => {
+  const m = [{ id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 }];
+  const t = P.tahsilatTrendi(DD, m, '2026-10-05', 12);
+  assert.equal(t.aylar.length, 12);
+  assert.equal(t.aylar[11].onek, '2026-10'); // en yeni ay en sonda
+  assert.equal(t.aylar[11].tahsil, 2000);
+  assert.equal(t.yil, 2026);
+  assert.equal(t.yilToplam, 2000);
+  assert.ok(t.enBuyuk >= 2000, 'ölçek en büyük sütuna göre kurulmalı');
+});
+
+test('trend yıl sınırını aşar, ocak aralık sırası bozulmaz', () => {
+  const t = P.tahsilatTrendi(DD, [], '2026-02-10', 12);
+  assert.equal(t.aylar[0].onek, '2025-03');
+  assert.equal(t.aylar[11].onek, '2026-02');
+});
+
+// ---------- Filtre ----------
+
+test('durum süzgeci ödendi/ödenmedi/gecikmiş ayırır', () => {
+  const o = { iso: '2026-10-27', marka: 'Chemex', tutar: 2000 };
+  const mOdendi = [{ gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', bitti: true }];
+  const mOdenmedi = [{ gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', bitti: false }];
+  assert.equal(P.kalemUyuyor(o, mOdendi, { q: '', durum: 'odendi' }, '2026-10-05'), true);
+  assert.equal(P.kalemUyuyor(o, mOdendi, { q: '', durum: 'odenmedi' }, '2026-10-05'), false);
+  assert.equal(P.kalemUyuyor(o, mOdenmedi, { q: '', durum: 'odenmedi' }, '2026-10-05'), true);
+  // Gecikmiş: günü geçmiş ve ödendi işaretlenmemiş.
+  const gecmis = { iso: '2026-09-20', marka: 'Chemex', tutar: 2000 };
+  assert.equal(P.kalemUyuyor(gecmis, [], { q: '', durum: 'gecikmis' }, '2026-10-05'), true);
+  assert.equal(P.kalemUyuyor(o, [], { q: '', durum: 'gecikmis' }, '2026-10-05'), false);
+  // Marka araması harf büyüklüğünden bağımsız.
+  assert.equal(P.kalemUyuyor(o, [], { q: 'chem', durum: '' }, '2026-10-05'), true);
+  assert.equal(P.kalemUyuyor(o, [], { q: 'yok', durum: '' }, '2026-10-05'), false);
+});
+
+test('geçmiş süzgeci ödenen ve ödenmeyeni ayırır', () => {
+  assert.equal(P.gecmisUyuyor({ marka: 'A', bitti: true }, { q: '', durum: 'odendi' }), true);
+  assert.equal(P.gecmisUyuyor({ marka: 'A', bitti: true }, { q: '', durum: 'odenmedi' }), false);
+  assert.equal(P.gecmisUyuyor({ marka: 'A', bitti: false }, { q: '', durum: 'gecikmis' }), true);
+  assert.equal(P.gecmisUyuyor({ marka: 'Beta', bitti: true }, { q: 'bet', durum: '' }), true);
+});
+
+// ---------- Görünüm: özet, filtre, trend ----------
+
+test('özet şeridi, filtre çubuğu ve trend bölümü basılır', () => {
+  const m = [{ id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 }];
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, ile({ planItems: m }), UI);
+  assert.ok(/class="tiles plan-ozet"/.test(h), 'özet şeridi olmalı');
+  assert.ok(h.includes('TAHSİL EDİLEN'));
+  assert.ok(h.includes('GECİKMİŞ'));
+  assert.ok(h.includes('TAHSİLAT TRENDİ (12 AY)'));
+  assert.ok(h.includes('data-act="plan-arama"'), 'arama kutusu olmalı');
+  assert.ok(h.includes('data-act="plan-durum"'), 'durum süzgeci olmalı');
+});
+
+test('durum süzgeci listeyi daraltır ve filtre boş mesajını basar', () => {
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planDurum: 'odendi' }, ile({ planItems: [] }), UI);
+  // Chemex (27 Ekim) henüz işaretlenmemiş: "ödendi" süzgecinde görünmemeli.
+  assert.ok(!h.includes('Chemex'), 'işaretlenmemiş ödeme ödendi süzgecinde olmamalı');
+  assert.ok(h.includes('Filtreyle eşleşen bekleyen ödeme yok'));
+});
+
+test('marka araması listeyi süzer', () => {
+  const h0 = P.takvimView({ planYil: 2026, planAy: 10 }, ile({ planItems: [] }), UI);
+  assert.ok(h0.includes('starbucks'), 'süzgeçsiz listede ikinci marka görünmeli');
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAra: 'chem' }, ile({ planItems: [] }), UI);
+  assert.ok(h.includes('Chemex'));
+  assert.ok(!h.includes('starbucks'));
+});
+
+test('panel ödeme süzgeci ve araması eylemlerini karşılıyor', () => {
+  assert.ok(panelKaynak.includes('plan-durum'), 'durum süzgeci işlenmeli');
+  assert.ok(panelKaynak.includes('plan-arama'), 'arama kutusu işlenmeli');
 });

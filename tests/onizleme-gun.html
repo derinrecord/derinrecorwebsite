@@ -1,3 +1,10 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — gün sekmesi</title>
+<style>
 /* Radyo Yönetim Paneli — görsel dil.
  *
  * NEDEN TEK DOSYA: eski panelde stillerin bir kısmı JavaScript içine satır içi
@@ -583,3 +590,215 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 }
 
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+body{background:#0b0b0d;padding:22px;display:block}
+.view{max-width:1120px;margin:0 auto}
+</style>
+</head>
+<body><div class="view"><div class="plan-sayfa">
+      <div class="tiles plan-ozet">
+      <div class="tile gold"><span>TAHSİL EDİLEN</span><b>14.500 ₺</b>
+        <small>2 ödeme · EKİM 2026</small></div>
+      <div class="tile"><span>BEKLEYEN</span><b>1.850 ₺</b>
+        <small>1 ödeme · bu ay</small></div>
+      <div class="tile"><span>GECİKMİŞ</span><b>0 ₺</b>
+        <small>gecikmiş ödeme yok</small></div>
+    </div>
+      <div class="plan-sarmal">
+      <div class="plan-ana">
+        <div class="plan-gun-bas">
+          <button class="plan-geri" data-act="plan-gun-kapat" type="button">‹ EKİM 2026</button>
+          <b>27 Ekim 2026 · Salı</b>
+          <span class="plan-gun-kaydir">
+            <button data-act="plan-gun-kaydir" data-id="onceki" type="button" aria-label="Önceki gün">‹</button>
+            <button data-act="plan-gun-kaydir" data-id="sonraki" type="button" aria-label="Sonraki gün">›</button>
+          </span>
+        </div>
+        <div class="plan-gun-paneli" data-gun="2026-10-27">
+      <section class="plan-bolum">
+      <button class="plan-bolum-bas" data-act="plan-katla" data-id="maddeler" type="button">
+        <span class="ok">▾</span>YAPILACAKLAR
+      </button>
+      <div class="plan-bolum-ic">
+        <ul class="plan-liste"><li class="plan-satir bitti">
+      <button class="kutu" data-act="plan-isaret" data-id="m1" type="button"
+        aria-label="Yapılmadı işaretle">✓</button>
+      <span class="metin">Chemex faturasını gönder</span>
+      <button class="sil" data-act="plan-sil" data-id="m1" type="button" aria-label="Sil">×</button>
+      
+    </li><li class="plan-satir">
+      <button class="kutu" data-act="plan-isaret" data-id="m2" type="button"
+        aria-label="Yapıldı işaretle"></button>
+      <span class="metin">Kasım listesini güncelle</span>
+      <button class="sil" data-act="plan-sil" data-id="m2" type="button" aria-label="Sil">×</button>
+      
+    </li></ul>
+        <button class="plan-ekle" data-act="plan-yeni"
+        data-id="madde:2026-10-27" type="button">+ madde ekle</button>
+      </div>
+    </section>
+      <section class="plan-bolum">
+      <button class="plan-bolum-bas" data-act="plan-katla" data-id="odemeler" type="button">
+        <span class="ok">▾</span>ÖDEMELER
+      </button>
+      <div class="plan-bolum-ic">
+        <ul class="plan-liste"><li class="plan-satir odeme bitti">
+      <button class="kutu" data-act="plan-isaret" data-id="o1" type="button"
+        aria-label="Ödenmedi işaretle">✓</button>
+      <span class="metin">Chemex</span>
+      <b class="tutar">2.000 ₺</b>
+      <button class="duzenle" data-act="plan-duzenle" data-id="o1" type="button" aria-label="Düzenle">✎</button>
+      <button class="sil" data-act="plan-sil" data-id="o1" type="button" aria-label="Sil">×</button>
+      
+    </li></ul>
+        <button class="plan-ekle" data-act="plan-yeni"
+        data-id="odeme:2026-10-27" type="button">+ ödeme ekle</button>
+      </div>
+    </section>
+      <section class="plan-bolum">
+      <button class="plan-bolum-bas" data-act="plan-katla" data-id="not" type="button">
+        <span class="ok">▾</span>NOT
+      </button>
+      <div class="plan-bolum-ic">
+        <textarea class="plan-not" data-act="plan-not" data-id="2026-10-27"
+          placeholder="Bu güne dair not…">Havale bekleniyor, dekont istendi.</textarea>
+      </div>
+    </section>
+    </div>
+      </div>
+      <aside class="plan-yan">
+        <div class="plan-filtre">
+      <input class="plan-filtre-gir" data-act="plan-arama" type="text" autocomplete="off"
+        placeholder="Marka ara…" value="">
+      <button class="plan-filtre-btn secili"
+          data-act="plan-durum" data-id="" type="button">Tümü</button><button class="plan-filtre-btn"
+          data-act="plan-durum" data-id="odendi" type="button">Ödendi</button><button class="plan-filtre-btn"
+          data-act="plan-durum" data-id="odenmedi" type="button">Ödenmedi</button><button class="plan-filtre-btn"
+          data-act="plan-durum" data-id="gecikmis" type="button">Gecikmiş</button>
+    </div>
+        <section class="plan-bolum">
+      <button class="plan-bolum-bas" data-act="plan-katla" data-id="yaklasan" type="button">
+        <span class="ok">▾</span>YAKLAŞAN ÖDEMELER
+      </button>
+      <div class="plan-bolum-ic"><ul class="plan-odeme-liste"><li class="odendi">
+            <i class="kutu odendi" aria-hidden="true">✓</i>
+            <span class="t">2026-10-27</span>
+            <span class="m">Chemex</span>
+            <b>2.000 ₺</b>
+            
+            
+            <div class="plan-durum">
+              <button class="d-odendi secili" type="button"
+                data-act="plan-odeme-durum" data-id="2026-10-27:odendi:Chemex:2000">ödendi</button>
+              <button class="d-odenmedi" type="button"
+                data-act="plan-odeme-durum" data-id="2026-10-27:odenmedi:Chemex:2000">ödenmedi</button>
+            </div>
+          </li><li class="iptal">
+            <i class="kutu" aria-hidden="true"></i>
+            <span class="t">2026-11-28</span>
+            <span class="m">starbucks</span>
+            <b>2.000 ₺</b>
+            <small>iptal edilmiş</small>
+            
+            <div class="plan-durum">
+              <button class="d-odendi" type="button"
+                data-act="plan-odeme-durum" data-id="2026-11-28:odendi:starbucks:2000">ödendi</button>
+              <button class="d-odenmedi" type="button"
+                data-act="plan-odeme-durum" data-id="2026-11-28:odenmedi:starbucks:2000">ödenmedi</button>
+            </div>
+          </li></ul></div>
+    </section>
+        <section class="plan-bolum">
+      <button class="plan-bolum-bas" data-act="plan-katla" data-id="gecmis" type="button">
+        <span class="ok">▾</span>ÖDEME GEÇMİŞİ
+      </button>
+      <div class="plan-bolum-ic"><div class="plan-gecmis">
+        <p class="ozet">4 kayıt · 2 ödendi · 2 ödenmedi</p>
+        <ul class="plan-gecmis-liste">
+          <li class="odendi">
+            <span class="t">2026-10-27</span>
+            <span class="m">Chemex</span>
+            <b>2.000 ₺</b>
+            <i>ödendi</i>
+          </li>
+          <li class="odenmedi">
+            <span class="t">2026-10-12</span>
+            <span class="m">Ekipman — mikser</span>
+            <b>1.850 ₺</b>
+            <i>ödenmedi</i>
+          </li>
+          <li class="odendi">
+            <span class="t">2026-10-05</span>
+            <span class="m">Kira</span>
+            <b>12.500 ₺</b>
+            <i>ödendi</i>
+          </li>
+          <li class="odenmedi">
+            <span class="t">2026-09-20</span>
+            <span class="m">Uzak</span>
+            <b>6.000 ₺</b>
+            <i>ödenmedi</i>
+          </li></ul>
+      </div></div>
+    </section>
+        <section class="plan-bolum">
+      <button class="plan-bolum-bas" data-act="plan-katla" data-id="trend" type="button">
+        <span class="ok">▾</span>TAHSİLAT TRENDİ (12 AY)
+      </button>
+      <div class="plan-bolum-ic"><div class="plan-trend">
+      <p class="ozet">2026 yılında tahsil edilen: <b>14.500 ₺</b></p>
+      <ul class="plan-trend-liste"><li>
+          <span class="ay">KAS</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:0%"></i></span>
+          <b>0 ₺</b>
+        </li><li>
+          <span class="ay">ARA</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:0%"></i></span>
+          <b>0 ₺</b>
+        </li><li>
+          <span class="ay">OCA</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:0%"></i></span>
+          <b>0 ₺</b>
+        </li><li>
+          <span class="ay">ŞUB</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:0%"></i></span>
+          <b>0 ₺</b>
+        </li><li>
+          <span class="ay">MAR</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:0%"></i></span>
+          <b>0 ₺</b>
+        </li><li>
+          <span class="ay">NİS</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:0%"></i></span>
+          <b>0 ₺</b>
+        </li><li>
+          <span class="ay">MAY</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:0%"></i></span>
+          <b>0 ₺</b>
+        </li><li>
+          <span class="ay">HAZ</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:0%"></i></span>
+          <b>0 ₺</b>
+        </li><li>
+          <span class="ay">TEM</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:0%"></i></span>
+          <b>0 ₺</b>
+        </li><li>
+          <span class="ay">AĞU</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:0%"></i></span>
+          <b>0 ₺</b>
+        </li><li>
+          <span class="ay">EYL</span>
+          <span class="cubuk"><i style="width:0%"></i><i class="bek" style="width:41%"></i></span>
+          <b>0 ₺</b>
+        </li><li class="simdi">
+          <span class="ay">EKİ</span>
+          <span class="cubuk"><i style="width:100%"></i><i class="bek" style="width:13%"></i></span>
+          <b>14.500 ₺</b>
+        </li></ul>
+    </div></div>
+    </section>
+      </aside>
+      </div>
+    </div></div></body>
+</html>

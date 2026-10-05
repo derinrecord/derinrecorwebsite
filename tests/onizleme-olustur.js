@@ -499,9 +499,10 @@ if (senaryo === 'kabuk') {
   const gomulu = oku('radyo-panel-prova.html')
     .replace(/(href)="auth\.css(?:\?[^"]*)?"/, '$1="data:text/css;base64,' + Buffer.from(oku('auth.css')).toString('base64') + '"')
     .replace(/(href)="radyo-panel\.css(?:\?[^"]*)?"/, '$1="data:text/css;base64,' + Buffer.from(oku('radyo-panel.css')).toString('base64') + '"')
-    .replace(/<script src="radyo-panel-views\.js(?:\?[^"]*)?"><\/script>/, '<script>\n' + oku('radyo-panel-views.js') + '\n</script>');
+    .replace(/<script src="radyo-panel-views\.js(?:\?[^"]*)?"><\/script>/, '<script>\n' + oku('radyo-panel-views.js') + '\n</script>')
+    .replace(/<script src="plan-takvim\.js(?:\?[^"]*)?"><\/script>/, '<script>\n' + oku('plan-takvim.js') + '\n</script>');
   // Gömme sessizce boşa düşerse önizleme stilsiz/boş açılır; bunun yerine dur.
-  ['auth.css', 'radyo-panel.css', 'radyo-panel-views.js'].forEach(dis => {
+  ['auth.css', 'radyo-panel.css', 'radyo-panel-views.js', 'plan-takvim.js'].forEach(dis => {
     if (new RegExp('(?:href|src)="' + kacir(dis)).test(gomulu)) {
       throw new Error(dis + ' gömülmedi: prova sayfasının etiketi değişmiş, onizleme-olustur.js kabuk modunu güncelleyin');
     }
@@ -608,6 +609,64 @@ if (senaryo === 'harmonik') {
   if (!gomulu.includes('DerinAudioTypes')) throw new Error('audio-file-types.js gömülmedi');
   fs.writeFileSync(ciktiYolu, gomulu);
   console.log(path.relative(kok, ciktiYolu) + ' yazıldı · harmonik set önizlemesi');
+  return;
+}
+
+// "plan", "plan-gun" ve "plan-duzenle" modları Ödeme Takip Takvimi'ni
+// (Plan → Takvim) örnek verilerle önizler. "plan" ay ızgarasını ve hücre içi
+// detayları, "plan-gun" bir kareye girilince açılan gün sekmesini, "plan-duzenle"
+// ise bir ödeme satırının yerinde düzenleme formunu gösterir. Takvim statiktir
+// (tıklama yok); amaç yerleşimin ve renklerin gözle doğrulanması.
+if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle') {
+  const P = require(path.join(kok, 'plan-takvim.js'));
+  const simdi = Date.parse('2026-10-05T09:00:00Z');
+  const D = {
+    brands: [{ id: 'b1', name: 'Chemex' }, { id: 'b2', name: 'starbucks' }, { id: 'b3', name: 'Uzak' }],
+    plans: [
+      { id: 'tek', monthly_price: 2000, per_branch: false },
+      { id: 'zincir', monthly_price: 1500, per_branch: true }
+    ],
+    subscriptions: [
+      { id: 's1', brand_id: 'b1', plan_id: 'tek', branch_count: 1, current_end: '2026-10-27T00:00:00Z', canceled_at: null },
+      { id: 's2', brand_id: 'b2', plan_id: 'tek', branch_count: 1, current_end: '2026-11-28T00:00:00Z', canceled_at: '2026-09-26T00:00:00Z' },
+      { id: 's3', brand_id: 'b3', plan_id: 'zincir', branch_count: 4, current_end: '2027-05-01T00:00:00Z', canceled_at: null }
+    ],
+    // Kareler boş kalmasın: birkaç güne iş, ödeme ve not serpiştirilir ki hücre
+    // içi detaylar (tutar + ilk kaydın önizlemesi) gözle doğrulanabilsin.
+    planItems: [
+      { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 },
+      { id: 'o2', gun: '2026-09-20', tur: 'odeme', marka: 'Uzak', tutar: 6000, bitti: false, metin: '', sira: 0 },
+      { id: 'o3', gun: '2026-10-12', tur: 'odeme', marka: 'Ekipman — mikser', tutar: 1850, bitti: false, metin: '', sira: 0 },
+      { id: 'o4', gun: '2026-10-05', tur: 'odeme', marka: 'Kira', tutar: 12500, bitti: true, metin: '', sira: 0 },
+      { id: 'm1', gun: '2026-10-27', tur: 'madde', metin: 'Chemex faturasını gönder', bitti: true, sira: 0 },
+      { id: 'm2', gun: '2026-10-27', tur: 'madde', metin: 'Kasım listesini güncelle', bitti: false, sira: 1 },
+      { id: 'm3', gun: '2026-10-15', tur: 'madde', metin: 'Yeni şube sözleşmesi', bitti: false, sira: 0 },
+      { id: 'm4', gun: '2026-10-20', tur: 'madde', metin: 'Radyo jingle yenile', bitti: true, sira: 0 },
+      { id: 'n1', gun: '2026-10-27', tur: 'not', metin: 'Havale bekleniyor, dekont istendi.', bitti: false, sira: 0 }
+    ]
+  };
+  const ui = { now: () => simdi };
+  const acikGun = senaryo === 'plan' ? null : '2026-10-27';
+  const duzenle = senaryo === 'plan-duzenle' ? 'o1' : null;
+  const state = { nav: 'plan', sub: 'takvim', planYil: 2026, planAy: 10, planAcikGun: acikGun, planDuzenle: duzenle, planKatli: [] };
+  const govde = P.takvimView(state, D, ui);
+  const baslik = senaryo === 'plan' ? 'ödeme takip takvimi' : (senaryo === 'plan-duzenle' ? 'satır düzenleme' : 'gün sekmesi');
+  const sayfa = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — ${baslik}</title>
+<style>
+${oku('radyo-panel.css')}
+body{background:#0b0b0d;padding:22px;display:block}
+.view{max-width:1120px;margin:0 auto}
+</style>
+</head>
+<body><div class="view">${govde}</div></body>
+</html>`;
+  fs.writeFileSync(ciktiYolu, sayfa);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · ' + baslik);
   return;
 }
 
