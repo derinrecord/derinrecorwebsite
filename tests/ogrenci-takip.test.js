@@ -309,74 +309,69 @@ test('işareti ve ödemesi olmayan öğrencide çip çıkmaz', () => {
   assert.ok(!h.includes('ogr-cip'));
 });
 
-// ---------- Takvime bağlanma ----------
+// ---------- Panele bağlanma: Plan → Öğrenciler ----------
 
 const P = require('../plan-takvim.js');
+const V = require('../radyo-panel-views.js');
 const UI = { now: () => Date.parse('2026-10-05T09:00:00Z') };
-global.window = Object.assign(global.window || {}, { DerinOgrenci: O });
+global.window = Object.assign(global.window || {}, { DerinOgrenci: O, DerinPlan: P });
 
-test('takvim görünümü öğrenci kayıtlarını ikinci takvime taşır', () => {
-  const D = {
-    brands: [], plans: [], subscriptions: [], planItems: [],
-    ogrenciler: [OGR], ogrenciKayitlari: KAYIT
-  };
-  const ay = P.takvimView({ planYil: 2026, planAy: 10 }, D, UI);
+const ogrenciSayfasi = (ek, D) => V.gorunum(Object.assign({
+  nav: 'plan', sub: 'ogrenciler', openFolder: null, openBrand: null, openPlaylist: null, q: ''
+}, ek || {}), Object.assign({
+  brands: [], folders: [], tracks: [], players: [], broadcast: [], announcements: [],
+  playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [],
+  requests: [], olaylar: [], kurulum: {}
+}, D || {}), UI).html;
+
+test('öğrenci sayfası kayıtları takvime ve listeye taşır', () => {
+  const D = { planItems: [], ogrenciler: [OGR], ogrenciKayitlari: KAYIT };
+  const ay = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 10 }, D);
   assert.ok(ay.includes('Elif Yılmaz'));
-  assert.ok(ay.includes('2.000 ₺ ödendi'), 'ödeme özeti takvimde görünmeli');
+  assert.ok(ay.includes('2.000 ₺ ödendi'), 'ödeme özeti listede görünmeli');
   assert.ok(ay.includes('data-act="ogrenci-detay"'), 'satır açılabilmeli');
-  // Gün hücresi yoklama durumunu taşır: 6 Ekim'de gelmeyen var.
+  // Gün kutusu yoklama durumunu taşır: 6 Ekim'de gelmeyen var.
   assert.ok(ay.includes('data-act="ogrenci-gun" data-id="2026-10-06"'));
   assert.ok(ay.includes('eksik'), 'gelmeyen gün kutuda işaretlenmeli');
   // Gün paneli ancak güne basılınca açılır ve öğrenci başına işaret taşır.
   assert.ok(!ay.includes('data-act="ogrenci-katilim"'), 'gün seçilmeden yoklama basılmamalı');
-  const gun = P.takvimView({ planYil: 2026, planAy: 10, ogrenciGun: '2026-10-06' }, D, UI);
-  assert.ok(gun.includes('data-id="o1:2026-10-06:gelmedi"'), 'gün yoklaması takvimden erişilebilmeli');
+  const gun = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 10, ogrenciGun: '2026-10-06' }, D);
+  assert.ok(gun.includes('data-id="o1:2026-10-06:gelmedi"'), 'gün yoklaması sayfadan erişilebilmeli');
 });
 
-test('gün paneli ikinci takvimin ayına göre açılır', () => {
-  const D = {
-    brands: [], plans: [], subscriptions: [], planItems: [],
-    ogrenciler: [OGR], ogrenciKayitlari: KAYIT
-  };
-  // Marka takvimi ekimde kalırken öğrenci takvimi eylüle bakar.
-  const h = P.takvimView({ planYil: 2026, planAy: 10, ogrenciYil: 2026, ogrenciAy: 9,
-    ogrenciGun: '2026-09-30' }, D, UI);
-  assert.ok(h.includes('Eylül 2026'), 'öğrenci takvimi kendi ayını göstermeli');
-  assert.ok(h.includes('EKİM 2026'), 'marka takvimi kendi ayında kalmalı');
+test('gün paneli seçilen ayın gününü açar', () => {
+  const D = { planItems: [], ogrenciler: [OGR], ogrenciKayitlari: KAYIT };
+  const h = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 9, ogrenciGun: '2026-09-30' }, D);
+  assert.ok(h.includes('Eylül 2026'), 'seçilen ay gösterilmeli');
   assert.ok(h.includes('30 Eylül 2026 · Çar'), 'gün paneli seçilen günü yazmalı');
-  // 30 Eylül kaydı (k4) o günün yoklamasında görünmeli: ay sınırı yoklama
-  // tarafında da tutarlı — kayıt hangi aydaysa o günün panelinde çıkar.
+  // 30 Eylül kaydı (k4) o günün yoklamasında görünmeli: kayıt hangi aydaysa
+  // o günün panelinde çıkar.
   assert.ok(h.includes('data-id="o1:2026-09-30:geldi"'), 'o günün işareti gün panelinde olmalı');
   assert.ok(h.includes('1/1 işaretli'));
 });
 
-test('kayıt tablosu yokken ikinci takvim yine çalışır', () => {
-  const D = {
-    brands: [], plans: [], subscriptions: [], planItems: [],
-    ogrenciler: [OGR]
-  };
-  const h = P.takvimView({ planYil: 2026, planAy: 10, ogrenciGun: '2026-10-06' }, D, UI);
+test('kayıt tablosu yokken sayfa yine çalışır', () => {
+  const h = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 10, ogrenciGun: '2026-10-06' },
+    { planItems: [], ogrenciler: [OGR] });
   assert.ok(h.includes('Elif Yılmaz'));
   assert.ok(h.includes('data-act="ogrenci-katilim"'), 'gün yoklaması işaretsiz de basılmalı');
   assert.ok(h.includes('Henüz işaret yok'));
   assert.ok(h.includes('data-act="ogrenci-gun" data-id="2026-10-05"'), 'ızgara bozulmamalı');
-  assert.ok(h.includes('data-act="plan-gun"'), 'marka takvim ızgarası bozulmamalı');
 });
 
 // ---------- Panele bağlanma ----------
 
 const panelKaynak = fs.readFileSync(require.resolve('../radyo-yonetim.js'), 'utf8');
 
-test('ikinci takvimin ürettiği her eylem panelde karşılanır', () => {
+test('öğrenci sayfasının ürettiği her eylem panelde karşılanır', () => {
   // Ekranda basılan her düğmenin panelde bir karşılığı olmalı: eksik bir
   // case düğmeyi sessizce ölü bırakır (basılır, hiçbir şey olmaz).
-  const D = {
-    brands: [], plans: [], subscriptions: [], planItems: [],
+  const h = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 10, ogrenciGun: '2026-10-06',
+    ogrenciAcik: 'o1' }, {
+    planItems: [],
     ogrenciler: [{ id: 'o1', ad: 'Elif', veli: '', telefon: '', notlar: '' }],
     ogrenciKayitlari: KAYIT
-  };
-  const h = P.takvimView({ planYil: 2026, planAy: 10, ogrenciGun: '2026-10-06',
-    ogrenciAcik: 'o1' }, D, UI);
+  });
   const eylemler = [...new Set((h.match(/data-act="([a-z-]+)"/g) || [])
     .map(m => m.slice(10, -1)))];
   assert.ok(eylemler.length >= 8, 'ikinci takvim birkaç eylem üretmeli: ' + eylemler.length);

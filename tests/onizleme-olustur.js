@@ -702,7 +702,13 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
     state.ogrenciOdak = 'borc';
     state.ogrenciAcik = 'og2';
   }
-  const govde = P.takvimView(state, D, ui);
+  // Öğrenci senaryoları Plan → Öğrenciler sayfasının gövdesini basar (marka
+  // takvimi ayrı sayfada kaldı); plan senaryoları marka takvimini.
+  const O = require(path.join(kok, 'ogrenciler.js'));
+  const govde = ogrenciMi
+    ? O.ogrenciTakvimi(D.ogrenciler, D.ogrenciKayitlari, state,
+      { yil: state.ogrenciYil, ay: state.ogrenciAy, bugun: '2026-10-05' })
+    : P.takvimView(state, D, ui);
   const baslik = senaryo === 'plan' ? 'ödeme takip takvimi'
     : (senaryo === 'plan-duzenle' ? 'satır düzenleme'
       : (senaryo === 'ogrenci' ? 'öğrenci · yoklama ve ödeme'

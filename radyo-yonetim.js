@@ -415,6 +415,10 @@
     state.nav = temel.nav;
     state.sub = temel.sub;
     state.openFolder = state.openBrand = state.openPlaylist = null;
+    // Plan bölümünün iki sayfası aynı adres ailesinde yaşar: #/plan/takvim ve
+    // #/plan/ogrenciler. İkinci yol burada okunmazsa sayfa sessizce takvime
+    // düşerdi (menü işareti yanlış yerde kalırdı).
+    if (sayfa === 'plan' && id === 'ogrenciler') state.sub = 'ogrenciler';
     if (sayfa === 'klasorler' && id) state.openFolder = id;
     else if (sayfa === 'markalar' && id) {
       state.openBrand = id;
@@ -449,7 +453,7 @@
     if (state.sub === 'abonelikler') return '#/abonelikler';
     if (state.sub === 'talepler') return '#/talepler';
     if (state.nav === 'kurulum') return '#/kurulum';
-    if (state.nav === 'plan') return '#/plan/takvim';
+    if (state.nav === 'plan') return state.sub === 'ogrenciler' ? '#/plan/ogrenciler' : '#/plan/takvim';
     return '#/markalar';
   }
 
@@ -1542,9 +1546,11 @@
         // İkinci takvimin ayı ayrı tutulur. Henüz seçilmediyse marka takvimiyle
         // başlar; ama buradan sonra bağımsız yürür. Ay değişince açık gün
         // kapanır — yoksa panel görünmeyen bir günü gösterirdi.
+        // Varsayılan ay, ekranda görünen ayla aynı kaynaktan gelir (bugün).
+        // Marka takviminin ayına bağlanmaz: iki sayfa artık bağımsız.
         const simdi = new Date();
-        let y = state.ogrenciYil || state.planYil || simdi.getUTCFullYear();
-        let a = state.ogrenciAy || state.planAy || (simdi.getUTCMonth() + 1);
+        let y = state.ogrenciYil || simdi.getUTCFullYear();
+        let a = state.ogrenciAy || (simdi.getUTCMonth() + 1);
         a += (id === 'onceki' ? -1 : 1);
         if (a < 1) { a = 12; y -= 1; } else if (a > 12) { a = 1; y += 1; }
         state.ogrenciYil = y;

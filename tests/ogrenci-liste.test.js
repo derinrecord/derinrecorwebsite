@@ -97,56 +97,98 @@ test('kullanıcı girdisi kaçışlı basılır', () => {
   assert.ok(h.includes('&lt;img'), 'kaçışlı basılmalı');
 });
 
-// ---------- Takvime bağlanma ----------
-// Öğrenciler marka takviminin yan panelinde bir klasör DEĞİL; marka
-// takviminin altında ikinci bir takvim. Bu testler iki işin karışmadığını
-// doğrular: öğrenci bölümü marka panellerinin içinde görünmemeli.
+// ---------- Panele bağlanma: Plan → Öğrenciler ----------
+// Öğrenci takibi marka takviminin yan panelinde bir klasör ya da altında bir
+// bölüm DEĞİL: Plan bölümünün ikinci sayfası (menüde "Takvim"in altında kendi
+// satırı). Bu testler iki işin ayrı kaldığını doğrular.
 
 const P = require('../plan-takvim.js');
+const V = require('../radyo-panel-views.js');
 const UI = { now: () => Date.parse('2026-10-05T09:00:00Z') };
 
-// takvimView modülü window üzerinden okur; node'da pencere yok, burada kurulur.
-global.window = Object.assign(global.window || {}, { DerinOgrenci: O });
+// Modüller pencere üzerinden okunur; node'da pencere yok, burada kurulur.
+global.window = Object.assign(global.window || {}, { DerinOgrenci: O, DerinPlan: P });
 
-test('öğrenci takvimi marka takviminin altında ayrı bölüm olarak basılır', () => {
-  const D = { brands: [], plans: [], subscriptions: [], planItems: [], ogrenciler: [] };
-  const h = P.takvimView({ planYil: 2026, planAy: 10 }, D, UI);
-  assert.ok(h.includes('class="ogr-takvim"'), 'ikinci takvim bölümü olmalı');
-  assert.ok(h.includes('<h3>ÖĞRENCİLER</h3>'), 'bölüm başlığı olmalı');
-  assert.ok(h.includes('data-act="ogrenci-ay"'), 'ikinci takvimin kendi ay okları olmalı');
-  assert.ok(h.includes('data-act="ogrenci-gun"'), 'gün hücreleri basılmalı');
-  assert.ok(h.includes('data-act="ogrenci-ara"'), 'listede arama olmalı');
-  assert.ok(h.includes('data-act="ogrenci-yeni"'), 'listede ekleme olmalı');
-  // Sıra: öğrenci takvimi marka ızgarasından SONRA gelir.
-  assert.ok(h.indexOf('class="ogr-takvim"') > h.indexOf('class="plan-izgara"'),
-    'öğrenci takvimi marka ızgarasının altında olmalı');
+const temelD = ek => Object.assign({
+  brands: [], folders: [], tracks: [], players: [], broadcast: [], announcements: [],
+  playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [],
+  requests: [], olaylar: [], planItems: [], kurulum: {}
+}, ek || {});
+
+const planDurum = ek => Object.assign({
+  nav: 'plan', sub: 'takvim', openFolder: null, openBrand: null, openPlaylist: null, q: ''
+}, ek || {});
+
+test("Plan menüsünde Takvim'in altında Öğrenciler satırı var", () => {
+  // Yan menü ayrı çizilir (radyo-yonetim.js nav'ı kendi yuvasına basar).
+  const h = V.nav(planDurum(), {
+    players: 0, folders: 0, announcements: 0, brands: 0, playlists: 0, requests: 0, olaySorun: 0
+  }, { ad: 'Derin Record', alt: 'yonetici@ornek.test', basHarf: 'DR' });
+  assert.ok(h.includes('data-nav="plan" data-sub="takvim"'), 'Takvim satırı olmalı');
+  assert.ok(h.includes('data-nav="plan" data-sub="ogrenciler"'), 'Öğrenciler satırı olmalı');
+  assert.ok(h.indexOf('data-sub="ogrenciler"') > h.indexOf('data-sub="takvim"'),
+    'Öğrenciler satırı Takvim’in altında durmalı');
+  assert.ok(h.includes('Yoklama, borç ve ödeme'), 'menü satırı sayfanın içeriğini söylemeli');
+  // Yalnız görünen sayfa işaretlenir: iki plan satırı birden seçili görünmemeli.
+  assert.equal(h.split('nav-item active').length - 1, 1);
 });
 
-test('öğrenci bölümü marka yan panelinin dışında kalır', () => {
-  const D = { brands: [], plans: [], subscriptions: [], planItems: [], ogrenciler: [] };
-  const h = P.takvimView({ planYil: 2026, planAy: 10 }, D, UI);
-  const yan = h.slice(h.indexOf('<aside class="plan-yan">'), h.indexOf('</aside>'));
-  assert.ok(yan.includes('Marka ara'), 'yan panel marka paneli olarak kalmalı');
-  assert.ok(!yan.includes('ÖĞRENCİLER'), 'marka panelinde öğrenci bölümü olmamalı');
+test('Öğrenciler sayfası açıkken menüde o satır işaretlenir', () => {
+  const h = V.nav(planDurum({ sub: 'ogrenciler' }), {
+    players: 0, folders: 0, announcements: 0, brands: 0, playlists: 0, requests: 0, olaySorun: 0
+  }, { ad: 'Derin Record', alt: 'yonetici@ornek.test', basHarf: 'DR' });
+  const aktif = h.match(/nav-item active"[^>]*data-sub="([a-z]+)"/);
+  assert.ok(aktif, 'bir satır işaretli olmalı');
+  assert.equal(aktif[1], 'ogrenciler', 'işaret Öğrenciler satırında olmalı');
+});
+
+test('Plan → Öğrenciler sayfası öğrenci takvimini basar', () => {
+  const D = temelD({
+    ogrenciler: [{ id: 'o1', ad: 'Elif', veli: 'Ayşe', telefon: '0531', notlar: '' }],
+    ogrenciKayitlari: [{ id: 'k1', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-01', durum: 'geldi' }]
+  });
+  const h = V.gorunum(planDurum({ sub: 'ogrenciler' }), D, UI).html;
+  assert.ok(h.includes('class="ogr-takvim"'), 'öğrenci takvimi basılmalı');
+  assert.ok(h.includes('data-act="ogrenci-ay"'), 'ay okları olmalı');
+  assert.ok(h.includes('data-act="ogrenci-gun"'), 'gün kutuları olmalı');
+  assert.ok(h.includes('data-act="ogrenci-ara"'), 'listede arama olmalı');
+  assert.ok(h.includes('data-act="ogrenci-yeni"'), 'listede ekleme olmalı');
+  assert.ok(h.includes('Elif'), 'öğrenci listesi basılmalı');
+  assert.ok(!h.includes('class="plan-izgara"'), 'marka takvimi bu sayfada olmamalı');
+  assert.ok(!h.includes('YAKLAŞAN ÖDEMELER'), 'marka ödeme panelleri bu sayfada olmamalı');
+});
+
+test('Plan → Takvim sayfasında öğrenci bölümü kalmaz', () => {
+  const h = V.gorunum(planDurum({ planYil: 2026, planAy: 10 }), temelD(), UI).html;
+  assert.ok(h.includes('class="plan-izgara"'), 'marka takvimi basılmalı');
+  assert.ok(h.includes('YAKLAŞAN ÖDEMELER'), 'marka panelleri yerinde kalmalı');
+  assert.ok(!h.includes('ogr-takvim'), 'öğrenci takvimi bu sayfada olmamalı');
+  assert.ok(!h.includes('ÖĞRENCİLER'), 'öğrenci başlığı bu sayfada olmamalı');
+  assert.ok(!h.includes('data-act="ogrenci-ara"'), 'öğrenci araması bu sayfada olmamalı');
   assert.ok(!h.includes('data-act="plan-katla" data-id="ogrenciler"'),
     'öğrenciler katlanabilir marka klasörü olmamalı');
 });
 
-test('öğrenci takviminin ayı marka takviminden bağımsız yürür', () => {
-  const D = { brands: [], plans: [], subscriptions: [], planItems: [],
-    ogrenciler: [{ id: '1', ad: 'Elif', veli: '', telefon: '', notlar: '' }] };
-  const h = P.takvimView({ planYil: 2026, planAy: 10, ogrenciYil: 2026, ogrenciAy: 11 }, D, UI);
-  assert.ok(h.includes('Kasım 2026'), 'öğrenci takvimi kendi ayını göstermeli');
-  assert.ok(h.includes('EKİM 2026'), 'marka takvimi kendi ayında kalmalı');
-  assert.ok(h.includes('Elif'), 'öğrenci listesi basılmalı');
-  assert.ok(h.includes('data-id="2026-11-01"'), 'ızgara öğrenci ayının günlerini basmalı');
+test('öğrenci sayfası ilk açılışta içinde bulunulan ayı gösterir', () => {
+  const h = V.gorunum(planDurum({ sub: 'ogrenciler' }), temelD(), UI).html;
+  // Kurgu tarihi 5 Ekim 2026: seçim yoksa ekim ayı basılır.
+  assert.ok(h.includes('Ekim 2026'), 'varsayılan ay bugünün ayı olmalı');
+  assert.ok(h.includes('data-id="2026-10-05"'), 'bugünün kutusu ızgarada olmalı');
 });
 
-test('öğrenci verisi yokken ikinci takvim boş açılır, marka takvimi çalışır', () => {
-  const h = P.takvimView({ planYil: 2026, planAy: 10 }, { brands: [], plans: [], subscriptions: [] }, UI);
-  assert.ok(h.includes('class="ogr-takvim"'), 'bölüm yine de basılmalı');
-  assert.ok(h.includes('data-act="plan-gun"'), 'marka takvim ızgarası çalışmalı');
+test('öğrenci takviminin ayı marka takviminden bağımsız yürür', () => {
+  const D = temelD({ ogrenciler: [{ id: 'o1', ad: 'Elif', veli: '', telefon: '', notlar: '' }] });
+  const h = V.gorunum(planDurum({ sub: 'ogrenciler', ogrenciYil: 2026, ogrenciAy: 11 }), D, UI).html;
+  assert.ok(h.includes('Kasım 2026'), 'seçilen ay gösterilmeli');
+  assert.ok(h.includes('data-id="2026-11-01"'), 'ızgara o ayın günlerini basmalı');
+  assert.ok(!h.includes('data-id="2026-10-05"'), 'başka ayın kutusu basılmamalı');
+});
+
+test('öğrenci verisi yokken sayfa boş açılır, çöker değil', () => {
+  const h = V.gorunum(planDurum({ sub: 'ogrenciler' }), temelD(), UI).html;
+  assert.ok(h.includes('class="ogr-takvim"'), 'sayfa yine de basılmalı');
   assert.ok(h.includes('Henüz öğrenci yok.'), 'boş liste yol göstermeli');
+  assert.ok(h.includes('data-act="ogrenci-gun"'), 'ızgara çalışmalı');
 });
 
 // ---------- Panele bağlanma ----------
@@ -166,6 +208,18 @@ test('panel öğrenci eylemlerini karşılıyor', () => {
     'ogrenci-duzenle-kapat', 'ogrenci-duzenle-kaydet', 'ogrenci-sil', 'ogrenci-tekrar',
     'ogrenci-ara']
     .forEach(act => assert.ok(panelKaynak.includes(act), act + ' işlenmeli'));
+});
+
+test('öğrenci sayfası adres çözücüye ve menü adresine bağlı', () => {
+  // #/plan/ogrenciler adresi tanınmazsa sayfa sessizce marka takvimine düşer.
+  assert.ok(panelKaynak.includes("if (sayfa === 'plan' && id === 'ogrenciler') state.sub = 'ogrenciler';"),
+    'adres çözücü ikinci takvim yolunu tanımalı');
+  assert.ok(panelKaynak.includes("return state.sub === 'ogrenciler' ? '#/plan/ogrenciler' : '#/plan/takvim';"),
+    'menü işareti doğru adrese dönmeli');
+  const views = fs.readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
+  assert.ok(views.includes("'plan/ogrenciler'"), 'sayfa başlığı tabloda olmalı');
+  assert.ok(views.includes("state.sub === 'ogrenciler' ? ogrenciView") || views.includes("if (state.sub === 'ogrenciler')"),
+    'görünüm öğrenci sayfasını çizmeli');
 });
 
 test('ekleme iyimser: kayıt düşerse satır hata ile ekranda kalır', () => {

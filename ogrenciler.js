@@ -10,15 +10,15 @@
 // çıkmaz. Böylece node testleriyle doğrudan sınanabiliyor (bkz.
 // plan-takvim.js — aynı kalıp).
 //
-// YER: marka takviminin yanındaki ödeme panelleri kahve markalarına aittir;
-// öğrenci işi onlara karışmaz. Öğrenciler Plan sayfasında marka takviminin
-// ALTINDA kendi bölümünde durur: solda ay ızgarası, sağında öğrenci listesi
-// (ad · veli · telefon) ve ödemeler. Marka panelindeki "Marka ara" süzgeci,
-// yaklaşan ödemeler ve tahsilat trendi bu bölümle hiçbir şey paylaşmaz.
+// YER: Plan bölümünün İKİNCİ sayfası — panel menüsünde "Takvim"in altında
+// kendi satırı vardır (Plan → Öğrenciler). Marka takvimi ve kahve markası
+// ödemeleri ayrı sayfada kalır; öğrenci işi onlarla aynı ekranı paylaşmaz.
+// Sayfada solda ay ızgarası, sağında öğrenci listesi (ad · veli · telefon)
+// ve o öğrencinin ödemeleri durur.
 //
-// Ay BAĞIMSIZDIR: ikinci takvimin ay okları marka takvimini kaydırmaz; yoksa
-// "öğrencilerin ekim ayı" marka takvimini de ekime çekerdi. Bu yüzden ay
-// durumu ayrı tutulur (state.ogrenciYil / state.ogrenciAy).
+// Ay BAĞIMSIZDIR: bu sayfanın ay okları marka takviminin ayını kaydırmaz.
+// Ay durumu ayrı tutulur (state.ogrenciYil / state.ogrenciAy); sayfa ilk
+// açıldığında içinde bulunulan ay gösterilir.
 //
 // Veri plan_maddeleri'nden bağımsızdır (supabase/ogrenciler.sql).
 (() => {
@@ -475,13 +475,12 @@
       .map(h => ogrHucre(h, tam, kayitListesi, durum, ayar)).join('');
     return `<section class="ogr-takvim">
       <div class="ogr-takvim-bas">
-        <h3>ÖĞRENCİLER</h3>
         <span class="ogr-takvim-ay">
           <button data-act="ogrenci-ay" data-id="onceki" type="button" aria-label="Önceki ay">‹</button>
           <b>${esc(AYLAR_ADI[ayar.ay - 1] + ' ' + ayar.yil)}</b>
           <button data-act="ogrenci-ay" data-id="sonraki" type="button" aria-label="Sonraki ay">›</button>
         </span>
-        <p class="ogr-ipucu">Marka takviminden bağımsız aydır.</p>
+        <p class="ogr-ipucu">Güne bas: o günün yoklaması</p>
       </div>
       <div class="ogr-takvim-sarmal">
         <div class="ogr-takvim-ana">

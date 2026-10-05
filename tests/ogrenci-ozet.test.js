@@ -251,40 +251,52 @@ test('birden çok açık kayıt sayısıyla birlikte yazılır', () => {
   assert.ok(h.includes('2 kayıt'));
 });
 
-// ---------- Takvime bağlanma ----------
+// ---------- Panele bağlanma: Plan → Öğrenciler ----------
+// Özet ve süzgeçler öğrenci sayfasında yaşar; marka takvimi sayfasında
+// öğrenciye dair hiçbir şey basılmaz.
 
 const P = require('../plan-takvim.js');
+const V = require('../radyo-panel-views.js');
 const UI = { now: () => Date.parse('2026-10-05T09:00:00Z') };
-global.window = Object.assign(global.window || {}, { DerinOgrenci: O });
+global.window = Object.assign(global.window || {}, { DerinOgrenci: O, DerinPlan: P });
 
-test('takvim klasör özetini öğrenci verisinden hesaplar', () => {
-  const D = {
-    brands: [], plans: [], subscriptions: [], planItems: [],
-    ogrenciler: OGRENCILER, ogrenciKayitlari: KAYIT
-  };
-  const h = P.takvimView({ planYil: 2026, planAy: 10 }, D, UI);
-  assert.ok(h.includes('ogr-toplam'), 'ay özeti takvimde görünmeli');
+const ogrenciSayfasi = ek => V.gorunum(Object.assign({
+  nav: 'plan', sub: 'ogrenciler', openFolder: null, openBrand: null, openPlaylist: null, q: ''
+}, ek || {}), {
+  brands: [], folders: [], tracks: [], players: [], broadcast: [], announcements: [],
+  playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [],
+  requests: [], olaylar: [], planItems: [], kurulum: {},
+  ogrenciler: OGRENCILER, ogrenciKayitlari: KAYIT
+}, UI).html;
+
+test('sayfa ay özetini öğrenci verisinden hesaplar', () => {
+  const h = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 10 });
+  assert.ok(h.includes('ogr-toplam'), 'ay özeti sayfada görünmeli');
   assert.ok(h.includes('2.000 ₺ tahsil'));
   assert.ok(h.includes('900 ₺ devir'));
   assert.ok(h.includes('Gelmedi ≥ 3 <b>1</b>'));
 });
 
-test('takvim ayı değişince özet de o aya döner', () => {
-  const D = {
-    brands: [], plans: [], subscriptions: [], planItems: [],
-    ogrenciler: OGRENCILER, ogrenciKayitlari: KAYIT
-  };
-  const h = P.takvimView({ planYil: 2026, planAy: 9 }, D, UI);
-  assert.ok(h.includes('Eylül 2026'));
+test('ay değişince özet de o aya döner, marka takvimi etkilenmez', () => {
+  const h = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 9, planYil: 2026, planAy: 10 });
+  assert.ok(h.includes('Eylül 2026'), 'öğrenci ayı seçileni göstermeli');
   assert.ok(!h.includes('2.000 ₺ tahsil'), 'Ekim tahsilatı Eylül özetine girmemeli');
+  // Marka sayfası kendi ayında kalır: aynı durumda takvim ekimi gösterir.
+  const marka = V.gorunum({ nav: 'plan', sub: 'takvim', planYil: 2026, planAy: 10,
+    openFolder: null, openBrand: null, openPlaylist: null, q: '' }, {
+    brands: [], folders: [], tracks: [], players: [], broadcast: [], announcements: [],
+    playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [],
+    requests: [], olaylar: [], planItems: [], kurulum: {}
+  }, UI).html;
+  assert.ok(marka.includes('EKİM 2026'));
+  // Marka sayfasında öğrenciye dair tek iz olmamalı: ay özeti satırı ve
+  // öğrenci listesi yalnız öğrenci sayfasında yaşar.
+  assert.ok(!marka.includes('ogr-toplam'), 'öğrenci ay özeti marka sayfasına sızmamalı');
+  assert.ok(!/öğrenci/i.test(marka), 'marka sayfası öğrenciden söz etmemeli');
 });
 
-test('süzgeç durumu takvimden geçer', () => {
-  const D = {
-    brands: [], plans: [], subscriptions: [], planItems: [],
-    ogrenciler: OGRENCILER, ogrenciKayitlari: KAYIT
-  };
-  const h = P.takvimView({ planYil: 2026, planAy: 10, ogrenciOdak: 'gelmedi' }, D, UI);
+test('süzgeç durumu sayfadan geçer', () => {
+  const h = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 10, ogrenciOdak: 'gelmedi' });
   assert.ok(h.includes('data-id="gelmedi"'));
   assert.ok(h.includes('ogr-odak secili'));
   assert.ok(!h.includes('Elif Yılmaz'), 'süzgeç dışı öğrenci satırı basılmamalı');

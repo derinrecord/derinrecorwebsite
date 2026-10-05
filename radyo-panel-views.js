@@ -861,7 +861,7 @@
       canli: ['subeler'],
       icerik: ['klasorler', 'anonslar'],
       musteri: ['markalar', 'abonelikler', 'talepler'],
-      plan: ['takvim'],
+      plan: ['takvim', 'ogrenciler'],
       kurulum: ['kurulum']
     };
     const aktifMi = (nav, sub) => state.nav === nav
@@ -875,6 +875,7 @@
       </button>`;
     const ikonlar = {
       plan: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>',
+      ogrenci: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0114 0"/></svg>',
       canli: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.6"/><path d="M6.2 6.2a8 8 0 000 11.6M17.8 17.8a8 8 0 000-11.6"/></svg>',
       klasor: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>',
       anons: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
@@ -906,6 +907,7 @@
 
         <div class="nav-title">PLAN</div>
         ${oge('plan', 'takvim', 'Takvim', 'Günlük plan, notlar, ödemeler', null, ikonlar.plan)}
+        ${oge('plan', 'ogrenciler', 'Öğrenciler', 'Yoklama, borç ve ödeme', null, ikonlar.ogrenci)}
 
         <div class="nav-title">SİSTEM</div>
         ${oge('kurulum', 'kurulum', 'Kurulum durumu', 'Veritabanı ve özellikler', null, ikonlar.kurulum, counts.kurulumEksik)}
@@ -929,6 +931,7 @@
     'musteri/abonelikler': ['Abonelikler', 'Paketler, deneme ve lisans süreleri'],
     'musteri/talepler': ['Talepler', 'Kahve markalarından gelen başvurular'],
     'plan/takvim': ['Takvim', 'Günlük planlar, notlar ve yaklaşan ödemeler'],
+    'plan/ogrenciler': ['Öğrenciler', 'Gün gün yoklama, borç ve ödeme takibi'],
     'kurulum/kurulum': ['Kurulum durumu', 'Panelin hangi özellikleri açık; eksik SQL dosyaları tek ekranda']
   };
   const ALT_SEKME = { klasorler: 'Yayın klasörleri', anonslar: 'Anonslar' };
@@ -2222,8 +2225,11 @@
       return kabuk(sekmeler(state, D) + govde);
     }
     if (state.nav === 'kurulum') return kabuk(kurulumView(state, D, ui));
-    // Takvimin gövdesi plan-takvim.js'te; panel yalnızca çağırır.
+    // Takvimin gövdesi plan-takvim.js'te, öğrenci takvimininki ogrenciler.js'te;
+    // panel yalnızca çağırır. İki ayrı sayfa: marka işi ile öğrenci işi aynı
+    // ekranda karışmaz (menüde de ayrı satır).
     if (state.nav === 'plan') {
+      if (state.sub === 'ogrenciler') return kabuk(ogrenciView(state, D, ui));
       const P = (typeof window !== 'undefined' && window.DerinPlan) || null;
       return kabuk(P ? P.takvimView(state, D, ui)
         : '<p class="bos">Takvim modülü yüklenemedi (plan-takvim.js).</p>');
@@ -2235,6 +2241,23 @@
     else if (state.sub === 'talepler') govde = talepListesi(state, D, ui);
     else govde = markaListesi(state, D, ui);
     return kabuk(sekmeler(state, D) + govde);
+  }
+
+  // Öğrenci takvimi: Plan bölümünün ikinci sayfası. Gövde ogrenciler.js'te
+  // (plan-takvim.js ile aynı kalıp). Ay durumu panelde tutulur ve marka
+  // takviminden bağımsızdır; burada yalnız varsayılan ay kurulur — panel
+  // henüz bir ay seçmediyse içinde bulunulan ay gösterilir.
+  function ogrenciView(state, D, ui) {
+    const O = (typeof window !== 'undefined' && window.DerinOgrenci) || null;
+    if (!O) return '<p class="bos">Öğrenci modülü yüklenemedi (ogrenciler.js).</p>';
+    const s = state || {};
+    const simdi = ui && ui.now ? ui.now() : Date.now();
+    const bugun = new Date(simdi).toISOString().slice(0, 10);
+    return O.ogrenciTakvimi((D && D.ogrenciler) || [], (D && D.ogrenciKayitlari) || [], s, {
+      yil: s.ogrenciYil || +bugun.slice(0, 4),
+      ay: s.ogrenciAy || +bugun.slice(5, 7),
+      bugun: bugun
+    });
   }
 
   // ---------- Çekmece (şube detayı) ----------

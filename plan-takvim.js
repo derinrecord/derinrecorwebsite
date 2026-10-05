@@ -533,16 +533,9 @@
       }).join('')}</ul>
     </div>`;
 
-    // İkinci takvim: öğrenciler. Marka takviminin ALTINDA basılır ve kendi
-    // ayını taşır. Yan paneldeki ödeme panelleri kahve markalarına aittir;
-    // öğrenci işi onlara karışmaz, o yüzden ayrı bir bölüm ve ayrı ay durumu
-    // var. Öğrenci okları marka takviminin ayını kaydırmaz.
-    // Modül yüklenemediyse sessizce boş bırakmak yerine söylenir.
-    const O = (typeof window !== 'undefined' && window.DerinOgrenci) || null;
-    const ogrenciTakvim = O
-      ? O.ogrenciTakvimi((D && D.ogrenciler) || [], (D && D.ogrenciKayitlari) || [], s,
-        { yil: s.ogrenciYil || yil, ay: s.ogrenciAy || ay, bugun: bugun })
-      : '<p class="bos">Öğrenci modülü yüklenemedi (ogrenciler.js).</p>';
+    // Öğrenci takibi bu sayfada DEĞİL: Plan bölümünün ikinci sayfası
+    // (Plan → Öğrenciler, bkz. ogrenciler.js). Marka ödemeleriyle aynı ekranı
+    // paylaşmadığı için burada yalnız marka işi kalır.
 
     // Bir güne girildiğinde ay ızgarası yerine o günün sekmesi açılır: başlıkta
     // geri düğmesi (aya dön) ve gün gün gezinme okları durur. Ay görünümünde ise
@@ -579,7 +572,6 @@
         ${bolum('trend', 'TAHSİLAT TRENDİ (12 AY)', trendSutun, katli.indexOf('trend') !== -1)}
       </aside>
       </div>
-      ${ogrenciTakvim}
     </div>`;
   }
 

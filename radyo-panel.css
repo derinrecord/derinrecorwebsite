@@ -532,13 +532,12 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
   border-top:1px solid var(--line)}
 .ogr-bolum h4{margin:0 0 9px;font-size:11px;letter-spacing:.12em;color:var(--gold)}
 
-/* ---- İkinci takvim: öğrenciler ------------------------------------------
-   Marka takviminin ALTINDA, tam genişlikte durur. Yan paneldeki ödeme
-   bloklarıyla (Marka ara / yaklaşan ödemeler / trend) aynı sütunu paylaşmaz:
-   öğrenci işi kahve markası işine karışmasın. */
-.ogr-takvim{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+/* ---- Öğrenci takvimi: Plan bölümünün ikinci sayfası ---------------------
+   Menüde "Takvim"in altında kendi satırı var. Marka takviminin yan
+   panelindeki ödeme bloklarıyla (Marka ara / yaklaşan ödemeler / trend) aynı
+   ekranı paylaşmaz: öğrenci işi kahve markası işine karışmasın. */
+.ogr-takvim{min-width:0}
 .ogr-takvim-bas{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.ogr-takvim-bas h3{margin:0;font-size:12px;letter-spacing:.14em;color:var(--gold)}
 .ogr-takvim-ay{display:flex;align-items:center;gap:8px}
 .ogr-takvim-ay button{width:28px;height:28px;font:inherit;font-size:13px;color:var(--muted);
   background:none;border:1px solid var(--line);border-radius:8px;cursor:pointer}
