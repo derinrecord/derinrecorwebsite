@@ -249,6 +249,31 @@ test('işaretlenmiş ödeme sütunda seçili gelir', () => {
   assert.ok(!/d-odenmedi secili/.test(h));
 });
 
+test('işaretlenmiş ödeme satırı ve kutusu birlikte işaretli görünür', () => {
+  // Kullanıcının istediği: kutu altınsa satırın kendisi de işaretli olmalı,
+  // yalnız düğme değil. Ödendi → altın kutu ✓ ve satır altın.
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, D2, UI);
+  assert.ok(/<li class="[^"]*odendi[^"]*">/.test(h), 'satır odendi sınıfı taşımalı');
+  assert.ok(/<i class="kutu odendi"[^>]*>✓<\/i>/.test(h), 'kutu altın ve işaretli olmalı');
+});
+
+test('ödenmedi işaretli ödeme kırmızı kutu ve satırla görünür', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: false, metin: '', sira: 0 }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, D2, UI);
+  assert.ok(/<li class="[^"]*odenmedi[^"]*">/.test(h));
+  assert.ok(/<i class="kutu odenmedi"[^>]*>×<\/i>/.test(h));
+});
+
+test('işaretlenmemiş ödemede kutu boş kalır', () => {
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, ile({ planItems: [] }), UI);
+  assert.ok(h.includes('<i class="kutu" aria-hidden="true"></i>'), 'boş kutucuk olmalı');
+});
+
 test('günü geçmiş ve işaretlenmemiş ödeme listede kalır ve gecikmiş görünür', () => {
   // Abonelik dönemi geçmişte; satır kaybolmamalı, yoksa işaretlemek
   // imkânsızlaşır ve ödemenin yapılıp yapılmadığı kayda geçmez.

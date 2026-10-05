@@ -251,9 +251,14 @@
       ? `<ul class="plan-odeme-liste">${odemeler.map(o => {
           const durum = odemeDurumu(maddeler, o);
           const gecikmis = o.gecmis && !durum;
-          const sinif = [o.iptal ? 'iptal' : '', o.gecmis ? 'gecmis' : '', gecikmis ? 'gecikmis' : '']
+          const sinif = [o.iptal ? 'iptal' : '', o.gecmis ? 'gecmis' : '', gecikmis ? 'gecikmis' : '', durum || '']
             .filter(Boolean).join(' ');
+          // Kutucuk: ödendi → altın ve işaretli, ödenmedi → kırmızı ve çarpılı.
+          // Satır da aynı renge boyanır; böylece işaret uzaktan belli olur,
+          // yalnız düğmenin değil satırın da işaretlendiği görülür.
+          const kutu = `<i class="kutu${durum ? ' ' + durum : ''}" aria-hidden="true">${durum === 'odendi' ? '✓' : durum === 'odenmedi' ? '×' : ''}</i>`;
           return `<li${sinif ? ` class="${sinif}"` : ''}>
+            ${kutu}
             <span class="t">${esc(o.iso)}</span>
             <span class="m">${esc(o.marka)}</span>
             <b>${para(o.tutar)} ₺</b>
