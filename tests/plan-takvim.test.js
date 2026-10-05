@@ -315,3 +315,31 @@ test('paneldeki her script dosyası gerçekten var', () => {
   assert.ok(yollar.length > 3, 'script etiketleri bulunmalı');
   yollar.forEach(y => assert.ok(fs.existsSync(require('node:path').join(kok, y)), y + ' bulunamadı'));
 });
+
+// ---------- Yetki ----------
+// Derin'in planları yalnızca ona görünür. Antrenör, kahve markası ve şube
+// cihazı bu tabloyu hiç görmez — yasak hatası bile almaz, boş döner. Bu,
+// tek bir RLS kuralıyla mevcut is_admin() üzerine kurulur; yeni bir yetki
+// mekanizması yok. Test, kaynağı okuyup kuralın gerçekten öyle olduğunu
+// doğrular (mevcut radio-management-render.test.js kalıbı).
+test('plan takvimi SQL\'i yalnızca yöneticiye açık', () => {
+  const sql = fs.readFileSync(require.resolve('../supabase/plan-takvimi.sql'), 'utf8');
+  assert.match(sql, /create table if not exists public\.plan_maddeleri/);
+  assert.match(sql, /check \(tur in \('madde', 'not', 'odeme'\)\)/, 'türler sınırlı olmalı');
+  assert.match(sql, /alter table public\.plan_maddeleri enable row level security/,
+    'satır düzeyi güvenlik açık olmalı');
+  assert.match(sql, /create policy "plan: yalnizca yonetici" on public\.plan_maddeleri/);
+  assert.match(sql, /for all to authenticated\s*\n?\s*using \(public\.is_admin\(\)\) with check \(public\.is_admin\(\)\)/,
+    'kural yalnızca is_admin() ile çalışmalı');
+  // Cihaz (anon) ve girişsiz erişim olmamalı: veri sızmasın.
+  assert.ok(!/to anon/.test(sql), 'tablo anon\'a açılmamalı');
+  assert.ok(!/using \(true\)|using \(auth\.uid\(\) is not null\)/.test(sql),
+    'herkese açık bir kural olmamalı');
+});
+
+test('günde tek not veritabanında da tek: kısmi tekil indeks var', () => {
+  // Arayüz ekle-ya-da-güncelle yapsa da, iki not kaydı düşememeli. Kısmi
+  // tekil indeks bunu veritabanında garanti eder.
+  const sql = fs.readFileSync(require.resolve('../supabase/plan-takvimi.sql'), 'utf8');
+  assert.match(sql, /create unique index if not exists plan_maddeleri_gunluk_not_idx[\s\S]*?where tur = 'not'/);
+});
