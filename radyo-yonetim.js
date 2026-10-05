@@ -45,6 +45,9 @@
   };
   const state = {
     nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '',
+    // Plan takvimi: açık gün, görünen ay, katlanmış bölümler. Katlı olanlar
+    // tarayıcıda hatırlanır; her açılışta hepsi yeniden açılmasın diye.
+    planAcikGun: null, planYil: null, planAy: null, planKatli: [],
     // Yayın başlatma ekranının seçimleri: marka → şube → kaynak → parça.
     yayin: { brandId: '', playerId: '', kaynak: '', parcaId: '' },
     // Açık bırakılan katlanabilir bölümler (marka sayfasındaki geçmiş listeleri).
@@ -476,6 +479,50 @@
     kutu.hidden = !html;
   }
 
+  // ---------- Plan takvimi yardımcıları ----------
+  // Takvimin gövdesi plan-takvim.js'te; buradakiler yalnızca kaydetme ve
+  // yerel hatırlama. Kaydet düğmesi yok, her değişiklik anında gider.
+
+  const PLAN_KATLI_ANAHTARI = 'derin_plan_katli';
+
+  function planKatliOku() {
+    try { return JSON.parse(localStorage.getItem(PLAN_KATLI_ANAHTARI)) || []; } catch { return []; }
+  }
+  function planKatliYaz(liste) {
+    try { localStorage.setItem(PLAN_KATLI_ANAHTARI, JSON.stringify(liste || [])); } catch { /* özel sekme */ }
+  }
+
+  function planSiradaki(gun, tur) {
+    const ayni = (D.planItems || []).filter(x => x.gun === gun && x.tur === tur);
+    return ayni.reduce((en, x) => Math.max(en, (x.sira || 0) + 1), 0);
+  }
+
+  // Tek yerden yazma: ekle / güncelle / sil. Başarısızlıkta kullanıcıya
+  // söylenir ve veri yeniden okunur, böylece ekran gerçeği gösterir.
+  async function planYaz(islem, veri) {
+    const depo = client.from('plan_maddeleri');
+    let hata = null;
+    try {
+      if (islem === 'ekle') hata = (await depo.insert(veri)).error;
+      else if (islem === 'guncelle') hata = (await depo.update({ bitti: veri.bitti, updated_at: new Date().toISOString() }).eq('id', veri.id)).error;
+      else if (islem === 'sil') hata = (await depo.delete().eq('id', veri.id)).error;
+      else if (islem === 'not') {
+        const mevcut = (D.planItems || []).find(x => x.gun === veri.gun && x.tur === 'not');
+        hata = mevcut
+          ? (await depo.update({ metin: veri.metin, updated_at: new Date().toISOString() }).eq('id', mevcut.id)).error
+          : (await depo.insert({ gun: veri.gun, tur: 'not', metin: veri.metin })).error;
+      }
+    } catch (e) { hata = e; }
+
+    if (hata) {
+      bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true);
+      return;
+    }
+    await yenile(true);
+  }
+
+  state.planKatli = planKatliOku();
+
   function ciz() {
     // Kapı ekranındayken (giriş yok / yetki yok) istemci hazır olmaz;
     // bu durumda adres çubuğundaki değişiklikler çizim tetiklememeli.
@@ -509,7 +556,7 @@
   }
 
   async function veriYukle() {
-    const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans] = await Promise.all([
+    const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans, planItems] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec,cover_path').order('sort_order'),
@@ -529,7 +576,11 @@
         .select('id,player_key,player_id,brand_id,device_id,kind,detail,at')
         .order('at', { ascending: false }).limit(600),
       client.from('subscriptions').select('*'),
-      client.from('plans').select('*').order('sort_order')
+      client.from('plans').select('*').order('sort_order'),
+      // Plan takvimi (supabase/plan-takvimi.sql). Tablo kurulmadıysa sorgu
+      // hata döner, data null gelir: takvim boş açılır, panelin geri kalanı
+      // çalışmaya devam eder.
+      client.from('plan_maddeleri').select('*').order('gun')
     ]);
     D = {
       brands: brands.data || [], folders: folders.data || [], tracks: tracks.data || [],
@@ -538,6 +589,7 @@
       playlists: playlists.data || [], playlistTracks: playlistTracks.data || [],
       coffeeAttempts: coffeeAttempts.data || [], olaylar: olaylar.data || [],
       subscriptions: subscriptions.data || [], plans: plans.data || [],
+      planItems: planItems.data || [],
       requests: D.requests
     };
 
@@ -556,6 +608,7 @@
     D.kurulum = D.kurulum || {};
     D.kurulum['radio-subeye-ozel-yayin.sql'] = !playerBroadcast.error;
     D.kurulum['radio-baglanti-gecmisi.sql'] = !olaylar.error;
+    D.kurulum['plan-takvimi.sql'] = !planItems.error;
 
     // Çalan parça ve çalma listesi alanları sonradan eklendi
     // (supabase/radio-calan-parca.sql, supabase/radio-liste-bildirimi.sql).
@@ -1034,6 +1087,57 @@
     const dur = e => { if (e) { e.preventDefault(); e.stopPropagation(); } };
 
     switch (act) {
+      // --- plan takvimi (bkz. plan-takvim.js) ---
+      // Kaydet düğmesi yok: her değişiklik anında gider. Yazma başarısız
+      // olursa kullanıcıya söylenir; sessizce yutulmaz.
+      case 'plan-gun': {
+        state.planAcikGun = state.planAcikGun === id ? null : id;
+        return ciz();
+      }
+      case 'plan-ay': {
+        const bugun = new Date();
+        let y = state.planYil || bugun.getFullYear();
+        let a = state.planAy || (bugun.getMonth() + 1);
+        a += (id === 'onceki' ? -1 : 1);
+        if (a < 1) { a = 12; y -= 1; } else if (a > 12) { a = 1; y += 1; }
+        state.planYil = y; state.planAy = a;
+        return ciz();
+      }
+      case 'plan-katla': {
+        const liste = state.planKatli || (state.planKatli = []);
+        const i = liste.indexOf(id);
+        if (i === -1) liste.push(id); else liste.splice(i, 1);
+        planKatliYaz(liste);
+        return ciz();
+      }
+      case 'plan-madde-ekle': {
+        const metin = prompt('Madde:');
+        if (!metin || !metin.trim()) return;
+        return planYaz('ekle', { gun: id, tur: 'madde', metin: metin.trim(), sira: planSiradaki(id, 'madde') });
+      }
+      case 'plan-odeme-ekle': {
+        const marka = prompt('Marka / açıklama:');
+        if (!marka || !marka.trim()) return;
+        const tutar = Number(String(prompt('Tutar (₺):') || '').replace(',', '.'));
+        if (!isFinite(tutar)) { bildir('Tutar sayı olmalı.', true); return; }
+        return planYaz('ekle', { gun: id, tur: 'odeme', metin: '', marka: marka.trim(), tutar: tutar, sira: planSiradaki(id, 'odeme') });
+      }
+      case 'plan-odeme-aktar': {
+        // "takvime ekle": abonelikten gelen satırı, düzenlenebilir bir ödeme
+        // kaydına çevirir. Sonrasında tutarını değiştirebilir, silebilirsin.
+        const parcalar = String(id).split(':');
+        const iso = parcalar.shift();
+        const tutar = Number(parcalar.pop());
+        const marka = parcalar.join(':');
+        return planYaz('ekle', { gun: iso, tur: 'odeme', metin: '', marka: marka, tutar: tutar, sira: planSiradaki(iso, 'odeme') });
+      }
+      case 'plan-isaret': {
+        const satir = (D.planItems || []).find(x => x.id === id);
+        if (!satir) return;
+        return planYaz('guncelle', { id: id, bitti: !satir.bitti });
+      }
+      case 'plan-sil': return planYaz('sil', { id: id });
+
       // --- pencere / çekmece / genel ---
       case 'modal-close': return pencereKapat();
       case 'kurulum-ac': {
@@ -2057,6 +2161,17 @@
   });
 
   // Değişiklik olayları (select / saat alanları / dosya seçimi)
+  // Not alanı: yazmayı bıraktıktan 1 saniye sonra kaydedilir. Her tuşta
+  // sunucuya gitmek hem gereksiz hem de yazarken takılmaya yol açar.
+  let planNotSayac = null;
+  document.addEventListener('input', e => {
+    const alan = e.target.closest('[data-act="plan-not"]');
+    if (!alan) return;
+    const gun = alan.dataset.id, metin = alan.value;
+    clearTimeout(planNotSayac);
+    planNotSayac = setTimeout(() => planYaz('not', { gun: gun, metin: metin }), 1000);
+  });
+
   document.addEventListener('change', async e => {
     if (!client) return;
     const hedef = e.target;

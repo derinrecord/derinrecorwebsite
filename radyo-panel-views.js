@@ -861,6 +861,7 @@
       canli: ['subeler'],
       icerik: ['klasorler', 'anonslar'],
       musteri: ['markalar', 'abonelikler', 'talepler'],
+      plan: ['takvim'],
       kurulum: ['kurulum']
     };
     const aktifMi = (nav, sub) => state.nav === nav
@@ -873,6 +874,7 @@
         ${sayi != null ? `<span class="say">${esc(sayi)}</span>` : ''}
       </button>`;
     const ikonlar = {
+      plan: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>',
       canli: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.6"/><path d="M6.2 6.2a8 8 0 000 11.6M17.8 17.8a8 8 0 000-11.6"/></svg>',
       klasor: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>',
       anons: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
@@ -902,6 +904,9 @@
         ${oge('musteri', 'abonelikler', 'Abonelikler', 'Paket ve süreler', null, ikonlar.abonelik)}
         ${oge('musteri', 'talepler', 'Talepler', 'Gelen başvurular', counts.requests, ikonlar.talep)}
 
+        <div class="nav-title">PLAN</div>
+        ${oge('plan', 'takvim', 'Takvim', 'Günlük plan, notlar, ödemeler', null, ikonlar.plan)}
+
         <div class="nav-title">SİSTEM</div>
         ${oge('kurulum', 'kurulum', 'Kurulum durumu', 'Veritabanı ve özellikler', null, ikonlar.kurulum, counts.kurulumEksik)}
       </nav>
@@ -923,6 +928,7 @@
     'musteri/markalar': ['Markalar', 'Şubeler, yayın linkleri ve çalma listeleri'],
     'musteri/abonelikler': ['Abonelikler', 'Paketler, deneme ve lisans süreleri'],
     'musteri/talepler': ['Talepler', 'Kahve markalarından gelen başvurular'],
+    'plan/takvim': ['Takvim', 'Günlük planlar, notlar ve yaklaşan ödemeler'],
     'kurulum/kurulum': ['Kurulum durumu', 'Panelin hangi özellikleri açık; eksik SQL dosyaları tek ekranda']
   };
   const ALT_SEKME = { klasorler: 'Yayın klasörleri', anonslar: 'Anonslar' };
@@ -2216,6 +2222,12 @@
       return kabuk(sekmeler(state, D) + govde);
     }
     if (state.nav === 'kurulum') return kabuk(kurulumView(state, D, ui));
+    // Takvimin gövdesi plan-takvim.js'te; panel yalnızca çağırır.
+    if (state.nav === 'plan') {
+      const P = (typeof window !== 'undefined' && window.DerinPlan) || null;
+      return kabuk(P ? P.takvimView(state, D, ui)
+        : '<p class="bos">Takvim modülü yüklenemedi (plan-takvim.js).</p>');
+    }
     let govde;
     if (state.openPlaylist) govde = listeDetay(state, D, ui);
     else if (state.openBrand) govde = markaDetay(state, D, ui);
