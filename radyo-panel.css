@@ -428,6 +428,10 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .plan-satir .sil{width:24px;height:24px;flex:0 0 auto;font-size:15px;line-height:1;color:var(--muted);
   background:none;border:0;border-radius:6px;cursor:pointer}
 .plan-satir .sil:hover{color:var(--danger);background:rgba(255,95,109,.12)}
+/* Abonelikten gelen "beklenen" ödeme satırı ve ödendi/ödenmedi grubu. */
+.plan-satir .kaynak{font-style:normal;font-size:10px;letter-spacing:.06em;color:var(--muted);
+  border:1px solid var(--line);border-radius:20px;padding:1px 7px;margin-left:6px;white-space:nowrap}
+.plan-satir .plan-durum{flex:0 0 100%;display:flex;gap:6px;margin-top:8px}
 
 .plan-ekle{margin-top:9px;padding:8px 13px;font-size:12px;color:var(--muted);background:none;
   border:1px dashed var(--line);border-radius:10px;cursor:pointer;width:100%}

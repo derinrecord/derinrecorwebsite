@@ -274,6 +274,34 @@ test('işaretlenmemiş ödemede kutu boş kalır', () => {
   assert.ok(h.includes('<i class="kutu" aria-hidden="true"></i>'), 'boş kutucuk olmalı');
 });
 
+// ---------- Yan liste ↔ ana takvim senkronu ----------
+// Abonelikten gelen ödeme hem yandaki listede hem ana takvimde açılan gün
+// panelinde görünür. İkisi de aynı işaret kimliğini taşır, yani tek kaydı
+// yazar; böylece nerede işaretlerse işaretle ikisi birlikte günceller.
+
+test('gün paneli o günün abonelik ödemesini gösterir', () => {
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, ile({ planItems: [] }), UI);
+  assert.ok(h.includes('>abonelik</i>'), 'abonelikten gelen ödeme gün panelinde olmalı');
+  assert.ok(h.includes('data-id="2026-10-27:odendi:Chemex:2000"'));
+});
+
+test('yandaki liste ve gün paneli aynı işaret kimliğini paylaşır', () => {
+  // Senkronun sözleşmesi: iki yerin de yazdığı işaret aynı olmalı. Farklı
+  // kimlik olsaydı biri "ödendi" derken diğeri "ödenmedi" yazabilirdi.
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, ile({ planItems: [] }), UI);
+  const adet = (h.match(/data-id="2026-10-27:odendi:Chemex:2000"/g) || []).length;
+  assert.ok(adet >= 2, 'aynı işaret hem yanda hem gün panelinde olmalı');
+});
+
+test('işaretlenince gün panelindeki beklenen satır kalkar', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0 }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, D2, UI);
+  assert.ok(!h.includes('>abonelik</i>'), 'işaretlenince beklenen satır kalkmalı');
+  assert.ok(h.includes('data-act="plan-isaret"'), 'kaydedilmiş satır kutucuklu görünmeli');
+});
+
 test('günü geçmiş ve işaretlenmemiş ödeme listede kalır ve gecikmiş görünür', () => {
   // Abonelik dönemi geçmişte; satır kaybolmamalı, yoksa işaretlemek
   // imkânsızlaşır ve ödemenin yapılıp yapılmadığı kayda geçmez.

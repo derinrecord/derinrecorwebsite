@@ -191,9 +191,25 @@
     </div>`;
   }
 
+  // Abonelikten gelen ama henüz işaretlenmemiş ödeme. Gün panelinde de görünür
+  // ki ana takvimden işaretlenebilsin; tek bir kayıt yazıldığı için yandaki
+  // yaklaşan ödemeler listesiyle aynı durumu paylaşır — ikisi senkron kalır.
+  function beklenenSatiri(o) {
+    const id = d => `${esc(o.iso)}:${d}:${encodeURIComponent(o.marka)}:${o.tutar}`;
+    return `<li class="plan-satir odeme beklenen">
+      <span class="metin">${esc(o.marka)} <i class="kaynak">abonelik</i></span>
+      <b class="tutar">${para(o.tutar)} ₺</b>
+      <div class="plan-durum">
+        <button class="d-odendi" type="button" data-act="plan-odeme-durum" data-id="${id('odendi')}">ödendi</button>
+        <button class="d-odenmedi" type="button" data-act="plan-odeme-durum" data-id="${id('odenmedi')}">ödenmedi</button>
+      </div>
+    </li>`;
+  }
+
   // Açık günün paneli. Her bölüm ayrı katlanır; eklenen her şey silinebilir.
   // yeniTur: açık olan satır içi ekleme formu ('madde' | 'odeme' | null).
-  function gunPaneli(iso, maddeler, katli, yeniTur) {
+  // beklenen: o güne abonelikten düşen, henüz işaretlenmemiş ödemeler.
+  function gunPaneli(iso, maddeler, katli, yeniTur, beklenen) {
     const gunun = maddeler.filter(m => m.gun === iso);
     const isler = gunun.filter(m => m.tur === 'madde').sort((a, b) => (a.sira || 0) - (b.sira || 0));
     const odemeler = gunun.filter(m => m.tur === 'odeme').sort((a, b) => (a.sira || 0) - (b.sira || 0));
@@ -207,7 +223,7 @@
         ${ekleFormu('madde', iso, yeniTur)}
       `, k('maddeler'))}
       ${bolum('odemeler', 'ÖDEMELER', `
-        <ul class="plan-liste">${odemeler.map(odemeSatiri).join('')}</ul>
+        <ul class="plan-liste">${odemeler.map(odemeSatiri).join('')}${(beklenen || []).map(beklenenSatiri).join('')}</ul>
         ${ekleFormu('odeme', iso, yeniTur)}
       `, k('odemeler'))}
       ${bolum('not', 'NOT', `
@@ -215,6 +231,13 @@
           placeholder="Bu güne dair not…">${esc(not ? not.metin : '')}</textarea>
       `, k('not'))}
     </div>`;
+  }
+
+  // Açık güne abonelikten düşen, henüz işaretlenmemiş ödemeler. Böylece ödeme
+  // ana takvimden de işaretlenebiliyor; yandaki listeyle aynı kaydı paylaşır.
+  function acikGunBeklenen(iso, D, maddeler) {
+    if (!iso) return [];
+    return yaklasanOdemeler(D, iso, 0, 0).filter(o => odemeDurumu(maddeler, o) === null);
   }
 
   // state.planYeni 'tur:iso' biçiminde tutulur. Açık günün satır içi formu
@@ -298,7 +321,7 @@
         </div>
         <div class="plan-hafta">${HAFTA.map(g => `<span>${g}</span>`).join('')}</div>
         <div class="plan-izgara">${aylikIzgara(yil, ay).map(hucre).join('')}</div>
-        ${s.planAcikGun ? gunPaneli(s.planAcikGun, maddeler, katli, yeniTur(s)) : ''}
+        ${s.planAcikGun ? gunPaneli(s.planAcikGun, maddeler, katli, yeniTur(s), acikGunBeklenen(s.planAcikGun, D || {}, maddeler)) : ''}
       </div>
       <aside class="plan-yan">
         ${bolum('yaklasan', 'YAKLAŞAN ÖDEMELER', odemeSutun, katli.indexOf('yaklasan') !== -1)}
