@@ -198,3 +198,15 @@ test('panel plan eylemlerini karşılıyor', () => {
 test('sayfa plan-takvim.js dosyasını yüklüyor', () => {
   assert.ok(/plan-takvim\.js/.test(sayfaKaynak), 'script etiketi olmalı');
 });
+
+test('paneldeki her script dosyası gerçekten var', () => {
+  // Yanlış yazılmış ya da eklenmeyi unutulmuş bir script etiketi tarayıcıda
+  // sessizce 404 olur ve ilgili bölüm hiç açılmaz. Burada erken yakalanır.
+  const kok = require('node:path').dirname(require.resolve('../radyo-yonetim.html'));
+  const yollar = [...sayfaKaynak.matchAll(/<script src="([^"]+)"/g)]
+    .map(m => m[1])
+    .filter(y => !/^https?:\/\//.test(y))
+    .map(y => y.split('?')[0]);
+  assert.ok(yollar.length > 3, 'script etiketleri bulunmalı');
+  yollar.forEach(y => assert.ok(fs.existsSync(require('node:path').join(kok, y)), y + ' bulunamadı'));
+});
