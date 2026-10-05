@@ -612,13 +612,19 @@ if (senaryo === 'harmonik') {
   return;
 }
 
+// "ogrenci-suzgec" modu aynı klasörü uyarı süzgeci seçiliyken önizler:
+// yalnız borçlu öğrenciler listelenir, süzgeç düğmesi ve rozetler görünür.
+//
 // "plan", "plan-gun" ve "plan-duzenle" modları Ödeme Takip Takvimi'ni
 // (Plan → Takvim) örnek verilerle önizler. "plan" ay ızgarasını ve hücre içi
 // detayları, "plan-gun" bir kareye girilince açılan gün sekmesini, "plan-duzenle"
 // ise bir ödeme satırının yerinde düzenleme formunu gösterir. Takvim statiktir
 // (tıklama yok); amaç yerleşimin ve renklerin gözle doğrulanması.
-if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle') {
+if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
+  || senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme' || senaryo === 'ogrenci-suzgec') {
   const P = require(path.join(kok, 'plan-takvim.js'));
+  // Öğrenci klasörü modülü pencereden okur; node'da pencere yok, burada kurulur.
+  global.window = Object.assign(global.window || {}, { DerinOgrenci: require(path.join(kok, 'ogrenciler.js')) });
   const simdi = Date.parse('2026-10-05T09:00:00Z');
   const D = {
     brands: [{ id: 'b1', name: 'Chemex' }, { id: 'b2', name: 'starbucks' }, { id: 'b3', name: 'Uzak' }],
@@ -643,14 +649,52 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle') 
       { id: 'm3', gun: '2026-10-15', tur: 'madde', metin: 'Yeni şube sözleşmesi', bitti: false, sira: 0 },
       { id: 'm4', gun: '2026-10-20', tur: 'madde', metin: 'Radyo jingle yenile', bitti: true, sira: 0 },
       { id: 'n1', gun: '2026-10-27', tur: 'not', metin: 'Havale bekleniyor, dekont istendi.', bitti: false, sira: 0 }
+    ],
+    // Öğrenci klasörü boş kalmasın: iki satır örnek veri.
+    ogrenciler: [
+      { id: 'og1', ad: 'Elif Yılmaz', veli: 'Ayşe Yılmaz', telefon: '0531 111 22 33', notlar: 'Salı-Perşembe', aktif: true },
+      { id: 'og2', ad: 'Mert Demir', veli: 'Ali Demir', telefon: '0532 444 55 66', notlar: '', aktif: true }
+    ],
+    // Yoklama şeridi ve ödeme listesi gözle doğrulanabilsin diye karışık
+    // işaretler: gelen, gelmeyen, mazeretli günler ve iki tahsilat.
+    ogrenciKayitlari: [
+      { id: 'ok1', ogrenci_id: 'og1', tur: 'katilim', gun: '2026-10-01', durum: 'geldi', metin: '', tutar: null, bitti: false },
+      { id: 'ok2', ogrenci_id: 'og1', tur: 'katilim', gun: '2026-10-02', durum: 'geldi', metin: '', tutar: null, bitti: false },
+      { id: 'ok3', ogrenci_id: 'og1', tur: 'katilim', gun: '2026-10-06', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
+      { id: 'ok4', ogrenci_id: 'og1', tur: 'katilim', gun: '2026-10-08', durum: 'mazeret', metin: '', tutar: null, bitti: false },
+      { id: 'ok5', ogrenci_id: 'og1', tur: 'katilim', gun: '2026-10-09', durum: 'geldi', metin: '', tutar: null, bitti: false },
+      { id: 'ok6', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-01', durum: 'geldi', metin: '', tutar: null, bitti: false },
+      // İkinci öğrenci eşiği aşan devamsızlıkla dursun: "Gelmedi ≥ 3" süzgeci
+      // ve rozet rengi önizlemede görülsün.
+      { id: 'ok7', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-06', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
+      { id: 'ok8', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-08', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
+      { id: 'ok9', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-13', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
+      { id: 'om1', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-03', metin: 'Ekim aidatı', tutar: 2000, bitti: true },
+      { id: 'om2', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-20', metin: 'Kasım aidatı', tutar: 1500, bitti: false },
+      { id: 'om3', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-09-15', metin: 'Eylül aidatı', tutar: 2000, bitti: true },
+      // Geçen aydan devreden açık borç: satırda "devir" rozeti çıkar.
+      { id: 'om4', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-08-10', metin: 'Ağustos aidatı', tutar: 900, bitti: false },
+      { id: 'om5', ogrenci_id: 'og2', tur: 'odeme', gun: '2026-10-04', metin: 'Ekim aidatı', tutar: 1500, bitti: false }
     ]
   };
   const ui = { now: () => simdi };
-  const acikGun = senaryo === 'plan' ? null : '2026-10-27';
+  // Öğrenci senaryoları takvimin ay görünümünde durur ve bir öğrencinin
+  // detayını (yoklama şeridi + ödemeler) açık gösterir.
+  const ogrenciMi = senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme' || senaryo === 'ogrenci-suzgec';
+  const acikGun = (senaryo === 'plan' || ogrenciMi) ? null : '2026-10-27';
   const duzenle = senaryo === 'plan-duzenle' ? 'o1' : null;
   const state = { nav: 'plan', sub: 'takvim', planYil: 2026, planAy: 10, planAcikGun: acikGun, planDuzenle: duzenle, planKatli: [] };
+  if (senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme') {
+    state.ogrenciAcik = 'og1';
+    if (senaryo === 'ogrenci-odeme') state.ogrenciOdemeDuzenle = 'om3';
+  }
+  if (senaryo === 'ogrenci-suzgec') state.ogrenciOdak = 'borc';
   const govde = P.takvimView(state, D, ui);
-  const baslik = senaryo === 'plan' ? 'ödeme takip takvimi' : (senaryo === 'plan-duzenle' ? 'satır düzenleme' : 'gün sekmesi');
+  const baslik = senaryo === 'plan' ? 'ödeme takip takvimi'
+    : (senaryo === 'plan-duzenle' ? 'satır düzenleme'
+      : (senaryo === 'ogrenci' ? 'öğrenci · yoklama ve ödeme'
+        : (senaryo === 'ogrenci-odeme' ? 'öğrenci · ödeme düzenleme'
+          : (senaryo === 'ogrenci-suzgec' ? 'öğrenci · uyarı süzgeci' : 'gün sekmesi'))));
   const sayfa = `<!doctype html>
 <html lang="tr">
 <head>

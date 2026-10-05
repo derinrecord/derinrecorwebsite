@@ -533,6 +533,14 @@
       }).join('')}</ul>
     </div>`;
 
+    // Öğrenci klasörü: takvim içindeki ayrı bölüm. Gövde ogrenciler.js'te;
+    // modül yüklenemediyse sessizce boş bırakmak yerine söylenir.
+    const O = (typeof window !== 'undefined' && window.DerinOgrenci) || null;
+    const ogrenciSutun = O
+      ? O.ogrenciBolumu((D && D.ogrenciler) || [], (D && D.ogrenciKayitlari) || [], s,
+        { yil: yil, ay: ay, bugun: bugun })
+      : '<p class="bos">Öğrenci modülü yüklenemedi (ogrenciler.js).</p>';
+
     // Bir güne girildiğinde ay ızgarası yerine o günün sekmesi açılır: başlıkta
     // geri düğmesi (aya dön) ve gün gün gezinme okları durur. Ay görünümünde ise
     // ızgara basılır — hücrelerin içi artık detay taşır.
@@ -563,6 +571,7 @@
       </div>
       <aside class="plan-yan">
         ${filtreCubugu}
+        ${bolum('ogrenciler', 'ÖĞRENCİLER', ogrenciSutun, katli.indexOf('ogrenciler') !== -1)}
         ${bolum('yaklasan', 'YAKLAŞAN ÖDEMELER', odemeSutun, katli.indexOf('yaklasan') !== -1)}
         ${bolum('gecmis', 'ÖDEME GEÇMİŞİ', gecmisSutun, katli.indexOf('gecmis') !== -1)}
         ${bolum('trend', 'TAHSİLAT TRENDİ (12 AY)', trendSutun, katli.indexOf('trend') !== -1)}
