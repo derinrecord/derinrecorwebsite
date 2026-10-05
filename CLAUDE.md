@@ -16,7 +16,7 @@ Derin Record, cimnastik/aerobik performansları için özel müzik prodüksiyonu
 - **Dev**: Yerel bir statik sunucu ile aç (ör. `npx serve .` veya VS Code Live Server). Build adımı yok.
 - **Test**: Otomatik test bulunmuyor.
 - **Lint**: Lint yapılandırması yok.
-- **Deploy**: Netlify, GitHub reposuna bağlı otomatik deploy ile.
+- **Deploy**: Vercel, GitHub reposuna bağlı otomatik deploy ile (`vercel.json` yönlendirmeleri; `.vercelignore` supabase/, tests/, *.md ve prova dosyalarını yayın dışı bırakır).
 
 ## Mimari
 
