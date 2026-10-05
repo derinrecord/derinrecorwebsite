@@ -195,6 +195,23 @@ test('panel plan eylemlerini karşılıyor', () => {
     .forEach(act => assert.ok(panelKaynak.includes(act), act + ' işlenmeli'));
 });
 
+test('plan rotası adres tablosunda tanımlı', () => {
+  // #/plan/takvim adresi tabloda yoksa sayfa sessizce "canlı durum"a düşer:
+  // menüde Takvim görünür, içerik başka bir bölüm olur.
+  const m = panelKaynak.match(/const ROTALAR = (\{[\s\S]*?\n  \});/);
+  assert.ok(m, 'ROTALAR tablosu bulunmalı');
+  const R = eval('(' + m[1] + ')');
+  assert.deepEqual(R.plan, { nav: 'plan', sub: 'takvim' });
+});
+
+test('plan görünümü kendi adresini yazıyor', () => {
+  // gorunumHash() plan'ı tanımazsa menüden Takvim'e basmak #/markalar'a
+  // yönlendirir ve bölüm hiç açılmaz.
+  const m = panelKaynak.match(/function gorunumHash\(\)[\s\S]*?\n  \}/);
+  assert.ok(m, 'gorunumHash bulunmalı');
+  assert.ok(/'#\/plan\/takvim'/.test(m[0]), 'plan için adres döndürmeli');
+});
+
 test('sayfa plan-takvim.js dosyasını yüklüyor', () => {
   assert.ok(/plan-takvim\.js/.test(sayfaKaynak), 'script etiketi olmalı');
 });
