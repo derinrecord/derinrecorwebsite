@@ -121,7 +121,7 @@ test('açık günün maddeleri ve notu görünür', () => {
   const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, D2, UI);
   assert.ok(h.includes('Chemex ara'));
   assert.ok(h.includes('havale bekleniyor'));
-  assert.ok(h.includes('data-act="plan-madde-ekle"'));
+  assert.ok(h.includes('data-act="plan-yeni"'));
 });
 
 test('metindeki HTML kaçırılır', () => {
@@ -148,7 +148,7 @@ test('elle eklenen ödeme satırı silinebilir ve işaretlenebilir', () => {
   assert.ok(h.includes('1.800'));
   assert.ok(h.includes('data-act="plan-sil"'));
   assert.ok(h.includes('data-act="plan-isaret"'));
-  assert.ok(h.includes('data-act="plan-odeme-ekle"'));
+  assert.ok(h.includes('data-act="plan-yeni"'));
 });
 
 test('katlanmış bölümün içeriği basılmaz, başlığı kalır', () => {
@@ -165,6 +165,67 @@ test('katlanmış bölümün içeriği basılmaz, başlığı kalır', () => {
 test('planItems yoksa çökmez', () => {
   const h = P.takvimView({ planYil: 2026, planAy: 10 }, { brands: [], plans: [], subscriptions: [] }, UI);
   assert.ok(h.includes('data-act="plan-gun"'));
+});
+
+// ---------- Satır içi ekleme ----------
+// Tarayıcının prompt() penceresi yok: düğmeye basınca panelin içinde yazı
+// alanı açılır. Odak panelde kalır, dokunmatikte de çalışır.
+
+test('satır içi madde formu açılınca yazı alanı basılır', () => {
+  const h = P.takvimView(
+    { planYil: 2026, planAy: 10, planAcikGun: '2026-10-27', planYeni: 'madde:2026-10-27' },
+    ile({ planItems: [] }), UI);
+  assert.ok(h.includes('data-plan-gir="madde"'), 'madde yazı alanı olmalı');
+  assert.ok(h.includes('data-act="plan-yeni-kapat"'), 'vazgeç düğmesi olmalı');
+});
+
+test('satır içi ödeme formu marka ve tutar alanı basar', () => {
+  const h = P.takvimView(
+    { planYil: 2026, planAy: 10, planAcikGun: '2026-10-27', planYeni: 'odeme:2026-10-27' },
+    ile({ planItems: [] }), UI);
+  assert.ok(h.includes('data-plan-gir="odeme-marka"'), 'marka alanı olmalı');
+  assert.ok(h.includes('data-plan-gir="odeme-tutar"'), 'tutar alanı olmalı');
+  assert.ok(h.includes('data-act="plan-odeme-kaydet"'), 'ekle düğmesi olmalı');
+});
+
+test('başka gün için açık form o güne basılmaz', () => {
+  const h = P.takvimView(
+    { planYil: 2026, planAy: 10, planAcikGun: '2026-10-27', planYeni: 'madde:2026-10-28' },
+    ile({ planItems: [] }), UI);
+  assert.ok(!h.includes('data-plan-gir="madde"'), 'form kapalı kalmalı');
+});
+
+// ---------- Kaydedilemedi durumu ----------
+// Kayıt düşerse satır silinmez: metin ekranda durur, satır kırmızı işaretlenir
+// ve altında "tekrar dene" belirir. Sessiz kayıp yok.
+
+test('kaydedilemeyen madde silinmez, tekrar dene ile işaretlenir', () => {
+  const D2 = ile({ planItems: [
+    { id: 'yerel-1', gun: '2026-10-27', tur: 'madde', metin: 'Chemex ara', bitti: false, sira: 0, hata: 'ağ hatası' }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, D2, UI);
+  assert.ok(h.includes('Chemex ara'), 'metin ekranda kalmalı');
+  assert.ok(h.includes('kaydedilemedi — tekrar dene'));
+  assert.ok(h.includes('data-act="plan-tekrar"'));
+  assert.ok(/class="plan-satir[^"]*hata/.test(h), 'satır hata olarak işaretlenmeli');
+});
+
+test('kaydedilemeyen ödeme satırı da işaretlenir, tutarı korunur', () => {
+  const D2 = ile({ planItems: [
+    { id: 'yerel-2', gun: '2026-10-27', tur: 'odeme', marka: 'Elle Marka', tutar: 1800, bitti: false, metin: '', sira: 0, hata: 'ağ hatası' }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, D2, UI);
+  assert.ok(h.includes('Elle Marka'));
+  assert.ok(h.includes('1.800'));
+  assert.ok(h.includes('data-act="plan-tekrar"'));
+});
+
+test('hatasız satırda tekrar dene düğmesi çıkmaz', () => {
+  const D2 = ile({ planItems: [
+    { id: 'p1', gun: '2026-10-27', tur: 'madde', metin: 'Chemex ara', bitti: false, sira: 0 }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, D2, UI);
+  assert.ok(!h.includes('data-act="plan-tekrar"'));
 });
 
 // ---------- Panele bağlanma ----------
@@ -191,8 +252,22 @@ test('panel plan eylemlerini karşılıyor', () => {
   // plan-not bir tıklama değil, metin alanı: switch yerine yazma
   // dinleyicisinde seçiciyle yakalanıyor. Bu yüzden tırnak türüne
   // bakmıyoruz — önemli olan eylemin karşılanması.
-  ['plan-gun', 'plan-ay', 'plan-madde-ekle', 'plan-odeme-ekle', 'plan-sil', 'plan-isaret', 'plan-katla', 'plan-odeme-aktar', 'plan-not']
+  ['plan-gun', 'plan-ay', 'plan-yeni', 'plan-yeni-kapat', 'plan-odeme-kaydet', 'plan-sil', 'plan-isaret', 'plan-katla', 'plan-odeme-aktar', 'plan-not', 'plan-tekrar']
     .forEach(act => assert.ok(panelKaynak.includes(act), act + ' işlenmeli'));
+});
+
+test('plan ekleme tarayıcı prompt() penceresi kullanmaz', () => {
+  // prompt() bloklar, odak kaybettirir ve dokunmatikte kötü durur. Ekleme
+  // panelin içindeki satır içi formla yapılmalı.
+  assert.ok(!/prompt\(/.test(panelKaynak), 'satır içi form kullanılmalı');
+});
+
+test('ekleme iyimser: kayıt düşerse satır hata ile ekranda kalır', () => {
+  assert.ok(panelKaynak.includes('planEkle'), 'planEkle bulunmalı');
+  const m = panelKaynak.match(/async function planEkle\([\s\S]*?\n  \}/);
+  assert.ok(m, 'planEkle gövdesi bulunmalı');
+  assert.ok(/hata: null/.test(m[0]), 'satır hata alanıyla doğmalı');
+  assert.ok(/yerel\.hata/.test(m[0]), 'başarısızlık satıra yazılmalı, kaybolmamalı');
 });
 
 test('plan yazması ekranı yeniden çiziyor', () => {

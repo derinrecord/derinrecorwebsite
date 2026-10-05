@@ -47,7 +47,7 @@
     nav: 'canli', sub: 'subeler', openFolder: null, openBrand: null, openPlaylist: null, q: '',
     // Plan takvimi: açık gün, görünen ay, katlanmış bölümler. Katlı olanlar
     // tarayıcıda hatırlanır; her açılışta hepsi yeniden açılmasın diye.
-    planAcikGun: null, planYil: null, planAy: null, planKatli: [],
+    planAcikGun: null, planYil: null, planAy: null, planKatli: [], planYeni: null,
     // Yayın başlatma ekranının seçimleri: marka → şube → kaynak → parça.
     yayin: { brandId: '', playerId: '', kaynak: '', parcaId: '' },
     // Açık bırakılan katlanabilir bölümler (marka sayfasındaki geçmiş listeleri).
@@ -499,31 +499,83 @@
     return ayni.reduce((en, x) => Math.max(en, (x.sira || 0) + 1), 0);
   }
 
+  // Sunucuya yazmayı dener; ekranı çizmez. Dönüş null ise başarılı, değilse
+  // hata nesnesi. Böylece çağıran, iyimser güncelleme yapıp yapmayacağına
+  // kendisi karar verebiliyor.
+  async function planYazDene(islem, veri) {
+    const depo = client.from('plan_maddeleri');
+    try {
+      if (islem === 'ekle') return (await depo.insert(veri)).error || null;
+      if (islem === 'guncelle') return (await depo.update({ bitti: veri.bitti, updated_at: new Date().toISOString() }).eq('id', veri.id)).error || null;
+      if (islem === 'sil') return (await depo.delete().eq('id', veri.id)).error || null;
+      if (islem === 'not') {
+        const mevcut = (D.planItems || []).find(x => x.gun === veri.gun && x.tur === 'not');
+        const sorgu = mevcut
+          ? depo.update({ metin: veri.metin, updated_at: new Date().toISOString() }).eq('id', mevcut.id)
+          : depo.insert({ gun: veri.gun, tur: 'not', metin: veri.metin });
+        return (await sorgu).error || null;
+      }
+    } catch (e) { return e; }
+    return null;
+  }
+
   // Tek yerden yazma: ekle / güncelle / sil. Başarısızlıkta kullanıcıya
   // söylenir ve veri yeniden okunur, böylece ekran gerçeği gösterir.
   async function planYaz(islem, veri) {
-    const depo = client.from('plan_maddeleri');
-    let hata = null;
-    try {
-      if (islem === 'ekle') hata = (await depo.insert(veri)).error;
-      else if (islem === 'guncelle') hata = (await depo.update({ bitti: veri.bitti, updated_at: new Date().toISOString() }).eq('id', veri.id)).error;
-      else if (islem === 'sil') hata = (await depo.delete().eq('id', veri.id)).error;
-      else if (islem === 'not') {
-        const mevcut = (D.planItems || []).find(x => x.gun === veri.gun && x.tur === 'not');
-        hata = mevcut
-          ? (await depo.update({ metin: veri.metin, updated_at: new Date().toISOString() }).eq('id', mevcut.id)).error
-          : (await depo.insert({ gun: veri.gun, tur: 'not', metin: veri.metin })).error;
-      }
-    } catch (e) { hata = e; }
-
+    const hata = await planYazDene(islem, veri);
     if (hata) {
       bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true);
-      return;
+      return false;
     }
     // Sessiz yenileme (yenile(true)) yalnız yan menüyü tazeler, içeriği
     // çizmez. Burada kullanıcı bir madde ekledi ya da sildi: listenin hemen
     // güncellenmesi gerekiyor, yoksa kayıt gider ama ekran eski kalır.
     await yenile();
+    return true;
+  }
+
+  // İyimser ekleme: satır önce ekranda belirir, sonra sunucuya gider. Kayıt
+  // düşerse satır silinmez; metin ekranda durur, satır "kaydedilemedi" diye
+  // işaretlenir. Böylece yazılan hiçbir şey sessizce kaybolmaz.
+  async function planEkle(tur, gun, veri) {
+    const yerel = Object.assign({
+      id: 'yerel-' + Date.now(), gun: gun, tur: tur, bitti: false,
+      sira: planSiradaki(gun, tur), hata: null
+    }, veri);
+    D.planItems = (D.planItems || []).concat([yerel]);
+    state.planYeni = null;
+    ciz();
+
+    const hata = await planYazDene('ekle', Object.assign({ gun: gun, tur: tur, sira: yerel.sira }, veri));
+    if (hata) { yerel.hata = hata.message || 'kaydedilemedi'; ciz(); return; }
+    await yenile();
+  }
+
+  // Satır içi ödeme formunu okur ve kaydeder.
+  function planGirOdeme(iso) {
+    const markaKutu = el('view').querySelector('[data-plan-gir="odeme-marka"]');
+    const tutarKutu = el('view').querySelector('[data-plan-gir="odeme-tutar"]');
+    const marka = (markaKutu ? markaKutu.value : '').trim();
+    const tutar = Number(String(tutarKutu ? tutarKutu.value : '').replace(',', '.'));
+    if (!marka) { bildir('Marka / açıklama gerekli.', 'err'); if (markaKutu) markaKutu.focus(); return; }
+    if (!isFinite(tutar)) { bildir('Tutar sayı olmalı.', 'err'); if (tutarKutu) tutarKutu.focus(); return; }
+    return planEkle('odeme', iso, { metin: '', marka: marka, tutar: tutar });
+  }
+
+  // Enter: maddeyi ekler; ödemede marka→tutar ilerler, tutarda kaydeder.
+  function planGirEnter(alan) {
+    const iso = alan.dataset.id;
+    if (alan.dataset.planGir === 'madde') {
+      const metin = alan.value.trim();
+      if (!metin) return;
+      return planEkle('madde', iso, { metin: metin });
+    }
+    if (alan.dataset.planGir === 'odeme-marka') {
+      const t = el('view').querySelector('[data-plan-gir="odeme-tutar"]');
+      if (t) t.focus();
+      return;
+    }
+    return planGirOdeme(iso);
   }
 
   state.planKatli = planKatliOku();
@@ -538,6 +590,12 @@
     el('page-sub').textContent = g.alt;
     el('view').innerHTML = g.html;
     seritYaz();
+    // Satır içi ekleme formu açıksa odak ona gider: düğmeye basan kullanıcı
+    // hemen yazmaya başlayabilsin.
+    if (state.planYeni) {
+      const alan = el('view').querySelector('[data-plan-gir]');
+      if (alan) alan.focus();
+    }
     const now = Date.now();
     const caliyor = D.players.filter(p => p.is_playing && V.canliMi(p, now)).length;
     const bagli = D.players.filter(p => V.canliMi(p, now)).length;
@@ -1097,6 +1155,7 @@
       // olursa kullanıcıya söylenir; sessizce yutulmaz.
       case 'plan-gun': {
         state.planAcikGun = state.planAcikGun === id ? null : id;
+        state.planYeni = null;
         return ciz();
       }
       case 'plan-ay': {
@@ -1106,6 +1165,7 @@
         a += (id === 'onceki' ? -1 : 1);
         if (a < 1) { a = 12; y -= 1; } else if (a > 12) { a = 1; y += 1; }
         state.planYil = y; state.planAy = a;
+        state.planYeni = null;
         return ciz();
       }
       case 'plan-katla': {
@@ -1115,18 +1175,17 @@
         planKatliYaz(liste);
         return ciz();
       }
-      case 'plan-madde-ekle': {
-        const metin = prompt('Madde:');
-        if (!metin || !metin.trim()) return;
-        return planYaz('ekle', { gun: id, tur: 'madde', metin: metin.trim(), sira: planSiradaki(id, 'madde') });
+      case 'plan-yeni': {
+        // id: 'madde:2026-10-27' | 'odeme:2026-10-27'. ciz() odağı kendisi
+        // kurar (yukarı bkz.); burada yalnız hangi form açık, o tutulur.
+        state.planYeni = id;
+        return ciz();
       }
-      case 'plan-odeme-ekle': {
-        const marka = prompt('Marka / açıklama:');
-        if (!marka || !marka.trim()) return;
-        const tutar = Number(String(prompt('Tutar (₺):') || '').replace(',', '.'));
-        if (!isFinite(tutar)) { bildir('Tutar sayı olmalı.', true); return; }
-        return planYaz('ekle', { gun: id, tur: 'odeme', metin: '', marka: marka.trim(), tutar: tutar, sira: planSiradaki(id, 'odeme') });
+      case 'plan-yeni-kapat': {
+        state.planYeni = null;
+        return ciz();
       }
+      case 'plan-odeme-kaydet': return planGirOdeme(id);
       case 'plan-odeme-aktar': {
         // "takvime ekle": abonelikten gelen satırı, düzenlenebilir bir ödeme
         // kaydına çevirir. Sonrasında tutarını değiştirebilir, silebilirsin.
@@ -1142,6 +1201,19 @@
         return planYaz('guncelle', { id: id, bitti: !satir.bitti });
       }
       case 'plan-sil': return planYaz('sil', { id: id });
+      case 'plan-tekrar': {
+        // Kaydedilemeyen satırı yeniden gönderir. Başarılıysa sunucudan okunan
+        // gerçek satırla yer değiştirir; yine düşerse işaret kalır.
+        const satir = (D.planItems || []).find(x => x.id === id);
+        if (!satir || !satir.hata) return;
+        const veri = satir.tur === 'odeme'
+          ? { metin: '', marka: satir.marka, tutar: satir.tutar }
+          : { metin: satir.metin };
+        const hata = await planYazDene('ekle', Object.assign({ gun: satir.gun, tur: satir.tur, sira: satir.sira }, veri));
+        if (hata) { satir.hata = hata.message || 'kaydedilemedi'; ciz(); return; }
+        await yenile();
+        return;
+      }
 
       // --- pencere / çekmece / genel ---
       case 'modal-close': return pencereKapat();
@@ -2239,6 +2311,9 @@
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { pencereKapat(); cekmeceKapat(); }
+    // Satır içi plan formunda Enter: maddeyi kaydeder, ödemede ilerletir.
+    const alan = e.target && e.target.closest ? e.target.closest('[data-plan-gir]') : null;
+    if (alan && e.key === 'Enter' && client) { e.preventDefault(); planGirEnter(alan); }
   });
   el('backdrop').onclick = cekmeceKapat;
   el('search').addEventListener('input', e => {

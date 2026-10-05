@@ -433,6 +433,28 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
   border:1px dashed var(--line);border-radius:10px;cursor:pointer;width:100%}
 .plan-ekle:hover{color:var(--gold);border-color:var(--gold)}
 
+/* Satır içi ekleme: düğmeye basınca panelin içinde yazı alanı açılır.
+   Tarayıcının prompt() penceresi yok — odak panelde kalır. */
+.plan-yeni{margin-top:9px;display:flex;gap:8px;align-items:center}
+.plan-gir{flex:1;min-width:0;padding:8px 11px;font:inherit;font-size:13px;color:var(--txt);
+  background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px}
+.plan-gir:focus{outline:none;border-color:var(--gold)}
+.plan-gir.tutar{flex:0 0 108px}
+.plan-vazgec{width:30px;height:30px;flex:0 0 auto;font-size:16px;line-height:1;color:var(--muted);
+  background:none;border:0;border-radius:8px;cursor:pointer}
+.plan-vazgec:hover{color:var(--danger)}
+.plan-kaydet{padding:8px 13px;flex:0 0 auto;font-size:12px;color:var(--gold-ink);background:var(--gold);
+  border:0;border-radius:10px;cursor:pointer;white-space:nowrap}
+
+/* Kaydedilemeyen satır: silinmez, kırmızı çerçeveyle işaretlenir ve metin
+   ekranda kalır. Altında "tekrar dene" belirir. */
+.plan-satir{flex-wrap:wrap}
+.plan-satir.hata{border-color:var(--danger)}
+.plan-tekrar{flex:0 0 100%;margin-top:7px;padding:6px 10px;font-size:11.5px;text-align:left;
+  color:var(--danger);background:rgba(255,95,109,.1);border:1px solid var(--danger);
+  border-radius:8px;cursor:pointer}
+.plan-tekrar:hover{background:rgba(255,95,109,.18)}
+
 .plan-not{width:100%;min-height:92px;padding:11px 12px;font:inherit;font-size:13.5px;color:var(--txt);
   background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:11px;resize:vertical}
 .plan-not:focus{outline:none;border-color:var(--gold)}

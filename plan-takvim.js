@@ -100,27 +100,62 @@
     </section>`;
   }
 
+  // Kaydedilemeyen satır silinmez: metin ekranda durur, yanında tekrar dene
+  // çıkar. Sessiz başarısızlık yok — sessiz kayıp da yok.
+  const hataSatiri = m => m.hata
+    ? `<button class="plan-tekrar" data-act="plan-tekrar" data-id="${esc(m.id)}"
+        type="button">kaydedilemedi — tekrar dene</button>`
+    : '';
+
   function maddeSatiri(m) {
-    return `<li class="plan-satir${m.bitti ? ' bitti' : ''}">
+    return `<li class="plan-satir${m.bitti ? ' bitti' : ''}${m.hata ? ' hata' : ''}">
       <button class="kutu" data-act="plan-isaret" data-id="${esc(m.id)}" type="button"
         aria-label="${m.bitti ? 'Yapılmadı işaretle' : 'Yapıldı işaretle'}">${m.bitti ? '✓' : ''}</button>
       <span class="metin">${esc(m.metin)}</span>
       <button class="sil" data-act="plan-sil" data-id="${esc(m.id)}" type="button" aria-label="Sil">×</button>
+      ${hataSatiri(m)}
     </li>`;
   }
 
   function odemeSatiri(o) {
-    return `<li class="plan-satir odeme${o.bitti ? ' bitti' : ''}">
+    return `<li class="plan-satir odeme${o.bitti ? ' bitti' : ''}${o.hata ? ' hata' : ''}">
       <button class="kutu" data-act="plan-isaret" data-id="${esc(o.id)}" type="button"
         aria-label="${o.bitti ? 'Ödenmedi işaretle' : 'Ödendi işaretle'}">${o.bitti ? '✓' : ''}</button>
       <span class="metin">${esc(o.marka || o.metin)}</span>
       <b class="tutar">${para(o.tutar)} ₺</b>
       <button class="sil" data-act="plan-sil" data-id="${esc(o.id)}" type="button" aria-label="Sil">×</button>
+      ${hataSatiri(o)}
     </li>`;
   }
 
+  // Satır içi ekleme. Kapalıyken yalnız bir düğme; açıkken yazı alanı.
+  // Tarayıcının prompt() penceresi kullanılmaz: odak kaybolmaz, panelin
+  // içinde kalır ve dokunmatikte de çalışır.
+  function ekleFormu(tur, iso, acikTur) {
+    if (acikTur !== tur) {
+      return `<button class="plan-ekle" data-act="plan-yeni"
+        data-id="${tur}:${esc(iso)}" type="button">+ ${tur === 'madde' ? 'madde ekle' : 'ödeme ekle'}</button>`;
+    }
+    if (tur === 'madde') {
+      return `<div class="plan-yeni">
+        <input class="plan-gir" data-plan-gir="madde" data-id="${esc(iso)}"
+          type="text" autocomplete="off" placeholder="Madde yaz, Enter'a bas…">
+        <button class="plan-vazgec" data-act="plan-yeni-kapat" type="button" aria-label="Vazgeç">×</button>
+      </div>`;
+    }
+    return `<div class="plan-yeni">
+      <input class="plan-gir" data-plan-gir="odeme-marka" data-id="${esc(iso)}"
+        type="text" autocomplete="off" placeholder="Marka / açıklama">
+      <input class="plan-gir tutar" data-plan-gir="odeme-tutar" data-id="${esc(iso)}"
+        type="text" inputmode="decimal" autocomplete="off" placeholder="Tutar ₺">
+      <button class="plan-kaydet" data-act="plan-odeme-kaydet" data-id="${esc(iso)}" type="button">ekle</button>
+      <button class="plan-vazgec" data-act="plan-yeni-kapat" type="button" aria-label="Vazgeç">×</button>
+    </div>`;
+  }
+
   // Açık günün paneli. Her bölüm ayrı katlanır; eklenen her şey silinebilir.
-  function gunPaneli(iso, maddeler, katli) {
+  // yeniTur: açık olan satır içi ekleme formu ('madde' | 'odeme' | null).
+  function gunPaneli(iso, maddeler, katli, yeniTur) {
     const gunun = maddeler.filter(m => m.gun === iso);
     const isler = gunun.filter(m => m.tur === 'madde').sort((a, b) => (a.sira || 0) - (b.sira || 0));
     const odemeler = gunun.filter(m => m.tur === 'odeme').sort((a, b) => (a.sira || 0) - (b.sira || 0));
@@ -131,17 +166,24 @@
       <h3>${esc(iso)}</h3>
       ${bolum('maddeler', 'YAPILACAKLAR', `
         <ul class="plan-liste">${isler.map(maddeSatiri).join('')}</ul>
-        <button class="plan-ekle" data-act="plan-madde-ekle" data-id="${esc(iso)}" type="button">+ madde ekle</button>
+        ${ekleFormu('madde', iso, yeniTur)}
       `, k('maddeler'))}
       ${bolum('odemeler', 'ÖDEMELER', `
         <ul class="plan-liste">${odemeler.map(odemeSatiri).join('')}</ul>
-        <button class="plan-ekle" data-act="plan-odeme-ekle" data-id="${esc(iso)}" type="button">+ ödeme ekle</button>
+        ${ekleFormu('odeme', iso, yeniTur)}
       `, k('odemeler'))}
       ${bolum('not', 'NOT', `
         <textarea class="plan-not" data-act="plan-not" data-id="${esc(iso)}"
           placeholder="Bu güne dair not…">${esc(not ? not.metin : '')}</textarea>
       `, k('not'))}
     </div>`;
+  }
+
+  // state.planYeni 'tur:iso' biçiminde tutulur. Açık günün satır içi formu
+  // yalnız o güne aitse açılır.
+  function yeniTur(state) {
+    const parca = String(state.planYeni || '').split(':');
+    return parca.length === 2 && parca[1] === state.planAcikGun ? parca[0] : null;
   }
 
   // Ana görünüm. state.planYil/planAy yoksa bugünün ayı açılır.
@@ -185,7 +227,7 @@
         </div>
         <div class="plan-hafta">${HAFTA.map(g => `<span>${g}</span>`).join('')}</div>
         <div class="plan-izgara">${aylikIzgara(yil, ay).map(hucre).join('')}</div>
-        ${s.planAcikGun ? gunPaneli(s.planAcikGun, maddeler, katli) : ''}
+        ${s.planAcikGun ? gunPaneli(s.planAcikGun, maddeler, katli, yeniTur(s)) : ''}
       </div>
       <aside class="plan-yan">
         ${bolum('yaklasan', 'YAKLAŞAN ÖDEMELER', odemeSutun, katli.indexOf('yaklasan') !== -1)}
