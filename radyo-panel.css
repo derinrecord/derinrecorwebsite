@@ -364,4 +364,101 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .sube-liste.bos{border-color:rgba(240,161,50,.45)}
 .sube-liste.bos .sub{color:var(--warn,#f0a132)}
 
+/* ---------- Plan takvimi (yalnızca yönetici) ----------
+   Takvim solda, yaklaşan ödemeler sağda. Dar ekranda alt alta iner. */
+.plan-sarmal{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start}
+.plan-ana{min-width:0}
+
+/* Ay başlığı: oklar kenarlarda, ay adı ortada. */
+.plan-ay-bas{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:16px}
+.plan-ay-bas b{font-size:15px;letter-spacing:.14em;min-width:190px;text-align:center}
+.plan-ay-bas button{width:34px;height:34px;flex:0 0 auto;font-size:19px;line-height:1;color:var(--txt);
+  background:var(--surface);border:1px solid var(--line);border-radius:50%;cursor:pointer}
+.plan-ay-bas button:hover{border-color:var(--gold);color:var(--gold)}
+
+.plan-hafta{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
+.plan-hafta span{text-align:center;font-size:10.5px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+
+.plan-izgara{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.plan-hucre{position:relative;aspect-ratio:1/.82;display:flex;flex-direction:column;align-items:flex-start;
+  justify-content:space-between;padding:7px 8px;color:var(--txt);background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r-sm);cursor:pointer;text-align:left}
+.plan-hucre:hover{border-color:rgba(255,255,255,.3)}
+.plan-hucre .gun{font-size:13px;font-variant-numeric:tabular-nums}
+/* Komşu ayın günleri: tıklanabilir ama geri planda. */
+.plan-hucre.disari{opacity:.34}
+/* Bugün altın çerçeveyle ayrılır; açık gün altın zeminle. */
+.plan-hucre.bugun{border-color:var(--gold)}
+.plan-hucre.bugun .gun{color:var(--gold);font-weight:700}
+.plan-hucre.acik{background:var(--gold);border-color:var(--gold)}
+.plan-hucre.acik .gun,.plan-hucre.acik .rozet{color:var(--gold-ink)}
+.plan-hucre.acik .rozet{background:rgba(0,0,0,.18);border-color:transparent}
+/* Rozet: o günde kaç iş var, kaçı bitmiş. */
+.plan-hucre .rozet{align-self:flex-end;font-style:normal;font-size:10px;line-height:1;padding:3px 6px;
+  color:var(--muted);background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:20px;
+  font-variant-numeric:tabular-nums}
+
+/* Katlanabilir bölüm — gün panelinde ve yan sütunda aynı kabuk. */
+.plan-bolum{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:rgba(255,255,255,.025)}
+.plan-bolum+.plan-bolum{margin-top:10px}
+.plan-bolum-bas{display:flex;align-items:center;gap:9px;width:100%;padding:11px 13px;font-size:10.5px;
+  letter-spacing:.14em;color:var(--muted);background:none;border:0;cursor:pointer;text-align:left}
+.plan-bolum-bas:hover{color:var(--txt)}
+.plan-bolum-bas .ok{font-size:11px;color:var(--gold)}
+.plan-bolum-ic{padding:0 13px 13px}
+
+/* Gün paneli: takvimin altında açılır. */
+.plan-gun-paneli{margin-top:20px;padding-top:20px;border-top:1px solid var(--line)}
+.plan-gun-paneli h3{margin:0 0 13px;font-size:14px;letter-spacing:.1em;color:var(--gold);
+  font-variant-numeric:tabular-nums}
+
+.plan-liste{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.plan-liste:empty{display:none}
+.plan-satir{display:flex;align-items:center;gap:11px;padding:9px 11px;
+  border:1px solid rgba(255,255,255,.09);border-radius:11px}
+.plan-satir .metin{flex:1;min-width:0;font-size:13.5px;word-break:break-word}
+.plan-satir .tutar{font-size:13px;color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Bitmiş iş silinmez, üstü çizilir: gün sonunda ne yaptığın da görünsün. */
+.plan-satir.bitti .metin{text-decoration:line-through;opacity:.5}
+/* Kutucuk kendi çizilir — koyu panelde tarayıcı varsayılanı yabancı duruyor. */
+.plan-satir .kutu{width:18px;height:18px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+  font-size:11px;line-height:1;color:var(--gold-ink);background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.35);border-radius:5px;cursor:pointer}
+.plan-satir.bitti .kutu{background:var(--gold);border-color:var(--gold)}
+.plan-satir .sil{width:24px;height:24px;flex:0 0 auto;font-size:15px;line-height:1;color:var(--muted);
+  background:none;border:0;border-radius:6px;cursor:pointer}
+.plan-satir .sil:hover{color:var(--danger);background:rgba(255,95,109,.12)}
+
+.plan-ekle{margin-top:9px;padding:8px 13px;font-size:12px;color:var(--muted);background:none;
+  border:1px dashed var(--line);border-radius:10px;cursor:pointer;width:100%}
+.plan-ekle:hover{color:var(--gold);border-color:var(--gold)}
+
+.plan-not{width:100%;min-height:92px;padding:11px 12px;font:inherit;font-size:13.5px;color:var(--txt);
+  background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:11px;resize:vertical}
+.plan-not:focus{outline:none;border-color:var(--gold)}
+
+/* Yan sütun: aboneliklerden canlı okunan ödemeler. */
+.plan-odeme-liste{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.plan-odeme-liste li{display:grid;grid-template-columns:auto 1fr;gap:3px 9px;padding:10px 11px;
+  border:1px solid rgba(255,255,255,.09);border-radius:11px}
+.plan-odeme-liste .t{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.plan-odeme-liste .m{font-size:13px}
+.plan-odeme-liste b{grid-column:1/-1;font-size:14px;color:var(--gold);font-variant-numeric:tabular-nums}
+.plan-odeme-liste small{grid-column:1/-1;font-size:10.5px;color:var(--warn)}
+.plan-odeme-liste .aktar{grid-column:1/-1;margin-top:4px;padding:6px 10px;font-size:11px;color:var(--muted);
+  background:none;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.plan-odeme-liste .aktar:hover{color:var(--gold);border-color:var(--gold)}
+/* İptal edilmiş abonelik gizlenmez, soluklaşır. */
+.plan-odeme-liste li.iptal{opacity:.6;border-style:dashed}
+
+@media(max-width:1100px){
+  .plan-sarmal{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  .plan-izgara,.plan-hafta{gap:4px}
+  .plan-hucre{padding:5px;aspect-ratio:1/1}
+  .plan-hucre .rozet{font-size:9px;padding:2px 4px}
+  .plan-ay-bas b{min-width:0;font-size:13px}
+}
+
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
