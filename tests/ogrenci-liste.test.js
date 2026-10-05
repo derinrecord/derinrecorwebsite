@@ -7,7 +7,7 @@ const O = require('../ogrenciler.js');
 // Klasör artık takvimin ayını ve bugününü de alıyor (yoklama şeridi ve ödeme
 // özeti takvimde görünen ayı izler). Testler tek yerden bu bağlamı veriyor.
 const AY = { yil: 2026, ay: 10, bugun: '2026-10-05' };
-const bolum = (liste, s, kayitlar) => O.ogrenciBolumu(liste, kayitlar || [], s, AY);
+const bolum = (liste, s, kayitlar) => O.ogrenciListesi(liste, kayitlar || [], s, AY);
 
 // ---------- Arama ----------
 // Liste ad, veli ve telefonda aranır; harf büyüklüğünden bağımsız, Türkçe
@@ -98,8 +98,9 @@ test('kullanıcı girdisi kaçışlı basılır', () => {
 });
 
 // ---------- Takvime bağlanma ----------
-// Öğrenciler takvim içinde ayrı bir klasör; panele yalnız birkaç satırla
-// tanıtılıyor. Bu testler o bağlantının kopmadığını doğrular.
+// Öğrenciler marka takviminin yan panelinde bir klasör DEĞİL; marka
+// takviminin altında ikinci bir takvim. Bu testler iki işin karışmadığını
+// doğrular: öğrenci bölümü marka panellerinin içinde görünmemeli.
 
 const P = require('../plan-takvim.js');
 const UI = { now: () => Date.parse('2026-10-05T09:00:00Z') };
@@ -107,28 +108,45 @@ const UI = { now: () => Date.parse('2026-10-05T09:00:00Z') };
 // takvimView modülü window üzerinden okur; node'da pencere yok, burada kurulur.
 global.window = Object.assign(global.window || {}, { DerinOgrenci: O });
 
-test('takvim yan panelinde ayrı ÖĞRENCİLER klasörü var', () => {
+test('öğrenci takvimi marka takviminin altında ayrı bölüm olarak basılır', () => {
   const D = { brands: [], plans: [], subscriptions: [], planItems: [], ogrenciler: [] };
   const h = P.takvimView({ planYil: 2026, planAy: 10 }, D, UI);
-  assert.ok(h.includes('ÖĞRENCİLER'), 'klasör başlığı olmalı');
-  assert.ok(h.includes('data-act="plan-katla" data-id="ogrenciler"'), 'klasör katlanabilmeli');
-  assert.ok(h.includes('data-act="ogrenci-ara"'), 'klasörde arama olmalı');
-  assert.ok(h.includes('data-act="ogrenci-yeni"'), 'klasörde ekleme olmalı');
+  assert.ok(h.includes('class="ogr-takvim"'), 'ikinci takvim bölümü olmalı');
+  assert.ok(h.includes('<h3>ÖĞRENCİLER</h3>'), 'bölüm başlığı olmalı');
+  assert.ok(h.includes('data-act="ogrenci-ay"'), 'ikinci takvimin kendi ay okları olmalı');
+  assert.ok(h.includes('data-act="ogrenci-gun"'), 'gün hücreleri basılmalı');
+  assert.ok(h.includes('data-act="ogrenci-ara"'), 'listede arama olmalı');
+  assert.ok(h.includes('data-act="ogrenci-yeni"'), 'listede ekleme olmalı');
+  // Sıra: öğrenci takvimi marka ızgarasından SONRA gelir.
+  assert.ok(h.indexOf('class="ogr-takvim"') > h.indexOf('class="plan-izgara"'),
+    'öğrenci takvimi marka ızgarasının altında olmalı');
 });
 
-test('klasör katlıyken içeriği basılmaz', () => {
+test('öğrenci bölümü marka yan panelinin dışında kalır', () => {
+  const D = { brands: [], plans: [], subscriptions: [], planItems: [], ogrenciler: [] };
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, D, UI);
+  const yan = h.slice(h.indexOf('<aside class="plan-yan">'), h.indexOf('</aside>'));
+  assert.ok(yan.includes('Marka ara'), 'yan panel marka paneli olarak kalmalı');
+  assert.ok(!yan.includes('ÖĞRENCİLER'), 'marka panelinde öğrenci bölümü olmamalı');
+  assert.ok(!h.includes('data-act="plan-katla" data-id="ogrenciler"'),
+    'öğrenciler katlanabilir marka klasörü olmamalı');
+});
+
+test('öğrenci takviminin ayı marka takviminden bağımsız yürür', () => {
   const D = { brands: [], plans: [], subscriptions: [], planItems: [],
     ogrenciler: [{ id: '1', ad: 'Elif', veli: '', telefon: '', notlar: '' }] };
-  const acik = P.takvimView({ planYil: 2026, planAy: 10, planKatli: [] }, D, UI);
-  const katli = P.takvimView({ planYil: 2026, planAy: 10, planKatli: ['ogrenciler'] }, D, UI);
-  assert.ok(acik.includes('Elif'), 'açık klasörde ad görünmeli');
-  assert.ok(!katli.includes('Elif'), 'katlı klasörde satır basılmamalı');
+  const h = P.takvimView({ planYil: 2026, planAy: 10, ogrenciYil: 2026, ogrenciAy: 11 }, D, UI);
+  assert.ok(h.includes('Kasım 2026'), 'öğrenci takvimi kendi ayını göstermeli');
+  assert.ok(h.includes('EKİM 2026'), 'marka takvimi kendi ayında kalmalı');
+  assert.ok(h.includes('Elif'), 'öğrenci listesi basılmalı');
+  assert.ok(h.includes('data-id="2026-11-01"'), 'ızgara öğrenci ayının günlerini basmalı');
 });
 
-test('öğrenci verisi yokken klasör boş açılır, takvim çalışır', () => {
+test('öğrenci verisi yokken ikinci takvim boş açılır, marka takvimi çalışır', () => {
   const h = P.takvimView({ planYil: 2026, planAy: 10 }, { brands: [], plans: [], subscriptions: [] }, UI);
-  assert.ok(h.includes('ÖĞRENCİLER'), 'klasör yine de basılmalı');
-  assert.ok(h.includes('data-act="plan-gun"'), 'takvim ızgarası çalışmalı');
+  assert.ok(h.includes('class="ogr-takvim"'), 'bölüm yine de basılmalı');
+  assert.ok(h.includes('data-act="plan-gun"'), 'marka takvim ızgarası çalışmalı');
+  assert.ok(h.includes('Henüz öğrenci yok.'), 'boş liste yol göstermeli');
 });
 
 // ---------- Panele bağlanma ----------

@@ -539,21 +539,76 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
   border-top:1px solid var(--line)}
 .ogr-bolum h4{margin:0 0 9px;font-size:11px;letter-spacing:.12em;color:var(--gold)}
 
-/* Yoklama şeridi: ayın her günü küçük bir kare. İşaretsiz gün boş durur;
-   geldi altın, gelmedi kırmızı, mazeret soluk. Bugün çerçevelenir. */
-.ogr-serit{display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:5px}
-.ogr-gun{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:1px;min-height:38px;padding:3px 2px;font:inherit;cursor:pointer;
-  color:var(--muted);background:rgba(255,255,255,.03);
-  border:1px solid var(--line);border-radius:8px}
-.ogr-gun i{font-style:normal;font-size:9.5px;line-height:1;opacity:.75}
-.ogr-gun b{font-size:12px;line-height:1;font-weight:700}
-.ogr-gun:hover{border-color:rgba(255,255,255,.3)}
-.ogr-gun.bugun{border-color:var(--gold)}
-.ogr-gun.geldi{color:var(--gold-ink);background:var(--gold);border-color:var(--gold)}
-.ogr-gun.gelmedi{color:#fff;background:var(--danger);border-color:var(--danger)}
-.ogr-gun.mazeret{color:var(--warn,#f0a132);background:rgba(240,161,50,.14);border-color:rgba(240,161,50,.5)}
-.ogr-gun.geldi i,.ogr-gun.gelmedi i{opacity:.85}
+/* ---- İkinci takvim: öğrenciler ------------------------------------------
+   Marka takviminin ALTINDA, tam genişlikte durur. Yan paneldeki ödeme
+   bloklarıyla (Marka ara / yaklaşan ödemeler / trend) aynı sütunu paylaşmaz:
+   öğrenci işi kahve markası işine karışmasın. */
+.ogr-takvim{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+.ogr-takvim-bas{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.ogr-takvim-bas h3{margin:0;font-size:12px;letter-spacing:.14em;color:var(--gold)}
+.ogr-takvim-ay{display:flex;align-items:center;gap:8px}
+.ogr-takvim-ay button{width:28px;height:28px;font:inherit;font-size:13px;color:var(--muted);
+  background:none;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.ogr-takvim-ay button:hover{color:var(--gold);border-color:var(--gold)}
+.ogr-takvim-ay b{min-width:112px;font-size:13px;text-align:center}
+.ogr-takvim-bas .ogr-ipucu{margin:0 0 0 auto}
+.ogr-takvim-sarmal{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
+.ogr-takvim-ana,.ogr-takvim-yan{min-width:0}
+
+/* Izgara kareleri: gün numarası ve "kaç kişi geldi" rozeti. Üç durum var —
+   tam (herkes geldi), eksik (gelmeyen var), işaretsiz (henüz yoklama yok). */
+.ogr-izgara{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.ogr-hucre{position:relative;aspect-ratio:1/.82;display:flex;flex-direction:column;
+  min-width:0;align-items:flex-start;justify-content:space-between;gap:6px;padding:8px 9px;font:inherit;
+  text-align:left;color:var(--txt);background:rgba(255,255,255,.025);
+  border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.ogr-hucre:hover{border-color:rgba(255,255,255,.3)}
+.ogr-hucre .gun{font-size:13px;font-variant-numeric:tabular-nums}
+.ogr-hucre .rozet{flex:0 0 auto;font-style:normal;font-size:10px;line-height:1;padding:3px 6px;
+  color:var(--muted);background:rgba(255,255,255,.06);border:1px solid var(--line);
+  border-radius:999px;font-variant-numeric:tabular-nums}
+.ogr-hucre .hucre-ust{display:flex;align-items:flex-start;justify-content:space-between;
+  gap:6px;width:100%;min-width:0}
+.ogr-hucre .hucre-alt{display:flex;gap:6px;font-size:10.5px}
+.ogr-hucre .hucre-alt i{font-style:normal;font-weight:700}
+.ogr-hucre .hucre-alt i.y{color:var(--danger)}
+.ogr-hucre .hucre-alt i.m{color:var(--warn,#f0a132)}
+.ogr-hucre.disari{opacity:.34}
+.ogr-hucre.isaretsiz{opacity:.72}
+.ogr-hucre.bugun{border-color:var(--gold)}
+.ogr-hucre.bugun .gun{color:var(--gold);font-weight:700}
+.ogr-hucre.tam{border-color:rgba(212,194,78,.45)}
+.ogr-hucre.tam .rozet{color:var(--gold-ink);background:var(--gold);border-color:var(--gold)}
+.ogr-hucre.eksik{border-color:rgba(255,95,109,.45)}
+.ogr-hucre.eksik .rozet{color:#fff;background:var(--danger);border-color:var(--danger)}
+.ogr-hucre.acik{color:var(--gold-ink);background:var(--gold);border-color:var(--gold)}
+.ogr-hucre.acik .gun{color:var(--gold-ink)}
+.ogr-hucre.acik .rozet{color:var(--gold-ink);background:rgba(0,0,0,.18);border-color:transparent}
+.ogr-hucre.acik .hucre-alt i.y{color:#7a1420}
+.ogr-hucre.acik .hucre-alt i.m{color:rgba(0,0,0,.62)}
+
+/* Gün yoklaması: seçilen gün için BÜTÜN öğrenciler tek listede, satırda tek
+   düğme. Sınıfı toplu işaretlemek için gün gün gezinmek gerekmez; arama
+   süzgeci kalabalık listede geçerli. */
+.ogr-yoklama{margin-top:14px;padding:13px;background:rgba(255,255,255,.025);
+  border:1px solid var(--line);border-radius:var(--r)}
+.ogr-gun-bas{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.ogr-gun-bas b{font-size:13px}
+.ogr-yoklama-ozet{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ogr-yoklama-ozet b.y{color:var(--warn,#f0a132)}
+.ogr-yoklama-ozet b.m{color:var(--muted)}
+.ogr-gun-bas .plan-vazgec{margin-left:auto}
+.ogr-yoklama-liste{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.ogr-yoklama-satir{display:flex;align-items:center;gap:10px;padding:7px 10px;
+  background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:9px}
+.ogr-yoklama-satir .metin{flex:1 1 auto;min-width:0;font-size:12.5px}
+.ogr-yoklama-satir .metin small{font-size:11px;color:var(--muted)}
+.ogr-durum{flex:0 0 auto;min-width:92px;padding:6px 10px;font:inherit;font-size:11.5px;
+  color:var(--muted);background:none;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.ogr-durum:hover{border-color:rgba(255,255,255,.3)}
+.ogr-durum.geldi{color:var(--gold-ink);background:var(--gold);border-color:var(--gold);font-weight:700}
+.ogr-durum.gelmedi{color:#fff;background:var(--danger);border-color:var(--danger);font-weight:700}
+.ogr-durum.mazeret{color:var(--warn,#f0a132);background:rgba(240,161,50,.14);border-color:rgba(240,161,50,.5)}
 .ogr-ozet{margin:0 0 8px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .ogr-ozet b{font-weight:700}
 .ogr-ozet b.g{color:var(--gold)}
@@ -660,12 +715,22 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 
 @media(max-width:1100px){
   .plan-sarmal{grid-template-columns:1fr}
+  .ogr-takvim-sarmal{grid-template-columns:1fr}
 }
 @media(max-width:620px){
   .plan-izgara,.plan-hafta{gap:4px}
   .plan-hucre{padding:5px;aspect-ratio:1/1}
   .plan-hucre .rozet{font-size:9px;padding:2px 4px}
   .plan-ay-bas b{min-width:0;font-size:13px}
+  /* İkinci takvim de dar ekranda küçülür: kutu içeriği sarkıp sayfayı
+     yana kaydırmasın (dar ekranda sarkma tüm paneli kaydırırdı). */
+  .ogr-izgara,.ogr-takvim-ana .plan-hafta{gap:4px}
+  .ogr-hucre{padding:5px;aspect-ratio:1/1}
+  .ogr-hucre .rozet{font-size:9px;padding:2px 4px}
+  .ogr-hucre .hucre-ust{flex-direction:column;align-items:flex-start;gap:2px}
+  .ogr-yoklama-satir{flex-wrap:wrap}
+  .ogr-durum{margin-left:auto}
+  .ogr-takvim-bas .ogr-ipucu{display:none}
 }
 
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -830,185 +895,6 @@ body{background:#0b0b0d;padding:22px;display:block}
           data-act="plan-durum" data-id="gecikmis" type="button">Gecikmiş</button>
     </div>
         <section class="plan-bolum">
-      <button class="plan-bolum-bas" data-act="plan-katla" data-id="ogrenciler" type="button">
-        <span class="ok">▾</span>ÖĞRENCİLER
-      </button>
-      <div class="plan-bolum-ic"><div class="ogrenci-klasor">
-      <div class="plan-filtre">
-        <input class="plan-filtre-gir" data-act="ogrenci-ara" type="text" autocomplete="off"
-          placeholder="Öğrenci ara…" value="">
-      </div>
-      <p class="ogr-toplam">Ekim 2026 · 2 öğrenci · <b class="g">2.000 ₺ tahsil</b> · <b class="y">3.000 ₺ bekleyen</b> · <b class="y">4 gelmedi</b> · <b class="m">1 mazeret</b></p>
-      <div class="ogr-suzgec"><button class="ogr-odak secili"
-        data-act="ogrenci-odak" data-id="" type="button"
-        aria-pressed="true">Tümü <b>2</b></button>
-      <button class="ogr-odak"
-        data-act="ogrenci-odak" data-id="borc" type="button"
-        aria-pressed="false">Borçlular <b>2</b></button><button class="ogr-odak"
-        data-act="ogrenci-odak" data-id="gelmedi" type="button"
-        aria-pressed="false">Gelmedi ≥ 3 <b>1</b></button></div>
-      <button class="plan-ekle" data-act="ogrenci-yeni" type="button">+ öğrenci ekle</button>
-      <ul class="plan-liste ogrenci-liste"><li class="plan-satir ogrenci acik">
-      <button class="ogr-ac" data-act="ogrenci-detay" data-id="og1"
-      type="button" aria-expanded="true"
-      aria-label="Yoklama ve ödemeyi kapat">▾</button>
-      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33</small><br><small>Salı-Perşembe</small></span>
-      <button class="duzenle" data-act="ogrenci-duzenle" data-id="og1" type="button" aria-label="Düzenle">✎</button>
-      <button class="sil" data-act="ogrenci-sil" data-id="og1" type="button" aria-label="Sil">×</button>
-      <div class="ogr-detay">
-      <div class="ogr-bolum">
-        <h4>YOKLAMA</h4>
-        <div class="ogr-yoklama">
-      <p class="ogr-ozet">Ekim 2026 ·
-        <b class="g">3 geldi</b> · <b class="y">1 gelmedi</b> · <b class="m">1 mazeret</b></p>
-      <div class="ogr-serit"><button class="ogr-gun geldi" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-01:geldi"
-        title="1 Ekim · Geldi"
-        type="button"><i>1</i><b>✓</b></button><button class="ogr-gun geldi" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-02:geldi"
-        title="2 Ekim · Geldi"
-        type="button"><i>2</i><b>✓</b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-03:"
-        title="3 Ekim · İşaretsiz"
-        type="button"><i>3</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-04:"
-        title="4 Ekim · İşaretsiz"
-        type="button"><i>4</i><b></b></button><button class="ogr-gun bugun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-05:"
-        title="5 Ekim · İşaretsiz"
-        type="button"><i>5</i><b></b></button><button class="ogr-gun gelmedi" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-06:gelmedi"
-        title="6 Ekim · Gelmedi"
-        type="button"><i>6</i><b>×</b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-07:"
-        title="7 Ekim · İşaretsiz"
-        type="button"><i>7</i><b></b></button><button class="ogr-gun mazeret" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-08:mazeret"
-        title="8 Ekim · Mazeret"
-        type="button"><i>8</i><b>M</b></button><button class="ogr-gun geldi" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-09:geldi"
-        title="9 Ekim · Geldi"
-        type="button"><i>9</i><b>✓</b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-10:"
-        title="10 Ekim · İşaretsiz"
-        type="button"><i>10</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-11:"
-        title="11 Ekim · İşaretsiz"
-        type="button"><i>11</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-12:"
-        title="12 Ekim · İşaretsiz"
-        type="button"><i>12</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-13:"
-        title="13 Ekim · İşaretsiz"
-        type="button"><i>13</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-14:"
-        title="14 Ekim · İşaretsiz"
-        type="button"><i>14</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-15:"
-        title="15 Ekim · İşaretsiz"
-        type="button"><i>15</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-16:"
-        title="16 Ekim · İşaretsiz"
-        type="button"><i>16</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-17:"
-        title="17 Ekim · İşaretsiz"
-        type="button"><i>17</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-18:"
-        title="18 Ekim · İşaretsiz"
-        type="button"><i>18</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-19:"
-        title="19 Ekim · İşaretsiz"
-        type="button"><i>19</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-20:"
-        title="20 Ekim · İşaretsiz"
-        type="button"><i>20</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-21:"
-        title="21 Ekim · İşaretsiz"
-        type="button"><i>21</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-22:"
-        title="22 Ekim · İşaretsiz"
-        type="button"><i>22</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-23:"
-        title="23 Ekim · İşaretsiz"
-        type="button"><i>23</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-24:"
-        title="24 Ekim · İşaretsiz"
-        type="button"><i>24</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-25:"
-        title="25 Ekim · İşaretsiz"
-        type="button"><i>25</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-26:"
-        title="26 Ekim · İşaretsiz"
-        type="button"><i>26</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-27:"
-        title="27 Ekim · İşaretsiz"
-        type="button"><i>27</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-28:"
-        title="28 Ekim · İşaretsiz"
-        type="button"><i>28</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-29:"
-        title="29 Ekim · İşaretsiz"
-        type="button"><i>29</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-30:"
-        title="30 Ekim · İşaretsiz"
-        type="button"><i>30</i><b></b></button><button class="ogr-gun" data-act="ogrenci-katilim"
-        data-id="og1:2026-10-31:"
-        title="31 Ekim · İşaretsiz"
-        type="button"><i>31</i><b></b></button></div>
-      <p class="ogr-ipucu">Güne bas: geldi → gelmedi → mazeret → işaretsiz</p>
-    </div>
-      </div>
-      <div class="ogr-bolum">
-        <h4>ÖDEMELER</h4>
-        <p class="ogr-ozet">Ekim 2026 ·
-          <b class="g">2.000 ₺ tahsil</b> · <b class="y">1.500 ₺ bekliyor</b></p>
-        <p class="ogr-acik-borc">Toplam açık borç: <b>2.400 ₺</b> · 2 kayıt</p>
-        <button class="plan-ekle" data-act="ogrenci-odeme-yeni" data-id="og1" type="button">+ ödeme ekle</button>
-        <ul class="plan-liste ogr-odeme-liste"><li class="plan-satir ogr-odeme">
-      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om2" type="button"
-        aria-label="Ödendi işaretle"></button>
-      <span class="metin">Kasım aidatı <small>20 Ekim</small></span>
-      <b class="tutar">1.500 ₺</b>
-      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om2" type="button" aria-label="Düzenle">✎</button>
-      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om2" type="button" aria-label="Sil">×</button>
-    </li><li class="plan-satir ogr-odeme bitti">
-      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om1" type="button"
-        aria-label="Ödenmedi işaretle">✓</button>
-      <span class="metin">Ekim aidatı <small>3 Ekim</small></span>
-      <b class="tutar">2.000 ₺</b>
-      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om1" type="button" aria-label="Düzenle">✎</button>
-      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om1" type="button" aria-label="Sil">×</button>
-    </li><li class="plan-satir ogr-odeme bitti">
-      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om3" type="button"
-        aria-label="Ödenmedi işaretle">✓</button>
-      <span class="metin">Eylül aidatı <small>15 Eylül</small></span>
-      <b class="tutar">2.000 ₺</b>
-      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om3" type="button" aria-label="Düzenle">✎</button>
-      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om3" type="button" aria-label="Sil">×</button>
-    </li><li class="plan-satir ogr-odeme">
-      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om4" type="button"
-        aria-label="Ödendi işaretle"></button>
-      <span class="metin">Ağustos aidatı <small>10 Ağustos</small></span>
-      <b class="tutar">900 ₺</b>
-      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om4" type="button" aria-label="Düzenle">✎</button>
-      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om4" type="button" aria-label="Sil">×</button>
-    </li></ul>
-      </div>
-    </div>
-      
-    </li><li class="plan-satir ogrenci">
-      <button class="ogr-ac" data-act="ogrenci-detay" data-id="og2"
-      type="button" aria-expanded="false"
-      aria-label="Yoklama ve ödeme">▸</button>
-      <span class="metin"><b>Mert Demir</b> <small>Ali Demir · 0532 444 55 66</small><span class="ogr-cip"><i class="g">1 geldi</i><i class="y d">3 gelmedi</i><i class="y">1.500 ₺ bekliyor</i></span></span>
-      <button class="duzenle" data-act="ogrenci-duzenle" data-id="og2" type="button" aria-label="Düzenle">✎</button>
-      <button class="sil" data-act="ogrenci-sil" data-id="og2" type="button" aria-label="Sil">×</button>
-      
-      
-    </li></ul>
-    </div></div>
-    </section>
-        <section class="plan-bolum">
       <button class="plan-bolum-bas" data-act="plan-katla" data-id="yaklasan" type="button">
         <span class="ok">▾</span>YAKLAŞAN ÖDEMELER
       </button>
@@ -1132,5 +1018,245 @@ body{background:#0b0b0d;padding:22px;display:block}
     </section>
       </aside>
       </div>
+      <section class="ogr-takvim">
+      <div class="ogr-takvim-bas">
+        <h3>ÖĞRENCİLER</h3>
+        <span class="ogr-takvim-ay">
+          <button data-act="ogrenci-ay" data-id="onceki" type="button" aria-label="Önceki ay">‹</button>
+          <b>Ekim 2026</b>
+          <button data-act="ogrenci-ay" data-id="sonraki" type="button" aria-label="Sonraki ay">›</button>
+        </span>
+        <p class="ogr-ipucu">Marka takviminden bağımsız aydır.</p>
+      </div>
+      <div class="ogr-takvim-sarmal">
+        <div class="ogr-takvim-ana">
+          <div class="plan-hafta"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div>
+          <div class="ogr-izgara"><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-09-28" type="button"
+      aria-label="28 Eylül 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">28</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-09-29" type="button"
+      aria-label="29 Eylül 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">29</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-09-30" type="button"
+      aria-label="30 Eylül 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">30</span></span>
+    </button><button class="ogr-hucre tam" data-act="ogrenci-gun" data-id="2026-10-01" type="button"
+      aria-label="1 Ekim 2026 · Per · 2/2 geldi" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">1</span><i class="rozet">2/2</i></span><span class="hucre-alt"></span>
+    </button><button class="ogr-hucre" data-act="ogrenci-gun" data-id="2026-10-02" type="button"
+      aria-label="2 Ekim 2026 · Cum · 1/2 geldi" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">2</span><i class="rozet">1/2</i></span><span class="hucre-alt"></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-03" type="button"
+      aria-label="3 Ekim 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">3</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-04" type="button"
+      aria-label="4 Ekim 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">4</span></span>
+    </button><button class="ogr-hucre bugun isaretsiz" data-act="ogrenci-gun" data-id="2026-10-05" type="button"
+      aria-label="5 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">5</span></span>
+    </button><button class="ogr-hucre eksik acik" data-act="ogrenci-gun" data-id="2026-10-06" type="button"
+      aria-label="6 Ekim 2026 · Sal · 0/2 geldi · 2 gelmedi" aria-pressed="true">
+      <span class="hucre-ust"><span class="gun">6</span><i class="rozet">0/2</i></span><span class="hucre-alt"><i class="y">2×</i></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-07" type="button"
+      aria-label="7 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">7</span></span>
+    </button><button class="ogr-hucre eksik" data-act="ogrenci-gun" data-id="2026-10-08" type="button"
+      aria-label="8 Ekim 2026 · Per · 0/2 geldi · 1 gelmedi · 1 mazeret" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">8</span><i class="rozet">0/2</i></span><span class="hucre-alt"><i class="y">1×</i><i class="m">1M</i></span>
+    </button><button class="ogr-hucre" data-act="ogrenci-gun" data-id="2026-10-09" type="button"
+      aria-label="9 Ekim 2026 · Cum · 1/2 geldi" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">9</span><i class="rozet">1/2</i></span><span class="hucre-alt"></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-10" type="button"
+      aria-label="10 Ekim 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">10</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-11" type="button"
+      aria-label="11 Ekim 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">11</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-12" type="button"
+      aria-label="12 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">12</span></span>
+    </button><button class="ogr-hucre eksik" data-act="ogrenci-gun" data-id="2026-10-13" type="button"
+      aria-label="13 Ekim 2026 · Sal · 0/2 geldi · 1 gelmedi" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">13</span><i class="rozet">0/2</i></span><span class="hucre-alt"><i class="y">1×</i></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-14" type="button"
+      aria-label="14 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">14</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-15" type="button"
+      aria-label="15 Ekim 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">15</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-16" type="button"
+      aria-label="16 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">16</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-17" type="button"
+      aria-label="17 Ekim 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">17</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-18" type="button"
+      aria-label="18 Ekim 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">18</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-19" type="button"
+      aria-label="19 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">19</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-20" type="button"
+      aria-label="20 Ekim 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">20</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-21" type="button"
+      aria-label="21 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">21</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-22" type="button"
+      aria-label="22 Ekim 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">22</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-23" type="button"
+      aria-label="23 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">23</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-24" type="button"
+      aria-label="24 Ekim 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">24</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-25" type="button"
+      aria-label="25 Ekim 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">25</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-26" type="button"
+      aria-label="26 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">26</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-27" type="button"
+      aria-label="27 Ekim 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">27</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-28" type="button"
+      aria-label="28 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">28</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-29" type="button"
+      aria-label="29 Ekim 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">29</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-30" type="button"
+      aria-label="30 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">30</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-31" type="button"
+      aria-label="31 Ekim 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">31</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-01" type="button"
+      aria-label="1 Kasım 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">1</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-02" type="button"
+      aria-label="2 Kasım 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">2</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-03" type="button"
+      aria-label="3 Kasım 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">3</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-04" type="button"
+      aria-label="4 Kasım 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">4</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-05" type="button"
+      aria-label="5 Kasım 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">5</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-06" type="button"
+      aria-label="6 Kasım 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">6</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-07" type="button"
+      aria-label="7 Kasım 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">7</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-08" type="button"
+      aria-label="8 Kasım 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">8</span></span>
+    </button></div>
+          <div class="ogr-yoklama">
+      <div class="ogr-gun-bas">
+        <b>6 Ekim 2026 · Sal</b>
+        <span class="ogr-yoklama-ozet">2/2 işaretli · <b class="y">2 gelmedi</b></span>
+        <button class="plan-vazgec" data-act="ogrenci-gun-kapat" type="button" aria-label="Gün yoklamasını kapat">×</button>
+      </div>
+      <ul class="ogr-yoklama-liste"><li class="ogr-yoklama-satir">
+        <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33</small></span>
+        <button class="ogr-durum gelmedi" data-act="ogrenci-katilim"
+          data-id="og1:2026-10-06:gelmedi" type="button"
+          title="Gelmedi — bas: geldi → gelmedi → mazeret → işaretsiz">Gelmedi</button>
+      </li><li class="ogr-yoklama-satir">
+        <span class="metin"><b>Mert Demir</b> <small>Ali Demir · 0532 444 55 66</small></span>
+        <button class="ogr-durum gelmedi" data-act="ogrenci-katilim"
+          data-id="og2:2026-10-06:gelmedi" type="button"
+          title="Gelmedi — bas: geldi → gelmedi → mazeret → işaretsiz">Gelmedi</button>
+      </li></ul>
+      <p class="ogr-ipucu">Düğmeye bas: geldi → gelmedi → mazeret → işaretsiz</p>
+    </div>
+        </div>
+        <aside class="ogr-takvim-yan"><div class="ogrenci-klasor">
+      <div class="plan-filtre">
+        <input class="plan-filtre-gir" data-act="ogrenci-ara" type="text" autocomplete="off"
+          placeholder="Öğrenci ara…" value="">
+      </div>
+      <p class="ogr-toplam">Ekim 2026 · 2 öğrenci · <b class="g">2.000 ₺ tahsil</b> · <b class="y">3.000 ₺ bekleyen</b> · <b class="y">4 gelmedi</b> · <b class="m">1 mazeret</b></p>
+      <div class="ogr-suzgec"><button class="ogr-odak secili"
+        data-act="ogrenci-odak" data-id="" type="button"
+        aria-pressed="true">Tümü <b>2</b></button>
+      <button class="ogr-odak"
+        data-act="ogrenci-odak" data-id="borc" type="button"
+        aria-pressed="false">Borçlular <b>2</b></button><button class="ogr-odak"
+        data-act="ogrenci-odak" data-id="gelmedi" type="button"
+        aria-pressed="false">Gelmedi ≥ 3 <b>1</b></button></div>
+      <button class="plan-ekle" data-act="ogrenci-yeni" type="button">+ öğrenci ekle</button>
+      <ul class="plan-liste ogrenci-liste"><li class="plan-satir ogrenci acik">
+      <button class="ogr-ac" data-act="ogrenci-detay" data-id="og1"
+      type="button" aria-expanded="true"
+      aria-label="Ödeme listesini ve ay özetini kapat">▾</button>
+      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33</small><br><small>Salı-Perşembe</small></span>
+      <button class="duzenle" data-act="ogrenci-duzenle" data-id="og1" type="button" aria-label="Düzenle">✎</button>
+      <button class="sil" data-act="ogrenci-sil" data-id="og1" type="button" aria-label="Sil">×</button>
+      <div class="ogr-detay">
+      <div class="ogr-bolum">
+        <h4>YOKLAMA</h4>
+        <p class="ogr-ozet">Ekim 2026 ·
+          <b class="g">3 geldi</b> · <b class="y">1 gelmedi</b> · <b class="m">1 mazeret</b></p>
+        <p class="ogr-ipucu">Gün gün yoklama öğrenci takviminden işaretlenir.</p>
+      </div>
+      <div class="ogr-bolum">
+        <h4>ÖDEMELER</h4>
+        <p class="ogr-ozet">Ekim 2026 ·
+          <b class="g">2.000 ₺ tahsil</b> · <b class="y">1.500 ₺ bekliyor</b></p>
+        <p class="ogr-acik-borc">Toplam açık borç: <b>2.400 ₺</b> · 2 kayıt</p>
+        <button class="plan-ekle" data-act="ogrenci-odeme-yeni" data-id="og1" type="button">+ ödeme ekle</button>
+        <ul class="plan-liste ogr-odeme-liste"><li class="plan-satir ogr-odeme">
+      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om2" type="button"
+        aria-label="Ödendi işaretle"></button>
+      <span class="metin">Kasım aidatı <small>20 Ekim</small></span>
+      <b class="tutar">1.500 ₺</b>
+      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om2" type="button" aria-label="Düzenle">✎</button>
+      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om2" type="button" aria-label="Sil">×</button>
+    </li><li class="plan-satir ogr-odeme bitti">
+      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om1" type="button"
+        aria-label="Ödenmedi işaretle">✓</button>
+      <span class="metin">Ekim aidatı <small>3 Ekim</small></span>
+      <b class="tutar">2.000 ₺</b>
+      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om1" type="button" aria-label="Düzenle">✎</button>
+      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om1" type="button" aria-label="Sil">×</button>
+    </li><li class="plan-satir ogr-odeme bitti">
+      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om3" type="button"
+        aria-label="Ödenmedi işaretle">✓</button>
+      <span class="metin">Eylül aidatı <small>15 Eylül</small></span>
+      <b class="tutar">2.000 ₺</b>
+      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om3" type="button" aria-label="Düzenle">✎</button>
+      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om3" type="button" aria-label="Sil">×</button>
+    </li><li class="plan-satir ogr-odeme">
+      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om4" type="button"
+        aria-label="Ödendi işaretle"></button>
+      <span class="metin">Ağustos aidatı <small>10 Ağustos</small></span>
+      <b class="tutar">900 ₺</b>
+      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om4" type="button" aria-label="Düzenle">✎</button>
+      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om4" type="button" aria-label="Sil">×</button>
+    </li></ul>
+      </div>
+    </div>
+      
+    </li><li class="plan-satir ogrenci">
+      <button class="ogr-ac" data-act="ogrenci-detay" data-id="og2"
+      type="button" aria-expanded="false"
+      aria-label="Ödeme listesi ve ay özeti">▸</button>
+      <span class="metin"><b>Mert Demir</b> <small>Ali Demir · 0532 444 55 66</small><span class="ogr-cip"><i class="g">1 geldi</i><i class="y d">3 gelmedi</i><i class="y">1.500 ₺ bekliyor</i></span></span>
+      <button class="duzenle" data-act="ogrenci-duzenle" data-id="og2" type="button" aria-label="Düzenle">✎</button>
+      <button class="sil" data-act="ogrenci-sil" data-id="og2" type="button" aria-label="Sil">×</button>
+      
+      
+    </li></ul>
+    </div></aside>
+      </div>
+    </section>
     </div></div></body>
 </html>

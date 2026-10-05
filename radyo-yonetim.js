@@ -49,6 +49,9 @@
     // Plan takvimi: açık gün, görünen ay, katlanmış bölümler. Katlı olanlar
     // tarayıcıda hatırlanır; her açılışta hepsi yeniden açılmasın diye.
     planAcikGun: null, planYil: null, planAy: null, planKatli: [], planYeni: null,
+    // İkinci takvim (öğrenciler): kendi ayı ve açık günü. Marka takviminden
+    // bağımsızdır — öğrenci okları marka takvimini kaydırmaz.
+    ogrenciYil: null, ogrenciAy: null, ogrenciGun: null,
     // Yayın başlatma ekranının seçimleri: marka → şube → kaynak → parça.
     yayin: { brandId: '', playerId: '', kaynak: '', parcaId: '' },
     // Açık bırakılan katlanabilir bölümler (marka sayfasındaki geçmiş listeleri).
@@ -1534,7 +1537,35 @@
         return;
       }
 
-      // --- öğrenci listesi (bkz. ogrenciler.js) ---
+      // --- öğrenci listesi ve ikinci takvim (bkz. ogrenciler.js) ---
+      case 'ogrenci-ay': {
+        // İkinci takvimin ayı ayrı tutulur. Henüz seçilmediyse marka takvimiyle
+        // başlar; ama buradan sonra bağımsız yürür. Ay değişince açık gün
+        // kapanır — yoksa panel görünmeyen bir günü gösterirdi.
+        const simdi = new Date();
+        let y = state.ogrenciYil || state.planYil || simdi.getUTCFullYear();
+        let a = state.ogrenciAy || state.planAy || (simdi.getUTCMonth() + 1);
+        a += (id === 'onceki' ? -1 : 1);
+        if (a < 1) { a = 12; y -= 1; } else if (a > 12) { a = 1; y += 1; }
+        state.ogrenciYil = y;
+        state.ogrenciAy = a;
+        state.ogrenciGun = null;
+        return ciz();
+      }
+      case 'ogrenci-gun': {
+        // Ay ızgarasındaki güne bas: o günün yoklaması açılır. Aynı güne tekrar
+        // basmak kapatır. Satır detayı ve formlar kapanır ki ekran üst üste
+        // binmesin; yoklama zaten ikinci takvimde yapılıyor.
+        state.ogrenciGun = state.ogrenciGun === id ? null : id;
+        state.ogrenciAcik = null;
+        state.ogrenciDuzenle = null;
+        state.ogrenciYeni = false;
+        return ciz();
+      }
+      case 'ogrenci-gun-kapat': {
+        state.ogrenciGun = null;
+        return ciz();
+      }
       case 'ogrenci-yeni': {
         state.ogrenciYeni = true;
         state.ogrenciDuzenle = null;

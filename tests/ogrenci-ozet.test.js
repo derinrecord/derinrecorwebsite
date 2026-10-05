@@ -189,7 +189,7 @@ test('eşiği aşan devamsızlık vurgulanır', () => {
 const OGR = [OGRENCILER[0]];
 
 test('klasör özet ve süzgeci listeyle birlikte basar', () => {
-  const h = O.ogrenciBolumu(OGRENCILER, KAYIT, {}, AY);
+  const h = O.ogrenciListesi(OGRENCILER, KAYIT, {}, AY);
   assert.ok(h.includes('ogr-toplam'));
   assert.ok(h.includes('ogr-suzgec'));
   assert.ok(h.includes('Elif Yılmaz'));
@@ -198,30 +198,30 @@ test('klasör özet ve süzgeci listeyle birlikte basar', () => {
 });
 
 test('süzgeç seçiliyken liste o öğrencilere iner', () => {
-  const h = O.ogrenciBolumu(OGRENCILER, KAYIT, { ogrenciOdak: 'borc' }, AY);
+  const h = O.ogrenciListesi(OGRENCILER, KAYIT, { ogrenciOdak: 'borc' }, AY);
   assert.ok(h.includes('Elif Yılmaz'));
   assert.ok(h.includes('Mert Demir'));
   assert.ok(!h.includes('Zeynep Ak'), 'borçsuz öğrenci süzgeçte görünmemeli');
 });
 
 test('arama ile süzgeç birlikte çalışır', () => {
-  const h = O.ogrenciBolumu(OGRENCILER, KAYIT, { ogrenciOdak: 'borc', ogrenciAra: 'mert' }, AY);
+  const h = O.ogrenciListesi(OGRENCILER, KAYIT, { ogrenciOdak: 'borc', ogrenciAra: 'mert' }, AY);
   assert.ok(h.includes('Mert Demir'));
   assert.ok(!h.includes('Elif Yılmaz'), 'arama dışında kalan borçlu da elenmeli');
 });
 
 test('süzgeçte kimse kalmazsa sebebi yazılır', () => {
-  const h = O.ogrenciBolumu([OGRENCILER[0]], KAYIT, { ogrenciOdak: 'gelmedi' }, AY);
+  const h = O.ogrenciListesi([OGRENCILER[0]], KAYIT, { ogrenciOdak: 'gelmedi' }, AY);
   assert.ok(h.includes('Bu süzgeçte öğrenci yok.'));
 });
 
 test('süzgeç yokken boş liste mesajı eskisi gibi', () => {
-  assert.ok(O.ogrenciBolumu([], [], {}, AY).includes('Henüz öğrenci yok.'));
-  assert.ok(O.ogrenciBolumu([], [], { ogrenciAra: 'elif' }, AY).includes('Aramayla eşleşen öğrenci yok.'));
+  assert.ok(O.ogrenciListesi([], [], {}, AY).includes('Henüz öğrenci yok.'));
+  assert.ok(O.ogrenciListesi([], [], { ogrenciAra: 'elif' }, AY).includes('Aramayla eşleşen öğrenci yok.'));
 });
 
 test('boş klasörde özet ve süzgeç düğmeleri çıkmaz', () => {
-  const h = O.ogrenciBolumu([], [], {}, AY);
+  const h = O.ogrenciListesi([], [], {}, AY);
   assert.ok(!h.includes('ogr-toplam'));
   assert.ok(!h.includes('ogr-suzgec'));
   assert.ok(h.includes('data-act="ogrenci-yeni"'), 'ekleme düğmesi yine durmalı');
@@ -312,6 +312,38 @@ test('üretilen her sınıfın stili var', () => {
   });
   assert.ok(/\.ogr-odak\.secili\{/.test(cssKaynak), 'seçili süzgeç ayrı renkte olmalı');
   assert.ok(/\.ogr-cip i\.b\{/.test(cssKaynak), 'borç rozeti ayrı renkte olmalı');
+});
+
+test('ikinci takvim sınıflarının stili de var', () => {
+  // İkinci takvim marka panelinden ayrı bir düzen; kutular, gün paneli ve
+  // durum düğmeleri stilsiz kalırsa okunmaz hâle gelir.
+  ['ogr-takvim', 'ogr-takvim-sarmal', 'ogr-takvim-ana', 'ogr-takvim-yan',
+    'ogr-izgara', 'ogr-hucre', 'ogr-yoklama', 'ogr-yoklama-liste',
+    'ogr-yoklama-satir', 'ogr-durum', 'ogr-gun-bas', 'ogr-takvim-ay'].forEach(sinif => {
+    assert.ok(jsKaynak.includes(sinif), sinif + ' JS\'te üretilmeli');
+    assert.ok(new RegExp('\\.' + sinif + '[{. :,]').test(cssKaynak), sinif + ' için CSS kuralı olmalı');
+  });
+  assert.ok(/\.ogr-hucre\.tam\{/.test(cssKaynak), 'herkes gelince kutu ayrı renkte olmalı');
+  assert.ok(/\.ogr-hucre\.eksik\{/.test(cssKaynak), 'gelmeyen varsa kutu ayrı renkte olmalı');
+  assert.ok(/\.ogr-durum\.gelmedi\{/.test(cssKaynak), 'durum düğmesi renklenmeli');
+  // Dar ekranda ikinci takvim tek sütuna iner.
+  assert.ok(/\.ogr-takvim-sarmal\{grid-template-columns:1fr\}/.test(cssKaynak),
+    'dar ekranda tek sütun kuralı olmalı');
+});
+
+test('panel ikinci takvimin ay ve gün eylemlerini karşılar', () => {
+  assert.ok(/case 'ogrenci-ay': \{[\s\S]*?state\.ogrenciYil = y;/.test(panelKaynak),
+    'ay okları ikinci takvimin kendi ayını yazmalı');
+  assert.ok(/case 'ogrenci-ay': \{[\s\S]*?state\.ogrenciGun = null;/.test(panelKaynak),
+    'ay değişince açık gün kapanmalı');
+  assert.ok(/case 'ogrenci-gun': \{[\s\S]*?state\.ogrenciGun = state\.ogrenciGun === id \? null : id;/.test(panelKaynak),
+    'güne ikinci basış paneli kapatmalı');
+  assert.ok(/case 'ogrenci-gun-kapat': \{[\s\S]*?state\.ogrenciGun = null;/.test(panelKaynak),
+    'kapat düğmesi günü temizlemeli');
+  // Ay durumu marka takviminden ayrı tutulmalı: aynı alan paylaşılırsa
+  // öğrenci oku marka takvimini de kaydırırdı.
+  assert.ok(!/case 'ogrenci-ay': \{[\s\S]*?state\.planYil = /.test(panelKaynak),
+    'öğrenci ayı marka takviminin ayını değiştirmemeli');
 });
 
 test('iki panel sayfası aynı sürümü yükler', () => {

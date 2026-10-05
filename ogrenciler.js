@@ -1,21 +1,26 @@
-// Derin Record — takvim içi öğrenci takip listesi.
+// Derin Record — Plan sayfasındaki İKİNCİ TAKVİM: öğrenci takibi.
 //
 // Aşama 1: liste (ad, veli, telefon, not) — ekle / düzenle / sil / ara.
-// Aşama 2: yoklama — öğrenci başına gün gün geldi / gelmedi / mazeret.
+// Aşama 2: yoklama — ikinci takvimin gün hücresinden o günün yoklaması.
 // Aşama 3: ödeme — öğrenci başına tahsilat satırları (açıklama + tutar).
-// Aşama 4: özet — klasör ay özeti, borç/devamsızlık rozetleri ve uyarı
-//           süzgeçleri ("kim borçlu, kim aksıyor" tek bakışta).
+// Aşama 4: özet — ay özeti, borç/devamsızlık rozetleri ve uyarı süzgeçleri
+//           ("kim borçlu, kim aksıyor" tek bakışta).
 //
 // Bu dosya saf hesap ve HTML üretiminden ibarettir: DOM'a dokunmaz, ağa
 // çıkmaz. Böylece node testleriyle doğrudan sınanabiliyor (bkz.
 // plan-takvim.js — aynı kalıp).
 //
-// Takvim sayfasının yan panelinde ayrı bir klasör olarak basılır; verisi
-// plan_maddeleri'nden bağımsızdır (supabase/ogrenciler.sql).
+// YER: marka takviminin yanındaki ödeme panelleri kahve markalarına aittir;
+// öğrenci işi onlara karışmaz. Öğrenciler Plan sayfasında marka takviminin
+// ALTINDA kendi bölümünde durur: solda ay ızgarası, sağında öğrenci listesi
+// (ad · veli · telefon) ve ödemeler. Marka panelindeki "Marka ara" süzgeci,
+// yaklaşan ödemeler ve tahsilat trendi bu bölümle hiçbir şey paylaşmaz.
 //
-// Yoklama şeridi ve ödeme özeti TAKVİMİN AYINI izler: başka bir ay seçici
-// yok, üstteki ay okları ikisini birlikte kaydırır. Böylece "o ay kaç gün
-// geldi" sorusu takvimde görünen ayla aynı yerden cevaplanır.
+// Ay BAĞIMSIZDIR: ikinci takvimin ay okları marka takvimini kaydırmaz; yoksa
+// "öğrencilerin ekim ayı" marka takvimini de ekime çekerdi. Bu yüzden ay
+// durumu ayrı tutulur (state.ogrenciYil / state.ogrenciAy).
+//
+// Veri plan_maddeleri'nden bağımsızdır (supabase/ogrenciler.sql).
 (() => {
   'use strict';
 
@@ -225,26 +230,105 @@
     return p.length ? `<span class="ogr-cip">${p.join('')}</span>` : '';
   }
 
-  // Gün şeridi: ayın her günü bir düğme. İşaretsiz gün boş durur, bugün
-  // çerçevelenir. Basınca sırayla geldi → gelmedi → mazeret → işaretsiz.
-  function katilimSeridi(liste, o, a) {
-    const gunSayisi = ayGunSayisi(a.yil, a.ay);
+  // ---------- İkinci takvim: öğrenci ay ızgarası ve gün yoklaması ----------
+
+  const HAFTA = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+  const isoYaz = d => d.getUTCFullYear() + '-' + iki(d.getUTCMonth() + 1) + '-' + iki(d.getUTCDate());
+
+  // Marka takvimiyle aynı ızgara kuralı: 42 hücre, pazartesi başlangıcı, ay
+  // dışındaki kareler komşu ayın gerçek günleriyle dolu. Böylece iki takvim
+  // aynı ritimde okunuyor; ay kısalınca ekran zıplamaz.
+  function aylikOgrenciIzgara(yil, ay) {
+    const ilk = new Date(Date.UTC(yil, ay - 1, 1));
+    const onde = (ilk.getUTCDay() + 6) % 7;
+    const basla = new Date(Date.UTC(yil, ay - 1, 1 - onde));
     const hucreler = [];
-    for (let g = 1; g <= gunSayisi; g++) {
-      const iso = ayOnek(a.yil, a.ay) + '-' + iki(g);
-      const durum = katilimDurum(liste, o.id, iso);
-      const sinif = ['ogr-gun', durum || '', iso === a.bugun ? 'bugun' : ''].filter(Boolean).join(' ');
-      hucreler.push(`<button class="${sinif}" data-act="ogrenci-katilim"
-        data-id="${esc(o.id)}:${iso}:${esc(durum || '')}"
-        title="${esc(g + ' ' + AYLAR_ADI[a.ay - 1] + ' · ' + katilimEtiket(durum))}"
-        type="button"><i>${g}</i><b>${esc(katilimKisa(durum))}</b></button>`);
+    for (let i = 0; i < 42; i++) {
+      const g = new Date(Date.UTC(basla.getUTCFullYear(), basla.getUTCMonth(), basla.getUTCDate() + i));
+      hucreler.push({
+        iso: isoYaz(g),
+        gunNo: g.getUTCDate(),
+        ayIcinde: g.getUTCMonth() === ay - 1 && g.getUTCFullYear() === yil
+      });
     }
-    const oz = katilimOzeti(liste, o.id, a.yil, a.ay);
+    return hucreler;
+  }
+
+  // Bir günün yoklaması LİSTEDEKİ öğrenciler üzerinden sayılır. Kayıtlara
+  // doğrudan bakılsaydı listede olmayan bir öğrencinin (silinmiş ya da başka
+  // bir listeye ait) kaydı sayıya girerdi: 2 öğrencili listede "3/2 geldi"
+  // gibi imkânsız bir rozet çıkardı. Öğrenci başına durum katilimDurum ile
+  // okunur; gün başına tek kayıt olduğu için sayı ile kayıt birbirini tutar.
+  function gunKatilim(liste, kayitListesi, iso) {
+    const kimler = (liste || []).map(o => o.id);
+    const say = d => kimler.filter(id => katilimDurum(kayitListesi, id, iso) === d).length;
+    return { geldi: say('geldi'), gelmedi: say('gelmedi'), mazeret: say('mazeret') };
+  }
+
+  // Gün başlığı: "5 Ekim 2026 · Pazartesi". Elle biçimlendiriliyor; tarayıcı
+  // yereline bırakılsaydı sunucudaki testle ekrandaki metin ayrışırdı.
+  function gunUzun(iso) {
+    const p = String(iso || '').slice(0, 10).split('-').map(Number);
+    if (p.length !== 3 || !p[0] || !p[1] || !p[2]) return String(iso || '');
+    const gun = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+    return p[2] + ' ' + AYLAR_ADI[p[1] - 1] + ' ' + p[0] + ' · ' + HAFTA[(gun.getUTCDay() + 6) % 7];
+  }
+
+  // Izgara hücresi: gün numarası, o gün gelenlerin sayısı ve gelmeyen/mazeret
+  // işaretleri. Üç renk durumu var: tam (herkes geldi), eksik (gelmeyen var),
+  // işaretsiz (henüz yoklama yapılmadı).
+  function ogrHucre(h, liste, kayitListesi, s, a) {
+    const toplam = (liste || []).length;
+    const k = gunKatilim(liste, kayitListesi, h.iso);
+    const isaretli = k.geldi + k.gelmedi + k.mazeret;
+    const tam = toplam > 0 && k.geldi === toplam && k.gelmedi === 0 && k.mazeret === 0;
+    const eksik = k.gelmedi > 0;
+    const acik = (s || {}).ogrenciGun === h.iso;
+    const sinif = ['ogr-hucre', h.ayIcinde ? '' : 'disari', h.iso === a.bugun ? 'bugun' : '',
+      tam ? 'tam' : '', eksik ? 'eksik' : '', isaretli ? '' : 'isaretsiz', acik ? 'acik' : '']
+      .filter(Boolean).join(' ');
+    const rozet = isaretli ? `<i class="rozet">${k.geldi}/${toplam}</i>` : '';
+    const alt = isaretli
+      ? `<span class="hucre-alt">${k.gelmedi ? `<i class="y">${k.gelmedi}×</i>` : ''}${k.mazeret ? `<i class="m">${k.mazeret}M</i>` : ''}</span>`
+      : '';
+    const etiket = gunUzun(h.iso)
+      + (isaretli ? ` · ${k.geldi}/${toplam} geldi` : ' · yoklama yapılmadı')
+      + (k.gelmedi ? ` · ${k.gelmedi} gelmedi` : '') + (k.mazeret ? ` · ${k.mazeret} mazeret` : '');
+    return `<button class="${sinif}" data-act="ogrenci-gun" data-id="${h.iso}" type="button"
+      aria-label="${esc(etiket)}" aria-pressed="${acik ? 'true' : 'false'}">
+      <span class="hucre-ust"><span class="gun">${h.gunNo}</span>${rozet}</span>${alt}
+    </button>`;
+  }
+
+  // Gün yoklaması: seçilen gün için TÜM öğrenciler tek listede, her satırda tek
+  // düğme. Sınıfı toplu işaretlemek için gün içi gezinme gerekmez — yoklama
+  // gün bazında yapılan bir iş ve ekran da o günün tamamını gösterir.
+  // Arama süzgeci burada da geçerli: kalabalık listede öğrenci tek tek bulunur.
+  function gunYoklama(iso, liste, kayitListesi, s, a) {
+    const tam = liste || [];
+    const k = gunKatilim(tam, kayitListesi, iso);
+    const isaretli = k.geldi + k.gelmedi + k.mazeret;
+    const satirlar = ogrenciFiltrele(tam, (s || {}).ogrenciAra).map(o => {
+      const durum = katilimDurum(kayitListesi, o.id, iso);
+      const alt = [o.veli, o.telefon].filter(x => x && String(x).trim()).join(' · ');
+      return `<li class="ogr-yoklama-satir">
+        <span class="metin"><b>${esc(o.ad || '—')}</b>${alt ? ` <small>${esc(alt)}</small>` : ''}</span>
+        <button class="ogr-durum ${esc(durum || 'yok')}" data-act="ogrenci-katilim"
+          data-id="${esc(o.id)}:${iso}:${esc(durum || '')}" type="button"
+          title="${esc(katilimEtiket(durum))} — bas: geldi → gelmedi → mazeret → işaretsiz">${esc(katilimEtiket(durum))}</button>
+      </li>`;
+    });
+    const govde = satirlar.length
+      ? `<ul class="ogr-yoklama-liste">${satirlar.join('')}</ul>`
+      : `<p class="bos">${tam.length ? 'Aramayla eşleşen öğrenci yok.' : 'Henüz öğrenci yok. Listeden ekle.'}</p>`;
     return `<div class="ogr-yoklama">
-      <p class="ogr-ozet">${esc(AYLAR_ADI[a.ay - 1] + ' ' + a.yil)} ·
-        <b class="g">${oz.geldi} geldi</b>${oz.gelmedi ? ` · <b class="y">${oz.gelmedi} gelmedi</b>` : ''}${oz.mazeret ? ` · <b class="m">${oz.mazeret} mazeret</b>` : ''}</p>
-      <div class="ogr-serit">${hucreler.join('')}</div>
-      <p class="ogr-ipucu">Güne bas: geldi → gelmedi → mazeret → işaretsiz</p>
+      <div class="ogr-gun-bas">
+        <b>${esc(gunUzun(iso))}</b>
+        <span class="ogr-yoklama-ozet">${isaretli ? `${isaretli}/${tam.length} işaretli` : 'Henüz işaret yok'}${k.gelmedi ? ` · <b class="y">${k.gelmedi} gelmedi</b>` : ''}${k.mazeret ? ` · <b class="m">${k.mazeret} mazeret</b>` : ''}</span>
+        <button class="plan-vazgec" data-act="ogrenci-gun-kapat" type="button" aria-label="Gün yoklamasını kapat">×</button>
+      </div>
+      ${govde}
+      <p class="ogr-ipucu">Düğmeye bas: geldi → gelmedi → mazeret → işaretsiz</p>
     </div>`;
   }
 
@@ -272,11 +356,13 @@
     </li>`;
   }
 
-  // Öğrenci detayı: yoklama şeridi ve ödeme listesi. İkisi de takvimde
-  // görünen ayı izler.
+  // Öğrenci detayı: ayın yoklama özeti ve ödeme listesi. Yoklama işareti
+  // burada değil ikinci takvimin gün hücresinde atılır; burada yalnız "bu ay
+  // nasıl gitti" özeti durur, yoksa aynı iş iki yerden yapılırdı.
   function ogrenciDetay(o, liste, s, a) {
     const odemeler = ogrenciOdemeleri(liste, o.id);
     const oz = odemeOzeti(liste, o.id, a.yil, a.ay);
+    const yok = katilimOzeti(liste, o.id, a.yil, a.ay);
     const borc = borcOzeti(liste, o.id);
     const acikBorc = borc.tutar
       ? `<p class="ogr-acik-borc">Toplam açık borç: <b>${para(borc.tutar)} ₺</b>${borc.adet > 1 ? ` · ${borc.adet} kayıt` : ''}</p>`
@@ -297,7 +383,9 @@
     return `<div class="ogr-detay">
       <div class="ogr-bolum">
         <h4>YOKLAMA</h4>
-        ${katilimSeridi(liste, o, a)}
+        <p class="ogr-ozet">${esc(AYLAR_ADI[a.ay - 1] + ' ' + a.yil)} ·
+          <b class="g">${yok.geldi} geldi</b>${yok.gelmedi ? ` · <b class="y">${yok.gelmedi} gelmedi</b>` : ''}${yok.mazeret ? ` · <b class="m">${yok.mazeret} mazeret</b>` : ''}</p>
+        <p class="ogr-ipucu">Gün gün yoklama öğrenci takviminden işaretlenir.</p>
       </div>
       <div class="ogr-bolum">
         <h4>ÖDEMELER</h4>
@@ -310,8 +398,9 @@
     </div>`;
   }
 
-  // Öğrenci satırı. duzenleId bu satırsa normal görünüm yerine yerinde açılan
-  // form basılır. Kaydedilemeyen (yerel) satırda düzenleme ve detay yoktur:
+  // Öğrenci satırı (listenin tek satırı). duzenleId bu satırsa normal görünüm
+  // yerine yerinde açılan form basılır. Kaydedilemeyen (yerel) satırda
+  // düzenleme ve detay yoktur:
   // gerçek id'si olmadığı için yoklama/ödeme yanlış satıra yazardı; orada
   // zaten "tekrar dene" vardır.
   function ogrenciSatiri(o, s, kayitListesi, a) {
@@ -330,7 +419,7 @@
     const alt = [o.veli, o.telefon].filter(x => x && String(x).trim()).join(' · ');
     const acDugme = yerel ? '' : `<button class="ogr-ac" data-act="ogrenci-detay" data-id="${esc(o.id)}"
       type="button" aria-expanded="${acik ? 'true' : 'false'}"
-      aria-label="${acik ? 'Yoklama ve ödemeyi kapat' : 'Yoklama ve ödeme'}">${acik ? '▾' : '▸'}</button>`;
+      aria-label="${acik ? 'Ödeme listesini ve ay özetini kapat' : 'Ödeme listesi ve ay özeti'}">${acik ? '▾' : '▸'}</button>`;
     return `<li class="plan-satir ogrenci${acik ? ' acik' : ''}${o.hata ? ' hata' : ''}">
       ${acDugme}
       <span class="metin"><b>${esc(o.ad || '—')}</b>${alt ? ` <small>${esc(alt)}</small>` : ''}${o.notlar && String(o.notlar).trim() ? `<br><small>${esc(o.notlar)}</small>` : ''}${acik ? '' : ozetCipleri(liste, o, ayar)}</span>
@@ -370,11 +459,44 @@
       ${ODAK.map(o => dugme(o.anahtar, o.etiket, say[o.anahtar] || 0)).join('')}</div>`;
   }
 
-  // Klasörün gövdesi: arama, süzgeç, ekleme formu ve liste.
-  //   s: panel durumu (ogrenciYeni / ogrenciDuzenle / ogrenciAcik / arama /
-  //      ogrenciOdak / ogrenciOdemeYeni / ogrenciOdemeDuzenle)
-  //   a: takvimin ayı ve bugünü — { yil, ay, bugun }
-  function ogrenciBolumu(liste, kayitListesi, s, a) {
+  // İkinci takvimin tamamı: başlık ve ay okları, ay ızgarası, seçili günün
+  // yoklaması ve sağdaki öğrenci listesi. Plan sayfasında marka takviminin
+  // ALTINA basılır; marka panelleriyle ortak bir parçası yoktur.
+  //   s: panel durumu (ogrenciYil / ogrenciAy / ogrenciGun / ogrenciOdak /
+  //      ogrenciAra / ogrenciYeni / ogrenciDuzenle / ogrenciAcik / ödeme
+  //      formları)
+  //   a: ikinci takvimin ayı ve bugünü — { yil, ay, bugun }
+  function ogrenciTakvimi(liste, kayitListesi, s, a) {
+    const durum = s || {};
+    const ayar = a || {};
+    const tam = liste || [];
+    const gun = durum.ogrenciGun && String(durum.ogrenciGun).slice(0, 10);
+    const hucreler = aylikOgrenciIzgara(ayar.yil, ayar.ay)
+      .map(h => ogrHucre(h, tam, kayitListesi, durum, ayar)).join('');
+    return `<section class="ogr-takvim">
+      <div class="ogr-takvim-bas">
+        <h3>ÖĞRENCİLER</h3>
+        <span class="ogr-takvim-ay">
+          <button data-act="ogrenci-ay" data-id="onceki" type="button" aria-label="Önceki ay">‹</button>
+          <b>${esc(AYLAR_ADI[ayar.ay - 1] + ' ' + ayar.yil)}</b>
+          <button data-act="ogrenci-ay" data-id="sonraki" type="button" aria-label="Sonraki ay">›</button>
+        </span>
+        <p class="ogr-ipucu">Marka takviminden bağımsız aydır.</p>
+      </div>
+      <div class="ogr-takvim-sarmal">
+        <div class="ogr-takvim-ana">
+          <div class="plan-hafta">${HAFTA.map(g => `<span>${g}</span>`).join('')}</div>
+          <div class="ogr-izgara">${hucreler}</div>
+          ${gun ? gunYoklama(gun, tam, kayitListesi, durum, ayar) : ''}
+        </div>
+        <aside class="ogr-takvim-yan">${ogrenciListesi(tam, kayitListesi, durum, ayar)}</aside>
+      </div>
+    </section>`;
+  }
+
+  // Sağdaki öğrenci listesi: arama, ay özeti, uyarı süzgeçleri, ekleme formu
+  // ve satırlar (ad · veli · telefon, detayda ödemeler).
+  function ogrenciListesi(liste, kayitListesi, s, a) {
     const durum = s || {};
     const ayar = a || {};
     const tam = liste || [];
@@ -424,11 +546,18 @@
     toplamSatiri: toplamSatiri,
     odakCubugu: odakCubugu,
     ogrenciFiltrele: ogrenciFiltrele,
-    katilimSeridi: katilimSeridi,
+    gunKatilim: gunKatilim,
+    gunUzun: gunUzun,
+    aylikOgrenciIzgara: aylikOgrenciIzgara,
+    ogrHucre: ogrHucre,
+    gunYoklama: gunYoklama,
+    ogrenciTakvimi: ogrenciTakvimi,
+    ogrenciListesi: ogrenciListesi,
     ogrenciDetay: ogrenciDetay,
     odemeSatiri: odemeSatiri,
     ogrenciSatiri: ogrenciSatiri,
-    ogrenciBolumu: ogrenciBolumu
+    HAFTA: HAFTA,
+    AYLAR: AYLAR_ADI
   };
 
   if (typeof window !== 'undefined') window.DerinOgrenci = api;

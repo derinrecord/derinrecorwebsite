@@ -678,17 +678,30 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
     ]
   };
   const ui = { now: () => simdi };
-  // Öğrenci senaryoları takvimin ay görünümünde durur ve bir öğrencinin
-  // detayını (yoklama şeridi + ödemeler) açık gösterir.
+  // Öğrenci senaryoları marka takviminin ay görünümünde durur; öğrenci işi
+  // ALTINDAKİ ikinci takvimde yapılır. "ogrenci" bir günün yoklamasını
+  // (bütün öğrenciler tek listede) ve listede açık bir öğrencinin ödemelerini,
+  // "ogrenci-odeme" yerinde düzenleme formunu, "ogrenci-suzgec" ise borçlu
+  // süzgecini gösterir.
   const ogrenciMi = senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme' || senaryo === 'ogrenci-suzgec';
   const acikGun = (senaryo === 'plan' || ogrenciMi) ? null : '2026-10-27';
   const duzenle = senaryo === 'plan-duzenle' ? 'o1' : null;
   const state = { nav: 'plan', sub: 'takvim', planYil: 2026, planAy: 10, planAcikGun: acikGun, planDuzenle: duzenle, planKatli: [] };
   if (senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme') {
+    // İkinci takvimin ayı marka takviminden ayrı tutulur; örnekte ikisi de
+    // ekim, ama ayrı alanlardan geliyor.
+    state.ogrenciYil = 2026;
+    state.ogrenciAy = 10;
+    state.ogrenciGun = '2026-10-06';
     state.ogrenciAcik = 'og1';
     if (senaryo === 'ogrenci-odeme') state.ogrenciOdemeDuzenle = 'om3';
   }
-  if (senaryo === 'ogrenci-suzgec') state.ogrenciOdak = 'borc';
+  if (senaryo === 'ogrenci-suzgec') {
+    state.ogrenciYil = 2026;
+    state.ogrenciAy = 10;
+    state.ogrenciOdak = 'borc';
+    state.ogrenciAcik = 'og2';
+  }
   const govde = P.takvimView(state, D, ui);
   const baslik = senaryo === 'plan' ? 'ödeme takip takvimi'
     : (senaryo === 'plan-duzenle' ? 'satır düzenleme'
