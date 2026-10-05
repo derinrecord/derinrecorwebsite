@@ -55,9 +55,11 @@ Tek tablo: `plan_maddeleri`
 |---|---|---|
 | `id` | uuid | birincil anahtar |
 | `gun` | date | maddenin ait olduğu gün |
-| `tur` | text | `'madde'` ya da `'not'` |
+| `tur` | text | `'madde'`, `'not'` ya da `'odeme'` |
 | `metin` | text | içerik |
-| `bitti` | boolean | yalnız `madde` için anlamlı |
+| `bitti` | boolean | `madde`'de yapıldı, `odeme`'de ödendi |
+| `marka` | text | yalnız `odeme` için |
+| `tutar` | numeric | yalnız `odeme` için |
 | `sira` | integer | gün içindeki sıra |
 | `created_at` | timestamptz | |
 | `updated_at` | timestamptz | |
@@ -90,12 +92,20 @@ fonksiyon; yeni bir yetki mekanizması kurulmuyor.
 
 ### Gün paneli
 
-Bir güne tıklayınca takvimin altında o gün açılır:
+Bir güne tıklayınca takvimin altında o gün açılır. Panelde her şey elle
+yönetilir — **ekle, sil, katla**:
 
 - `+ madde ekle` — yazıp Enter'a basınca kaydolur
+- `+ ödeme ekle` — marka adı ve tutar; sistemde karşılığı olmayan ödemeler için
 - Maddeler kutucuklu liste; kutucuğa tıklayınca üstü çizilir
-- Her maddenin yanında sil
+- Ödeme satırında "ödendi" işareti; tutarı sonradan değiştirebilirsin
+- **Her satırın yanında sil** — eklediğin hiçbir şey kalıcı değil
 - Altında serbest not alanı (o güne ait tek not)
+
+**Katlama.** Gün paneli, ödeme sütunu ve gün içindeki her bölüm (maddeler,
+ödemeler, not) ayrı ayrı açılıp kapanır. Başlığa tıklamak katlar. Hangi
+bölümün kapalı olduğu tarayıcıda hatırlanır; her açılışta hepsi yeniden
+açılmaz.
 
 Başka bir güne tıklamak açık günü değiştirir. Aynı güne tekrar tıklamak kapatır.
 
@@ -110,9 +120,19 @@ Tutar hesabı `plans` tablosundan: paket şube başına fiyatlıysa
 Dönem bitişi (`current_end`) boş olan abonelikler listede yer almaz — ne zaman
 ödeneceği belli olmayan bir satır takvimde işe yaramaz.
 
-Bu sütun **yalnızca gösterim**. Buraya bir şey yazılmaz, bir şey işaretlenmez;
-Derin'in kendi maddeleriyle karışmaz. Ödemeyi takip etmek istediği gün için
-takvime kendi maddesini ekler.
+**Sistemdeki markalar kendiliğinden gelir.** `subscriptions` tablosunda kaydı
+olan her marka takvime otomatik düşer; abonelik tarihi değişirse takvim de
+değişir, elle güncellemek gerekmez. Bu satırlar `plan_maddeleri` tablosunda
+tutulmaz, canlı okunur.
+
+Bu satırlar düzenlenemez — kaynakları abonelik kaydı. Yanlarındaki
+**"takvime ekle"** düğmesine basınca o ödeme, o günün elle düzenlenebilir
+`odeme` satırına dönüşür; tutarını değiştirebilir, ödendi işaretleyebilir,
+silebilirsin. Havaleyle 1.800 geldiyse 1.800 yazarsın.
+
+**Sistemde olmayan ödemeler** için gün panelindeki `+ ödeme ekle`
+kullanılır. Böylece otomatik gelenle elle eklenen birbirine karışmaz: biri
+aboneliğin aynası, diğeri senin defterin.
 
 **Tutarsız kayıtlar gizlenmez.** Örneğin bir aboneliğin `canceled_at` tarihi
 dolu ama durumu hâlâ `active` ise satır "iptal edilmiş" etiketiyle gösterilir.
