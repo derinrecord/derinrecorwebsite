@@ -400,7 +400,8 @@
     markalar: { nav: 'musteri', sub: 'markalar' },
     abonelikler: { nav: 'musteri', sub: 'abonelikler' },
     talepler: { nav: 'musteri', sub: 'talepler' },
-    kurulum: { nav: 'kurulum', sub: 'kurulum' }
+    kurulum: { nav: 'kurulum', sub: 'kurulum' },
+    plan: { nav: 'plan', sub: 'takvim' }
   };
 
   function hashCoz() {
@@ -444,6 +445,7 @@
     if (state.sub === 'abonelikler') return '#/abonelikler';
     if (state.sub === 'talepler') return '#/talepler';
     if (state.nav === 'kurulum') return '#/kurulum';
+    if (state.nav === 'plan') return '#/plan/takvim';
     return '#/markalar';
   }
 
