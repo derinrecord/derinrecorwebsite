@@ -195,6 +195,19 @@ test('panel plan eylemlerini karşılıyor', () => {
     .forEach(act => assert.ok(panelKaynak.includes(act), act + ' işlenmeli'));
 });
 
+test('plan yazması ekranı yeniden çiziyor', () => {
+  // yenile(true) "sessiz" moddur: yalnız yan menüyü tazeler, içeriği çizmez.
+  // Arka plan yoklaması için doğru, ama kullanıcı bir madde eklediğinde
+  // ekranda hiçbir şey olmaz — kayıt gider, liste eski kalır.
+  const m = panelKaynak.match(/async function planYaz\([\s\S]*?\n  \}/);
+  assert.ok(m, 'planYaz bulunmalı');
+  // Yorum satırları çıkarılır: aranan şey çağrının kendisi, ondan söz eden
+  // bir açıklama değil.
+  const kod = m[0].replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/yenile\(true\)/.test(kod), 'sessiz yenileme kullanılmamalı');
+  assert.ok(/yenile\(\)/.test(kod), 'tam yenileme çağrılmalı');
+});
+
 test('plan rotası adres tablosunda tanımlı', () => {
   // #/plan/takvim adresi tabloda yoksa sayfa sessizce "canlı durum"a düşer:
   // menüde Takvim görünür, içerik başka bir bölüm olur.
