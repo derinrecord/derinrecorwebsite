@@ -213,6 +213,61 @@
     });
   }
 
+  // ---------- Aylık gelir özeti ----------
+
+  // Bu ayın öğrenci parası tek bakışta. Beklenen aidat, aktif öğrencilerin
+  // yazılı aylık tutarlarının toplamıdır (tarifenin beklenen karşılığı);
+  // tahsil ve bekleyen ayın ödeme kayıtlarından gelir.
+  //
+  // Kayıtlar yalnız LİSTEDEKİ öğrenciler üzerinden sayılır: silinmiş bir
+  // öğrencinin kaydı gelire girseydi özet, listedeki satırların toplamıyla
+  // tutmazdı (gunKatilim ile aynı kural).
+  function gelirOzeti(liste, kayitListesi, a) {
+    const ayar = a || {};
+    const onek = ayOnek(ayar.yil, ayar.ay);
+    const tam = liste || [];
+    let beklenen = 0;
+    tam.forEach(o => {
+      if (!o || o.aktif === false) return;
+      const t = Number(o.aylik_tutar || 0);
+      if (t > 0) beklenen += t;
+    });
+    const kimler = tam.map(o => o.id);
+    let tahsil = 0, bekleyen = 0, adet = 0;
+    (kayitListesi || []).forEach(k => {
+      if (!k || k.tur !== 'odeme') return;
+      if (kimler.indexOf(k.ogrenci_id) === -1) return;
+      if (String(k.gun).slice(0, 7) !== onek) return;
+      const t = Number(k.tutar || 0);
+      adet++;
+      if (k.bitti) tahsil += t; else bekleyen += t;
+    });
+    // Henüz açılmamış aidat: tutarı yazılı olup bu ay için kaydı olmayanlar.
+    const acilmamis = aylikAidatlar(tam, kayitListesi, ayar).toplam;
+    return { beklenen: beklenen, tahsil: tahsil, bekleyen: bekleyen, acilmamis: acilmamis, adet: adet };
+  }
+
+  // Gelir şeridi. Sıfır olan kalem yazılmaz (her ay sıfırlar ekranda yer
+  // kaplamasın); hiç kalem yoksa şerit de basılmaz.
+  function gelirSeridi(liste, kayitListesi, a) {
+    const ayar = a || {};
+    if (!(liste || []).length || !ayar.yil || !ayar.ay) return '';
+    const g = gelirOzeti(liste, kayitListesi, ayar);
+    const kalem = (etiket, tutar, sinif) => (tutar > 0
+      ? `<span class="kalem"><i>${esc(etiket)}</i><b${sinif ? ` class="${sinif}"` : ''}>${para(tutar)} ₺</b></span>`
+      : '');
+    const kalemler = kalem('Beklenen aidat', g.beklenen)
+      + kalem('Tahsil', g.tahsil, 'g')
+      + kalem('Bekleyen', g.bekleyen, 'y')
+      + kalem('Aidatı açılmamış', g.acilmamis, 'm');
+    if (!kalemler) return '';
+    return `<div class="ogr-gelir">
+      <b class="bas">${esc(AYLAR_ADI[ayar.ay - 1] + ' ' + ayar.yil)} · öğrenci geliri</b>
+      <span class="ogr-gelir-kalemler">${kalemler}</span>
+      ${g.adet ? `<small>${g.adet} ödeme kaydı</small>` : ''}
+    </div>`;
+  }
+
   // Klasör başlığındaki ay özeti: tüm liste üzerinden, takvimin ayı için.
   function ogrenciToplam(liste, kayitListesi, yil, ay) {
     const t = {
@@ -599,14 +654,13 @@
     </li>`;
   }
 
-  // Klasör başlığı özeti: kaç öğrenci, bu ay ne kadar tahsil edildi, ne kadar
-  // bekliyor, kaç gün gelinmedi. Liste boşken hiç basılmaz.
+  // Klasör başlığı özeti: kaç öğrenci ve ayın yoklama durumu. Para kalemleri
+  // burada DEĞİL gelir şeridinde durur: aynı tutar iki yerde yazılırsa biri
+  // güncellenmeden kalabilir ve "hangi rakam doğru" sorusu doğar.
   function toplamSatiri(liste, kayitListesi, a) {
     if (!(liste || []).length) return '';
     const t = ogrenciToplam(liste, kayitListesi, a.yil, a.ay);
     const p = [t.ogrenci + ' öğrenci'];
-    if (t.tahsil) p.push(`<b class="g">${para(t.tahsil)} ₺ tahsil</b>`);
-    if (t.bekleyen) p.push(`<b class="y">${para(t.bekleyen)} ₺ bekleyen</b>`);
     if (t.gelmedi) p.push(`<b class="y">${t.gelmedi} gelmedi</b>`);
     if (t.mazeret) p.push(`<b class="m">${t.mazeret} mazeret</b>`);
     return `<p class="ogr-toplam">${esc(AYLAR_ADI[a.ay - 1] + ' ' + a.yil)} · ${p.join(' · ')}</p>`;
@@ -652,6 +706,7 @@
         <p class="ogr-ipucu">Güne bas: o günün yoklaması</p>
       </div>
       ${gunSecenekListesi()}
+      ${gelirSeridi(tam, kayitListesi, ayar)}
       ${eksikSeridi(tam, kayitListesi, ayar)}
       <div class="ogr-takvim-sarmal">
         <div class="ogr-takvim-ana">
@@ -718,6 +773,8 @@
     dikkatOzeti: dikkatOzeti,
     odakSayilari: odakSayilari,
     ogrenciOdakla: ogrenciOdakla,
+    gelirOzeti: gelirOzeti,
+    gelirSeridi: gelirSeridi,
     ogrenciToplam: ogrenciToplam,
     DEVAMSIZLIK_ESIK: DEVAMSIZLIK_ESIK,
     ODAK: ODAK,

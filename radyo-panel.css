@@ -577,6 +577,22 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .ogr-uyari-gun i{font-style:normal;font-size:10px;color:var(--muted)}
 .ogr-uyari-gun:hover{border-color:var(--warn,#f0a132);background:rgba(240,161,50,.12)}
 .ogr-uyari-kalan{font-size:11px;color:var(--muted)}
+
+/* Aylık gelir şeridi: öğrenci parası tek bakışta. Beklenen aidat (yazılı
+   tarifelerin toplamı), tahsil, bekleyen ve henüz açılmamış aidat bir arada
+   durur; yönetici listeye inmeden okur. */
+.ogr-gelir{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 12px;
+  padding:10px 13px;background:rgba(34,201,138,.06);
+  border:1px solid rgba(34,201,138,.3);border-radius:var(--r)}
+.ogr-gelir .bas{font-size:11px;letter-spacing:.06em;color:var(--muted)}
+.ogr-gelir-kalemler{display:flex;gap:18px;flex-wrap:wrap}
+.ogr-gelir .kalem{display:flex;flex-direction:column;gap:2px}
+.ogr-gelir .kalem i{font-style:normal;font-size:10.5px;color:var(--muted)}
+.ogr-gelir .kalem b{font-size:14px;font-variant-numeric:tabular-nums}
+.ogr-gelir .kalem b.g{color:var(--gold)}
+.ogr-gelir .kalem b.y{color:var(--warn,#f0a132)}
+.ogr-gelir .kalem b.m{color:var(--muted)}
+.ogr-gelir small{margin-left:auto;font-size:11px;color:var(--muted-2)}
 .ogr-takvim-sarmal{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
 .ogr-takvim-ana,.ogr-takvim-yan{min-width:0}
 

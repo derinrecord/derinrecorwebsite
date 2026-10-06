@@ -107,13 +107,13 @@ test('klasör özeti takvimin ayını toplar', () => {
   assert.equal(O.ogrenciToplam(OGRENCILER, KAYIT, 2026, 9).tahsil, 0);
 });
 
-test('özet satırı ay, sayı ve tutarları yazar', () => {
+test('özet satırı ay, öğrenci sayısı ve yoklama durumunu yazar', () => {
   const h = O.toplamSatiri(OGRENCILER, KAYIT, AY);
   assert.ok(h.includes('3 öğrenci'));
   assert.ok(h.includes('Ekim 2026'));
-  assert.ok(h.includes('2.000 ₺ tahsil'));
-  assert.ok(h.includes('1.500 ₺ bekleyen'));
   assert.ok(h.includes('3 gelmedi'));
+  // Para kalemleri gelir şeridinde yaşar; burada ikinci kez yazılmaz.
+  assert.ok(!h.includes('₺'), 'tutar bu satırda tekrarlanmamalı');
 });
 
 test('özet satırı boş listede hiç basılmaz', () => {
@@ -126,6 +126,7 @@ test('sıfır olan kalem özet satırına yazılmaz', () => {
   assert.ok(h.includes('1 öğrenci'));
   assert.ok(!h.includes('gelmedi'), 'hiç devamsızlık yokken yazılmamalı');
   assert.ok(!h.includes('bekleyen'), 'bekleyen ödeme yokken yazılmamalı');
+  assert.ok(!h.includes('mazeret'), 'mazeret yokken yazılmamalı');
 });
 
 // ---------- Süzgeç düğmeleri ----------
@@ -272,7 +273,9 @@ const ogrenciSayfasi = ek => V.gorunum(Object.assign({
 test('sayfa ay özetini öğrenci verisinden hesaplar', () => {
   const h = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 10 });
   assert.ok(h.includes('ogr-toplam'), 'ay özeti sayfada görünmeli');
-  assert.ok(h.includes('2.000 ₺ tahsil'));
+  // Para artık gelir şeridinde: ay özeti yoklama, şerit tutar taşır.
+  assert.ok(h.includes('öğrenci geliri'), 'gelir şeridi sayfada görünmeli');
+  assert.ok(h.includes('2.000 ₺'));
   assert.ok(h.includes('900 ₺ devir'));
   assert.ok(h.includes('Gelmedi ≥ 3 <b>1</b>'));
 });
@@ -280,7 +283,7 @@ test('sayfa ay özetini öğrenci verisinden hesaplar', () => {
 test('ay değişince özet de o aya döner, marka takvimi etkilenmez', () => {
   const h = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 9, planYil: 2026, planAy: 10 });
   assert.ok(h.includes('Eylül 2026'), 'öğrenci ayı seçileni göstermeli');
-  assert.ok(!h.includes('2.000 ₺ tahsil'), 'Ekim tahsilatı Eylül özetine girmemeli');
+  assert.ok(!h.includes('2.000 ₺'), 'Ekim tahsilatı Eylül özetine girmemeli');
   // Marka sayfası kendi ayında kalır: aynı durumda takvim ekimi gösterir.
   const marka = V.gorunum({ nav: 'plan', sub: 'takvim', planYil: 2026, planAy: 10,
     openFolder: null, openBrand: null, openPlaylist: null, q: '' }, {

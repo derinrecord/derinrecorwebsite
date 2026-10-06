@@ -197,6 +197,66 @@ test('aidat düğmesi listede basılır', () => {
   assert.ok(h.includes('data-act="ogrenci-aidat-olustur"'), 'liste gövdesinde düğme olmalı');
 });
 
+// ---------- Aylık gelir özeti ----------
+// Tahsil edilen, bekleyen ve aidatı henüz açılmamış tutarlar tek şeritte.
+
+test('gelir özeti ayın paralarını toplar', () => {
+  const kayit = [
+    { id: 'k1', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-01', durum: 'geldi' },
+    { id: 'p1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-03', tutar: 2500, bitti: true },
+    { id: 'p2', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-10-04', tutar: 1800, bitti: false },
+    // Geçen ayın kaydı ve listede olmayan öğrencinin kaydı bu ayı etkilememeli.
+    { id: 'p3', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-09-04', tutar: 1800, bitti: false },
+    { id: 'p4', ogrenci_id: 'o9', tur: 'odeme', gun: '2026-10-05', tutar: 999, bitti: true }
+  ];
+  const g = O.gelirOzeti(OGR, kayit, AY);
+  // o1 2.500 + o2 1.800: o3'ün tutarı yok, o4 pasif.
+  assert.equal(g.beklenen, 4300);
+  assert.equal(g.tahsil, 2500);
+  assert.equal(g.bekleyen, 1800);
+  assert.equal(g.acilmamis, 0, 'ikisinin de bu ay kaydı var');
+  assert.equal(g.adet, 2, 'yalnız bu ayın ve listedeki öğrencilerin kayıtları');
+  // Yoklama kaydı para sayılmaz.
+  assert.equal(O.gelirOzeti(OGR, [kayit[0]], AY).adet, 0);
+});
+
+test('hiç kayıt yokken aidatın tamamı açılmamış görünür', () => {
+  const g = O.gelirOzeti(OGR, [], AY);
+  assert.equal(g.beklenen, 4300);
+  assert.equal(g.tahsil, 0);
+  assert.equal(g.bekleyen, 0);
+  assert.equal(g.acilmamis, 4300);
+  assert.equal(g.adet, 0);
+});
+
+test('gelir şeridi kalemleri etiketleriyle yazar', () => {
+  const h = O.gelirSeridi(OGR, [], AY);
+  assert.ok(h.includes('class="ogr-gelir"'));
+  assert.ok(h.includes('Ekim 2026 · öğrenci geliri'));
+  assert.ok(h.includes('Beklenen aidat'));
+  assert.ok(h.includes('Aidatı açılmamış'));
+  assert.ok(h.includes('4.300 ₺'));
+  assert.ok(!h.includes('Tahsil'), 'hiç tahsilat yokken kalem yazılmamalı');
+});
+
+test('sıfır kalem şeride yazılmaz, parasız ayda şerit basılmaz', () => {
+  const kayit = [{ id: 'p1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 500, bitti: true }];
+  const h = O.gelirSeridi([{ id: 'o1', ad: 'A', aktif: true }], kayit, AY);
+  assert.ok(h.includes('Tahsil'), 'tahsilat kalemi olmalı');
+  assert.ok(!h.includes('Beklenen aidat'), 'tutarı yazılı öğrenci yokken beklenen yazılmamalı');
+  assert.ok(!h.includes('Aidatı açılmamış'));
+  assert.ok(h.includes('1 ödeme kaydı'));
+  // Ne tutar ne kayıt: şerit hiç basılmaz.
+  assert.equal(O.gelirSeridi([{ id: 'o1', ad: 'A', aktif: true }], [], AY), '');
+  assert.equal(O.gelirSeridi([], [], AY), '');
+  assert.equal(O.gelirSeridi(OGR, [], {}), '', 'ay bilinmezse basılmamalı');
+});
+
+test('pasif öğrencinin tutarı beklenen gelire girmez', () => {
+  const g = O.gelirOzeti([OGR[0], OGR[3]], [], AY);
+  assert.equal(g.beklenen, 2500, 'pasif öğrenci beklenene sayılmamalı');
+});
+
 // ---------- Panele bağlanma ----------
 
 const P = require('../plan-takvim.js');
@@ -228,6 +288,19 @@ test('kaydı olan ayda düğme yerine bilgi çıkar', () => {
   ]);
   assert.ok(h.includes('ogr-aidat-tamam'));
   assert.ok(!h.includes('data-act="ogrenci-aidat-olustur"'));
+});
+
+test('gelir şeridi başlığın altında, uyarının üstünde durur', () => {
+  // Cuma kalıbı: 9 Ekim işaretli, 2 Ekim işaretsiz — uyarı da çıksın.
+  const h = sayfa({}, [
+    { id: 'p1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-03', tutar: 2500, bitti: false },
+    { id: 'y1', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-09', durum: 'geldi' }
+  ]);
+  assert.ok(h.includes('class="ogr-gelir"'), 'gelir şeridi sayfada olmalı');
+  assert.ok(h.includes('class="ogr-uyari"'), 'uyarı da olmalı');
+  assert.ok(h.indexOf('ogr-takvim-bas') < h.indexOf('ogr-gelir'));
+  assert.ok(h.indexOf('ogr-gelir') < h.indexOf('ogr-uyari'), 'para uyarıdan önce okunmalı');
+  assert.ok(h.indexOf('ogr-uyari') < h.indexOf('ogr-izgara'));
 });
 
 const panelKaynak = fs.readFileSync(require.resolve('../radyo-yonetim.js'), 'utf8');
@@ -294,6 +367,15 @@ test('formda tarife ipucu yazar, otomatik dolum panele bağlıdır', () => {
     'ekleme ve düzenleme formu ayırt edilmeli');
 });
 
+test('gelir şeridi sınıflarının stili var', () => {
+  ['ogr-gelir', 'ogr-gelir-kalemler'].forEach(sinif => {
+    assert.ok(jsKaynak.includes(sinif), sinif + ' JS\'te üretilmeli');
+    assert.ok(new RegExp('\\.' + sinif + '[{. :,]').test(cssKaynak), sinif + ' için CSS kuralı olmalı');
+  });
+  assert.ok(/\.ogr-gelir \.kalem\{/.test(cssKaynak), 'kalem düzeni stili olmalı');
+  assert.ok(/\.ogr-gelir \.kalem b\.g\{/.test(cssKaynak), 'tahsil ayrı renkte olmalı');
+});
+
 test('yeni alanlar için stil var', () => {
   ['ogr-aidat', 'ogr-aidat-dugme', 'ogr-aidat-tamam'].forEach(sinif => {
     assert.ok(jsKaynak.includes(sinif), sinif + ' JS\'te üretilmeli');
@@ -317,6 +399,6 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   };
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '8', 'sürüm artırılmalı');
-  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '26', 'CSS sürümü artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '9', 'sürüm artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '27', 'CSS sürümü artırılmalı');
 });
