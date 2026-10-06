@@ -517,4 +517,8 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '14', 'sürüm artırılmalı');
   assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '31', 'CSS sürümü artırılmalı');
+  // Panel dosyası da damgalı: içeriği değişip damga artmadan kalırsa tarayıcı
+  // eski kopyayı çalıştırır ve yeni alanı görmez (bir kez tam bu yüzden kaçtı).
+  const panelSayfa = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');
+  assert.match(panelSayfa, /radyo-yonetim\.js\?v=20261005q/, 'panel damgası artırılmalı');
 });
