@@ -664,7 +664,10 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
       // Birinci öğrencide başlama tarihi var, ikincide yok: satırda tarih
       // etiketinin çıkıp çıkmaması gözle karşılaştırılabilsin.
       { id: 'og1', ad: 'Elif Yılmaz', veli: 'Ayşe Yılmaz', telefon: '0531 111 22 33', notlar: 'Salı-Perşembe', gun_sayisi: 3, aylik_tutar: 2500, baslama: '2026-02-12', aktif: true },
-      { id: 'og2', ad: 'Mert Demir', veli: 'Ali Demir', telefon: '0532 444 55 66', notlar: '', gun_sayisi: 2, aylik_tutar: 1800, baslama: null, aktif: true }
+      { id: 'og2', ad: 'Mert Demir', veli: 'Ali Demir', telefon: '0532 444 55 66', notlar: '', gun_sayisi: 2, aylik_tutar: 1800, baslama: null, aktif: true },
+      // Üçüncü öğrenci ödemesini geç yapıyor: gecikme şeridinin ortalaması
+      // tek kayıtla değil, iki kayıtla anlamlı çıksın.
+      { id: 'og3', ad: 'Zeynep Ak', veli: 'Murat Ak', telefon: '0533 777 88 99', notlar: '', gun_sayisi: 3, aylik_tutar: 4100, baslama: '2026-09-01', aktif: true }
     ],
     // Yoklama şeridi ve ödeme listesi gözle doğrulanabilsin diye karışık
     // işaretler: gelen, gelmeyen, mazeretli günler ve iki tahsilat.
@@ -688,7 +691,8 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
       { id: 'om3', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-09-15', metin: 'Eylül aidatı', tutar: 2000, bitti: true },
       // Geçen aydan devreden açık borç: satırda "devir" rozeti çıkar.
       { id: 'om4', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-08-10', metin: 'Ağustos aidatı', tutar: 900, bitti: false },
-      { id: 'om5', ogrenci_id: 'og2', tur: 'odeme', gun: '2026-10-04', metin: 'Ekim aidatı', tutar: 1500, bitti: false }
+      { id: 'om5', ogrenci_id: 'og2', tur: 'odeme', gun: '2026-10-04', metin: 'Ekim aidatı', tutar: 1500, bitti: false },
+      { id: 'om6', ogrenci_id: 'og3', tur: 'odeme', gun: '2026-10-01', metin: 'Ekim aidatı', tutar: 4100, bitti: true, odeme_gunu: '2026-10-16' }
     ]
   };
   // Eksik yoklama senaryosu seyrek işaret kullanır: kalıp perşembe + salı

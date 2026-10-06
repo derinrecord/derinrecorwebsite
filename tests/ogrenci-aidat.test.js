@@ -531,6 +531,70 @@ test('panel ödeme gününü yazar, işaret konarken boşsa bugünü doldurur', 
   assert.match(sql, /check \(odeme_gunu is null or tur = 'odeme'\)/, 'gün yalnız ödemede anlamlı olmalı');
 });
 
+// ---------- Gecikme ----------
+
+const GEC = [
+  { id: 'o1', ad: 'Elif Yılmaz' },
+  { id: 'o2', ad: 'Mert Demir' }
+];
+
+test('gecikme ödenmiş kayıtların gün farkından hesaplanır', () => {
+  const g = O.gecikmeOzeti(GEC, [
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-10-19' },
+    { id: 'k2', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-10-01', tutar: 1800, bitti: true, odeme_gunu: '2026-10-09' },
+    // Aynı gün ödenen, günü girilmemiş ve ödenmemiş kayıtlar gecikme sayılmaz.
+    { id: 'k3', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-10-01', tutar: 500, bitti: true, odeme_gunu: '2026-10-01' },
+    { id: 'k4', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 900, bitti: true },
+    { id: 'k5', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-05', tutar: 900, bitti: false, odeme_gunu: '2026-10-25' }
+  ], AY);
+  assert.equal(g.adet, 2, 'yalnız gerçekten geç gelenler');
+  assert.equal(g.toplam, 26, '(19-1) + (9-1)');
+  assert.equal(g.ortalama, 13);
+  assert.equal(g.en.ad, 'Elif Yılmaz', 'en çok geciken yazılmalı');
+  assert.equal(g.en.gun, 18);
+});
+
+test('gecikme yalnız kaydın ayına bakar, erken ödeme gecikme değildir', () => {
+  const kayitlar = [
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-09-01', tutar: 2500, bitti: true, odeme_gunu: '2026-09-20' },
+    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-09-28' }
+  ];
+  assert.equal(O.gecikmeOzeti(GEC, kayitlar, AY).adet, 0, 'başka ayın ve erken ödemenin gecikmesi yok');
+  // Ay bilgisi olmadan hesap yapılmaz (sayfa boş çizilirken patlamasın).
+  assert.equal(O.gecikmeOzeti(GEC, kayitlar, {}).adet, 0);
+  assert.equal(O.gecikmeOzeti(null, null, AY).adet, 0);
+  assert.equal(O.gunFarki('2026-10-01', '2026-10-19'), 18);
+  assert.equal(O.gunFarki('', '2026-10-19'), 0);
+});
+
+test('gecikme şeridi yalnız gecikme varsa basılır', () => {
+  const gec = [
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-10-19' }
+  ];
+  assert.equal(O.gecikmeSeridi(GEC, [], AY), '', 'gecikme yoksa şerit basılmamalı');
+  const h = O.gecikmeSeridi(GEC, gec, AY);
+  assert.ok(h.includes('1 ödeme geç geldi'));
+  assert.ok(h.includes('ortalama <b>18 gün</b>'), 'ortalama gün yazılmalı');
+  assert.ok(h.includes('Elif Yılmaz'), 'en çok geciken öğrenci yazılmalı');
+  assert.ok(h.includes('ogr-gecikme'), 'şerit sınıfı olmalı');
+});
+
+test('gecikme şeridi gelir şeridinin altında, uyarının üstünde durur', () => {
+  // Cuma kalıbı: 9 Ekim işaretli, 2 Ekim işaretsiz — uyarı da çıksın.
+  const h = sayfa({}, [
+    { id: 'p1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-10-19' },
+    { id: 'y1', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-09', durum: 'geldi' }
+  ]);
+  assert.ok(h.indexOf('ogr-gelir') < h.indexOf('ogr-gecikme'), 'para özeti önce okunmalı');
+  assert.ok(h.indexOf('ogr-gecikme') < h.indexOf('ogr-uyari'), 'gecikme uyarıdan önce gelmeli');
+});
+
+test('gecikme şeridinin stili var', () => {
+  assert.ok(jsKaynak.includes('ogr-gecikme'), 'şerit JS\'te üretilmeli');
+  assert.ok(/\.ogr-gecikme\{/.test(cssKaynak), 'şerit kutusu stillenmeli');
+  assert.ok(/\.ogr-gecikme-kalemler\{/.test(cssKaynak), 'kalem düzeni stillenmeli');
+});
+
 test('elden rozetinin stili var, şemada kolon olarak duruyor', () => {
   assert.ok(jsKaynak.includes('ogr-elden'), 'rozet JS\'te üretilmeli');
   assert.ok(/\.ogr-elden\{/.test(cssKaynak) && /\.ogr-elden\.secili\{/.test(cssKaynak),
@@ -569,8 +633,8 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   };
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '15', 'sürüm artırılmalı');
-  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '32', 'CSS sürümü artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '16', 'sürüm artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '33', 'CSS sürümü artırılmalı');
   // Panel dosyası da damgalı: içeriği değişip damga artmadan kalırsa tarayıcı
   // eski kopyayı çalıştırır ve yeni alanı görmez (bir kez tam bu yüzden kaçtı).
   const panelSayfa = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');

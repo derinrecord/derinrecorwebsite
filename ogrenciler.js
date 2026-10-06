@@ -243,6 +243,67 @@
     };
   }
 
+  // ---------- Gecikme ----------
+
+  // İki gün arasındaki fark, takvim günü olarak. İki tarih de YYYY-AA-GG
+  // geldiği için UTC gece yarısına sabitlenip gün farkı alınır; yaz saati
+  // kayması sonucu bir gün kaydırmasın.
+  const gunFarki = (bas, son) => {
+    const a = Date.parse(String(bas == null ? '' : bas).slice(0, 10) + 'T00:00:00Z');
+    const b = Date.parse(String(son == null ? '' : son).slice(0, 10) + 'T00:00:00Z');
+    if (!isFinite(a) || !isFinite(b)) return 0;
+    return Math.round((b - a) / 86400000);
+  };
+
+  // Gecikme: kaydın günü ("1 Ekim aidatı") ile paranın geldiği gün arasındaki
+  // fark. Ay, KAYDIN ayına göre sayılır — gelir şeridiyle aynı ölçü, yoksa aynı
+  // tahsilat bir şeritte Ekim'de, diğerinde Kasım'da görünürdü. Yalnız ödenmiş
+  // kayıtlar gecikir: parası gelmemiş bir satır "geç geldi" sayılamaz.
+  // Gün farkı sıfır ya da eksiyse (aynı gün, erken ödeme) gecikme değildir.
+  function gecikmeOzeti(liste, kayitListesi, a) {
+    const ayar = a || {};
+    const bos = { adet: 0, ortalama: 0, toplam: 0, en: null };
+    if (!ayar.yil || !ayar.ay) return bos;
+    const onek = ayOnek(ayar.yil, ayar.ay);
+    const adlar = {};
+    (liste || []).forEach(o => { adlar[o.id] = o.ad || ''; });
+    const gec = [];
+    (kayitListesi || []).forEach(k => {
+      if (!k || k.tur !== 'odeme' || !k.bitti || k.odeme_gunu == null) return;
+      if (String(k.gun).slice(0, 7) !== onek) return;
+      const fark = gunFarki(k.gun, k.odeme_gunu);
+      if (fark <= 0) return;
+      gec.push({ id: k.ogrenci_id, ad: adlar[k.ogrenci_id] || '', gun: fark });
+    });
+    if (!gec.length) return bos;
+    const toplam = gec.reduce((t, x) => t + x.gun, 0);
+    const en = gec.slice().sort((x, y) => y.gun - x.gun)[0];
+    return {
+      adet: gec.length, toplam: toplam,
+      ortalama: Math.round(toplam / gec.length),
+      en: en
+    };
+  }
+
+  // Gecikme şeridi gelir şeridinin hemen altında durur: para özetini okurken
+  // "bu para ne zaman geldi" sorusu aynı yerde cevaplanır. Gecikme yoksa
+  // şerit hiç basılmaz — sıfır gecikme yazmak gürültü olurdu.
+  function gecikmeSeridi(liste, kayitListesi, a) {
+    const g = gecikmeOzeti(liste, kayitListesi, a);
+    if (!g.adet) return '';
+    const en = g.en && g.en.ad
+      ? `<span>en çok <b>${esc(g.en.ad)}</b> · ${g.en.gun} gün</span>`
+      : '';
+    return `<div class="ogr-gecikme">
+      <b>${g.adet} ödeme geç geldi</b>
+      <span class="ogr-gecikme-kalemler">
+        <span>ortalama <b>${g.ortalama} gün</b></span>
+        ${en}
+      </span>
+      <small>Kaydın günü ile paranın geldiği gün arası.</small>
+    </div>`;
+  }
+
   // Toplu aidat düğmesi. Tutarı yazılmış öğrenci yoksa hiç basılmaz (işlevsiz
   // düğme durmaz). Kaydı zaten olanlar varsa bu yazıyla söylenir: yönetici
   // "aidatlar oluşturuldu mu" sorusunu düğmeden cevaplayabilsin.
@@ -853,6 +914,7 @@
       </div>
       ${gunSecenekListesi()}
       ${gelirSeridi(tam, kayitListesi, ayar)}
+      ${gecikmeSeridi(tam, kayitListesi, ayar)}
       ${eksikSeridi(tam, kayitListesi, ayar)}
       <div class="ogr-takvim-sarmal">
         <div class="ogr-takvim-ana">
@@ -927,6 +989,9 @@
     ogrenciOdakla: ogrenciOdakla,
     gelirOzeti: gelirOzeti,
     gelirSeridi: gelirSeridi,
+    gunFarki: gunFarki,
+    gecikmeOzeti: gecikmeOzeti,
+    gecikmeSeridi: gecikmeSeridi,
     ogrenciToplam: ogrenciToplam,
     DEVAMSIZLIK_ESIK: DEVAMSIZLIK_ESIK,
     ODAK: ODAK,
