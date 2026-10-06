@@ -589,6 +589,50 @@ test('gecikme şeridi gelir şeridinin altında, uyarının üstünde durur', ()
   assert.ok(h.indexOf('ogr-gecikme') < h.indexOf('ogr-uyari'), 'gecikme uyarıdan önce gelmeli');
 });
 
+test('öğrencinin gecikme geçmişi ay sınırı olmadan sayılır', () => {
+  const kayitlar = [
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-10-19' },
+    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-09-15', bitti: true, odeme_gunu: '2026-09-25' },
+    // Başka öğrenci, ödenmemiş kayıt ve aynı gün ödeme geçmişe girmez.
+    { id: 'k3', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-10-30' },
+    { id: 'k4', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: false, odeme_gunu: '2026-10-28' },
+    { id: 'k5', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-02', bitti: true, odeme_gunu: '2026-10-02' }
+  ];
+  const g = O.gecikmeGecmisi(kayitlar, 'o1');
+  assert.equal(g.adet, 2, 'yalnız bu öğrencinin geç ödediği kayıtlar');
+  assert.equal(g.toplam, 28, '18 + 10');
+  assert.equal(g.ortalama, 14);
+  assert.equal(O.gecikmeGecmisi(kayitlar, 'o2').adet, 1);
+  assert.equal(O.gecikmeGecmisi(kayitlar, 'o3'), null, 'gecikmesi olmayanda boş döner');
+  assert.equal(O.gecikmeGecmisi(null, 'o1'), null);
+});
+
+test('gecikme notu tek gecikmede sayıyı, çokluğunda ortalamayı yazar', () => {
+  const tek = [{ id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-10-19' }];
+  assert.equal(O.gecikmeNotu(tek, 'o1'),
+    '<small class="ogr-gec-notu">1 kez geç ödedi · 18 gün</small>');
+  const cok = tek.concat([
+    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-09-15', bitti: true, odeme_gunu: '2026-09-25' }
+  ]);
+  assert.ok(O.gecikmeNotu(cok, 'o1').includes('2 kez geç ödedi · ortalama 14 gün'));
+  assert.equal(O.gecikmeNotu([], 'o1'), '', 'gecikme yoksa not basılmamalı');
+
+  // Not öğrenci satırında görünür, başka öğrencinin satırına taşmaz.
+  const h = O.ogrenciSatiri({ id: 'o1', ad: 'Elif Yılmaz' }, {}, tek, AY);
+  assert.ok(h.includes('1 kez geç ödedi · 18 gün'), 'satırda geçmiş yazılmalı');
+  const bos = O.ogrenciSatiri({ id: 'o2', ad: 'Mert Demir' }, {}, tek, AY);
+  assert.ok(!bos.includes('kez geç ödedi'), 'gecikmesi olmayan satırda not olmamalı');
+});
+
+test('gecikme notunun stili var ve amber kalıyor', () => {
+  assert.ok(jsKaynak.includes('ogr-gec-notu'), 'not JS\'te üretilmeli');
+  // Satır kuralı (`.plan-satir.ogrenci .metin small`) rengi soluk yazıya
+  // çevirdiği için notun seçicisi daha özgül olmalı; yoksa uyarı amberi
+  // kaybolur (tam bu yüzden kaçtı, ölçümle yakalandı).
+  assert.ok(/\.plan-satir\.ogrenci \.metin \.ogr-gec-notu\{[^}]*color:var\(--warn/.test(cssKaynak),
+    'not amber renkte ve satır kuralından özgül olmalı');
+});
+
 test('gecikme şeridinin stili var', () => {
   assert.ok(jsKaynak.includes('ogr-gecikme'), 'şerit JS\'te üretilmeli');
   assert.ok(/\.ogr-gecikme\{/.test(cssKaynak), 'şerit kutusu stillenmeli');
@@ -633,8 +677,8 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   };
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '16', 'sürüm artırılmalı');
-  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '33', 'CSS sürümü artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '17', 'sürüm artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '34', 'CSS sürümü artırılmalı');
   // Panel dosyası da damgalı: içeriği değişip damga artmadan kalırsa tarayıcı
   // eski kopyayı çalıştırır ve yeni alanı görmez (bir kez tam bu yüzden kaçtı).
   const panelSayfa = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');

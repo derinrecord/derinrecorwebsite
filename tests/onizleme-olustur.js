@@ -688,7 +688,9 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
       // ayrı düşsün ki "ödendi 20 Ekim" notu da görünsün.
       { id: 'om1', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-03', metin: 'Ekim aidatı', tutar: 2000, bitti: true, elden: true, odeme_gunu: '2026-10-20' },
       { id: 'om2', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-20', metin: 'Kasım aidatı', tutar: 1500, bitti: false },
-      { id: 'om3', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-09-15', metin: 'Eylül aidatı', tutar: 2000, bitti: true },
+      // Eylül aidatı da geç ödenmiş: satırdaki geçmiş notu "2 kez ... ortalama"
+      // biçimine düşsün (tek gecikme biçimi Zeynep'in satırında görünüyor).
+      { id: 'om3', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-09-15', metin: 'Eylül aidatı', tutar: 2000, bitti: true, odeme_gunu: '2026-09-25' },
       // Geçen aydan devreden açık borç: satırda "devir" rozeti çıkar.
       { id: 'om4', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-08-10', metin: 'Ağustos aidatı', tutar: 900, bitti: false },
       { id: 'om5', ogrenci_id: 'og2', tur: 'odeme', gun: '2026-10-04', metin: 'Ekim aidatı', tutar: 1500, bitti: false },

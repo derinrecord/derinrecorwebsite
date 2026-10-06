@@ -285,6 +285,32 @@
     };
   }
 
+  // Öğrencinin gecikme GEÇMİŞİ: ay sınırı yoktur, kişisel bir alışkanlığı
+  // anlatır ("bu ay geç ödedi" bilgisi zaten ay rozetinde durur). Böylece
+  // kimin sürekli geciktirdiği, kimin bir kez aksattığı ay değiştirmeden
+  // görünür.
+  function gecikmeGecmisi(kayitListesi, ogrenciId) {
+    const gec = (kayitListesi || []).filter(k => {
+      if (!k || k.tur !== 'odeme' || k.ogrenci_id !== ogrenciId) return false;
+      if (!k.bitti || k.odeme_gunu == null) return false;
+      return gunFarki(k.gun, k.odeme_gunu) > 0;
+    });
+    if (!gec.length) return null;
+    const toplam = gec.reduce((t, k) => t + gunFarki(k.gun, k.odeme_gunu), 0);
+    return { adet: gec.length, toplam: toplam, ortalama: Math.round(toplam / gec.length) };
+  }
+
+  // Tek gecikmede "ortalama" demek gereksiz: sayı doğrudan yazılır. İki ve
+  // fazlasında ortalama anlamlı oluyor.
+  function gecikmeNotu(kayitListesi, ogrenciId) {
+    const g = gecikmeGecmisi(kayitListesi, ogrenciId);
+    if (!g) return '';
+    const ek = g.adet === 1
+      ? g.toplam + ' gün'
+      : 'ortalama ' + g.ortalama + ' gün';
+    return `<small class="ogr-gec-notu">${g.adet} kez geç ödedi · ${ek}</small>`;
+  }
+
   // Gecikme şeridi gelir şeridinin hemen altında durur: para özetini okurken
   // "bu para ne zaman geldi" sorusu aynı yerde cevaplanır. Gecikme yoksa
   // şerit hiç basılmaz — sıfır gecikme yazmak gürültü olurdu.
@@ -852,7 +878,7 @@
       aria-label="${acik ? 'Ödeme listesini ve ay özetini kapat' : 'Ödeme listesi ve ay özeti'}">${acik ? '▾' : '▸'}</button>`;
     return `<li class="plan-satir ogrenci${acik ? ' acik' : ''}${o.hata ? ' hata' : ''}">
       ${acDugme}
-      <span class="metin"><b>${esc(o.ad || '—')}</b>${alt ? ` <small>${esc(alt)}</small>` : ''}${o.notlar && String(o.notlar).trim() ? `<br><small>${esc(o.notlar)}</small>` : ''}${acik ? '' : ozetCipleri(liste, o, ayar)}</span>
+      <span class="metin"><b>${esc(o.ad || '—')}</b>${alt ? ` <small>${esc(alt)}</small>` : ''}${o.notlar && String(o.notlar).trim() ? `<br><small>${esc(o.notlar)}</small>` : ''}${acik ? '' : ozetCipleri(liste, o, ayar)}${gecikmeNotu(liste, o.id)}</span>
       ${yerel ? '' : `<button class="duzenle" data-act="ogrenci-duzenle" data-id="${esc(o.id)}" type="button" aria-label="Düzenle">✎</button>`}
       <button class="sil" data-act="ogrenci-sil" data-id="${esc(o.id)}" type="button" aria-label="Sil">×</button>
       ${acik ? ogrenciDetay(o, liste, durum, ayar) : ''}
@@ -992,6 +1018,8 @@
     gunFarki: gunFarki,
     gecikmeOzeti: gecikmeOzeti,
     gecikmeSeridi: gecikmeSeridi,
+    gecikmeGecmisi: gecikmeGecmisi,
+    gecikmeNotu: gecikmeNotu,
     ogrenciToplam: ogrenciToplam,
     DEVAMSIZLIK_ESIK: DEVAMSIZLIK_ESIK,
     ODAK: ODAK,

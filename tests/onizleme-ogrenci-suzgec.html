@@ -613,6 +613,12 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .ogr-gecikme-kalemler{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
 .ogr-gecikme-kalemler b{font-size:11.5px;color:var(--txt)}
 .ogr-gecikme small{margin-left:auto;font-size:11px;color:var(--muted-2)}
+/* Öğrenci satırındaki geç ödeme geçmişi: ay rozetlerinin altında kendi
+   satırında, amber. Kimlik bilgisi değil bir uyarı olduğu için veli/telefon
+   satırına karıştırılmaz. Seçici bilinçli olarak daha özgül: satır kuralı
+   (`.plan-satir.ogrenci .metin small`) rengi soluk yazıya çeviriyor. */
+.plan-satir.ogrenci .metin .ogr-gec-notu{display:block;margin-top:4px;font-size:11px;
+  color:var(--warn,#f0a132)}
 .ogr-takvim-sarmal{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
 .ogr-takvim-ana,.ogr-takvim-yan{min-width:0}
 
@@ -1017,7 +1023,7 @@ body{background:#0b0b0d;padding:22px;display:block}
       <button class="ogr-ac" data-act="ogrenci-detay" data-id="og1"
       type="button" aria-expanded="false"
       aria-label="Ödeme listesi ve ay özeti">▸</button>
-      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33 · başlama 12.02.2026</small><br><small>Salı-Perşembe</small><span class="ogr-cip"><i class="p">Haftada 3 gün</i><i class="p">Aylık 2.500 ₺</i><i class="g">3 geldi</i><i class="y">1 gelmedi</i><i class="m">1 mazeret</i><i class="g">2.000 ₺ ödendi · elden</i><i class="y">1.500 ₺ bekliyor</i><i class="b">900 ₺ devir</i></span></span>
+      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33 · başlama 12.02.2026</small><br><small>Salı-Perşembe</small><span class="ogr-cip"><i class="p">Haftada 3 gün</i><i class="p">Aylık 2.500 ₺</i><i class="g">3 geldi</i><i class="y">1 gelmedi</i><i class="m">1 mazeret</i><i class="g">2.000 ₺ ödendi · elden</i><i class="y">1.500 ₺ bekliyor</i><i class="b">900 ₺ devir</i></span><small class="ogr-gec-notu">2 kez geç ödedi · ortalama 14 gün</small></span>
       <button class="duzenle" data-act="ogrenci-duzenle" data-id="og1" type="button" aria-label="Düzenle">✎</button>
       <button class="sil" data-act="ogrenci-sil" data-id="og1" type="button" aria-label="Sil">×</button>
       
