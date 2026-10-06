@@ -1714,6 +1714,9 @@
             + OG.para(h.toplam) + ' ₺ aidat kaydı açılacak. Kayıtlar ödenmemiş '
             + 'olarak düşer; ödeme alındıkça tek tek işaretlenir.'
             + (h.atlanan ? ' ' + h.atlanan + ' öğrencinin bu ay kaydı zaten var, atlanacak.' : '')
+            + (h.gecBaslayan ? ' ' + h.gecBaslayan + ' öğrenci ayın '
+              + OG.AIDAT_GEC_BASLAMA_GUN + '\'inden sonra başladığı için bu ay '
+              + 'aidatı açılmayacak; ilk aidatları bir sonraki ay.' : '')
             + '</p>',
           onayMetni: 'AİDATLARI OLUŞTUR',
           onOnay: () => ogrenciAidatOlustur(yil, ay)

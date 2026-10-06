@@ -150,8 +150,67 @@ test('aynı ay için ikinci kez çalıştırma yeni kayıt açmaz', () => {
   assert.equal(ikinci.toplam, 0);
 });
 
+// ---------- Ayın sonuna doğru başlayan ----------
+
+test('ayın 21\'inden sonra başlayanın o ay aidatı açılmaz', () => {
+  const ogr = [
+    { id: 'a1', ad: 'Yeni Başlayan', aylik_tutar: 3200, aktif: true, baslama: '2026-10-28' },
+    { id: 'a2', ad: 'Sınır Günü', aylik_tutar: 3200, aktif: true, baslama: '2026-10-21' },
+    { id: 'a3', ad: 'Bir Gün Önce', aylik_tutar: 3200, aktif: true, baslama: '2026-10-20' },
+    { id: 'a4', ad: 'Ay Başında', aylik_tutar: 3200, aktif: true, baslama: '2026-10-03' },
+    { id: 'a5', ad: 'Geçen Ay Başladı', aylik_tutar: 3200, aktif: true, baslama: '2026-09-27' },
+    { id: 'a6', ad: 'Tarihsiz', aylik_tutar: 3200, aktif: true }
+  ];
+  const h = O.aylikAidatlar(ogr, [], AY);
+  assert.deepEqual(h.kayitlar.map(k => k.ogrenci_id), ['a3', 'a4', 'a5', 'a6'],
+    'ayın 21\'i ve sonrası düşer; geçen ay başlayan etkilenmez');
+  assert.equal(h.gecBaslayan, 2, 'geç başlayanlar ayrı sayılmalı');
+  assert.equal(h.atlanan, 0, 'geç başlama "kaydı var" sayılmamalı');
+  assert.equal(h.toplam, 3200 * 4, 'toplam geç başlayanı içermemeli');
+});
+
+test('geç başlama sınırı her ay aynı gündür, kısa ayda kaymaz', () => {
+  assert.equal(O.AIDAT_GEC_BASLAMA_GUN, 21, 'sınır stüdyo kararı: 21');
+  // Şubat: 21 her ay var, kısa ay bir gün kaydırmamalı.
+  const sub = [
+    { id: 'a1', aylik_tutar: 100, aktif: true, baslama: '2027-02-20' },
+    { id: 'a2', aylik_tutar: 100, aktif: true, baslama: '2027-02-21' }
+  ];
+  const h = O.aylikAidatlar(sub, [], { yil: 2027, ay: 2 });
+  assert.deepEqual(h.kayitlar.map(k => k.ogrenci_id), ['a1']);
+  assert.equal(h.gecBaslayan, 1);
+});
+
+test('gecBasladi yalnız aidat ayının 21\'i ve sonrasını sayar', () => {
+  assert.equal(O.gecBasladi('2026-10-28', '2026-10'), true);
+  assert.equal(O.gecBasladi('2026-10-21', '2026-10'), true);
+  assert.equal(O.gecBasladi('2026-10-20', '2026-10'), false);
+  assert.equal(O.gecBasladi('2026-09-25', '2026-10'), false, 'başka ayın tarihi karışmamalı');
+  assert.equal(O.gecBasladi('2027-01-05', '2026-10'), false, 'ileri tarih geç başlama değil');
+  assert.equal(O.gecBasladi(null, '2026-10'), false);
+  assert.equal(O.gecBasladi('', '2026-10'), false);
+  assert.equal(O.gecBasladi('28.10.2026', '2026-10'), false, 'bozuk biçim geç başlama saymaz');
+});
+
+test('geç başlayan atlanınca ekran sebebini söyler', () => {
+  const gec = [{ id: 'a1', aylik_tutar: 3200, aktif: true, baslama: '2026-10-28' }];
+  // Hepsi geç başladı: kayıt yok, düğme yerine sebep basılır (yoksa ekran boş
+  // kalır ve "öğrenci kaybolmuş" gibi görünür).
+  const h = O.aidatDugmesi(gec, [], AY);
+  assert.ok(h.includes('ogr-aidat-tamam'), 'kayıt yoksa düğme değil açıklama basılır');
+  assert.ok(!h.includes('ogr-aidat-dugme'), 'oluşturulacak kayıt yokken düğme çıkmaz');
+  assert.ok(h.includes('sonra başladı'), 'sebep yazılmalı: ' + h);
+
+  // Karışık liste: düğme var, geç başlayan sayısı yanında yazar.
+  const karisik = gec.concat([{ id: 'a2', aylik_tutar: 1800, aktif: true, baslama: '2026-10-02' }]);
+  const k = O.aidatDugmesi(karisik, [], AY);
+  assert.ok(k.includes('ogr-aidat-dugme'));
+  assert.ok(k.includes('1 öğrenci ayın 21\'inden sonra başladı'), 'not düğme yanında: ' + k);
+  assert.ok(k.includes('1.800 ₺'), 'geç başlayan toplamı şişirmemeli');
+});
+
 test('eksik bağlamda toplu aidat çökmez', () => {
-  const bos = { kayitlar: [], atlanan: 0, toplam: 0 };
+  const bos = { kayitlar: [], atlanan: 0, gecBaslayan: 0, toplam: 0 };
   assert.deepEqual(O.aylikAidatlar(OGR, [], null), bos);
   assert.deepEqual(O.aylikAidatlar(OGR, [], {}), bos);
   assert.deepEqual(O.aylikAidatlar([], [], AY), bos);
@@ -710,11 +769,11 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   };
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
-  // Gecikme notu yıl sınırı kazandı; JS değişti, damga da artmalı.
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '18', 'sürüm artırılmalı');
+  // Geç başlayan öğrenci kuralı JS'e girdi; damga da artmalı.
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '19', 'sürüm artırılmalı');
   assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '34', 'CSS sürümü artırılmalı');
   // Panel dosyası da damgalı: içeriği değişip damga artmadan kalırsa tarayıcı
   // eski kopyayı çalıştırır ve yeni alanı görmez (bir kez tam bu yüzden kaçtı).
   const panelSayfa = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');
-  assert.match(panelSayfa, /radyo-yonetim\.js\?v=20261005r/, 'panel damgası artırılmalı');
+  assert.match(panelSayfa, /radyo-yonetim\.js\?v=20261006a/, 'panel damgası artırılmalı');
 });

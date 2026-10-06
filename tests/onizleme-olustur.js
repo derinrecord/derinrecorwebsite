@@ -709,6 +709,13 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
   if (senaryo === 'ogrenci-aidat') {
     D.ogrenciKayitlari = D.ogrenciKayitlari
       .filter(k => !(k.tur === 'odeme' && String(k.gun).slice(0, 7) === '2026-10'));
+    // Ayın 21'inden sonra başlayan öğrenci yalnız bu senaryoda eklenir: kural
+    // gözle görülsün (kaydı açılmaz, ekran sayarak söyler) ama yoklama
+    // senaryolarının listesini kalabalıklaştırmasın.
+    D.ogrenciler = D.ogrenciler.concat([
+      { id: 'og4', ad: 'Yeni Başlayan', veli: 'Deniz Kaya', telefon: '0534 000 11 22',
+        notlar: '', gun_sayisi: 2, aylik_tutar: 3200, baslama: '2026-10-28', aktif: true }
+    ]);
   }
   const ui = { now: () => simdi };
   // Öğrenci senaryoları marka takviminin ay görünümünde durur; öğrenci işi

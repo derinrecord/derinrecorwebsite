@@ -210,6 +210,21 @@
 
   // ---------- Aylık aidat oluşturma ----------
 
+  // Aidat ayının sonuna doğru başlayan öğrenciden o ayın aidatı alınmaz:
+  // birkaç günü için tam bir aylık ücret çıkmasın, ilk aidatı bir sonraki ay
+  // açılsın. Sınır her ay aynıdır ve stüdyo sahibinin kararıdır (bkz. kural
+  // testleri · ogrenci-aidat).
+  const AIDAT_GEC_BASLAMA_GUN = 21;
+
+  // Başlama tarihi aidat ayının içinde ve 21 veya sonrası mı? Başka ayda
+  // başlayan (önce ya da sonra) bu kurala girmez; tarih yoksa da girmez —
+  // tarih girilmemiş öğrenci eskisi gibi her ay faturalanır.
+  const gecBasladi = (baslama, onek) => {
+    const s = String(baslama == null ? '' : baslama).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || s.slice(0, 7) !== onek) return false;
+    return Number(s.slice(8, 10)) >= AIDAT_GEC_BASLAMA_GUN;
+  };
+
   // Bu ayın aidat kayıtları: tutarı elle yazılmış, aktif her öğrenci için bir
   // "ödemeler" satırı üretir. Tarife yok — tutar öğrencide yazılı olduğu gibi
   // alınır, çünkü haftada 2 gün gelenle 3 gün gelenin fiyatı ayrı.
@@ -217,14 +232,17 @@
   // Çift kayıt koruması: o ay için zaten bir ödeme kaydı düşülmüşse (elle
   // girilmiş bir tahsilat da olabilir) öğrenci atlanır. Düğmeye iki kez basmak
   // bu yüzden ikinci kez kayıt açmaz; atlananlar ayrıca sayılır ki ekran
-  // "neden 5 değil 3 kayıt açıldı" sorusunu cevaplayabilsin.
+  // "neden 5 değil 3 kayıt açıldı" sorusunu cevaplayabilsin. Aidatı olmayan
+  // ikinci grup geç başlayanlardır: kaydı olmadığı hâlde listeye girmedikleri
+  // ayrı sayılır, yoksa "eksik öğrenci" gibi görünürlerdi.
   function aylikAidatlar(liste, kayitListesi, a) {
     const ayar = a || {};
-    const bos = { kayitlar: [], atlanan: 0, toplam: 0 };
+    const bos = { kayitlar: [], atlanan: 0, gecBaslayan: 0, toplam: 0 };
     if (!ayar.yil || !ayar.ay) return bos;
     const onek = ayOnek(ayar.yil, ayar.ay);
     const kayitlar = [];
     let atlanan = 0;
+    let gecBaslayan = 0;
     (liste || []).forEach(o => {
       if (!o || !o.id || o.aktif === false) return;
       const tutar = Number(o.aylik_tutar || 0);
@@ -232,13 +250,14 @@
       const varMi = ogrenciKayitlari(kayitListesi, o.id, 'odeme')
         .some(k => String(k.gun).slice(0, 7) === onek);
       if (varMi) { atlanan++; return; }
+      if (gecBasladi(o.baslama, onek)) { gecBaslayan++; return; }
       kayitlar.push({
         ogrenci_id: o.id, tur: 'odeme', gun: onek + '-01',
         metin: AYLAR_ADI[ayar.ay - 1] + ' aidatı', tutar: tutar, bitti: false
       });
     });
     return {
-      kayitlar: kayitlar, atlanan: atlanan,
+      kayitlar: kayitlar, atlanan: atlanan, gecBaslayan: gecBaslayan,
       toplam: kayitlar.reduce((t, k) => t + k.tutar, 0)
     };
   }
@@ -354,16 +373,21 @@
   function aidatDugmesi(liste, kayitListesi, a) {
     if (!(liste || []).length) return '';
     const h = aylikAidatlar(liste, kayitListesi, a);
-    if (!h.kayitlar.length && !h.atlanan) return '';
+    if (!h.kayitlar.length && !h.atlanan && !h.gecBaslayan) return '';
     const ayAdi = AYLAR_ADI[((a || {}).ay || 0) - 1] || '';
     if (!h.kayitlar.length) {
+      // Hiç kayıt yoksa düğme de yok; sebebi yazılmazsa ekran boş kalırdı.
+      const neden = h.atlanan
+        ? h.atlanan + ' öğrencinin kaydı var'
+        : h.gecBaslayan + ' öğrenci ayın ' + AIDAT_GEC_BASLAMA_GUN +
+          "'inden sonra başladı, aidatı sonraki ay açılır";
       return `<p class="ogr-aidat-tamam">${esc(ayAdi + ' ' + (a || {}).yil)}
-        aidatları hazır · ${h.atlanan} öğrencinin kaydı var</p>`;
+        aidatları hazır · ${esc(neden)}</p>`;
     }
     return `<div class="ogr-aidat">
       <button class="ogr-aidat-dugme" data-act="ogrenci-aidat-olustur" type="button">
         ${esc(ayAdi ? ayAdi + ' aidatlarını oluştur' : 'Aidatları oluştur')}</button>
-      <small>${h.kayitlar.length} öğrenci · toplam <b>${para(h.toplam)} ₺</b>${h.atlanan ? ` · ${h.atlanan} öğrencinin kaydı zaten var` : ''}</small>
+      <small>${h.kayitlar.length} öğrenci · toplam <b>${para(h.toplam)} ₺</b>${h.atlanan ? ` · ${h.atlanan} öğrencinin kaydı zaten var` : ''}${h.gecBaslayan ? ` · ${h.gecBaslayan} öğrenci ayın ${AIDAT_GEC_BASLAMA_GUN}'inden sonra başladı` : ''}</small>
     </div>`;
   }
 
@@ -542,7 +566,7 @@
       <input class="plan-gir" data-${k}="telefon" type="tel" autocomplete="off"
         placeholder="Telefon" value="${v('telefon')}">
       <input class="plan-gir tarih" data-${k}="baslama" type="date"
-        title="Kursa başladığı gün — boş bırakılabilir" value="${tarihDeger(o && o.baslama)}">
+        title="Kursa başladığı gün — boş bırakılabilir. Ayın ${AIDAT_GEC_BASLAMA_GUN}'inden sonra başlayanın o ay aidatı açılmaz." value="${tarihDeger(o && o.baslama)}">
       <input class="plan-gir gun" data-${k}="gun_sayisi" type="number" min="1" max="7" step="1"
         list="${GUN_LISTESI_ID}" autocomplete="off" placeholder="Haftalık gün"
         title="Haftada kaç gün geliyor — 2/3/4 seç ya da elle yaz" value="${v('gun_sayisi')}">
@@ -1005,6 +1029,8 @@
     tarifeMi: tarifeMi,
     para: para,
     aylikAidatlar: aylikAidatlar,
+    AIDAT_GEC_BASLAMA_GUN: AIDAT_GEC_BASLAMA_GUN,
+    gecBasladi: gecBasladi,
     aidatDugmesi: aidatDugmesi,
     katilimSonraki: katilimSonraki,
     katilimEtiket: katilimEtiket,
