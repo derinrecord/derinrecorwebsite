@@ -109,6 +109,24 @@
     return { tahsil: topla(x => x.bitti), bekleyen: topla(x => !x.bitti), adet: ayin.length };
   }
 
+  // En son ÖDENMİŞ ay — ay sınırı yok. odemeOzeti yalnız görünen aya bakar;
+  // ekim ayına bakan yönetici eylülde ödeyen öğrenciyi "hiç ödememiş" gibi
+  // görüyordu, satır çipi o boşluğu kapatır.
+  // ogrenciOdemeleri yeni tarih başta sıralar: ilk ödenmiş kayıt en sonuncu.
+  // Aynı ayda birden çok tahsilat varsa (aidat + ek ücret) tutar toplanır ki
+  // çip tek kaydı gösterip yanıltmasın.
+  function sonOdeme(liste, ogrenciId) {
+    const odemeler = ogrenciOdemeleri(liste, ogrenciId);
+    const son = odemeler.find(x => x.bitti);
+    if (!son) return null;
+    const ay = String(son.gun).slice(0, 7);
+    const ayniAy = odemeler.filter(x => x.bitti && String(x.gun).slice(0, 7) === ay);
+    return {
+      ay: ay, gun: son.gun, adet: ayniAy.length,
+      tutar: ayniAy.reduce((t, x) => t + Number(x.tutar || 0), 0)
+    };
+  }
+
   // Açık (ödenmemiş) kayıtların toplamı. Burada ay sınırı YOK: geçen aydan
   // devreden aidat da borçtur, yoksa borç her ay sıfırlanmış gibi görünürdü.
   function borcOzeti(liste, ogrenciId) {
@@ -384,6 +402,16 @@
       if (k.mazeret) p.push(`<i class="m">${k.mazeret} mazeret</i>`);
     }
     if (od.tahsil) p.push(`<i class="g">${para(od.tahsil)} ₺ ödendi</i>`);
+    // Görünen ayda tahsilat yoksa geçen tahsilatın ayı yazılır: "kim ödedi"
+    // sorusu ekrandaki aya takılıp boşta kalmasın. Ay kaydı varken bu çip
+    // basılmaz — aynı bilgi iki kez yazılmaz.
+    else {
+      const son = sonOdeme(liste, o.id);
+      if (son) {
+        const ayAdi = AYLAR_ADI[Number(son.ay.slice(5, 7)) - 1];
+        p.push(`<i class="g">${esc(ayAdi)} ödendi · ${para(son.tutar)} ₺</i>`);
+      }
+    }
     if (od.bekleyen) p.push(`<i class="y">${para(od.bekleyen)} ₺ bekliyor</i>`);
     // "Bu ay bekleyen" ile "geçmişten devreden borç" ayrı yazılır; aynı
     // tutarı iki kez göstermemek için ayın bekleyeni düşülür.
@@ -776,6 +804,7 @@
     katilimOzeti: katilimOzeti,
     ogrenciOdemeleri: ogrenciOdemeleri,
     odemeOzeti: odemeOzeti,
+    sonOdeme: sonOdeme,
     borcOzeti: borcOzeti,
     dikkatOzeti: dikkatOzeti,
     odakSayilari: odakSayilari,

@@ -185,6 +185,51 @@ test('eşiği aşan devamsızlık vurgulanır', () => {
   assert.ok(!az.includes('class="y d"'));
 });
 
+// ---------- Geçen ayın ödemesi ----------
+// Satır çipleri ay sınırı tanır: tutar yalnız ekrandaki ay için toplanır.
+// Geçen ay ödeyen öğrenci bu yüzden "hiç ödememiş" gibi okunuyordu; son
+// ödenmiş ayın adı satırda ayrı bir çiple yazılır.
+
+const ODEMELI = [
+  { id: 'e1', ogrenci_id: 'o5', tur: 'odeme', gun: '2026-09-01', metin: 'Eylül aidatı', tutar: 4100, bitti: true },
+  { id: 'e2', ogrenci_id: 'o5', tur: 'odeme', gun: '2026-09-20', metin: 'ek ders', tutar: 500, bitti: true },
+  // Aynı öğrencinin ekim aidatı henüz açık: satırda hem ödediği hem borcu
+  // görünmeli, ikisi birbirini gizlememeli.
+  { id: 'e3', ogrenci_id: 'o5', tur: 'odeme', gun: '2026-10-04', metin: 'Ekim aidatı', tutar: 4100, bitti: false },
+  { id: 'e4', ogrenci_id: 'o6', tur: 'odeme', gun: '2026-10-03', metin: 'Ekim aidatı', tutar: 2000, bitti: true }
+];
+
+const O5 = { id: 'o5', ad: 'Geçen Ay Ödeyen' };
+const O6 = { id: 'o6', ad: 'Bu Ay Ödeyen' };
+
+test('son ödeme en yeni ödenmiş ayı ve o ayın toplamını verir', () => {
+  const son = O.sonOdeme(ODEMELI, 'o5');
+  assert.equal(son.ay, '2026-09', 'ekim kaydı ödenmemiş, eylül esas alınmalı');
+  assert.equal(son.adet, 2);
+  assert.equal(son.tutar, 4600, 'aynı ayın iki tahsilatı toplanmalı');
+  assert.equal(O.sonOdeme(ODEMELI, 'o6').tutar, 2000);
+  assert.equal(O.sonOdeme(ODEMELI, 'o9'), null, 'hiç ödemeyen için kayıt yok');
+  assert.equal(O.sonOdeme(null, 'o5'), null);
+});
+
+test('geçen ay ödeyen öğrenci satırda ayıyla yazılır', () => {
+  const h = O.ogrenciSatiri(O5, {}, ODEMELI, AY);
+  assert.ok(h.includes('<i class="g">Eylül ödendi · 4.600 ₺</i>'), 'ödenmiş ay satırda görünmeli');
+  assert.ok(h.includes('4.100 ₺ bekliyor'), 'açık borç yine ayrı yazılmalı');
+});
+
+test('ayın kendi tahsilatı varken geçen ayın çipi tekrarlanmaz', () => {
+  const h = O.ogrenciSatiri(O6, {}, ODEMELI, AY);
+  assert.ok(h.includes('2.000 ₺ ödendi'));
+  assert.ok(!h.includes('Ekim ödendi'), 'aynı ay iki kez yazılmamalı');
+  assert.ok(!h.includes('Eylül ödendi'), 'başka öğrencinin geçmişi sızmamalı');
+});
+
+test('hiç ödemeyen öğrencide ödendi çipi basılmaz', () => {
+  const h = O.ogrenciSatiri({ id: 'o9', ad: 'Yeni' }, {}, ODEMELI, AY);
+  assert.ok(!h.includes('ödendi'), 'ödeme yokken "ödendi" yazılmamalı');
+});
+
 // ---------- Klasör gövdesi ----------
 
 const OGR = [OGRENCILER[0]];
@@ -283,7 +328,12 @@ test('sayfa ay özetini öğrenci verisinden hesaplar', () => {
 test('ay değişince özet de o aya döner, marka takvimi etkilenmez', () => {
   const h = ogrenciSayfasi({ ogrenciYil: 2026, ogrenciAy: 9, planYil: 2026, planAy: 10 });
   assert.ok(h.includes('Eylül 2026'), 'öğrenci ayı seçileni göstermeli');
-  assert.ok(!h.includes('2.000 ₺'), 'Ekim tahsilatı Eylül özetine girmemeli');
+  // Ay sınırı korunur: ekimde alınan 2.000 ₺ eylülün tahsilatı sayılmaz.
+  // (Eski ölçek "2.000 ₺ geçmesin" idi; satır artık başka ayın ödemesini
+  // ayını yazarak gösterdiği için ölçek tahsilat çipine daraltıldı.)
+  assert.ok(!h.includes('2.000 ₺ ödendi'), 'Ekim tahsilatı Eylül tahsilatı sayılmamalı');
+  assert.ok(h.includes('Ekim ödendi · 2.000 ₺'), 'başka ayın ödemesi ayı yazılarak görünür');
+  assert.ok(!h.includes('öğrenci geliri'), 'Eylül parasız ay: gelir şeridi basılmamalı');
   // Marka sayfası kendi ayında kalır: aynı durumda takvim ekimi gösterir.
   const marka = V.gorunum({ nav: 'plan', sub: 'takvim', planYil: 2026, planAy: 10,
     openFolder: null, openBrand: null, openPlaylist: null, q: '' }, {

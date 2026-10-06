@@ -411,6 +411,6 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   };
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '10', 'sürüm artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '11', 'sürüm artırılmalı');
   assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '27', 'CSS sürümü artırılmalı');
 });
