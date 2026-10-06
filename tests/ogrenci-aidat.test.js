@@ -46,6 +46,32 @@ test('koşul bilgisi kaydı olmayan öğrencide de görünür', () => {
   assert.ok(h.includes('Aylık 1.000 ₺'));
 });
 
+// ---------- Tarife: gün sayısı tutarı doldurur ----------
+// Kursa haftanın 3 günü gelen 4.100 ₺, 2 günü gelen 3.200 ₺ ödüyor. Tutar
+// yine elle değiştirilebilir; tarife yalnız formu doldurur.
+
+test('tarife gün sayısına göre tutarı verir', () => {
+  assert.deepEqual(O.TARIFE, { 2: 3200, 3: 4100 });
+  assert.equal(O.tarifeTutar(2), 3200);
+  assert.equal(O.tarifeTutar('3'), 4100, 'form değeri metin gelir');
+  // Tarifede olmayan gün sayısı serbest kalmalı: tutar otomatik dolmaz.
+  assert.equal(O.tarifeTutar(1), null);
+  assert.equal(O.tarifeTutar(4), null);
+  assert.equal(O.tarifeTutar(''), null);
+  assert.equal(O.tarifeTutar(null), null);
+});
+
+test('tarifeden gelen tutar ayırt edilir, el yazısı korunur', () => {
+  assert.equal(O.tarifeMi('3200'), true);
+  assert.equal(O.tarifeMi(4100), true);
+  assert.equal(O.tarifeMi(' 3200 '), true);
+  // Elle yazılmış bir tutar tarife değeri taşımıyorsa üstüne yazılmaz.
+  assert.equal(O.tarifeMi('3500'), false);
+  assert.equal(O.tarifeMi('3.200'), false, 'biçimli yazım el yazısı sayılır');
+  assert.equal(O.tarifeMi(''), false);
+  assert.equal(O.tarifeMi(null), false);
+});
+
 // ---------- Form alanları ----------
 
 test('ekleme ve düzenleme formları gün sayısı ile tutarı taşır', () => {
@@ -247,6 +273,27 @@ test('panel gün sayısı ve tutarı okur, yazar', () => {
   assert.ok(/return isFinite\(n\) \? n : null;/.test(panelKaynak));
 });
 
+test('formda tarife ipucu yazar, otomatik dolum panele bağlıdır', () => {
+  // Tutar alanının ipucu tarifeyi söylemeli: otomatik dolum görünmez bir
+  // davranış olduğu için kullanıcı rakamların nereden geldiğini görebilsin.
+  const form = O.ogrenciListesi([], [], { ogrenciYeni: true }, AY);
+  assert.ok(form.includes('3.200 ₺') && form.includes('4.100 ₺'), 'tarife ipucunda yazmalı');
+  // Panel gün sayısı alanını dinler ve aylık tutarı doldurur; elle yazılmış
+  // tutara dokunmaz.
+  const m = panelKaynak.match(/function tarifeDoldur\([\s\S]*?\n  \}/);
+  assert.ok(m, 'tarifeDoldur bulunmalı');
+  assert.ok(m[0].includes('OG.tarifeTutar('), 'tutar tarifeden okunmalı');
+  assert.ok(/if \(mevcut && !OG\.tarifeMi\(mevcut\)\) return;/.test(m[0]),
+    'el yazısı tutarın üstüne yazılmamalı');
+  assert.ok(/\[data-ogrenci-gir="gun_sayisi"\],\[data-ogrenci-duzenle="gun_sayisi"\]/.test(panelKaynak),
+    'gün alanı input dinleyicisine bağlanmalı');
+  assert.ok(/if \(gunAlan\) \{[\s\S]*?tarifeDoldur\(gunAlan\)/.test(panelKaynak),
+    'dinleyici doğrudan dolum çağırmalı');
+  // Gün alanı iki formda da aynı seçiciyle karşılanır.
+  assert.ok(/const kip = gunAlan\.dataset\.ogrenciGir != null \? 'ogrenci-gir' : 'ogrenci-duzenle';/.test(panelKaynak),
+    'ekleme ve düzenleme formu ayırt edilmeli');
+});
+
 test('yeni alanlar için stil var', () => {
   ['ogr-aidat', 'ogr-aidat-dugme', 'ogr-aidat-tamam'].forEach(sinif => {
     assert.ok(jsKaynak.includes(sinif), sinif + ' JS\'te üretilmeli');
@@ -270,6 +317,6 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   };
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '7', 'sürüm artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '8', 'sürüm artırılmalı');
   assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '26', 'CSS sürümü artırılmalı');
 });

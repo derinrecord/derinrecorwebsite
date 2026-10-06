@@ -624,7 +624,8 @@ if (senaryo === 'harmonik') {
 // (tıklama yok); amaç yerleşimin ve renklerin gözle doğrulanması.
 if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
   || senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme' || senaryo === 'ogrenci-suzgec'
-  || senaryo === 'ogrenci-uyari' || senaryo === 'ogrenci-aidat') {
+  || senaryo === 'ogrenci-uyari' || senaryo === 'ogrenci-aidat'
+  || senaryo === 'ogrenci-yeni') {
   const P = require(path.join(kok, 'plan-takvim.js'));
   // Öğrenci klasörü modülü pencereden okur; node'da pencere yok, burada kurulur.
   global.window = Object.assign(global.window || {}, { DerinOgrenci: require(path.join(kok, 'ogrenciler.js')) });
@@ -706,7 +707,7 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
   // süzgecini gösterir.
   const ogrenciMi = senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme'
     || senaryo === 'ogrenci-suzgec' || senaryo === 'ogrenci-uyari'
-    || senaryo === 'ogrenci-aidat';
+    || senaryo === 'ogrenci-aidat' || senaryo === 'ogrenci-yeni';
   const acikGun = (senaryo === 'plan' || ogrenciMi) ? null : '2026-10-27';
   const duzenle = senaryo === 'plan-duzenle' ? 'o1' : null;
   const state = { nav: 'plan', sub: 'takvim', planYil: 2026, planAy: 10, planAcikGun: acikGun, planDuzenle: duzenle, planKatli: [] };
@@ -725,10 +726,14 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
     state.ogrenciOdak = 'borc';
     state.ogrenciAcik = 'og2';
   }
-  if (senaryo === 'ogrenci-uyari' || senaryo === 'ogrenci-aidat') {
+  if (senaryo === 'ogrenci-uyari' || senaryo === 'ogrenci-aidat'
+    || senaryo === 'ogrenci-yeni') {
     state.ogrenciYil = 2026;
     state.ogrenciAy = 10;
   }
+  // Ekleme formu: haftalık gün ve aylık tutar alanları, datalist seçenekleri
+  // ve tarife ipucu burada görünür (panelde otomatik dolum JS ile çalışır).
+  if (senaryo === 'ogrenci-yeni') state.ogrenciYeni = true;
   // Öğrenci senaryoları Plan → Öğrenciler sayfasının gövdesini basar (marka
   // takvimi ayrı sayfada kaldı); plan senaryoları marka takvimini.
   const O = require(path.join(kok, 'ogrenciler.js'));
@@ -747,7 +752,8 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
     'ogrenci-odeme': 'öğrenci · ödeme düzenleme',
     'ogrenci-suzgec': 'öğrenci · uyarı süzgeci',
     'ogrenci-uyari': 'öğrenci · eksik yoklama',
-    'ogrenci-aidat': 'öğrenci · aylık aidat'
+    'ogrenci-aidat': 'öğrenci · aylık aidat',
+    'ogrenci-yeni': 'öğrenci · ekleme formu'
   };
   const baslik = SAHNE_BASLIKLARI[senaryo] || 'gün sekmesi';
   const sayfa = `<!doctype html>

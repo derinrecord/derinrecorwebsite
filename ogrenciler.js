@@ -255,6 +255,26 @@
   const GUN_SECENEKLERI = [2, 3, 4];
   const GUN_LISTESI_ID = 'ogr-gun-sayisi-listesi';
 
+  // Haftalık gün sayısına göre aylık aidat tarifesi: kursa haftanın 2 günü
+  // gelenle 3 günü gelen aynı parayı vermiyor (3 gün: salon 1.600 + ücret
+  // 2.500 = 4.100 ₺; 2 gün: 3.200 ₺). Tutar yine ELLE DEĞİŞTİRİLEBİLİR:
+  // tarife yalnız formu doldurur, kaydı bağlamaz. Tarifede olmayan gün
+  // sayısı (1, 4, 5 …) için tutar serbest kalır.
+  const TARIFE = { 2: 3200, 3: 4100 };
+  const tarifeTutar = gun => {
+    const n = Number(gun);
+    return TARIFE[n] != null ? TARIFE[n] : null;
+  };
+  // Alanın içindeki değer tarifeden mi gelmiş? Otomatik dolumun elle yazılmış
+  // tutarın üstüne yazmaması için gerekir (bkz. radyo-yonetim.js).
+  const tarifeMi = tutar => {
+    const s = String(tutar == null ? '' : tutar).trim();
+    if (!s) return false;
+    return Object.keys(TARIFE).some(g => String(TARIFE[g]) === s);
+  };
+  const tarifeNotu = () => Object.keys(TARIFE)
+    .map(g => g + ' gün: ' + para(TARIFE[g]) + ' ₺').join(' · ');
+
   // Aynı datalist birden çok forma hizmet eder; sayfada bir kez basılır
   // (bkz. ogrenciTakvimi). data- listesi formu açan sayı alanlarına bağlanır.
   const gunSecenekListesi = () => `<datalist id="${GUN_LISTESI_ID}">`
@@ -272,9 +292,11 @@
         placeholder="Telefon" value="${v('telefon')}">
       <input class="plan-gir gun" data-${k}="gun_sayisi" type="number" min="1" max="7" step="1"
         list="${GUN_LISTESI_ID}" autocomplete="off" placeholder="Haftalık gün"
-        title="Haftada kaç gün geliyor (2/3/4 ya da elle)" value="${v('gun_sayisi')}">
+        title="Haftada kaç gün geliyor — 2/3/4 seç ya da elle yaz" value="${v('gun_sayisi')}">
       <input class="plan-gir tutar" data-${k}="aylik_tutar" type="text" inputmode="decimal"
-        autocomplete="off" placeholder="Aylık tutar ₺" value="${v('aylik_tutar')}">
+        autocomplete="off" placeholder="Aylık tutar ₺"
+        title="${esc(tarifeNotu())} — gün sayısını yazınca tutar otomatik dolar, istersen değiştir"
+        value="${v('aylik_tutar')}">
       <input class="plan-gir" data-${k}="notlar" type="text" autocomplete="off"
         placeholder="Not" value="${v('notlar')}">`;
   }
@@ -676,6 +698,9 @@
   const api = {
     KATILIM: KATILIM,
     GUN_SECENEKLERI: GUN_SECENEKLERI,
+    TARIFE: TARIFE,
+    tarifeTutar: tarifeTutar,
+    tarifeMi: tarifeMi,
     para: para,
     aylikAidatlar: aylikAidatlar,
     aidatDugmesi: aidatDugmesi,

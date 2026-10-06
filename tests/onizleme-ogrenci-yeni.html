@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — öğrenci · ekleme formu</title>
+<style>
+/* Radyo Yönetim Paneli — görsel dil.
+ *
+ * NEDEN TEK DOSYA: eski panelde stillerin bir kısmı JavaScript içine satır içi
+ * yazılmıştı; aynı işi yapan iki düğme farklı görünüyordu. Burada bütün panel
+ * tek bir değişken seti, tek düğme ailesi ve tek tablo/alan bileşenini kullanır.
+ * Sayfa yalnızca bu dosyayı + auth.css'i (giriş penceresi için) yükler.
+ *
+ * Ölçü/renk değişiklikleri yalnızca :root içinden yapılır.
+ */
+
+:root{
+  --bg:#0a0a0c;
+  --surface:rgba(255,255,255,.055);
+  --surface-2:rgba(255,255,255,.09);
+  --surface-3:rgba(255,255,255,.13);
+  --line:rgba(255,255,255,.13);
+  --line-2:rgba(255,255,255,.26);
+  --txt:#f4f2ee;
+  --muted:rgba(244,242,238,.64);
+  --muted-2:rgba(244,242,238,.42);
+  --gold:#d4c24e;
+  --gold-ink:#14120a;
+  --purple:#a855f7;
+  --live:#22c98a;
+  --danger:#ff5f6d;
+  --warn:#f0a132;
+  --r-sm:10px; --r:14px; --r-lg:20px; --r-xl:26px;
+  --shadow:0 20px 50px rgba(0,0,0,.5);
+  --rail:262px;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--txt);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+body::before,body::after{content:"";position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+body::before{width:560px;height:560px;background:#c98a4b;opacity:.16;top:-220px;left:-160px}
+body::after{width:520px;height:520px;background:#3b6ea5;opacity:.14;bottom:-240px;right:-140px}
+a{color:inherit;text-decoration:none}
+::selection{background:rgba(212,194,78,.35)}
+
+button,input,select,textarea{font:inherit;color:inherit}
+/* :where(...) özgüllüğü sıfırlar: aksi hâlde :not() zinciri (0,3,1)'e çıkar ve
+   bileşen sınıflarının dolgu kurallarını (ör. .search input'un ikon payı) ezer. */
+input:where(:not([type=checkbox]):not([type=radio]):not([type=file])),
+select,textarea{
+  padding:10px 13px;border-radius:var(--r);border:1px solid var(--line);
+  background:var(--surface);
+}
+input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,
+select:focus,textarea:focus{outline:0;border-color:var(--line-2);box-shadow:0 0 0 4px rgba(255,255,255,.06)}
+input:disabled,select:disabled,button:disabled{opacity:.5;cursor:default}
+/* Dosya seçici tarayıcının varsayılan görünümüyle kalmasın (kapak vb.). */
+input[type=file]{padding:8px 10px;font-size:12.5px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);max-width:100%}
+input[type=file]::file-selector-button{margin-right:10px;padding:7px 12px;border-radius:var(--r-sm);
+  border:1px solid var(--line-2);background:var(--surface-3);color:var(--txt);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+select{cursor:pointer}
+option{background:#141317;color:var(--txt)}
+
+/* ---------- Yerleşim: sabit yan menü + içerik ---------- */
+.rail{
+  position:fixed;inset:0 auto 0 0;width:var(--rail);z-index:3;
+  padding:22px 16px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
+  border-right:1px solid var(--line);
+  -webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);
+}
+.brand{display:flex;align-items:center;gap:11px;padding:2px 6px 0}
+.brand b{font-size:15px;letter-spacing:.12em;line-height:1.1;display:block}
+.brand span{display:block;font-size:10px;letter-spacing:.22em;color:var(--muted-2)}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 14px var(--gold);flex:0 0 auto}
+
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-title{font-size:10px;letter-spacing:.2em;color:var(--muted-2);padding:12px 12px 6px}
+.nav-item{
+  display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  padding:10px 12px;border-radius:var(--r);border:1px solid transparent;
+  background:none;cursor:pointer;color:var(--muted);
+}
+.nav-item svg{flex:0 0 auto;opacity:.85}
+.nav-item:hover{background:var(--surface);color:var(--txt)}
+.nav-item.active{background:rgba(212,194,78,.14);border-color:rgba(212,194,78,.42);color:var(--txt)}
+.nav-item.active svg{opacity:1;color:var(--gold)}
+.nav-item small{display:block;font-size:11px;color:var(--muted-2)}
+.nav-item .say{margin-left:auto;font-size:11px;color:var(--muted-2)}
+/* Mesai içinde susan şube: sayı değil uyarı olduğu için kırmızı yuvarlak rozet. */
+.nav-item .say.uyari{margin-left:auto;font-weight:800;color:#ffc9d0;
+  border:1px solid rgba(255,95,109,.5);background:rgba(255,95,109,.16);border-radius:999px;padding:1px 8px}
+.nav-item .say + .say{margin-left:6px}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+.rail-foot .who{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r);
+  border:1px solid var(--line);background:var(--surface)}
+.rail-foot .who i{width:32px;height:32px;border-radius:50%;background:var(--surface-3);display:grid;
+  place-items:center;font-style:normal;font-size:12px;font-weight:800;flex:0 0 auto}
+.rail-foot .who b{display:block;font-size:13px}
+.rail-foot .who small{display:block;color:var(--muted-2);font-size:11px;word-break:break-all}
+
+.app{margin-left:var(--rail);position:relative;z-index:1;min-height:100%;display:flex;flex-direction:column}
+
+/* ---------- Üst çubuk ---------- */
+/* Üst çubuk yapışkandır ve içerik altından geçer. Arka plan yarı saydam
+   bırakılırsa alttan kayan metin (ör. Takvim'in filtre arama kutusu) üstteki
+   yazıyla üst üste biner. Bu yüzden zemin opak tutulur. */
+.topbar{
+  position:sticky;top:0;z-index:2;display:flex;gap:16px;align-items:center;
+  padding:16px 34px;border-bottom:1px solid var(--line);
+  background:var(--bg);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.topbar .title{flex:1 1 auto;min-width:0}
+.topbar h1{margin:0;font-size:19px;letter-spacing:-.2px}
+.topbar p{margin:2px 0 0;font-size:12.5px;color:var(--muted-2)}
+.search{position:relative;flex:0 0 280px}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.45;pointer-events:none}
+.search input{width:100%;padding:11px 14px 11px 36px;border-radius:var(--r)}
+.status-dot{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.status-dot i{width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 10px var(--live);
+  animation:pulse 2s ease-in-out infinite}
+.status-dot.bekliyor i{background:var(--muted-2);box-shadow:none;animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Kesinti şeridi: yalnızca mesai içinde susan şube varken doludur. Üst çubuğun
+   altında durur; kırmızı zemin "bu bir uyarı, bilgi değil" der. */
+.uyari-serit{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:12px 34px;border-bottom:1px solid rgba(255,95,109,.35);
+  background:linear-gradient(90deg,rgba(255,95,109,.16),rgba(255,95,109,.04))}
+.uyari-govde{flex:1 1 320px;min-width:0}
+.uyari-govde b{display:block;font-size:13.5px;letter-spacing:-.1px}
+.uyari-govde .sub{margin-top:2px;color:rgba(255,201,208,.78)}
+.uyari-dugmeler{display:flex;gap:8px;flex-wrap:wrap}
+
+.view{padding:26px 34px 90px;max-width:1440px}
+.view-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:18px}
+
+/* ---------- Ortak bileşenler ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:var(--r);
+  border:1px solid var(--line-2);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;
+  white-space:nowrap}
+.btn:hover{background:var(--surface-3)}
+.btn.primary{background:linear-gradient(145deg,#e6d75f,#cbb63c);color:var(--gold-ink);border-color:rgba(255,255,255,.4)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.danger{border-color:rgba(255,95,109,.45);background:rgba(255,95,109,.14);color:#ffc2ca}
+.btn.danger:hover{background:rgba(255,95,109,.24)}
+.btn.sm{padding:7px 12px;font-size:12px;border-radius:var(--r-sm)}
+.btn.icon{padding:9px 11px}
+
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+  font-size:10.5px;font-weight:800;letter-spacing:.06em;white-space:nowrap;
+  border:1px solid var(--line-2);background:var(--surface-2)}
+.chip.live{color:#c8ffe8;border-color:rgba(34,201,138,.5);background:rgba(34,201,138,.16)}
+.chip.off{color:rgba(244,242,238,.55)}
+.chip.lock{color:#ffd9a1;border-color:rgba(240,161,50,.5);background:rgba(240,161,50,.16)}
+.chip.gold{color:#f4eaa4;border-color:rgba(212,194,78,.5);background:rgba(212,194,78,.16)}
+.chip.purple{color:#e3ccff;border-color:rgba(168,85,247,.5);background:rgba(168,85,247,.16)}
+.chip.danger{color:#ffc9d0;border-color:rgba(255,95,109,.5);background:rgba(255,95,109,.16)}
+.chip i{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+.panel{padding:22px;border-radius:var(--r-xl);overflow-x:auto;
+  background:linear-gradient(145deg,rgba(255,255,255,.085),rgba(255,255,255,.028));
+  border:1px solid var(--line);box-shadow:var(--shadow)}
+.panel > h3{margin:0 0 16px;font-size:12px;letter-spacing:.16em;color:var(--muted)}
+.panel .panel-sub{margin:-10px 0 16px;font-size:12.5px;color:var(--muted-2)}
+/* Katlanabilir bölüm: başlık ile aç/kapat düğmesi aynı satırda durur ve başlık
+   doğrudan .panel çocuğu olmadığı için yukarıdaki kuralı burada tekrarlarız. */
+.panel > .panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px}
+.panel > .panel-head h3{margin:0;font-size:12px;letter-spacing:.16em;color:var(--muted)}
+.katli-govde{padding-top:2px}
+/* İkinci seviye katlanabilir bölüm: marka sayfasındaki şube bağlantı geçmişleri.
+   Dış bölümün paneli içinde durduğu için daha hafif bir kutu kullanır. */
+.katli-alt{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-top:10px;background:var(--surface)}
+.katli-alt-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.katli-alt-ad{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:600}
+.katli-alt-head .sub{flex:1 1 180px}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+.tile{padding:18px 20px;border-radius:var(--r-lg);border:1px solid var(--line);background:var(--surface)}
+.tile span{font-size:11px;letter-spacing:.14em;color:var(--muted-2)}
+.tile b{display:block;font-size:30px;letter-spacing:-.6px;margin:6px 0 2px}
+.tile small{font-size:12px;color:var(--muted)}
+.tile.gold{border-color:rgba(212,194,78,.4);background:rgba(212,194,78,.09)}
+.tile.danger{border-color:rgba(255,95,109,.45);background:rgba(255,95,109,.1)}
+
+.tabs{display:inline-flex;gap:4px;padding:4px;border-radius:var(--r);border:1px solid var(--line);
+  background:var(--surface);margin-bottom:18px;flex-wrap:wrap}
+.tabs button{padding:8px 15px;border-radius:var(--r-sm);border:0;background:none;cursor:pointer;
+  color:var(--muted);font-size:12.5px;font-weight:600}
+.tabs button:hover{color:var(--txt)}
+.tabs button.active{background:var(--surface-3);color:var(--txt)}
+
+table{width:100%;border-collapse:collapse}
+thead th{font-size:10.5px;letter-spacing:.14em;color:var(--muted-2);text-align:left;
+  padding:0 14px 10px;font-weight:800;white-space:nowrap}
+tbody td{padding:13px 14px;border-top:1px solid var(--line);vertical-align:middle;font-size:13.5px}
+tbody tr:hover td{background:rgba(255,255,255,.035)}
+tbody tr.selectable{cursor:pointer}
+td.tight{white-space:nowrap}
+td .sub,.sub{display:block;font-size:11.5px;color:var(--muted-2);margin-top:2px}
+td .chip + .sub{margin-top:6px}
+td input,td select{padding:8px 11px;font-size:12.5px;border-radius:var(--r-sm)}
+.cell-main{display:flex;align-items:center;gap:12px;min-width:0}
+.cell-main b{overflow-wrap:break-word}
+.cover{width:42px;height:42px;border-radius:12px;flex:0 0 auto;display:grid;place-items:center;overflow:hidden;
+  background:linear-gradient(145deg,rgba(255,255,255,.2),rgba(255,255,255,.05));
+  border:1px solid var(--line);font-size:15px}
+.cover img{width:100%;height:100%;object-fit:cover}
+.cover.gold{background:linear-gradient(145deg,rgba(212,194,78,.5),rgba(212,194,78,.16));color:#231f0c}
+.no{width:34px;text-align:right;color:var(--muted-2);font-size:12px;font-variant-numeric:tabular-nums}
+.drag{cursor:grab;color:var(--muted-2);letter-spacing:-1px;user-select:none}
+tr[draggable=true]{cursor:default}
+tr.tasiyor td{background:rgba(212,194,78,.12)!important}
+.row-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.empty{padding:24px 6px;color:var(--muted-2);font-size:13px}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field label{font-size:11.5px;letter-spacing:.08em;color:var(--muted)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;align-items:end}
+.form-grid > .btn{justify-self:start}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.divider{height:1px;background:var(--line);margin:18px 0;border:0}
+
+.drop{position:relative;display:block;border:1.5px dashed var(--line-2);border-radius:var(--r-xl);
+  padding:26px;text-align:center;background:var(--surface);cursor:pointer;transition:.2s}
+.drop:hover{border-color:rgba(212,194,78,.6);background:rgba(212,194,78,.07)}
+.drop b{display:block;font-size:14px;margin-bottom:4px}
+.drop small{color:var(--muted-2);font-size:12px}
+.drop input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.drop:focus-within{border-color:rgba(212,194,78,.8);box-shadow:0 0 0 4px rgba(212,194,78,.15)}
+.drop.secili{border-style:solid;border-color:rgba(34,201,138,.65);background:rgba(34,201,138,.1)}
+.progress{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin-top:14px}
+.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#f0e06a);transition:width .25s}
+
+/* ---------- Sağ çekmece (detay) ---------- */
+.backdrop{position:fixed;inset:0;background:rgba(4,4,6,.6);opacity:0;pointer-events:none;transition:opacity .2s;z-index:5}
+.backdrop.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,94vw);z-index:6;padding:26px;
+  background:linear-gradient(160deg,rgba(24,22,28,.97),rgba(12,12,15,.98));
+  border-left:1px solid var(--line-2);box-shadow:-30px 0 70px rgba(0,0,0,.55);
+  transform:translateX(102%);transition:transform .28s cubic-bezier(.2,.8,.3,1);overflow:auto}
+.drawer.open{transform:none}
+.drawer h3{margin:0 0 4px;font-size:19px}
+.drawer .sub{color:var(--muted-2);font-size:12.5px;margin-bottom:20px}
+.drawer .block{border-top:1px solid var(--line);padding-top:18px;margin-top:18px}
+.drawer .block h4{margin:0 0 12px;font-size:11px;letter-spacing:.16em;color:var(--muted)}
+/* Çekmecede katlanabilir blok: başlık ve aç/kapat düğmesi aynı satırda durur. */
+.drawer .block > .block-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.drawer .block > .block-head h4{margin:0}
+.drawer-close{position:absolute;top:18px;right:18px}
+.key{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;word-break:break-all;
+  padding:9px 11px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line);
+  display:block;user-select:all}
+
+/* ---------- Tek tip pencere (onay / anons / parça) ---------- */
+/* Alt boşluk, pencerenin alt oynatıcının üstünde kalması için: atama
+   penceresinde parça dinlenirken pencere açık kalıyor, düğmeleri oynatıcı
+   örtmemeli. */
+.modal-wrap{position:fixed;inset:0;z-index:8;display:none;align-items:center;justify-content:center;padding:24px 24px 112px;
+  background:rgba(4,4,6,.66);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.modal-wrap.open{display:flex}
+.modal{width:min(560px,96vw);max-height:88vh;overflow:auto;padding:26px;border-radius:var(--r-xl);
+  background:linear-gradient(160deg,rgba(28,26,32,.98),rgba(14,14,17,.99));
+  border:1px solid var(--line-2);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal h3{margin:0 0 8px;font-size:18px}
+.modal p{margin:0 0 18px;color:var(--muted);font-size:13.5px}
+.modal .modal-body{font-size:13.5px;color:var(--muted)}
+/* Kurulum/onay pencereleri de çekmecedeki blok düzenini kullanır; başlıklar
+   varsayılan h4 boşluklarına kalırsa pencere dağınık görünüyordu. */
+.modal .block{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
+.modal .block:first-child{border-top:0;padding-top:0;margin-top:0}
+.modal .block h4{margin:0 0 10px;font-size:11px;letter-spacing:.16em;color:var(--muted)}
+.modal .key{color:var(--txt)}
+.modal .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap}
+.tick-list{max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:var(--r);margin-bottom:4px}
+.tick-list label{display:flex;gap:12px;align-items:center;padding:11px 13px;border-bottom:1px solid var(--line);cursor:pointer}
+.tick-list label:last-child{border-bottom:0}
+.tick-list label:hover{background:var(--surface)}
+.tick-list input[type=checkbox]{accent-color:var(--gold);width:16px;height:16px;flex:0 0 auto}
+.tick-list b{display:block;font-size:13.5px}
+.radio-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.radio-row label{display:flex;gap:8px;align-items:center;padding:9px 13px;border-radius:var(--r);
+  border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:13px}
+.radio-row input{accent-color:var(--gold)}
+
+/* ---------- Bildirim ---------- */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;z-index:11;
+  padding:13px 18px;border-radius:var(--r-lg);border:1px solid var(--line-2);
+  background:rgba(20,18,24,.96);box-shadow:var(--shadow);font-size:13.5px;max-width:min(560px,92vw);
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+.toast.ok{border-color:rgba(34,201,138,.5)}
+.toast.err{border-color:rgba(255,95,109,.55)}
+
+/* ---------- Mikrofon (anons) ---------- */
+.mic{display:grid;gap:14px;justify-items:center;padding:22px;border-radius:var(--r-lg);
+  border:1px solid var(--line);background:var(--surface)}
+.mic .rec{border-color:rgba(255,95,109,.5);background:rgba(255,95,109,.18);color:#ffc9d0}
+.mic .bars{display:flex;align-items:flex-end;gap:3px;height:44px}
+.mic .bars i{width:4px;border-radius:2px;background:var(--gold);opacity:.7;animation:eq 1.1s ease-in-out infinite}
+@keyframes eq{0%,100%{height:8px}50%{height:40px}}
+
+/* ---------- Alt oynatıcı (parça önizleme) ---------- */
+.player{position:fixed;left:calc(var(--rail) + 24px);right:24px;bottom:20px;z-index:10;
+  display:none;gap:16px;align-items:center;padding:14px 18px;border-radius:var(--r-lg);
+  background:linear-gradient(145deg,rgba(32,30,38,.97),rgba(16,15,20,.98));
+  border:1px solid var(--line-2);box-shadow:var(--shadow)}
+.player.open{display:flex}
+.player .p-now{display:flex;align-items:center;gap:11px;min-width:0;flex:1 1 220px;cursor:pointer}
+.player .p-now .cover{width:38px;height:38px}
+.player b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player small{display:block;font-size:11.5px;color:var(--muted-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player .p-ctr{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.player .p-btns{display:flex;gap:6px;align-items:center}
+.player .p-btns button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line-2);
+  background:var(--surface);cursor:pointer;font-size:14px}
+.player .p-btns button.main{background:linear-gradient(145deg,#e6d75f,#cbb63c);color:var(--gold-ink);border-color:rgba(255,255,255,.4)}
+.player .p-seek{display:flex;align-items:center;gap:8px;flex:1 1 200px}
+.player .p-seek input[type=range]{flex:1 1 auto;padding:0;border:0;background:none;accent-color:var(--gold)}
+.player .p-vol{display:flex;align-items:center;gap:6px;flex:0 0 120px;color:var(--muted)}
+.player .p-vol input[type=range]{flex:1 1 auto;padding:0;border:0;background:none;accent-color:var(--gold)}
+.player .p-time{font-size:11.5px;color:var(--muted-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ---------- Yetkisiz / giriş bekleyen kapı ---------- */
+.gate{max-width:520px;margin:14vh auto 0;padding:30px;border-radius:var(--r-xl);text-align:center;
+  background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.03));
+  border:1px solid var(--line);box-shadow:var(--shadow)}
+.gate h2{margin:0 0 10px;font-size:22px}
+.gate p{margin:0 0 20px;color:var(--muted);font-size:13.5px}
+
+/* Masaüstü öncelikli; dar ekranda menü üstte yatay şeride döner.
+   Şerit yapışkan kalır (asıl gezinme aracı orası), üst çubuk normal akışa döner. */
+@media(max-width:1080px){
+  :root{--rail:0px}
+  .rail{position:sticky;top:0;width:auto;flex-direction:row;flex-wrap:nowrap;gap:10px;padding:10px 14px;
+    align-items:center;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .rail .brand{display:none}
+  .rail .nav{flex-direction:row;flex-wrap:nowrap;gap:6px}
+  .rail .nav-title{display:none}
+  .rail .nav-item{width:auto;white-space:nowrap;padding:9px 12px}
+  .rail .nav-item small,.rail .nav-item .say{display:none}
+  .rail-foot{margin:0 0 0 auto;flex-direction:row;gap:6px}
+  .rail-foot .who{display:none}
+  .app{margin-left:0}
+  .topbar{position:static;padding:14px 18px;flex-wrap:wrap}
+  .uyari-serit{padding:10px 18px}
+  .uyari-govde{flex:1 1 100%}
+  .search{flex:1 1 100%;order:3}
+  /* Tablo sütunları sıkışıp harf harf kaymasın: tablo okunur genişlikte kalır,
+     panel yatay kaydırılır. */
+  table{min-width:840px}
+  tbody td:first-child{min-width:210px}
+  .panel{padding:18px}
+  .view{padding:20px 18px 90px}
+  .player{left:18px;right:18px;bottom:14px;flex-wrap:wrap;gap:10px}
+  .player .p-vol{display:none}
+}
+/* Şubeye liste yükleme penceresi: markanın listeleri onay kutularıyla sunulur.
+   Satırın tamamı tıklanabilir olsun (küçük kutuyu nişan almak zorunda kalma). */
+.sube-liste-kutu{display:grid;gap:8px;margin-top:4px;max-height:52vh;overflow:auto}
+.sube-liste{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;cursor:pointer}
+.sube-liste:hover{border-color:rgba(255,255,255,.2)}
+/* Kutu kendi çizilir: tarayıcının varsayılan beyaz kutusu koyu panelde
+   yabancı duruyordu. İşaretsizken ince çerçeve, işaretliyken altın zemin. */
+.sube-liste input{appearance:none;-webkit-appearance:none;position:relative;width:17px;height:17px;flex:0 0 auto;margin:0;border:1px solid rgba(255,255,255,.35);border-radius:4px;background:rgba(255,255,255,.05);cursor:pointer}
+.sube-liste input:checked{border-color:var(--gold,#d8b25a);background:var(--gold,#d8b25a)}
+.sube-liste input:checked::after{content:'';position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #14130f;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.sube-liste input:focus-visible{outline:2px solid var(--gold,#d8b25a);outline-offset:2px}
+.sube-liste b{display:block;font-size:13.5px}
+.sube-liste .sub{display:block}
+/* Boş liste: atanabilir ama ses çıkarmaz, bu yüzden sarı çerçeveyle ayrılır. */
+.sube-liste.bos{border-color:rgba(240,161,50,.45)}
+.sube-liste.bos .sub{color:var(--warn,#f0a132)}
+
+/* ---------- Plan takvimi (yalnızca yönetici) ----------
+   Takvim solda, yaklaşan ödemeler sağda. Dar ekranda alt alta iner. */
+.plan-sarmal{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start}
+.plan-ana{min-width:0}
+
+/* Ay başlığı: oklar kenarlarda, ay adı ortada. */
+.plan-ay-bas{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:16px}
+.plan-ay-bas b{font-size:15px;letter-spacing:.14em;min-width:190px;text-align:center}
+.plan-ay-bas button{width:34px;height:34px;flex:0 0 auto;font-size:19px;line-height:1;color:var(--txt);
+  background:var(--surface);border:1px solid var(--line);border-radius:50%;cursor:pointer}
+.plan-ay-bas button:hover{border-color:var(--gold);color:var(--gold)}
+
+.plan-hafta{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
+.plan-hafta span{text-align:center;font-size:10.5px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+
+.plan-izgara{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.plan-hucre{position:relative;aspect-ratio:1/.82;display:flex;flex-direction:column;align-items:flex-start;
+  justify-content:space-between;padding:7px 8px;color:var(--txt);background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r-sm);cursor:pointer;text-align:left}
+.plan-hucre:hover{border-color:rgba(255,255,255,.3)}
+.plan-hucre .gun{font-size:13px;font-variant-numeric:tabular-nums}
+/* Komşu ayın günleri: tıklanabilir ama geri planda. */
+.plan-hucre.disari{opacity:.34}
+/* Bugün altın çerçeveyle ayrılır; açık gün altın zeminle. */
+.plan-hucre.bugun{border-color:var(--gold)}
+.plan-hucre.bugun .gun{color:var(--gold);font-weight:700}
+.plan-hucre.acik{background:var(--gold);border-color:var(--gold)}
+.plan-hucre.acik .gun,.plan-hucre.acik .rozet{color:var(--gold-ink)}
+.plan-hucre.acik .rozet{background:rgba(0,0,0,.18);border-color:transparent}
+/* Rozet: o günde kaç iş var, kaçı bitmiş. */
+.plan-hucre .rozet{flex:0 0 auto;font-style:normal;font-size:10px;line-height:1;padding:3px 6px;
+  color:var(--muted);background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:20px;
+  font-variant-numeric:tabular-nums}
+/* Hücrenin üst satırı: gün numarası solda, iş rozeti sağda. */
+.plan-hucre .hucre-ust{display:flex;align-items:flex-start;justify-content:space-between;
+  gap:4px;width:100%}
+/* Alt satır: günün ödeme tutarı ve ilk kaydın kısa önizlemesi. Kare küçülse de
+   taşmasın diye tek satırda kesilir (ellipsis). */
+.plan-hucre .hucre-alt{display:flex;flex-direction:column;gap:2px;width:100%;min-width:0}
+.plan-hucre .h-tutar{font-style:normal;font-size:11px;font-weight:600;color:var(--gold);
+  font-variant-numeric:tabular-nums}
+.plan-hucre .h-not{font-size:10px;line-height:1.2;color:var(--muted);max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plan-hucre.acik .h-tutar{color:var(--gold-ink)}
+.plan-hucre.acik .h-not{color:rgba(0,0,0,.62)}
+
+/* ---------- Takvim: gün sekmesi (kareye girildiğinde) ----------
+   Ay ızgarası yerine o günün paneli açılır; geri düğmesi aya döndürür. */
+.plan-gun-bas{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.plan-geri{padding:7px 13px;font-size:12px;color:var(--muted);background:var(--surface);
+  border:1px solid var(--line);border-radius:999px;cursor:pointer}
+.plan-geri:hover{color:var(--txt);border-color:var(--line-2)}
+.plan-gun-bas>b{font-size:15px;letter-spacing:.02em}
+.plan-gun-kaydir{margin-left:auto;display:flex;gap:6px}
+.plan-gun-kaydir button{width:32px;height:32px;font-size:17px;line-height:1;color:var(--txt);
+  background:var(--surface);border:1px solid var(--line);border-radius:50%;cursor:pointer}
+.plan-gun-kaydir button:hover{border-color:var(--gold);color:var(--gold)}
+
+/* Katlanabilir bölüm — gün panelinde ve yan sütunda aynı kabuk. */
+.plan-bolum{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:rgba(255,255,255,.025)}
+.plan-bolum+.plan-bolum{margin-top:10px}
+.plan-bolum-bas{display:flex;align-items:center;gap:9px;width:100%;padding:11px 13px;font-size:10.5px;
+  letter-spacing:.14em;color:var(--muted);background:none;border:0;cursor:pointer;text-align:left}
+.plan-bolum-bas:hover{color:var(--txt)}
+.plan-bolum-bas .ok{font-size:11px;color:var(--gold)}
+.plan-bolum-ic{padding:0 13px 13px}
+
+/* Gün paneli: takvimin altında açılır. */
+.plan-gun-paneli{margin-top:20px;padding-top:20px;border-top:1px solid var(--line)}
+.plan-gun-paneli h3{margin:0 0 13px;font-size:14px;letter-spacing:.1em;color:var(--gold);
+  font-variant-numeric:tabular-nums}
+
+.plan-liste{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.plan-liste:empty{display:none}
+.plan-satir{display:flex;align-items:center;gap:11px;padding:9px 11px;
+  border:1px solid rgba(255,255,255,.09);border-radius:11px}
+.plan-satir .metin{flex:1;min-width:0;font-size:13.5px;word-break:break-word}
+.plan-satir .tutar{font-size:13px;color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Bitmiş iş silinmez, üstü çizilir: gün sonunda ne yaptığın da görünsün. */
+.plan-satir.bitti .metin{text-decoration:line-through;opacity:.5}
+/* Kutucuk kendi çizilir — koyu panelde tarayıcı varsayılanı yabancı duruyor. */
+.plan-satir .kutu{width:18px;height:18px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+  font-size:11px;line-height:1;color:var(--gold-ink);background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.35);border-radius:5px;cursor:pointer}
+.plan-satir.bitti .kutu{background:var(--gold);border-color:var(--gold)}
+.plan-satir .sil{width:24px;height:24px;flex:0 0 auto;font-size:15px;line-height:1;color:var(--muted);
+  background:none;border:0;border-radius:6px;cursor:pointer}
+.plan-satir .sil:hover{color:var(--danger);background:rgba(255,95,109,.12)}
+/* Satır düzenleme: kalem simgesi satırı yerinde forma çevirir (marka + tutar).
+   Sil ile aynı boyutta ve sessizdir; düzenlenen satır altın çerçeveyle belli olur. */
+.plan-satir .duzenle{width:24px;height:24px;flex:0 0 auto;font-size:12px;line-height:1;color:var(--muted);
+  background:none;border:0;border-radius:6px;cursor:pointer}
+.plan-satir .duzenle:hover{color:var(--gold);background:rgba(212,194,78,.14)}
+.plan-satir.duzenliyor{border-color:var(--gold);background:rgba(212,194,78,.05)}
+/* Abonelikten gelen "beklenen" ödeme satırı ve ödendi/ödenmedi grubu. */
+.plan-satir .kaynak{font-style:normal;font-size:10px;letter-spacing:.06em;color:var(--muted);
+  border:1px solid var(--line);border-radius:20px;padding:1px 7px;margin-left:6px;white-space:nowrap}
+.plan-satir .plan-durum{flex:0 0 100%;display:flex;gap:6px;margin-top:8px}
+
+.plan-ekle{margin-top:9px;padding:8px 13px;font-size:12px;color:var(--muted);background:none;
+  border:1px dashed var(--line);border-radius:10px;cursor:pointer;width:100%}
+.plan-ekle:hover{color:var(--gold);border-color:var(--gold)}
+
+/* Satır içi ekleme: düğmeye basınca panelin içinde yazı alanı açılır.
+   Tarayıcının prompt() penceresi yok — odak panelde kalır. */
+.plan-yeni{margin-top:9px;display:flex;gap:8px;align-items:center}
+.plan-gir{flex:1;min-width:0;padding:8px 11px;font:inherit;font-size:13px;color:var(--txt);
+  background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px}
+.plan-gir:focus{outline:none;border-color:var(--gold)}
+.plan-gir.tutar{flex:0 0 108px}
+.plan-vazgec{width:30px;height:30px;flex:0 0 auto;font-size:16px;line-height:1;color:var(--muted);
+  background:none;border:0;border-radius:8px;cursor:pointer}
+.plan-vazgec:hover{color:var(--danger)}
+.plan-kaydet{padding:8px 13px;flex:0 0 auto;font-size:12px;color:var(--gold-ink);background:var(--gold);
+  border:0;border-radius:10px;cursor:pointer;white-space:nowrap}
+
+/* Öğrenci klasörü (takvim içi ayrı bölüm): dört alanlı form ikişerli
+   satırlara sarılır; satırdaki ikincil bilgiler soluk basılır. */
+.plan-yeni.ogrenci-yeni{flex-wrap:wrap}
+.ogrenci-yeni .plan-gir{flex:1 1 40%}
+.plan-satir.ogrenci .metin small{color:var(--muted);font-size:11.5px}
+.plan-satir.ogrenci.duzenliyor .plan-gir{flex:1 1 40%}
+.plan-satir.ogrenci.duzenliyor{flex-wrap:wrap}
+
+/* Satır başındaki ok: yoklama şeridini ve ödemeleri açar. Açık satırda
+   detay tam genişlik alır, satırın üstü altın çizgiyle ayrılır. */
+.ogr-ac{width:20px;height:20px;flex:0 0 auto;padding:0;font-size:10px;line-height:1;
+  color:var(--muted);background:none;border:0;border-radius:5px;cursor:pointer}
+.ogr-ac:hover{color:var(--gold);background:rgba(212,194,78,.14)}
+.plan-satir.ogrenci.acik{flex-wrap:wrap;border-color:rgba(212,194,78,.45)}
+/* Katlanmış satırda ay özeti: kaç gün geldi, ne kadar tahsil edildi. */
+.ogr-cip{display:block;margin-top:5px;font-size:11px;letter-spacing:.02em}
+.ogr-cip i{font-style:normal;margin-right:9px;white-space:nowrap}
+.ogr-cip i.g{color:var(--gold)}
+.ogr-cip i.y{color:var(--warn,#f0a132)}
+.ogr-cip i.m{color:var(--muted)}
+.ogr-cip i.b{color:var(--danger);font-weight:700}
+.ogr-cip i.y.d{color:var(--danger);font-weight:700}
+/* Koşul bilgisi (haftada kaç gün, aylık tutar): ödemelerden bağımsız, o
+   yüzden yeşil/kırmızı değil nötr bir renkte durur. */
+.ogr-cip i.p{color:var(--purple)}
+
+/* Klasör başlığı özeti ve uyarı süzgeçleri: "kim borçlu, kim aksıyor"
+   listeyi açmadan okunsun diye en üstte durur. */
+.ogr-toplam{margin:9px 0 0;padding:8px 11px;font-size:11.5px;color:var(--muted);
+  background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;
+  font-variant-numeric:tabular-nums}
+.ogr-toplam b{font-weight:700}
+.ogr-toplam b.g{color:var(--gold)}
+.ogr-toplam b.y{color:var(--warn,#f0a132)}
+.ogr-toplam b.m{color:var(--muted)}
+.ogr-suzgec{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.ogr-odak{padding:5px 10px;font:inherit;font-size:11px;color:var(--muted);
+  background:none;border:1px solid var(--line);border-radius:999px;cursor:pointer}
+.ogr-odak b{font-weight:700;margin-left:2px}
+.ogr-odak:hover{color:var(--gold);border-color:rgba(212,194,78,.5)}
+.ogr-odak.secili{color:var(--gold-ink);background:var(--gold);border-color:var(--gold)}
+.ogr-odak.bos{opacity:.55}
+.ogr-acik-borc{margin:0 0 9px;font-size:11.5px;color:var(--warn,#f0a132);
+  font-variant-numeric:tabular-nums}
+.ogr-acik-borc b{font-weight:700}
+
+/* Aylık aidat: tutarı yazılmış her aktif öğrenci için ayın kayıtlarını tek
+   düğmeyle açar. Yanındaki yazı kaç kayıt ve ne kadar tutacağını söyler,
+   böylece onay penceresi sürpriz olmaz. */
+.ogr-aidat{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;
+  padding:9px 11px;background:rgba(212,194,78,.07);
+  border:1px solid rgba(212,194,78,.35);border-radius:10px}
+.ogr-aidat-dugme{padding:7px 12px;font:inherit;font-size:11.5px;font-weight:700;
+  color:var(--gold-ink);background:var(--gold);border:0;border-radius:8px;
+  cursor:pointer;letter-spacing:.02em}
+.ogr-aidat-dugme:hover{filter:brightness(1.08)}
+.ogr-aidat small{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ogr-aidat small b{color:var(--gold)}
+.ogr-aidat-tamam{margin:9px 0 0;padding:8px 11px;font-size:11px;color:var(--muted);
+  background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px}
+
+.ogr-detay{flex:0 0 100%;display:grid;gap:16px;margin-top:12px;padding-top:12px;
+  border-top:1px solid var(--line)}
+.ogr-bolum h4{margin:0 0 9px;font-size:11px;letter-spacing:.12em;color:var(--gold)}
+
+/* ---- Öğrenci takvimi: Plan bölümünün ikinci sayfası ---------------------
+   Menüde "Takvim"in altında kendi satırı var. Marka takviminin yan
+   panelindeki ödeme bloklarıyla (Marka ara / yaklaşan ödemeler / trend) aynı
+   ekranı paylaşmaz: öğrenci işi kahve markası işine karışmasın. */
+.ogr-takvim{min-width:0}
+.ogr-takvim-bas{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.ogr-takvim-ay{display:flex;align-items:center;gap:8px}
+.ogr-takvim-ay button{width:28px;height:28px;font:inherit;font-size:13px;color:var(--muted);
+  background:none;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.ogr-takvim-ay button:hover{color:var(--gold);border-color:var(--gold)}
+.ogr-takvim-ay b{min-width:112px;font-size:13px;text-align:center}
+.ogr-takvim-bas .ogr-ipucu{margin:0 0 0 auto}
+
+/* Eksik yoklama şeridi: geçmişte kalan işaretsiz ders günleri. Uyarı amber;
+   çipler tıklanabilir — o günün yoklamasını açar. */
+.ogr-uyari{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;
+  padding:9px 12px;background:rgba(240,161,50,.08);
+  border:1px solid rgba(240,161,50,.45);border-radius:var(--r)}
+.ogr-uyari b{font-size:12px;color:var(--warn,#f0a132)}
+.ogr-uyari small{font-size:11px;color:var(--muted)}
+.ogr-uyari-cipler{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ogr-uyari-gun{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;font:inherit;
+  font-size:11.5px;color:var(--warn,#f0a132);background:none;
+  border:1px solid rgba(240,161,50,.45);border-radius:999px;cursor:pointer}
+.ogr-uyari-gun i{font-style:normal;font-size:10px;color:var(--muted)}
+.ogr-uyari-gun:hover{border-color:var(--warn,#f0a132);background:rgba(240,161,50,.12)}
+.ogr-uyari-kalan{font-size:11px;color:var(--muted)}
+.ogr-takvim-sarmal{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
+.ogr-takvim-ana,.ogr-takvim-yan{min-width:0}
+
+/* Izgara kareleri: gün numarası ve "kaç kişi geldi" rozeti. Üç durum var —
+   tam (herkes geldi), eksik (gelmeyen var), işaretsiz (henüz yoklama yok). */
+.ogr-izgara{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.ogr-hucre{position:relative;aspect-ratio:1/.82;display:flex;flex-direction:column;
+  min-width:0;align-items:flex-start;justify-content:space-between;gap:6px;padding:8px 9px;font:inherit;
+  text-align:left;color:var(--txt);background:rgba(255,255,255,.025);
+  border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.ogr-hucre:hover{border-color:rgba(255,255,255,.3)}
+.ogr-hucre .gun{font-size:13px;font-variant-numeric:tabular-nums}
+.ogr-hucre .rozet{flex:0 0 auto;font-style:normal;font-size:10px;line-height:1;padding:3px 6px;
+  color:var(--muted);background:rgba(255,255,255,.06);border:1px solid var(--line);
+  border-radius:999px;font-variant-numeric:tabular-nums}
+.ogr-hucre .hucre-ust{display:flex;align-items:flex-start;justify-content:space-between;
+  gap:6px;width:100%;min-width:0}
+.ogr-hucre .hucre-alt{display:flex;gap:6px;font-size:10.5px}
+.ogr-hucre .hucre-alt i{font-style:normal;font-weight:700}
+.ogr-hucre .hucre-alt i.y{color:var(--danger)}
+.ogr-hucre .hucre-alt i.m{color:var(--warn,#f0a132)}
+.ogr-hucre.disari{opacity:.34}
+.ogr-hucre.isaretsiz{opacity:.72}
+.ogr-hucre.bugun{border-color:var(--gold)}
+.ogr-hucre.bugun .gun{color:var(--gold);font-weight:700}
+.ogr-hucre.tam{border-color:rgba(212,194,78,.45)}
+.ogr-hucre.tam .rozet{color:var(--gold-ink);background:var(--gold);border-color:var(--gold)}
+.ogr-hucre.eksik{border-color:rgba(255,95,109,.45)}
+.ogr-hucre.eksik .rozet{color:#fff;background:var(--danger);border-color:var(--danger)}
+.ogr-hucre.acik{color:var(--gold-ink);background:var(--gold);border-color:var(--gold)}
+.ogr-hucre.acik .gun{color:var(--gold-ink)}
+.ogr-hucre.acik .rozet{color:var(--gold-ink);background:rgba(0,0,0,.18);border-color:transparent}
+.ogr-hucre.acik .hucre-alt i.y{color:#7a1420}
+.ogr-hucre.acik .hucre-alt i.m{color:rgba(0,0,0,.62)}
+
+/* Gün yoklaması: seçilen gün için BÜTÜN öğrenciler tek listede, satırda tek
+   düğme. Sınıfı toplu işaretlemek için gün gün gezinmek gerekmez; arama
+   süzgeci kalabalık listede geçerli. */
+.ogr-yoklama{margin-top:14px;padding:13px;background:rgba(255,255,255,.025);
+  border:1px solid var(--line);border-radius:var(--r)}
+.ogr-gun-bas{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.ogr-gun-bas b{font-size:13px}
+.ogr-yoklama-ozet{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ogr-yoklama-ozet b.y{color:var(--warn,#f0a132)}
+.ogr-yoklama-ozet b.m{color:var(--muted)}
+.ogr-gun-bas .plan-vazgec{margin-left:auto}
+.ogr-yoklama-liste{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.ogr-yoklama-satir{display:flex;align-items:center;gap:10px;padding:7px 10px;
+  background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:9px}
+.ogr-yoklama-satir .metin{flex:1 1 auto;min-width:0;font-size:12.5px}
+.ogr-yoklama-satir .metin small{font-size:11px;color:var(--muted)}
+.ogr-durum{flex:0 0 auto;min-width:92px;padding:6px 10px;font:inherit;font-size:11.5px;
+  color:var(--muted);background:none;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.ogr-durum:hover{border-color:rgba(255,255,255,.3)}
+.ogr-durum.geldi{color:var(--gold-ink);background:var(--gold);border-color:var(--gold);font-weight:700}
+.ogr-durum.gelmedi{color:#fff;background:var(--danger);border-color:var(--danger);font-weight:700}
+.ogr-durum.mazeret{color:var(--warn,#f0a132);background:rgba(240,161,50,.14);border-color:rgba(240,161,50,.5)}
+.ogr-ozet{margin:0 0 8px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ogr-ozet b{font-weight:700}
+.ogr-ozet b.g{color:var(--gold)}
+.ogr-ozet b.y{color:var(--warn,#f0a132)}
+.ogr-ozet b.m{color:var(--muted)}
+.ogr-ipucu{margin:7px 0 0;font-size:10.5px;color:var(--muted);opacity:.7}
+
+/* Ödeme satırı ve ekleme formu; açıklama alanı tutardan geniş durur. */
+.ogr-odeme .metin small{color:var(--muted);font-size:11px}
+.ogr-odeme-liste{margin-top:9px}
+.ogr-odeme-yeni{flex-wrap:wrap;margin-top:9px}
+.ogr-odeme-yeni .plan-gir{flex:1 1 60%}
+.ogr-odeme-yeni .plan-gir.tutar{flex:0 1 108px}
+.plan-satir.ogr-odeme.duzenliyor .plan-gir{flex:1 1 60%}
+.plan-satir.ogr-odeme.duzenliyor .plan-gir.tutar{flex:0 1 108px}
+.plan-satir.ogr-odeme.duzenliyor{flex-wrap:wrap}
+
+/* Kaydedilemeyen satır: silinmez, kırmızı çerçeveyle işaretlenir ve metin
+   ekranda kalır. Altında "tekrar dene" belirir. */
+.plan-satir{flex-wrap:wrap}
+.plan-satir.hata{border-color:var(--danger)}
+.plan-tekrar{flex:0 0 100%;margin-top:7px;padding:6px 10px;font-size:11.5px;text-align:left;
+  color:var(--danger);background:rgba(255,95,109,.1);border:1px solid var(--danger);
+  border-radius:8px;cursor:pointer}
+.plan-tekrar:hover{background:rgba(255,95,109,.18)}
+
+.plan-not{width:100%;min-height:92px;padding:11px 12px;font:inherit;font-size:13.5px;color:var(--txt);
+  background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:11px;resize:vertical}
+.plan-not:focus{outline:none;border-color:var(--gold)}
+
+/* Yan sütun: aboneliklerden canlı okunan ödemeler. */
+.plan-odeme-liste{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.plan-odeme-liste li{display:grid;grid-template-columns:auto auto 1fr;gap:3px 9px;padding:10px 11px;
+  border:1px solid rgba(255,255,255,.09);border-radius:11px}
+.plan-odeme-liste .t{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.plan-odeme-liste .m{font-size:13px}
+.plan-odeme-liste b{grid-column:1/-1;font-size:14px;color:var(--gold);font-variant-numeric:tabular-nums}
+.plan-odeme-liste small{grid-column:1/-1;font-size:10.5px;color:var(--warn)}
+/* Ödeme işareti: ödendi / ödenmedi. Seçili olan dolu görünür; diğerine
+   basınca işaret değişir. İlk işarette o güne bir ödeme kaydı düşer. */
+.plan-odeme-liste .plan-durum{grid-column:1/-1;display:flex;gap:6px;margin-top:6px}
+.plan-durum button{flex:1;padding:6px 10px;font-size:11px;color:var(--muted);background:none;
+  border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.plan-durum button:hover{color:var(--txt);border-color:rgba(255,255,255,.3)}
+.plan-durum .d-odendi.secili{color:var(--gold-ink);background:var(--gold);border-color:var(--gold)}
+.plan-durum .d-odenmedi.secili{color:#fff;background:var(--danger);border-color:var(--danger)}
+/* İptal edilmiş abonelik gizlenmez, soluklaşır. */
+.plan-odeme-liste li.iptal{opacity:.6;border-style:dashed}
+/* Günü geçmiş dönem listede kalır; işaretlenmemişse uyarı rengiyle öne çıkar. */
+.plan-odeme-liste li.gecmis{background:rgba(255,255,255,.015)}
+.plan-odeme-liste li.gecikmis{border-color:var(--warn,#f0a132)}
+.plan-odeme-liste small.gec{color:var(--warn,#f0a132)}
+
+/* İşaret kutusu ve satırın kendisi birlikte işaretli görünür: ödendi altın,
+   ödenmedi kırmızı. Böylece işaret uzaktan, listede tek bakışta belli olur. */
+.plan-odeme-liste .kutu{width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+  font-size:11px;line-height:1;font-style:normal;color:var(--gold-ink);
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.32);border-radius:5px}
+.plan-odeme-liste .kutu.odendi{background:var(--gold);border-color:var(--gold)}
+.plan-odeme-liste .kutu.odenmedi{color:#fff;background:var(--danger);border-color:var(--danger)}
+.plan-odeme-liste li.odendi{border-color:var(--gold);background:rgba(216,180,106,.07)}
+.plan-odeme-liste li.odenmedi{border-color:var(--danger);background:rgba(255,95,109,.05)}
+
+/* Ödeme geçmişi: işaretlenmiş her ödeme, en yeni gün en üstte. Geçmişe
+   bakınca kimin ödediği tek listeden görülür. */
+.plan-gecmis .ozet{margin:0 0 10px;font-size:11px;color:var(--muted)}
+.plan-gecmis-liste{list-style:none;margin:0;padding:0;display:grid;gap:7px;max-height:340px;overflow:auto}
+.plan-gecmis-liste li{display:grid;grid-template-columns:auto 1fr;gap:3px 9px;padding:9px 11px;
+  border:1px solid rgba(255,255,255,.09);border-radius:11px;border-left-width:3px}
+.plan-gecmis-liste .t{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.plan-gecmis-liste .m{font-size:13px}
+.plan-gecmis-liste b{grid-column:1/-1;font-size:13px;color:var(--gold);font-variant-numeric:tabular-nums}
+.plan-gecmis-liste i{grid-column:1/-1;font-style:normal;font-size:11px}
+.plan-gecmis-liste li.odendi{border-left-color:#37d67a}
+.plan-gecmis-liste li.odendi i{color:#37d67a}
+.plan-gecmis-liste li.odenmedi{border-left-color:var(--danger)}
+.plan-gecmis-liste li.odenmedi i{color:var(--danger)}
+
+/* ---------- Ödeme takip özeti, filtre ve trend ----------
+   Üstteki kartlar ayın tahsilatını/bekleyenini/gecikmişini gösterir; sağdaki
+   filtre çubuğu iki listeyi de daraltır; trend bölümü son 12 ayı çubuklarla
+   özetler. */
+.plan-sayfa{min-width:0}
+.plan-ozet{margin-bottom:18px}
+.plan-filtre{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:13px}
+.plan-filtre-gir{flex:1 1 100%;min-width:0;padding:8px 11px;font:inherit;font-size:13px;color:var(--txt);
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm)}
+.plan-filtre-gir:focus{outline:none;border-color:var(--gold)}
+.plan-filtre-btn{padding:7px 12px;font-size:11.5px;color:var(--muted);background:none;
+  border:1px solid var(--line);border-radius:999px;cursor:pointer}
+.plan-filtre-btn:hover{color:var(--txt);border-color:rgba(255,255,255,.3)}
+.plan-filtre-btn.secili{color:var(--gold-ink);background:var(--gold);border-color:var(--gold)}
+
+.plan-trend .ozet{margin:0 0 10px;font-size:11px;color:var(--muted)}
+.plan-trend .ozet b{color:var(--txt)}
+.plan-trend-liste{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:340px;overflow:auto}
+.plan-trend-liste li{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:9px}
+.plan-trend-liste .ay{font-size:10.5px;letter-spacing:.06em;color:var(--muted-2);text-transform:uppercase}
+.plan-trend-liste .cubuk{position:relative;height:9px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.06)}
+.plan-trend-liste .cubuk i{position:absolute;inset:0 auto 0 0;display:block;background:var(--gold);border-radius:999px}
+.plan-trend-liste .cubuk i.bek{background:repeating-linear-gradient(45deg,var(--warn,#f0a132) 0 4px,rgba(240,161,50,.25) 4px 8px);opacity:.55}
+.plan-trend-liste b{font-size:12px;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap}
+.plan-trend-liste li.simdi .ay{color:var(--gold)}
+
+@media(max-width:1100px){
+  .plan-sarmal{grid-template-columns:1fr}
+  .ogr-takvim-sarmal{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  .plan-izgara,.plan-hafta{gap:4px}
+  .plan-hucre{padding:5px;aspect-ratio:1/1}
+  .plan-hucre .rozet{font-size:9px;padding:2px 4px}
+  .plan-ay-bas b{min-width:0;font-size:13px}
+  /* İkinci takvim de dar ekranda küçülür: kutu içeriği sarkıp sayfayı
+     yana kaydırmasın (dar ekranda sarkma tüm paneli kaydırırdı). */
+  .ogr-izgara,.ogr-takvim-ana .plan-hafta{gap:4px}
+  .ogr-hucre{padding:5px;aspect-ratio:1/1}
+  .ogr-hucre .rozet{font-size:9px;padding:2px 4px}
+  .ogr-hucre .hucre-ust{flex-direction:column;align-items:flex-start;gap:2px}
+  .ogr-yoklama-satir{flex-wrap:wrap}
+  .ogr-durum{margin-left:auto}
+  .ogr-takvim-bas .ogr-ipucu{display:none}
+}
+
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+body{background:#0b0b0d;padding:22px;display:block}
+.view{max-width:1120px;margin:0 auto}
+</style>
+</head>
+<body><div class="view"><section class="ogr-takvim">
+      <div class="ogr-takvim-bas">
+        <span class="ogr-takvim-ay">
+          <button data-act="ogrenci-ay" data-id="onceki" type="button" aria-label="Önceki ay">‹</button>
+          <b>Ekim 2026</b>
+          <button data-act="ogrenci-ay" data-id="sonraki" type="button" aria-label="Sonraki ay">›</button>
+        </span>
+        <p class="ogr-ipucu">Güne bas: o günün yoklaması</p>
+      </div>
+      <datalist id="ogr-gun-sayisi-listesi"><option value="2"></option><option value="3"></option><option value="4"></option></datalist>
+      
+      <div class="ogr-takvim-sarmal">
+        <div class="ogr-takvim-ana">
+          <div class="plan-hafta"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div>
+          <div class="ogr-izgara"><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-09-28" type="button"
+      aria-label="28 Eylül 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">28</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-09-29" type="button"
+      aria-label="29 Eylül 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">29</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-09-30" type="button"
+      aria-label="30 Eylül 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">30</span></span>
+    </button><button class="ogr-hucre tam" data-act="ogrenci-gun" data-id="2026-10-01" type="button"
+      aria-label="1 Ekim 2026 · Per · 2/2 geldi" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">1</span><i class="rozet">2/2</i></span><span class="hucre-alt"></span>
+    </button><button class="ogr-hucre" data-act="ogrenci-gun" data-id="2026-10-02" type="button"
+      aria-label="2 Ekim 2026 · Cum · 1/2 geldi" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">2</span><i class="rozet">1/2</i></span><span class="hucre-alt"></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-03" type="button"
+      aria-label="3 Ekim 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">3</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-04" type="button"
+      aria-label="4 Ekim 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">4</span></span>
+    </button><button class="ogr-hucre bugun isaretsiz" data-act="ogrenci-gun" data-id="2026-10-05" type="button"
+      aria-label="5 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">5</span></span>
+    </button><button class="ogr-hucre eksik" data-act="ogrenci-gun" data-id="2026-10-06" type="button"
+      aria-label="6 Ekim 2026 · Sal · 0/2 geldi · 2 gelmedi" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">6</span><i class="rozet">0/2</i></span><span class="hucre-alt"><i class="y">2×</i></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-07" type="button"
+      aria-label="7 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">7</span></span>
+    </button><button class="ogr-hucre eksik" data-act="ogrenci-gun" data-id="2026-10-08" type="button"
+      aria-label="8 Ekim 2026 · Per · 0/2 geldi · 1 gelmedi · 1 mazeret" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">8</span><i class="rozet">0/2</i></span><span class="hucre-alt"><i class="y">1×</i><i class="m">1M</i></span>
+    </button><button class="ogr-hucre" data-act="ogrenci-gun" data-id="2026-10-09" type="button"
+      aria-label="9 Ekim 2026 · Cum · 1/2 geldi" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">9</span><i class="rozet">1/2</i></span><span class="hucre-alt"></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-10" type="button"
+      aria-label="10 Ekim 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">10</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-11" type="button"
+      aria-label="11 Ekim 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">11</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-12" type="button"
+      aria-label="12 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">12</span></span>
+    </button><button class="ogr-hucre eksik" data-act="ogrenci-gun" data-id="2026-10-13" type="button"
+      aria-label="13 Ekim 2026 · Sal · 0/2 geldi · 1 gelmedi" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">13</span><i class="rozet">0/2</i></span><span class="hucre-alt"><i class="y">1×</i></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-14" type="button"
+      aria-label="14 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">14</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-15" type="button"
+      aria-label="15 Ekim 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">15</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-16" type="button"
+      aria-label="16 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">16</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-17" type="button"
+      aria-label="17 Ekim 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">17</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-18" type="button"
+      aria-label="18 Ekim 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">18</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-19" type="button"
+      aria-label="19 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">19</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-20" type="button"
+      aria-label="20 Ekim 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">20</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-21" type="button"
+      aria-label="21 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">21</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-22" type="button"
+      aria-label="22 Ekim 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">22</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-23" type="button"
+      aria-label="23 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">23</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-24" type="button"
+      aria-label="24 Ekim 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">24</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-25" type="button"
+      aria-label="25 Ekim 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">25</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-26" type="button"
+      aria-label="26 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">26</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-27" type="button"
+      aria-label="27 Ekim 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">27</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-28" type="button"
+      aria-label="28 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">28</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-29" type="button"
+      aria-label="29 Ekim 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">29</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-30" type="button"
+      aria-label="30 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">30</span></span>
+    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-31" type="button"
+      aria-label="31 Ekim 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">31</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-01" type="button"
+      aria-label="1 Kasım 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">1</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-02" type="button"
+      aria-label="2 Kasım 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">2</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-03" type="button"
+      aria-label="3 Kasım 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">3</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-04" type="button"
+      aria-label="4 Kasım 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">4</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-05" type="button"
+      aria-label="5 Kasım 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">5</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-06" type="button"
+      aria-label="6 Kasım 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">6</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-07" type="button"
+      aria-label="7 Kasım 2026 · Cmt · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">7</span></span>
+    </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-11-08" type="button"
+      aria-label="8 Kasım 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
+      <span class="hucre-ust"><span class="gun">8</span></span>
+    </button></div>
+          
+        </div>
+        <aside class="ogr-takvim-yan"><div class="ogrenci-klasor">
+      <div class="plan-filtre">
+        <input class="plan-filtre-gir" data-act="ogrenci-ara" type="text" autocomplete="off"
+          placeholder="Öğrenci ara…" value="">
+      </div>
+      <p class="ogr-toplam">Ekim 2026 · 2 öğrenci · <b class="g">2.000 ₺ tahsil</b> · <b class="y">3.000 ₺ bekleyen</b> · <b class="y">4 gelmedi</b> · <b class="m">1 mazeret</b></p>
+      <div class="ogr-suzgec"><button class="ogr-odak secili"
+        data-act="ogrenci-odak" data-id="" type="button"
+        aria-pressed="true">Tümü <b>2</b></button>
+      <button class="ogr-odak"
+        data-act="ogrenci-odak" data-id="borc" type="button"
+        aria-pressed="false">Borçlular <b>2</b></button><button class="ogr-odak"
+        data-act="ogrenci-odak" data-id="gelmedi" type="button"
+        aria-pressed="false">Gelmedi ≥ 3 <b>1</b></button></div>
+      <div class="plan-yeni ogrenci-yeni">
+          <input class="plan-gir" data-ogrenci-gir="ad" type="text" autocomplete="off"
+        placeholder="Öğrenci adı" value="">
+      <input class="plan-gir" data-ogrenci-gir="veli" type="text" autocomplete="off"
+        placeholder="Veli" value="">
+      <input class="plan-gir" data-ogrenci-gir="telefon" type="tel" autocomplete="off"
+        placeholder="Telefon" value="">
+      <input class="plan-gir gun" data-ogrenci-gir="gun_sayisi" type="number" min="1" max="7" step="1"
+        list="ogr-gun-sayisi-listesi" autocomplete="off" placeholder="Haftalık gün"
+        title="Haftada kaç gün geliyor — 2/3/4 seç ya da elle yaz" value="">
+      <input class="plan-gir tutar" data-ogrenci-gir="aylik_tutar" type="text" inputmode="decimal"
+        autocomplete="off" placeholder="Aylık tutar ₺"
+        title="2 gün: 3.200 ₺ · 3 gün: 4.100 ₺ — gün sayısını yazınca tutar otomatik dolar, istersen değiştir"
+        value="">
+      <input class="plan-gir" data-ogrenci-gir="notlar" type="text" autocomplete="off"
+        placeholder="Not" value="">
+          <button class="plan-kaydet" data-act="ogrenci-kaydet" type="button">ekle</button>
+          <button class="plan-vazgec" data-act="ogrenci-yeni-kapat" type="button" aria-label="Vazgeç">×</button>
+        </div>
+      <p class="ogr-aidat-tamam">Ekim 2026
+        aidatları hazır · 2 öğrencinin kaydı var</p>
+      <ul class="plan-liste ogrenci-liste"><li class="plan-satir ogrenci">
+      <button class="ogr-ac" data-act="ogrenci-detay" data-id="og1"
+      type="button" aria-expanded="false"
+      aria-label="Ödeme listesi ve ay özeti">▸</button>
+      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33</small><br><small>Salı-Perşembe</small><span class="ogr-cip"><i class="p">Haftada 3 gün</i><i class="p">Aylık 2.500 ₺</i><i class="g">3 geldi</i><i class="y">1 gelmedi</i><i class="m">1 mazeret</i><i class="g">2.000 ₺ ödendi</i><i class="y">1.500 ₺ bekliyor</i><i class="b">900 ₺ devir</i></span></span>
+      <button class="duzenle" data-act="ogrenci-duzenle" data-id="og1" type="button" aria-label="Düzenle">✎</button>
+      <button class="sil" data-act="ogrenci-sil" data-id="og1" type="button" aria-label="Sil">×</button>
+      
+      
+    </li><li class="plan-satir ogrenci">
+      <button class="ogr-ac" data-act="ogrenci-detay" data-id="og2"
+      type="button" aria-expanded="false"
+      aria-label="Ödeme listesi ve ay özeti">▸</button>
+      <span class="metin"><b>Mert Demir</b> <small>Ali Demir · 0532 444 55 66</small><span class="ogr-cip"><i class="p">Haftada 2 gün</i><i class="p">Aylık 1.800 ₺</i><i class="g">1 geldi</i><i class="y d">3 gelmedi</i><i class="y">1.500 ₺ bekliyor</i></span></span>
+      <button class="duzenle" data-act="ogrenci-duzenle" data-id="og2" type="button" aria-label="Düzenle">✎</button>
+      <button class="sil" data-act="ogrenci-sil" data-id="og2" type="button" aria-label="Sil">×</button>
+      
+      
+    </li></ul>
+    </div></aside>
+      </div>
+    </section></div></body>
+</html>

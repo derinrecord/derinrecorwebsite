@@ -851,6 +851,24 @@
     bildir(h.kayitlar.length + ' aidat kaydı oluşturuldu · ' + OG.para(h.toplam) + ' ₺');
   }
 
+  // Haftalık gün sayısı yazılınca aylık tutarı tarifeden doldurur (2 gün →
+  // 3.200 ₺, 3 gün → 4.100 ₺; bkz. ogrenciler.js · TARIFE). Alan serbest
+  // kalır: içinde el yazısı bir tutar varsa üstüne yazılmaz, yalnız alan
+  // boşken ya da değer tarifeden gelmişse güncellenir — 2 günden 3 güne geçen
+  // kullanıcı tutarı iki kez yazmak zorunda kalmasın.
+  function tarifeDoldur(gunAlan) {
+    if (!OG) return;
+    const kip = gunAlan.dataset.ogrenciGir != null ? 'ogrenci-gir' : 'ogrenci-duzenle';
+    const form = gunAlan.closest('.plan-yeni,.plan-satir') || document;
+    const tutarAlan = form.querySelector('[data-' + kip + '="aylik_tutar"]');
+    if (!tutarAlan) return;
+    const tutar = OG.tarifeTutar(gunAlan.value);
+    if (tutar == null) return;
+    const mevcut = tutarAlan.value.trim();
+    if (mevcut && !OG.tarifeMi(mevcut)) return;
+    tutarAlan.value = String(tutar);
+  }
+
   state.planKatli = planKatliOku();
 
   function ciz() {
@@ -2761,6 +2779,11 @@
       const gun = not.dataset.id, metin = not.value;
       clearTimeout(planNotSayac);
       planNotSayac = setTimeout(() => planYaz('not', { gun: gun, metin: metin }), 1000);
+      return;
+    }
+    const gunAlan = e.target.closest('[data-ogrenci-gir="gun_sayisi"],[data-ogrenci-duzenle="gun_sayisi"]');
+    if (gunAlan) {
+      tarifeDoldur(gunAlan);
       return;
     }
     const ogrenciAra = e.target.closest('[data-act="ogrenci-ara"]');
