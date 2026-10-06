@@ -5,9 +5,10 @@
 // Aşama 3: ödeme — öğrenci başına tahsilat satırları (açıklama + tutar).
 // Aşama 4: özet — ay özeti, borç/devamsızlık rozetleri ve uyarı süzgeçleri
 //           ("kim borçlu, kim aksıyor" tek bakışta).
-// Aşama 5: aidat — haftalık gün sayısı ve aylık tutar öğrencide durur; tu-
-//           tar elle yazıldığı için tarife yok. "Bu ayın aidatlarını oluştur"
-//           tek düğmeyle ayın kayıtlarını açar, kaydı olanı atlar.
+// Aşama 5: aidat — haftalık gün sayısı ve aylık tutar öğrencide durur. Gün
+//           sayısı yazılınca tutar tarifeden dolar (2/3 gün) ama elle değiş-
+//           tirilebilir. "<Ay> aidatlarını oluştur" tek düğmeyle görünen ayın
+//           kayıtlarını açar, kaydı olanı atlar.
 //
 // Bu dosya saf hesap ve HTML üretiminden ibarettir: DOM'a dokunmaz, ağa
 // çıkmaz. Böylece node testleriyle doğrudan sınanabiliyor (bkz.
@@ -156,17 +157,23 @@
   // Toplu aidat düğmesi. Tutarı yazılmış öğrenci yoksa hiç basılmaz (işlevsiz
   // düğme durmaz). Kaydı zaten olanlar varsa bu yazıyla söylenir: yönetici
   // "aidatlar oluşturuldu mu" sorusunu düğmeden cevaplayabilsin.
+  //
+  // Düğme GÖRÜNEN ayın adını taşır, "bu ay" demez: ay geriye alınıp Eylül'e
+  // dönülebiliyor ve kayıt görünen aya düşüyor (bkz. radyo-yonetim.js,
+  // ogrenci-ay + ogrenci-aidat-olustur). "Bu ayın" yazsaydı Eylül'de basılan
+  // düğme Ekim'i kastediyor sanılırdı.
   function aidatDugmesi(liste, kayitListesi, a) {
     if (!(liste || []).length) return '';
     const h = aylikAidatlar(liste, kayitListesi, a);
     if (!h.kayitlar.length && !h.atlanan) return '';
+    const ayAdi = AYLAR_ADI[((a || {}).ay || 0) - 1] || '';
     if (!h.kayitlar.length) {
-      return `<p class="ogr-aidat-tamam">${esc(AYLAR_ADI[(a || {}).ay - 1] + ' ' + (a || {}).yil)}
+      return `<p class="ogr-aidat-tamam">${esc(ayAdi + ' ' + (a || {}).yil)}
         aidatları hazır · ${h.atlanan} öğrencinin kaydı var</p>`;
     }
     return `<div class="ogr-aidat">
       <button class="ogr-aidat-dugme" data-act="ogrenci-aidat-olustur" type="button">
-        Bu ayın aidatlarını oluştur</button>
+        ${esc(ayAdi ? ayAdi + ' aidatlarını oluştur' : 'Aidatları oluştur')}</button>
       <small>${h.kayitlar.length} öğrenci · toplam <b>${para(h.toplam)} ₺</b>${h.atlanan ? ` · ${h.atlanan} öğrencinin kaydı zaten var` : ''}</small>
     </div>`;
   }

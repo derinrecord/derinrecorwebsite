@@ -1,4 +1,4 @@
-// Haftalık gün sayısı + aylık tutar ve "bu ayın aidatlarını oluştur" testleri.
+// Haftalık gün sayısı + aylık tutar ve "<Ay> aidatlarını oluştur" testleri.
 //
 // Fiyat haftada kaç gün gelindiğine göre değişiyor: tutar öğrencide elle
 // tutulur, tarife diye bir şey yok. Toplu aidat, tutarı yazılmış aktif
@@ -163,10 +163,22 @@ test('eksik bağlamda toplu aidat çökmez', () => {
 test('aidat düğmesi kaç kayıt ve ne kadar tutacağını yazar', () => {
   const h = O.aidatDugmesi(OGR, [], AY);
   assert.ok(h.includes('data-act="ogrenci-aidat-olustur"'));
-  assert.ok(h.includes('Bu ayın aidatlarını oluştur'));
+  assert.ok(h.includes('Ekim aidatlarını oluştur'), 'düğme görünen ayın adını taşımalı');
   assert.ok(h.includes('2 öğrenci'));
   assert.ok(h.includes('4.300 ₺'));
   assert.ok(!h.includes('zaten var'), 'atlanan yokken bu yazı çıkmamalı');
+});
+
+test('düğme görünen ayı adıyla söyler, "bu ay" demez', () => {
+  // Ay geriye alınabiliyor (bkz. ogrenci-ay) ve kayıt GÖRÜNEN aya düşüyor.
+  // "Bu ayın" yazsaydı Eylül'de basan yönetici Ekim'in aidatını açtığını
+  // sanırdı; Eylül'e dönüp çalışmaya başlayan biri tam olarak bunu yaşar.
+  const eylul = { yil: 2026, ay: 9 };
+  const h = O.aidatDugmesi(OGR, [], eylul);
+  assert.ok(h.includes('Eylül aidatlarını oluştur'), 'ay adı yazılmalı');
+  assert.ok(!h.includes('Ekim'), 'görünmeyen ayın adı geçmemeli');
+  assert.ok(!h.includes('Bu ayın'), '"bu ay" belirsizliği kalmamalı');
+  assert.ok(!h.includes('bu ayın'), 'küçük harfli biçim de çıkmamalı');
 });
 
 test('atlanan varsa düğme yazısında söylenir', () => {
@@ -399,6 +411,6 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   };
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '9', 'sürüm artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '10', 'sürüm artırılmalı');
   assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '27', 'CSS sürümü artırılmalı');
 });
