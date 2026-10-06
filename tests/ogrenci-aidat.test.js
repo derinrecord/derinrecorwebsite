@@ -597,20 +597,52 @@ const GEC = [
   { id: 'o2', ad: 'Mert Demir' }
 ];
 
-test('gecikme ödenmiş kayıtların gün farkından hesaplanır', () => {
+test('gecikme vade sonundan sonra gelen ödemelerden hesaplanır', () => {
   const g = O.gecikmeOzeti(GEC, [
-    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-10-19' },
-    { id: 'k2', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-10-01', tutar: 1800, bitti: true, odeme_gunu: '2026-10-09' },
-    // Aynı gün ödenen, günü girilmemiş ve ödenmemiş kayıtlar gecikme sayılmaz.
-    { id: 'k3', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-10-01', tutar: 500, bitti: true, odeme_gunu: '2026-10-01' },
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-11-08' },
+    { id: 'k2', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-10-01', tutar: 1800, bitti: true, odeme_gunu: '2026-11-12' },
+    // Ay içinde ödenen, günü girilmemiş ve ödenmemiş kayıtlar gecikme sayılmaz.
+    { id: 'k3', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-10-01', tutar: 500, bitti: true, odeme_gunu: '2026-10-31' },
     { id: 'k4', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 900, bitti: true },
-    { id: 'k5', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-05', tutar: 900, bitti: false, odeme_gunu: '2026-10-25' }
+    { id: 'k5', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-05', tutar: 900, bitti: false, odeme_gunu: '2026-11-25' }
   ], AY);
   assert.equal(g.adet, 2, 'yalnız gerçekten geç gelenler');
-  assert.equal(g.toplam, 26, '(19-1) + (9-1)');
-  assert.equal(g.ortalama, 13);
-  assert.equal(g.en.ad, 'Elif Yılmaz', 'en çok geciken yazılmalı');
-  assert.equal(g.en.gun, 18);
+  assert.equal(g.toplam, 20, 'vadeden sonra: 8 + 12 gün');
+  assert.equal(g.ortalama, 10);
+  assert.equal(g.en.ad, 'Mert Demir', 'en çok geciken yazılmalı');
+  assert.equal(g.en.gun, 12);
+});
+
+test('aidat kendi ayı içinde ödenirse gecikme sayılmaz', () => {
+  // Stüdyo aidatı ay içinde topluyor: ayın 1'i açılış günü, vade değil.
+  const ay = [
+    ['2026-10-01', '2026-10-02'],
+    ['2026-10-01', '2026-10-28'],
+    ['2026-10-31', '2026-10-31'],
+    ['2026-09-01', '2026-09-30'],
+    ['2026-02-01', '2026-02-28']
+  ].map(([gun, odeme_gunu], i) => ({
+    id: 'g' + i, ogrenci_id: 'o1', tur: 'odeme', gun: gun, bitti: true, odeme_gunu: odeme_gunu
+  }));
+  assert.equal(O.gecikmeGecmisi(ay, 'o1'), null, 'ay içi ödemeler geçmişe girmemeli');
+  assert.equal(O.gecikmeOzeti(GEC, ay, AY).adet, 0, 'ay içi ödeme şeride yazılmamalı');
+});
+
+test('vade kaydın ayının son günüdür, kısa ve artık yılda kaymaz', () => {
+  assert.equal(O.vadeSonu('2026-10-01'), '2026-10-31');
+  assert.equal(O.vadeSonu('2026-11-15'), '2026-11-30');
+  assert.equal(O.vadeSonu('2026-02-01'), '2026-02-28', 'Şubat 28 gün');
+  assert.equal(O.vadeSonu('2024-02-01'), '2024-02-29', 'artık yıl Şubat 29');
+  assert.equal(O.vadeSonu(null), null);
+  assert.equal(O.vadeSonu('bozuk'), null);
+
+  // Gecikme vadeden sayılır: "Ekim aidatı 6 Kasım'da ödendi" 6 gündür, 36 değil.
+  assert.equal(O.gecikmeGunu('2026-10-01', '2026-11-06'), 6);
+  assert.equal(O.gecikmeGunu('2026-10-01', '2026-10-31'), 0, 'ayın son günü hâlâ zamanında');
+  assert.equal(O.gecikmeGunu('2026-10-01', '2026-11-01'), 1);
+  assert.equal(O.gecikmeGunu('2026-02-01', '2026-03-01'), 1, 'Şubat vadesi 28');
+  assert.equal(O.gecikmeGunu('2026-10-01', null), 0, 'ödenmemiş gecikme değil');
+  assert.equal(O.gecikmeGunu(null, '2026-11-01'), 0);
 });
 
 test('gecikme yalnız kaydın ayına bakar, erken ödeme gecikme değildir', () => {
@@ -619,6 +651,10 @@ test('gecikme yalnız kaydın ayına bakar, erken ödeme gecikme değildir', () 
     { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-09-28' }
   ];
   assert.equal(O.gecikmeOzeti(GEC, kayitlar, AY).adet, 0, 'başka ayın ve erken ödemenin gecikmesi yok');
+  // Aynı öğrenci için Eylül aidatı Ekim'de ödenirse gecikme Eylül'e yazılır.
+  const eylul = [{ id: 'k3', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-09-01', tutar: 2500, bitti: true, odeme_gunu: '2026-10-12' }];
+  assert.equal(O.gecikmeOzeti(GEC, eylul, AY).adet, 0, 'Ekim görünümünde Eylül gecikmesi görünmez');
+  assert.equal(O.gecikmeOzeti(GEC, eylul, { yil: 2026, ay: 9 }).en.gun, 12);
   // Ay bilgisi olmadan hesap yapılmaz (sayfa boş çizilirken patlamasın).
   assert.equal(O.gecikmeOzeti(GEC, kayitlar, {}).adet, 0);
   assert.equal(O.gecikmeOzeti(null, null, AY).adet, 0);
@@ -628,12 +664,15 @@ test('gecikme yalnız kaydın ayına bakar, erken ödeme gecikme değildir', () 
 
 test('gecikme şeridi yalnız gecikme varsa basılır', () => {
   const gec = [
-    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-10-19' }
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-11-05' }
   ];
   assert.equal(O.gecikmeSeridi(GEC, [], AY), '', 'gecikme yoksa şerit basılmamalı');
+  // Ay içinde ödenen kayıt şeridi hiç açmamalı.
+  const ayIci = [{ id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-10-19' }];
+  assert.equal(O.gecikmeSeridi(GEC, ayIci, AY), '', 'ay içi ödeme şerit açmamalı');
   const h = O.gecikmeSeridi(GEC, gec, AY);
   assert.ok(h.includes('1 ödeme geç geldi'));
-  assert.ok(h.includes('ortalama <b>18 gün</b>'), 'ortalama gün yazılmalı');
+  assert.ok(h.includes('ortalama <b>5 gün</b>'), 'ortalama gün yazılmalı');
   assert.ok(h.includes('Elif Yılmaz'), 'en çok geciken öğrenci yazılmalı');
   assert.ok(h.includes('ogr-gecikme'), 'şerit sınıfı olmalı');
 });
@@ -641,7 +680,7 @@ test('gecikme şeridi yalnız gecikme varsa basılır', () => {
 test('gecikme şeridi gelir şeridinin altında, uyarının üstünde durur', () => {
   // Cuma kalıbı: 9 Ekim işaretli, 2 Ekim işaretsiz — uyarı da çıksın.
   const h = sayfa({}, [
-    { id: 'p1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-10-19' },
+    { id: 'p1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', tutar: 2500, bitti: true, odeme_gunu: '2026-11-05' },
     { id: 'y1', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-09', durum: 'geldi' }
   ]);
   assert.ok(h.indexOf('ogr-gelir') < h.indexOf('ogr-gecikme'), 'para özeti önce okunmalı');
@@ -650,17 +689,17 @@ test('gecikme şeridi gelir şeridinin altında, uyarının üstünde durur', ()
 
 test('öğrencinin gecikme geçmişi yıl verilmezse tüm ayları sayar', () => {
   const kayitlar = [
-    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-10-19' },
-    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-09-15', bitti: true, odeme_gunu: '2026-09-25' },
-    // Başka öğrenci, ödenmemiş kayıt ve aynı gün ödeme geçmişe girmez.
-    { id: 'k3', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-10-30' },
-    { id: 'k4', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: false, odeme_gunu: '2026-10-28' },
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-11-08' },
+    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-09-15', bitti: true, odeme_gunu: '2026-10-12' },
+    // Başka öğrenci, ödenmemiş kayıt ve ay içi ödeme geçmişe girmez.
+    { id: 'k3', ogrenci_id: 'o2', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-11-20' },
+    { id: 'k4', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: false, odeme_gunu: '2026-11-28' },
     { id: 'k5', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-02', bitti: true, odeme_gunu: '2026-10-02' }
   ];
   const g = O.gecikmeGecmisi(kayitlar, 'o1');
   assert.equal(g.adet, 2, 'yalnız bu öğrencinin geç ödediği kayıtlar');
-  assert.equal(g.toplam, 28, '18 + 10');
-  assert.equal(g.ortalama, 14);
+  assert.equal(g.toplam, 20, 'Ekim vadesi 31, Eylül vadesi 30: 8 + 12');
+  assert.equal(g.ortalama, 10);
   assert.equal(O.gecikmeGecmisi(kayitlar, 'o2').adet, 1);
   assert.equal(O.gecikmeGecmisi(kayitlar, 'o3'), null, 'gecikmesi olmayanda boş döner');
   assert.equal(O.gecikmeGecmisi(null, 'o1'), null);
@@ -668,21 +707,21 @@ test('öğrencinin gecikme geçmişi yıl verilmezse tüm ayları sayar', () => 
 
 test('gecikme notu kaydın yılına göre sınırlanır: geçen yıl bu yılı şişirmez', () => {
   const kayitlar = [
-    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-10-19' },
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-11-08' },
     // Geçen yılın gecikmesi: "bu yıl" notunda sayılmamalı.
-    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2025-12-01', bitti: true, odeme_gunu: '2025-12-30' },
+    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2025-12-01', bitti: true, odeme_gunu: '2026-01-12' },
     // Yıl, ödeme gününden değil kaydın kendi tarihinden okunur: Aralık
     // aidatı Ocak'ta ödense bile 2026'ya yazılır.
-    { id: 'k3', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-12-01', bitti: true, odeme_gunu: '2027-01-04' }
+    { id: 'k3', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-12-01', bitti: true, odeme_gunu: '2027-01-08' }
   ];
   assert.equal(O.gecikmeGecmisi(kayitlar, 'o1').adet, 3, 'yıl verilmezse tüm geçmiş');
   assert.equal(O.gecikmeGecmisi(kayitlar, 'o1', '2026').adet, 2, 'yıl verilince yalnız o yıl');
   assert.equal(O.gecikmeGecmisi(kayitlar, 'o1', 2026).adet, 2, 'sayı yıl da kabul edilir');
   assert.equal(O.gecikmeGecmisi(kayitlar, 'o1', '2024'), null, 'gecikmesi olmayan yıl boş döner');
 
-  // 18 + 34 günün ortalaması 26; 2025'in 29 günü karışmamalı.
+  // 8 + 8 günün ortalaması 8; 2025'in 12 günü karışmamalı.
   assert.equal(O.gecikmeNotu(kayitlar, 'o1', '2026'),
-    '<small class="ogr-gec-notu">bu yıl 2 kez geç ödedi · ortalama 26 gün</small>');
+    '<small class="ogr-gec-notu">bu yıl 2 kez geç ödedi · ortalama 8 gün</small>');
   assert.ok(O.gecikmeNotu(kayitlar, 'o1').includes('<small class="ogr-gec-notu">3 kez'),
     'yıl yoksa tüm geçmiş sayılır ve etiket "bu yıl" demez');
 
@@ -695,24 +734,24 @@ test('gecikme notu kaydın yılına göre sınırlanır: geçen yıl bu yılı �
 });
 
 test('gecikme notu tek gecikmede sayıyı, çokluğunda ortalamayı yazar', () => {
-  const tek = [{ id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-10-19' }];
+  const tek = [{ id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-01', bitti: true, odeme_gunu: '2026-11-06' }];
   assert.equal(O.gecikmeNotu(tek, 'o1'),
-    '<small class="ogr-gec-notu">1 kez geç ödedi · 18 gün</small>');
+    '<small class="ogr-gec-notu">1 kez geç ödedi · 6 gün</small>');
   const cok = tek.concat([
-    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-09-15', bitti: true, odeme_gunu: '2026-09-25' }
+    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-09-15', bitti: true, odeme_gunu: '2026-10-12' }
   ]);
-  assert.ok(O.gecikmeNotu(cok, 'o1').includes('2 kez geç ödedi · ortalama 14 gün'));
+  assert.ok(O.gecikmeNotu(cok, 'o1').includes('2 kez geç ödedi · ortalama 9 gün'));
   assert.equal(O.gecikmeNotu([], 'o1'), '', 'gecikme yoksa not basılmamalı');
 
   // Not öğrenci satırında görünür, başka öğrencinin satırına taşmaz ve
   // panelin "bugün"ü varsa yıla sınırlanır ("bu yıl").
   const h = O.ogrenciSatiri({ id: 'o1', ad: 'Elif Yılmaz' }, {}, tek, AY);
-  assert.ok(h.includes('bu yıl 1 kez geç ödedi · 18 gün'), 'satırda yıl sınırlı geçmiş yazılmalı');
+  assert.ok(h.includes('bu yıl 1 kez geç ödedi · 6 gün'), 'satırda yıl sınırlı geçmiş yazılmalı');
   const bos = O.ogrenciSatiri({ id: 'o2', ad: 'Mert Demir' }, {}, tek, AY);
   assert.ok(!bos.includes('kez geç ödedi'), 'gecikmesi olmayan satırda not olmamalı');
   // "bugün" yoksa yıl sınırlanamaz; not yine basılır ama "bu yıl" demez.
   const toysuz = O.ogrenciSatiri({ id: 'o1', ad: 'Elif Yılmaz' }, {}, tek, {});
-  assert.ok(toysuz.includes('1 kez geç ödedi · 18 gün') && !toysuz.includes('bu yıl'),
+  assert.ok(toysuz.includes('1 kez geç ödedi · 6 gün') && !toysuz.includes('bu yıl'),
     'gün yoksa etiket yıl iddia etmemeli');
 });
 
@@ -770,7 +809,7 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
   // Geç başlayan öğrenci kuralı JS'e girdi; damga da artmalı.
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '19', 'sürüm artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '20', 'sürüm artırılmalı');
   assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '34', 'CSS sürümü artırılmalı');
   // Panel dosyası da damgalı: içeriği değişip damga artmadan kalırsa tarayıcı
   // eski kopyayı çalıştırır ve yeni alanı görmez (bir kez tam bu yüzden kaçtı).

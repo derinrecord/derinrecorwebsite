@@ -274,11 +274,29 @@
     return Math.round((b - a) / 86400000);
   };
 
-  // Gecikme: kaydın günü ("1 Ekim aidatı") ile paranın geldiği gün arasındaki
-  // fark. Ay, KAYDIN ayına göre sayılır — gelir şeridiyle aynı ölçü, yoksa aynı
-  // tahsilat bir şeritte Ekim'de, diğerinde Kasım'da görünürdü. Yalnız ödenmiş
-  // kayıtlar gecikir: parası gelmemiş bir satır "geç geldi" sayılamaz.
-  // Gün farkı sıfır ya da eksiyse (aynı gün, erken ödeme) gecikme değildir.
+  // Aidatın vadesi: kaydın KENDİ ayının son günü ("1 Ekim aidatı" → 31 Ekim).
+  // Kaydın 1'i açılış günüdür, vade değil: stüdyo aidatı ay içinde topluyor,
+  // ayın 3'ünde ödenen Ekim aidatı gecikme değildir. Vade de kaydın ayına
+  // bağlıdır; ödeme başka aya sarkarsa ay ataması değişmez (bkz. gelir şeridi).
+  const vadeSonu = iso => {
+    const p = String(iso == null ? '' : iso).slice(0, 10).split('-').map(Number);
+    if (p.length !== 3 || !p[0] || !p[1] || !p[2]) return null;
+    return p[0] + '-' + iki(p[1]) + '-' + iki(ayGunSayisi(p[0], p[1]));
+  };
+
+  // Gecikme günü: vadeden sonra geçen gün. Ay içinde ödeme (ve erken ödeme)
+  // gecikme değildir; para vadeden sonra geldiyse fark vade sonundan sayılır.
+  // Böylece "Ekim aidatı 6 Kasım'da ödendi" 6 gün geçtir, 36 değil.
+  const gecikmeGunu = (kayitGunu, odemeGunu) => {
+    const vade = vadeSonu(kayitGunu);
+    if (vade == null || odemeGunu == null) return 0;
+    const fark = gunFarki(vade, odemeGunu);
+    return fark > 0 ? fark : 0;
+  };
+
+  // Gecikme özeti: kaydın ayına göre sayılır — gelir şeridiyle aynı ölçü, yoksa
+  // aynı tahsilat bir şeritte Ekim'de, diğerinde Kasım'da görünürdü. Yalnız
+  // ödenmiş kayıtlar gecikir: parası gelmemiş bir satır "geç geldi" sayılamaz.
   function gecikmeOzeti(liste, kayitListesi, a) {
     const ayar = a || {};
     const bos = { adet: 0, ortalama: 0, toplam: 0, en: null };
@@ -290,7 +308,7 @@
     (kayitListesi || []).forEach(k => {
       if (!k || k.tur !== 'odeme' || !k.bitti || k.odeme_gunu == null) return;
       if (String(k.gun).slice(0, 7) !== onek) return;
-      const fark = gunFarki(k.gun, k.odeme_gunu);
+      const fark = gecikmeGunu(k.gun, k.odeme_gunu);
       if (fark <= 0) return;
       gec.push({ id: k.ogrenci_id, ad: adlar[k.ogrenci_id] || '', gun: fark });
     });
@@ -315,10 +333,10 @@
       if (!k || k.tur !== 'odeme' || k.ogrenci_id !== ogrenciId) return false;
       if (!k.bitti || k.odeme_gunu == null) return false;
       if (yilOnek && String(k.gun).slice(0, 4) !== yilOnek) return false;
-      return gunFarki(k.gun, k.odeme_gunu) > 0;
+      return gecikmeGunu(k.gun, k.odeme_gunu) > 0;
     });
     if (!gec.length) return null;
-    const toplam = gec.reduce((t, k) => t + gunFarki(k.gun, k.odeme_gunu), 0);
+    const toplam = gec.reduce((t, k) => t + gecikmeGunu(k.gun, k.odeme_gunu), 0);
     return { adet: gec.length, toplam: toplam, ortalama: Math.round(toplam / gec.length) };
   }
 
@@ -1055,6 +1073,8 @@
     gelirOzeti: gelirOzeti,
     gelirSeridi: gelirSeridi,
     gunFarki: gunFarki,
+    vadeSonu: vadeSonu,
+    gecikmeGunu: gecikmeGunu,
     gecikmeOzeti: gecikmeOzeti,
     gecikmeSeridi: gecikmeSeridi,
     gecikmeGecmisi: gecikmeGecmisi,

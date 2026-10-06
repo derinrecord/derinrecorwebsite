@@ -685,15 +685,19 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
       { id: 'ok9', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-13', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
       // Ekim aidatı elden alınmış: satırda dolu "elden" rozeti ve satır
       // çipinde "elden" eki bu kayıttan doğar. Kaydın günü ile ödeme günü
-      // ayrı düşsün ki "ödendi 20 Ekim" notu da görünsün.
+      // ayrı düşsün ki "ödendi 20 Ekim" notu da görünsün. Ay İÇİNDE ödendiği
+      // için gecikme sayılmaz — vade kaydın ayının son günü (bkz. ogrenciler.js
+      // · vadeSonu). Yani "ayın 1'i geçti" diye kimse gecikmeye düşmez.
       { id: 'om1', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-03', metin: 'Ekim aidatı', tutar: 2000, bitti: true, elden: true, odeme_gunu: '2026-10-20' },
       { id: 'om2', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-20', metin: 'Kasım aidatı', tutar: 1500, bitti: false },
-      // Eylül aidatı da geç ödenmiş: satırdaki geçmiş notu "2 kez ... ortalama"
-      // biçimine düşsün (tek gecikme biçimi Zeynep'in satırında görünüyor).
-      { id: 'om3', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-09-15', metin: 'Eylül aidatı', tutar: 2000, bitti: true, odeme_gunu: '2026-09-25' },
+      // Gerçek gecikme örneği: Eylül aidatı Ekim'de ödenmiş. Vade 30 Eylül
+      // olduğu için 14 gün geç sayılır ve satırdaki geçmiş notu buradan doğar.
+      { id: 'om3', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-09-15', metin: 'Eylül aidatı', tutar: 2000, bitti: true, odeme_gunu: '2026-10-14' },
       // Geçen aydan devreden açık borç: satırda "devir" rozeti çıkar.
       { id: 'om4', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-08-10', metin: 'Ağustos aidatı', tutar: 900, bitti: false },
       { id: 'om5', ogrenci_id: 'og2', tur: 'odeme', gun: '2026-10-04', metin: 'Ekim aidatı', tutar: 1500, bitti: false },
+      // Zeynep Ekim aidatını ay içinde (16 Ekim) ödedi: geç ödeme sayılmaz,
+      // satırında geçmiş notu çıkmaz. Kuralın "gecikme yok" tarafı budur.
       { id: 'om6', ogrenci_id: 'og3', tur: 'odeme', gun: '2026-10-01', metin: 'Ekim aidatı', tutar: 4100, bitti: true, odeme_gunu: '2026-10-16' }
     ]
   };
