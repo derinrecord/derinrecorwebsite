@@ -286,13 +286,16 @@
   }
 
   // Öğrencinin gecikme GEÇMİŞİ: ay sınırı yoktur, kişisel bir alışkanlığı
-  // anlatır ("bu ay geç ödedi" bilgisi zaten ay rozetinde durur). Böylece
-  // kimin sürekli geciktirdiği, kimin bir kez aksattığı ay değiştirmeden
-  // görünür.
-  function gecikmeGecmisi(kayitListesi, ogrenciId) {
+  // anlatır ("bu ay geç ödedi" bilgisi zaten ay rozetinde durur). Yıl sınırı
+  // vardır: geçen yılın aksaklıkları bu yılın tablosunu şişirmesin. Gecikme
+  // kaydın KENDİ tarihine yazılır; ödeme başka aya sarksa bile aidat kendi
+  // ayına aittir. Yıl verilmezse tüm geçmiş sayılır.
+  function gecikmeGecmisi(kayitListesi, ogrenciId, yil) {
+    const yilOnek = yil == null ? '' : String(yil).slice(0, 4);
     const gec = (kayitListesi || []).filter(k => {
       if (!k || k.tur !== 'odeme' || k.ogrenci_id !== ogrenciId) return false;
       if (!k.bitti || k.odeme_gunu == null) return false;
+      if (yilOnek && String(k.gun).slice(0, 4) !== yilOnek) return false;
       return gunFarki(k.gun, k.odeme_gunu) > 0;
     });
     if (!gec.length) return null;
@@ -300,15 +303,25 @@
     return { adet: gec.length, toplam: toplam, ortalama: Math.round(toplam / gec.length) };
   }
 
+  // Notun sayacağı yıl panelin "bugün"ünden gelir, gezilen aydan değil:
+  // "bu yıl" gerçek içinde bulunulan yılı anlatır, kullanıcının takvimde
+  // gezinmesiyle değişmemeli. "bugün" yoksa yıl sınırı uygulanmaz.
+  function gecikmeYili(ayar) {
+    const y = ((ayar || {}).bugun == null ? '' : String(ayar.bugun)).slice(0, 4);
+    return /^\d{4}$/.test(y) ? y : null;
+  }
+
   // Tek gecikmede "ortalama" demek gereksiz: sayı doğrudan yazılır. İki ve
-  // fazlasında ortalama anlamlı oluyor.
-  function gecikmeNotu(kayitListesi, ogrenciId) {
-    const g = gecikmeGecmisi(kayitListesi, ogrenciId);
+  // fazlasında ortalama anlamlı oluyor. Yıl sınırlandıysa etikete "bu yıl"
+  // eklenir; aksi hâlde sayının hangi dönemi kapsadığı belirsiz kalırdı.
+  function gecikmeNotu(kayitListesi, ogrenciId, yil) {
+    const g = gecikmeGecmisi(kayitListesi, ogrenciId, yil);
     if (!g) return '';
     const ek = g.adet === 1
       ? g.toplam + ' gün'
       : 'ortalama ' + g.ortalama + ' gün';
-    return `<small class="ogr-gec-notu">${g.adet} kez geç ödedi · ${ek}</small>`;
+    const on = yil == null ? '' : 'bu yıl ';
+    return `<small class="ogr-gec-notu">${on}${g.adet} kez geç ödedi · ${ek}</small>`;
   }
 
   // Gecikme şeridi gelir şeridinin hemen altında durur: para özetini okurken
@@ -878,7 +891,7 @@
       aria-label="${acik ? 'Ödeme listesini ve ay özetini kapat' : 'Ödeme listesi ve ay özeti'}">${acik ? '▾' : '▸'}</button>`;
     return `<li class="plan-satir ogrenci${acik ? ' acik' : ''}${o.hata ? ' hata' : ''}">
       ${acDugme}
-      <span class="metin"><b>${esc(o.ad || '—')}</b>${alt ? ` <small>${esc(alt)}</small>` : ''}${o.notlar && String(o.notlar).trim() ? `<br><small>${esc(o.notlar)}</small>` : ''}${acik ? '' : ozetCipleri(liste, o, ayar)}${gecikmeNotu(liste, o.id)}</span>
+      <span class="metin"><b>${esc(o.ad || '—')}</b>${alt ? ` <small>${esc(alt)}</small>` : ''}${o.notlar && String(o.notlar).trim() ? `<br><small>${esc(o.notlar)}</small>` : ''}${acik ? '' : ozetCipleri(liste, o, ayar)}${gecikmeNotu(liste, o.id, gecikmeYili(ayar))}</span>
       ${yerel ? '' : `<button class="duzenle" data-act="ogrenci-duzenle" data-id="${esc(o.id)}" type="button" aria-label="Düzenle">✎</button>`}
       <button class="sil" data-act="ogrenci-sil" data-id="${esc(o.id)}" type="button" aria-label="Sil">×</button>
       ${acik ? ogrenciDetay(o, liste, durum, ayar) : ''}
@@ -1019,6 +1032,7 @@
     gecikmeOzeti: gecikmeOzeti,
     gecikmeSeridi: gecikmeSeridi,
     gecikmeGecmisi: gecikmeGecmisi,
+    gecikmeYili: gecikmeYili,
     gecikmeNotu: gecikmeNotu,
     ogrenciToplam: ogrenciToplam,
     DEVAMSIZLIK_ESIK: DEVAMSIZLIK_ESIK,
