@@ -621,11 +621,16 @@ if (senaryo === 'harmonik') {
 // ise bir ödeme satırının yerinde düzenleme formunu gösterir. Takvim statiktir
 // (tıklama yok); amaç yerleşimin ve renklerin gözle doğrulanması.
 if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
-  || senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme' || senaryo === 'ogrenci-suzgec') {
+  || senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme' || senaryo === 'ogrenci-suzgec'
+  || senaryo === 'ogrenci-uyari') {
   const P = require(path.join(kok, 'plan-takvim.js'));
   // Öğrenci klasörü modülü pencereden okur; node'da pencere yok, burada kurulur.
   global.window = Object.assign(global.window || {}, { DerinOgrenci: require(path.join(kok, 'ogrenciler.js')) });
-  const simdi = Date.parse('2026-10-05T09:00:00Z');
+  // Eksik yoklama senaryosu ayın ortasını gösterir: işaretsiz ders günleri
+  // "geçmiş" sayılabilsin diye bugün ileri alınır.
+  const simdi = senaryo === 'ogrenci-uyari'
+    ? Date.parse('2026-10-20T09:00:00Z')
+    : Date.parse('2026-10-05T09:00:00Z');
   const D = {
     brands: [{ id: 'b1', name: 'Chemex' }, { id: 'b2', name: 'starbucks' }, { id: 'b3', name: 'Uzak' }],
     plans: [
@@ -677,13 +682,20 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
       { id: 'om5', ogrenci_id: 'og2', tur: 'odeme', gun: '2026-10-04', metin: 'Ekim aidatı', tutar: 1500, bitti: false }
     ]
   };
+  // Eksik yoklama senaryosu seyrek işaret kullanır: kalıp perşembe + salı
+  // kalır, aradaki ders günleri işaretsiz kalır ve uyarı şeridi görünür.
+  if (senaryo === 'ogrenci-uyari') {
+    const kalan = ['ok1', 'ok3', 'ok6', 'ok7', 'om1', 'om5'];
+    D.ogrenciKayitlari = D.ogrenciKayitlari.filter(k => kalan.indexOf(k.id) !== -1);
+  }
   const ui = { now: () => simdi };
   // Öğrenci senaryoları marka takviminin ay görünümünde durur; öğrenci işi
   // ALTINDAKİ ikinci takvimde yapılır. "ogrenci" bir günün yoklamasını
   // (bütün öğrenciler tek listede) ve listede açık bir öğrencinin ödemelerini,
   // "ogrenci-odeme" yerinde düzenleme formunu, "ogrenci-suzgec" ise borçlu
   // süzgecini gösterir.
-  const ogrenciMi = senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme' || senaryo === 'ogrenci-suzgec';
+  const ogrenciMi = senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme'
+    || senaryo === 'ogrenci-suzgec' || senaryo === 'ogrenci-uyari';
   const acikGun = (senaryo === 'plan' || ogrenciMi) ? null : '2026-10-27';
   const duzenle = senaryo === 'plan-duzenle' ? 'o1' : null;
   const state = { nav: 'plan', sub: 'takvim', planYil: 2026, planAy: 10, planAcikGun: acikGun, planDuzenle: duzenle, planKatli: [] };
@@ -702,18 +714,30 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
     state.ogrenciOdak = 'borc';
     state.ogrenciAcik = 'og2';
   }
+  if (senaryo === 'ogrenci-uyari') {
+    state.ogrenciYil = 2026;
+    state.ogrenciAy = 10;
+  }
   // Öğrenci senaryoları Plan → Öğrenciler sayfasının gövdesini basar (marka
   // takvimi ayrı sayfada kaldı); plan senaryoları marka takvimini.
   const O = require(path.join(kok, 'ogrenciler.js'));
+  // Bugün kurgudan okunur; sabit yazılsaydı senaryonun tarihi ile ekrandaki
+  // tarih ayrışır, eksik yoklama uyarısı hiç çıkmazdı.
+  const kurguBugun = new Date(simdi).toISOString().slice(0, 10);
   const govde = ogrenciMi
     ? O.ogrenciTakvimi(D.ogrenciler, D.ogrenciKayitlari, state,
-      { yil: state.ogrenciYil, ay: state.ogrenciAy, bugun: '2026-10-05' })
+      { yil: state.ogrenciYil, ay: state.ogrenciAy, bugun: kurguBugun })
     : P.takvimView(state, D, ui);
-  const baslik = senaryo === 'plan' ? 'ödeme takip takvimi'
-    : (senaryo === 'plan-duzenle' ? 'satır düzenleme'
-      : (senaryo === 'ogrenci' ? 'öğrenci · yoklama ve ödeme'
-        : (senaryo === 'ogrenci-odeme' ? 'öğrenci · ödeme düzenleme'
-          : (senaryo === 'ogrenci-suzgec' ? 'öğrenci · uyarı süzgeci' : 'gün sekmesi'))));
+  const SAHNE_BASLIKLARI = {
+    plan: 'ödeme takip takvimi',
+    'plan-duzenle': 'satır düzenleme',
+    'plan-gun': 'gün sekmesi',
+    ogrenci: 'öğrenci · yoklama ve ödeme',
+    'ogrenci-odeme': 'öğrenci · ödeme düzenleme',
+    'ogrenci-suzgec': 'öğrenci · uyarı süzgeci',
+    'ogrenci-uyari': 'öğrenci · eksik yoklama'
+  };
+  const baslik = SAHNE_BASLIKLARI[senaryo] || 'gün sekmesi';
   const sayfa = `<!doctype html>
 <html lang="tr">
 <head>

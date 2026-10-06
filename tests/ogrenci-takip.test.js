@@ -190,6 +190,94 @@ test('öğrenci yoksa gün yoklaması yol gösterir', () => {
   assert.ok(h.includes('data-act="ogrenci-gun-kapat"'), 'boş gün de kapanabilmeli');
 });
 
+// ---------- Eksik yoklama uyarısı ----------
+// Stüdyonun hangi günler çalıştığı ayrı bir ayar değil; kalıp işaretlerin
+// kendisinden çıkarılıyor. Uyarı yalnız geçmişte kalan işaretsiz ders
+// günlerini söyler.
+
+const KALIP = [
+  { id: 'x1', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-01', durum: 'geldi' },
+  { id: 'x2', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-06', durum: 'gelmedi' },
+  { id: 'x3', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-08', durum: 'geldi' }
+];
+
+test('eksik yoklama yalnız işaretsiz ders günlerini bulur', () => {
+  // Kalıp salı + perşembe. 1, 6, 8 işaretli; 13 ve 15 işaretsiz.
+  assert.deepEqual(O.eksikYoklamalar([OGR], KALIP, { yil: 2026, ay: 10, bugun: '2026-10-20' }),
+    ['2026-10-13', '2026-10-15']);
+});
+
+test('bugün eksik sayılmaz, ertesi gün girer', () => {
+  const ay = bugun => ({ yil: 2026, ay: 10, bugun: bugun });
+  // Kalıpta 1, 6 ve 8 Ekim işaretli; 13 Ekim (salı) işaretsiz. Bugün 13'ü
+  // gösterirken gün hâlâ sürüyor olabilir: uyarıya girmez.
+  assert.deepEqual(O.eksikYoklamalar([OGR], KALIP, ay('2026-10-13')), []);
+  // Ertesi gün aynı gün eksik sayılır.
+  assert.deepEqual(O.eksikYoklamalar([OGR], KALIP, ay('2026-10-14')), ['2026-10-13']);
+  // Ayın ilk gününde geçmiş gün yoktur.
+  assert.deepEqual(O.eksikYoklamalar([OGR], KALIP, ay('2026-10-01')), []);
+});
+
+test('kalıp dışı günler ve listede olmayan öğrenci uyarıya girmez', () => {
+  // Pazartesi hiç işaretlenmemiş; kalıp çıkmadığı için pazartesiler eksik
+  // sayılmamalı (tatil günü olabilir).
+  assert.deepEqual(O.eksikYoklamalar([OGR], KALIP, { yil: 2026, ay: 10, bugun: '2026-10-20' })
+    .filter(iso => O.haftaGunu(iso) === 0), [], 'pazartesi uyarıya girmemeli');
+  // Başka listeye ait öğrencinin işareti kalıp kurmamalı.
+  const baska = [{ id: 'y1', ogrenci_id: 'o9', tur: 'katilim', gun: '2026-10-01', durum: 'geldi' }];
+  assert.deepEqual(O.eksikYoklamalar([OGR], baska, { yil: 2026, ay: 10, bugun: '2026-10-20' }), []);
+});
+
+test('ayda hiç işaret yoksa uyarı basılmaz', () => {
+  const ay = { yil: 2026, ay: 10, bugun: '2026-10-20' };
+  assert.deepEqual(O.eksikYoklamalar([OGR], [], ay), []);
+  assert.equal(O.eksikSeridi([OGR], [], ay), '');
+  assert.equal(O.eksikSeridi([], KALIP, ay), '', 'öğrenci yoksa uyarı da yok');
+});
+
+test('uyarı şeridi eksik günleri düğme olarak basar', () => {
+  const h = O.eksikSeridi([OGR], KALIP, { yil: 2026, ay: 10, bugun: '2026-10-20' });
+  assert.ok(h.includes('class="ogr-uyari"'));
+  assert.ok(h.includes('2 ders günü işaretsiz'));
+  assert.ok(h.includes('data-act="ogrenci-gun"') && h.includes('data-id="2026-10-13"'),
+    'çip o günü açmalı');
+  assert.ok(h.includes('13 Ekim'), 'gün okunur biçimde yazılmalı');
+  assert.ok(h.includes('Sal'), 'hafta günü de görünmeli');
+  assert.ok(h.includes('Güne bas, yoklamayı gir.'));
+});
+
+test('uyarı şeridi altı günü gösterip kalanı sayar', () => {
+  const t = [
+    { id: 'a', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-01', durum: 'geldi' },
+    { id: 'b', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-05', durum: 'geldi' },
+    { id: 'c', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-06', durum: 'geldi' }
+  ];
+  // Kalıp pazartesi + salı + perşembe: 30 gün içinde 10 gün işaretsiz.
+  const h = O.eksikSeridi([OGR], t, { yil: 2026, ay: 10, bugun: '2026-10-31' });
+  assert.equal((h.match(/class="ogr-uyari-gun"/g) || []).length, 6, 'en çok altı gün gösterilmeli');
+  assert.ok(h.includes('+4 gün'), 'kalan gün sayı olarak yazılmalı');
+  assert.ok(h.includes('10 ders günü işaretsiz'));
+});
+
+test('uyarı şeridi sayfada başlığın altında durur', () => {
+  // Kurgu günü 5 Ekim 2026. Cuma kalıbı (9 Ekim işaretli) 2 Ekim'i eksik
+  // bırakır; sayfa açılınca uyarı görünmeli.
+  const D = {
+    brands: [], folders: [], tracks: [], players: [], broadcast: [], announcements: [],
+    playlists: [], playlistTracks: [], coffeeAttempts: [], subscriptions: [], plans: [],
+    requests: [], olaylar: [], kurulum: {},
+    ogrenciler: [OGR],
+    ogrenciKayitlari: [{ id: 'y1', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-09', durum: 'geldi' }]
+  };
+  const h = V.gorunum({ nav: 'plan', sub: 'ogrenciler', ogrenciYil: 2026, ogrenciAy: 10,
+    openFolder: null, openBrand: null, openPlaylist: null, q: '' }, D, UI).html;
+  assert.ok(h.includes('class="ogr-uyari"'), 'sayfada uyarı görünmeli');
+  assert.ok(h.includes('data-id="2026-10-02"'), 'çip eksik günü taşımalı');
+  assert.ok(h.includes('class="ogr-takvim-bas"') && h.indexOf('ogr-uyari') > h.indexOf('ogr-takvim-bas'),
+    'uyarı başlığın altında basılmalı');
+  assert.ok(h.indexOf('ogr-uyari') < h.indexOf('ogr-izgara'), 'ızgara uyarının altında kalmalı');
+});
+
 test('detayda yoklama özeti var ama işaret yok', () => {
   const h = O.ogrenciDetay(OGR, KAYIT, {}, AY);
   assert.ok(h.includes('YOKLAMA'));

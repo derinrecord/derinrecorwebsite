@@ -332,6 +332,75 @@
     </div>`;
   }
 
+  // ---------- Eksik yoklama ----------
+
+  // Pazartesi = 0 … pazar = 6. Tarih bozuksa -1 döner ve o gün hiç sayılmaz.
+  const haftaGunu = iso => {
+    const p = String(iso || '').slice(0, 10).split('-').map(Number);
+    if (p.length !== 3 || !p[0] || !p[1] || !p[2]) return -1;
+    return (new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay() + 6) % 7;
+  };
+
+  // Ay içinde yoklama yapılmış hafta günleri "ders günü" sayılır. Stüdyonun
+  // hangi günler çalıştığı ayrı bir ayar olarak tutulmuyor; kalıp zaten
+  // işaretlerin kendisinde görünüyor. Listede olmayan öğrencinin kaydı kalıba
+  // girmez — sayılar da onun üzerinden yürüyor, tutarlı kalsın.
+  function dersGunleri(liste, kayitListesi, a) {
+    const ayar = a || {};
+    const onek = ayOnek(ayar.yil, ayar.ay);
+    const kimler = (liste || []).map(o => o.id);
+    const gunler = new Set();
+    (kayitListesi || []).forEach(k => {
+      if (k.tur !== 'katilim' || kimler.indexOf(k.ogrenci_id) === -1) return;
+      const iso = String(k.gun).slice(0, 10);
+      if (iso.slice(0, 7) !== onek) return;
+      const h = haftaGunu(iso);
+      if (h >= 0) gunler.add(h);
+    });
+    return gunler;
+  }
+
+  // Geçmişte kalmış, ders günü olup hiç işaret taşımayan günler (eskiden yeniye).
+  // Bugün eksik sayılmaz: yoklama gün içinde hâlâ girilebilir. Ay içinde hiç
+  // işaret yoksa kalıp çıkmaz, uyarı da basılmaz — yoksa tatil günleri de eksik
+  // sanılırdı.
+  function eksikYoklamalar(liste, kayitListesi, a) {
+    const ayar = a || {};
+    if (!ayar.yil || !ayar.ay || !ayar.bugun || !(liste || []).length) return [];
+    const gunler = dersGunleri(liste, kayitListesi, ayar);
+    if (!gunler.size) return [];
+    const onek = ayOnek(ayar.yil, ayar.ay);
+    const bugun = String(ayar.bugun).slice(0, 10);
+    const eksik = [];
+    for (let g = 1; g <= ayGunSayisi(ayar.yil, ayar.ay); g++) {
+      const iso = onek + '-' + iki(g);
+      if (iso >= bugun) break;
+      if (!gunler.has(haftaGunu(iso))) continue;
+      const k = gunKatilim(liste, kayitListesi, iso);
+      if (k.geldi + k.gelmedi + k.mazeret === 0) eksik.push(iso);
+    }
+    return eksik;
+  }
+
+  // Şeritte en çok bu kadar gün gösterilir; gerisi "+N gün" olur. Yoksa kırk
+  // günlük bir ay listesi sayfayı kaplardı.
+  const UYARI_GUN_LIMIT = 6;
+
+  // Uyarı yalnız söylemez, düzeltmeye götürür: çip aynı gün eylemini taşır.
+  function eksikSeridi(liste, kayitListesi, a) {
+    const eksik = eksikYoklamalar(liste, kayitListesi, a);
+    if (!eksik.length) return '';
+    const goster = eksik.slice(0, UYARI_GUN_LIMIT);
+    const kalan = eksik.length - goster.length;
+    const cipler = goster.map(iso => `<button class="ogr-uyari-gun" data-act="ogrenci-gun"
+        data-id="${iso}" type="button" title="${esc(gunUzun(iso))} yoklamasını aç">${esc(gunKisa(iso))}<i>${HAFTA[haftaGunu(iso)]}</i></button>`).join('');
+    return `<div class="ogr-uyari">
+      <b>${eksik.length} ders günü işaretsiz</b>
+      <span class="ogr-uyari-cipler">${cipler}${kalan > 0 ? `<span class="ogr-uyari-kalan">+${kalan} gün</span>` : ''}</span>
+      <small>Güne bas, yoklamayı gir.</small>
+    </div>`;
+  }
+
   // Ödeme satırı. duzenleId bu satırsa normal görünüm yerine yerinde açılan
   // açıklama + tutar formu basılır (plan-takvim.js'teki ödeme satırıyla aynı
   // mantık: tutarı sonradan düzeltmek gerekebilir).
@@ -482,6 +551,7 @@
         </span>
         <p class="ogr-ipucu">Güne bas: o günün yoklaması</p>
       </div>
+      ${eksikSeridi(tam, kayitListesi, ayar)}
       <div class="ogr-takvim-sarmal">
         <div class="ogr-takvim-ana">
           <div class="plan-hafta">${HAFTA.map(g => `<span>${g}</span>`).join('')}</div>
@@ -547,6 +617,10 @@
     ogrenciFiltrele: ogrenciFiltrele,
     gunKatilim: gunKatilim,
     gunUzun: gunUzun,
+    haftaGunu: haftaGunu,
+    dersGunleri: dersGunleri,
+    eksikYoklamalar: eksikYoklamalar,
+    eksikSeridi: eksikSeridi,
     aylikOgrenciIzgara: aylikOgrenciIzgara,
     ogrHucre: ogrHucre,
     gunYoklama: gunYoklama,

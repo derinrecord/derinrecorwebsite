@@ -331,7 +331,8 @@ test('ikinci takvim sınıflarının stili de var', () => {
   // durum düğmeleri stilsiz kalırsa okunmaz hâle gelir.
   ['ogr-takvim', 'ogr-takvim-sarmal', 'ogr-takvim-ana', 'ogr-takvim-yan',
     'ogr-izgara', 'ogr-hucre', 'ogr-yoklama', 'ogr-yoklama-liste',
-    'ogr-yoklama-satir', 'ogr-durum', 'ogr-gun-bas', 'ogr-takvim-ay'].forEach(sinif => {
+    'ogr-yoklama-satir', 'ogr-durum', 'ogr-gun-bas', 'ogr-takvim-ay',
+    'ogr-uyari', 'ogr-uyari-gun', 'ogr-uyari-kalan'].forEach(sinif => {
     assert.ok(jsKaynak.includes(sinif), sinif + ' JS\'te üretilmeli');
     assert.ok(new RegExp('\\.' + sinif + '[{. :,]').test(cssKaynak), sinif + ' için CSS kuralı olmalı');
   });
