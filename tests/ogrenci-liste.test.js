@@ -60,9 +60,9 @@ test('boş listede davet metni çıkar', () => {
   assert.ok(aranmis.includes('eşleşen öğrenci yok'));
 });
 
-test('ekleme formu açıkken dört alan ve ekle düğmesi basılır', () => {
+test('ekleme formu açıkken bütün alanlar ve ekle düğmesi basılır', () => {
   const h = bolum([], { ogrenciYeni: true });
-  ['ad', 'veli', 'telefon', 'notlar'].forEach(a =>
+  ['ad', 'veli', 'telefon', 'gun_sayisi', 'aylik_tutar', 'notlar'].forEach(a =>
     assert.ok(h.includes(`data-ogrenci-gir="${a}"`), a + ' alanı olmalı'));
   assert.ok(h.includes('data-act="ogrenci-kaydet"'), 'ekle düğmesi olmalı');
   assert.ok(h.includes('data-act="ogrenci-yeni-kapat"'), 'vazgeç düğmesi olmalı');

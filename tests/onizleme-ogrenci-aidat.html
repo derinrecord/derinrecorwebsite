@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panel — öğrenci · yoklama ve ödeme</title>
+<title>Panel — öğrenci · aylık aidat</title>
 <style>
 /* Radyo Yönetim Paneli — görsel dil.
  *
@@ -809,8 +809,8 @@ body{background:#0b0b0d;padding:22px;display:block}
     </button><button class="ogr-hucre bugun isaretsiz" data-act="ogrenci-gun" data-id="2026-10-05" type="button"
       aria-label="5 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">5</span></span>
-    </button><button class="ogr-hucre eksik acik" data-act="ogrenci-gun" data-id="2026-10-06" type="button"
-      aria-label="6 Ekim 2026 · Sal · 0/2 geldi · 2 gelmedi" aria-pressed="true">
+    </button><button class="ogr-hucre eksik" data-act="ogrenci-gun" data-id="2026-10-06" type="button"
+      aria-label="6 Ekim 2026 · Sal · 0/2 geldi · 2 gelmedi" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">6</span><i class="rozet">0/2</i></span><span class="hucre-alt"><i class="y">2×</i></span>
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-07" type="button"
       aria-label="7 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
@@ -912,100 +912,42 @@ body{background:#0b0b0d;padding:22px;display:block}
       aria-label="8 Kasım 2026 · Paz · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">8</span></span>
     </button></div>
-          <div class="ogr-yoklama">
-      <div class="ogr-gun-bas">
-        <b>6 Ekim 2026 · Sal</b>
-        <span class="ogr-yoklama-ozet">2/2 işaretli · <b class="y">2 gelmedi</b></span>
-        <button class="plan-vazgec" data-act="ogrenci-gun-kapat" type="button" aria-label="Gün yoklamasını kapat">×</button>
-      </div>
-      <ul class="ogr-yoklama-liste"><li class="ogr-yoklama-satir">
-        <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33</small></span>
-        <button class="ogr-durum gelmedi" data-act="ogrenci-katilim"
-          data-id="og1:2026-10-06:gelmedi" type="button"
-          title="Gelmedi — bas: geldi → gelmedi → mazeret → işaretsiz">Gelmedi</button>
-      </li><li class="ogr-yoklama-satir">
-        <span class="metin"><b>Mert Demir</b> <small>Ali Demir · 0532 444 55 66</small></span>
-        <button class="ogr-durum gelmedi" data-act="ogrenci-katilim"
-          data-id="og2:2026-10-06:gelmedi" type="button"
-          title="Gelmedi — bas: geldi → gelmedi → mazeret → işaretsiz">Gelmedi</button>
-      </li></ul>
-      <p class="ogr-ipucu">Düğmeye bas: geldi → gelmedi → mazeret → işaretsiz</p>
-    </div>
+          
         </div>
         <aside class="ogr-takvim-yan"><div class="ogrenci-klasor">
       <div class="plan-filtre">
         <input class="plan-filtre-gir" data-act="ogrenci-ara" type="text" autocomplete="off"
           placeholder="Öğrenci ara…" value="">
       </div>
-      <p class="ogr-toplam">Ekim 2026 · 2 öğrenci · <b class="g">2.000 ₺ tahsil</b> · <b class="y">3.000 ₺ bekleyen</b> · <b class="y">4 gelmedi</b> · <b class="m">1 mazeret</b></p>
+      <p class="ogr-toplam">Ekim 2026 · 2 öğrenci · <b class="y">4 gelmedi</b> · <b class="m">1 mazeret</b></p>
       <div class="ogr-suzgec"><button class="ogr-odak secili"
         data-act="ogrenci-odak" data-id="" type="button"
         aria-pressed="true">Tümü <b>2</b></button>
       <button class="ogr-odak"
         data-act="ogrenci-odak" data-id="borc" type="button"
-        aria-pressed="false">Borçlular <b>2</b></button><button class="ogr-odak"
+        aria-pressed="false">Borçlular <b>1</b></button><button class="ogr-odak"
         data-act="ogrenci-odak" data-id="gelmedi" type="button"
         aria-pressed="false">Gelmedi ≥ 3 <b>1</b></button></div>
       <button class="plan-ekle" data-act="ogrenci-yeni" type="button">+ öğrenci ekle</button>
-      <p class="ogr-aidat-tamam">Ekim 2026
-        aidatları hazır · 2 öğrencinin kaydı var</p>
-      <ul class="plan-liste ogrenci-liste"><li class="plan-satir ogrenci acik">
+      <div class="ogr-aidat">
+      <button class="ogr-aidat-dugme" data-act="ogrenci-aidat-olustur" type="button">
+        Bu ayın aidatlarını oluştur</button>
+      <small>2 öğrenci · toplam <b>4.300 ₺</b></small>
+    </div>
+      <ul class="plan-liste ogrenci-liste"><li class="plan-satir ogrenci">
       <button class="ogr-ac" data-act="ogrenci-detay" data-id="og1"
-      type="button" aria-expanded="true"
-      aria-label="Ödeme listesini ve ay özetini kapat">▾</button>
-      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33</small><br><small>Salı-Perşembe</small></span>
+      type="button" aria-expanded="false"
+      aria-label="Ödeme listesi ve ay özeti">▸</button>
+      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33</small><br><small>Salı-Perşembe</small><span class="ogr-cip"><i class="p">Haftada 3 gün</i><i class="p">Aylık 2.500 ₺</i><i class="g">3 geldi</i><i class="y">1 gelmedi</i><i class="m">1 mazeret</i><i class="b">900 ₺ devir</i></span></span>
       <button class="duzenle" data-act="ogrenci-duzenle" data-id="og1" type="button" aria-label="Düzenle">✎</button>
       <button class="sil" data-act="ogrenci-sil" data-id="og1" type="button" aria-label="Sil">×</button>
-      <div class="ogr-detay">
-      <div class="ogr-bolum">
-        <h4>YOKLAMA</h4>
-        <p class="ogr-ozet">Ekim 2026 ·
-          <b class="g">3 geldi</b> · <b class="y">1 gelmedi</b> · <b class="m">1 mazeret</b></p>
-        <p class="ogr-ipucu">Gün gün yoklama öğrenci takviminden işaretlenir.</p>
-      </div>
-      <div class="ogr-bolum">
-        <h4>ÖDEMELER</h4>
-        <p class="ogr-ozet">Ekim 2026 ·
-          <b class="g">2.000 ₺ tahsil</b> · <b class="y">1.500 ₺ bekliyor</b></p>
-        <p class="ogr-acik-borc">Toplam açık borç: <b>2.400 ₺</b> · 2 kayıt</p>
-        <button class="plan-ekle" data-act="ogrenci-odeme-yeni" data-id="og1" type="button">+ ödeme ekle</button>
-        <ul class="plan-liste ogr-odeme-liste"><li class="plan-satir ogr-odeme">
-      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om2" type="button"
-        aria-label="Ödendi işaretle"></button>
-      <span class="metin">Kasım aidatı <small>20 Ekim</small></span>
-      <b class="tutar">1.500 ₺</b>
-      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om2" type="button" aria-label="Düzenle">✎</button>
-      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om2" type="button" aria-label="Sil">×</button>
-    </li><li class="plan-satir ogr-odeme bitti">
-      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om1" type="button"
-        aria-label="Ödenmedi işaretle">✓</button>
-      <span class="metin">Ekim aidatı <small>3 Ekim</small></span>
-      <b class="tutar">2.000 ₺</b>
-      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om1" type="button" aria-label="Düzenle">✎</button>
-      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om1" type="button" aria-label="Sil">×</button>
-    </li><li class="plan-satir ogr-odeme bitti">
-      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om3" type="button"
-        aria-label="Ödenmedi işaretle">✓</button>
-      <span class="metin">Eylül aidatı <small>15 Eylül</small></span>
-      <b class="tutar">2.000 ₺</b>
-      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om3" type="button" aria-label="Düzenle">✎</button>
-      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om3" type="button" aria-label="Sil">×</button>
-    </li><li class="plan-satir ogr-odeme">
-      <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om4" type="button"
-        aria-label="Ödendi işaretle"></button>
-      <span class="metin">Ağustos aidatı <small>10 Ağustos</small></span>
-      <b class="tutar">900 ₺</b>
-      <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="om4" type="button" aria-label="Düzenle">✎</button>
-      <button class="sil" data-act="ogrenci-odeme-sil" data-id="om4" type="button" aria-label="Sil">×</button>
-    </li></ul>
-      </div>
-    </div>
+      
       
     </li><li class="plan-satir ogrenci">
       <button class="ogr-ac" data-act="ogrenci-detay" data-id="og2"
       type="button" aria-expanded="false"
       aria-label="Ödeme listesi ve ay özeti">▸</button>
-      <span class="metin"><b>Mert Demir</b> <small>Ali Demir · 0532 444 55 66</small><span class="ogr-cip"><i class="p">Haftada 2 gün</i><i class="p">Aylık 1.800 ₺</i><i class="g">1 geldi</i><i class="y d">3 gelmedi</i><i class="y">1.500 ₺ bekliyor</i></span></span>
+      <span class="metin"><b>Mert Demir</b> <small>Ali Demir · 0532 444 55 66</small><span class="ogr-cip"><i class="p">Haftada 2 gün</i><i class="p">Aylık 1.800 ₺</i><i class="g">1 geldi</i><i class="y d">3 gelmedi</i></span></span>
       <button class="duzenle" data-act="ogrenci-duzenle" data-id="og2" type="button" aria-label="Düzenle">✎</button>
       <button class="sil" data-act="ogrenci-sil" data-id="og2" type="button" aria-label="Sil">×</button>
       

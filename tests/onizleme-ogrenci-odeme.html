@@ -514,6 +514,9 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .ogr-cip i.m{color:var(--muted)}
 .ogr-cip i.b{color:var(--danger);font-weight:700}
 .ogr-cip i.y.d{color:var(--danger);font-weight:700}
+/* Koşul bilgisi (haftada kaç gün, aylık tutar): ödemelerden bağımsız, o
+   yüzden yeşil/kırmızı değil nötr bir renkte durur. */
+.ogr-cip i.p{color:var(--purple)}
 
 /* Klasör başlığı özeti ve uyarı süzgeçleri: "kim borçlu, kim aksıyor"
    listeyi açmadan okunsun diye en üstte durur. */
@@ -534,6 +537,21 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .ogr-acik-borc{margin:0 0 9px;font-size:11.5px;color:var(--warn,#f0a132);
   font-variant-numeric:tabular-nums}
 .ogr-acik-borc b{font-weight:700}
+
+/* Aylık aidat: tutarı yazılmış her aktif öğrenci için ayın kayıtlarını tek
+   düğmeyle açar. Yanındaki yazı kaç kayıt ve ne kadar tutacağını söyler,
+   böylece onay penceresi sürpriz olmaz. */
+.ogr-aidat{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;
+  padding:9px 11px;background:rgba(212,194,78,.07);
+  border:1px solid rgba(212,194,78,.35);border-radius:10px}
+.ogr-aidat-dugme{padding:7px 12px;font:inherit;font-size:11.5px;font-weight:700;
+  color:var(--gold-ink);background:var(--gold);border:0;border-radius:8px;
+  cursor:pointer;letter-spacing:.02em}
+.ogr-aidat-dugme:hover{filter:brightness(1.08)}
+.ogr-aidat small{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ogr-aidat small b{color:var(--gold)}
+.ogr-aidat-tamam{margin:9px 0 0;padding:8px 11px;font-size:11px;color:var(--muted);
+  background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px}
 
 .ogr-detay{flex:0 0 100%;display:grid;gap:16px;margin-top:12px;padding-top:12px;
   border-top:1px solid var(--line)}
@@ -762,6 +780,7 @@ body{background:#0b0b0d;padding:22px;display:block}
         </span>
         <p class="ogr-ipucu">Güne bas: o günün yoklaması</p>
       </div>
+      <datalist id="ogr-gun-sayisi-listesi"><option value="2"></option><option value="3"></option><option value="4"></option></datalist>
       
       <div class="ogr-takvim-sarmal">
         <div class="ogr-takvim-ana">
@@ -928,6 +947,8 @@ body{background:#0b0b0d;padding:22px;display:block}
         data-act="ogrenci-odak" data-id="gelmedi" type="button"
         aria-pressed="false">Gelmedi ≥ 3 <b>1</b></button></div>
       <button class="plan-ekle" data-act="ogrenci-yeni" type="button">+ öğrenci ekle</button>
+      <p class="ogr-aidat-tamam">Ekim 2026
+        aidatları hazır · 2 öğrencinin kaydı var</p>
       <ul class="plan-liste ogrenci-liste"><li class="plan-satir ogrenci acik">
       <button class="ogr-ac" data-act="ogrenci-detay" data-id="og1"
       type="button" aria-expanded="true"
@@ -984,7 +1005,7 @@ body{background:#0b0b0d;padding:22px;display:block}
       <button class="ogr-ac" data-act="ogrenci-detay" data-id="og2"
       type="button" aria-expanded="false"
       aria-label="Ödeme listesi ve ay özeti">▸</button>
-      <span class="metin"><b>Mert Demir</b> <small>Ali Demir · 0532 444 55 66</small><span class="ogr-cip"><i class="g">1 geldi</i><i class="y d">3 gelmedi</i><i class="y">1.500 ₺ bekliyor</i></span></span>
+      <span class="metin"><b>Mert Demir</b> <small>Ali Demir · 0532 444 55 66</small><span class="ogr-cip"><i class="p">Haftada 2 gün</i><i class="p">Aylık 1.800 ₺</i><i class="g">1 geldi</i><i class="y d">3 gelmedi</i><i class="y">1.500 ₺ bekliyor</i></span></span>
       <button class="duzenle" data-act="ogrenci-duzenle" data-id="og2" type="button" aria-label="Düzenle">✎</button>
       <button class="sil" data-act="ogrenci-sil" data-id="og2" type="button" aria-label="Sil">×</button>
       

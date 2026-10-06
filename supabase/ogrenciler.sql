@@ -25,6 +25,15 @@ create table if not exists public.ogrenciler (
   updated_at timestamptz not null default now()
 );
 
+-- Haftalık ders günü sayısı (2, 3, 4 …) ve aylık aidat tutarı. Aidat tutarı
+-- tarifeden HESAPLANMAZ: kursa haftanın 2 günü gelenle 3 günü gelenin fiyatı
+-- ayrı olduğu için tutar öğrenci başına elle yazılır. Gün sayısı bu yüzden
+-- yalnız bilgi olarak durur; "bu ayın aidatlarını oluştur" kaydı tutardan
+-- üretilir. Boş bırakılabilir: kolonlar null'lanabilir, mevcut satırlar
+-- bozulmaz.
+alter table public.ogrenciler add column if not exists gun_sayisi int;
+alter table public.ogrenciler add column if not exists aylik_tutar numeric;
+
 -- Liste ada göre okunur.
 create index if not exists ogrenciler_ad_idx
   on public.ogrenciler (ad);

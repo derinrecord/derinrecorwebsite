@@ -617,6 +617,22 @@
   // --- öğrenci listesi (bkz. ogrenciler.js) ---
   // Takvim içindeki ayrı klasör. Kaydetme deseni takvimin birebir aynısı:
   // anında kayıt, iyimser ekleme, "kaydedilemedi — tekrar dene".
+  // Form alanlarındaki sayıları okur. Boş alan null döner: kolon boş kalır,
+  // "0" yazılmış gibi görünmez. Sayı olmayan girdi de null'a düşer — panele
+  // elle yazılan çöp sunucuya taşınmaz (sunucu da reddederdi, ama kullanıcı
+  // sessiz bir hata yerine alanın boş kaldığını görsün).
+  const sayiOku = v => {
+    const s = String(v == null ? '' : v).trim().replace(',', '.');
+    if (!s) return null;
+    const n = Number(s);
+    return isFinite(n) ? n : null;
+  };
+  // Haftalık gün sayısı tam sayıdır; 1'in altı anlamsız olduğu için boş sayılır.
+  const gunOku = v => {
+    const n = sayiOku(v);
+    return n == null || n < 1 ? null : Math.round(n);
+  };
+
   async function ogrenciYazDene(islem, veri) {
     const depo = client.from('ogrenciler');
     try {
@@ -625,7 +641,8 @@
         // Yalnız gönderilen alanlar yazılır; gönderilmeyen alanın üstüne
         // yazılmaz (planYazDene ile aynı kural).
         const degisim = { updated_at: new Date().toISOString() };
-        ['ad', 'veli', 'telefon', 'notlar'].forEach(a => { if (a in veri) degisim[a] = veri[a]; });
+        ['ad', 'veli', 'telefon', 'notlar', 'gun_sayisi', 'aylik_tutar']
+          .forEach(a => { if (a in veri) degisim[a] = veri[a]; });
         return (await depo.update(degisim).eq('id', veri.id)).error || null;
       }
       if (islem === 'sil') return (await depo.delete().eq('id', veri.id)).error || null;
@@ -649,7 +666,7 @@
   async function ogrenciEkle(veri) {
     const yerel = Object.assign({
       id: 'yerel-' + Date.now(), ad: '', veli: '', telefon: '', notlar: '',
-      aktif: true, hata: null
+      gun_sayisi: null, aylik_tutar: null, aktif: true, hata: null
     }, veri);
     D.ogrenciler = (D.ogrenciler || []).concat([yerel]);
     state.ogrenciYeni = false;
@@ -674,7 +691,10 @@
       if (k) k.focus();
       return;
     }
-    return ogrenciEkle({ ad: ad, veli: oku('veli'), telefon: oku('telefon'), notlar: oku('notlar') });
+    return ogrenciEkle({
+      ad: ad, veli: oku('veli'), telefon: oku('telefon'), notlar: oku('notlar'),
+      gun_sayisi: gunOku(oku('gun_sayisi')), aylik_tutar: sayiOku(oku('aylik_tutar'))
+    });
   }
 
   // Açık düzenleme formunu okur ve satırı günceller. Kayıt düşerse form açık
@@ -695,7 +715,8 @@
       return;
     }
     const hata = await ogrenciYazDene('guncelle', {
-      id: id, ad: ad, veli: oku('veli'), telefon: oku('telefon'), notlar: oku('notlar')
+      id: id, ad: ad, veli: oku('veli'), telefon: oku('telefon'), notlar: oku('notlar'),
+      gun_sayisi: gunOku(oku('gun_sayisi')), aylik_tutar: sayiOku(oku('aylik_tutar'))
     });
     if (hata) { bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true); return; }
     state.ogrenciDuzenle = null;
@@ -810,6 +831,24 @@
     if (hata) { bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true); return; }
     state.ogrenciOdemeDuzenle = null;
     await yenile();
+  }
+
+  // Bu ayın aidatlarını topluca açar. Tutar öğrencide yazılı olduğu için
+  // kayıtlar tarifeden değil oradan üretilir (bkz. ogrenciler.js · aylikAidatlar).
+  // Tek istekte toplu ekleme yapılır: öğrenci başına ayrı gidiş, onlarca
+  // satırlı sınıfta yarım kalmış bir ay bırakırdı. Onay penceresinden geçer —
+  // bütün ayın borçlarını bir anda açan bir işlem sessizce çalışmamalı.
+  async function ogrenciAidatOlustur(yil, ay) {
+    if (!OG) { bildir('Öğrenci modülü yüklenemedi.', 'err'); return; }
+    const h = OG.aylikAidatlar(D.ogrenciler || [], D.ogrenciKayitlari || [], { yil: yil, ay: ay });
+    if (!h.kayitlar.length) { bildir('Bu ay için oluşturulacak aidat yok.', 'err'); return; }
+    const kayitHatasi = await ogrenciKayitYazDene('ekle', h.kayitlar);
+    if (kayitHatasi) {
+      bildir('Kaydedilemedi: ' + (kayitHatasi.message || 'bilinmeyen hata'), true);
+      return;
+    }
+    await yenile();
+    bildir(h.kayitlar.length + ' aidat kaydı oluşturuldu · ' + OG.para(h.toplam) + ' ₺');
   }
 
   state.planKatli = planKatliOku();
@@ -1615,6 +1654,27 @@
         state.ogrenciOdemeYeni = null;
         return ciz();
       }
+      case 'ogrenci-aidat-olustur': {
+        // Ayın aidatlarını topluca açar. Görünen ay esas alınır: öğrenci
+        // okuyla Eylül'e geçen yönetici Eylül'ün aidatını oluşturur.
+        if (!OG) return hata('Öğrenci modülü yüklenemedi.');
+        const simdi = new Date();
+        const yil = state.ogrenciYil || simdi.getUTCFullYear();
+        const ay = state.ogrenciAy || (simdi.getUTCMonth() + 1);
+        const h = OG.aylikAidatlar(D.ogrenciler || [], D.ogrenciKayitlari || [], { yil: yil, ay: ay });
+        if (!h.kayitlar.length) return hata('Bu ay için oluşturulacak aidat yok.');
+        pencere({
+          baslik: OG.AYLAR[ay - 1] + ' ' + yil + ' aidatları',
+          govde: '<p class="sub">' + h.kayitlar.length + ' öğrenci için toplam '
+            + OG.para(h.toplam) + ' ₺ aidat kaydı açılacak. Kayıtlar ödenmemiş '
+            + 'olarak düşer; ödeme alındıkça tek tek işaretlenir.'
+            + (h.atlanan ? ' ' + h.atlanan + ' öğrencinin bu ay kaydı zaten var, atlanacak.' : '')
+            + '</p>',
+          onayMetni: 'AİDATLARI OLUŞTUR',
+          onOnay: () => ogrenciAidatOlustur(yil, ay)
+        });
+        return;
+      }
       case 'ogrenci-odeme-kaydet': return ogrenciOdemeGir(id);
       case 'ogrenci-odeme-isaret': {
         const kayit = (D.ogrenciKayitlari || []).find(x => x.id === id);
@@ -1658,7 +1718,9 @@
         const satir = (D.ogrenciler || []).find(x => x.id === id);
         if (!satir || !satir.hata) return;
         const hata = await ogrenciYazDene('ekle', {
-          ad: satir.ad, veli: satir.veli, telefon: satir.telefon, notlar: satir.notlar
+          ad: satir.ad, veli: satir.veli, telefon: satir.telefon, notlar: satir.notlar,
+          gun_sayisi: satir.gun_sayisi == null ? null : satir.gun_sayisi,
+          aylik_tutar: satir.aylik_tutar == null ? null : satir.aylik_tutar
         });
         if (hata) { satir.hata = hata.message || 'kaydedilemedi'; ciz(); return; }
         await yenile();

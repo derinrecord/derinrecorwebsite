@@ -5,6 +5,9 @@
 // Aşama 3: ödeme — öğrenci başına tahsilat satırları (açıklama + tutar).
 // Aşama 4: özet — ay özeti, borç/devamsızlık rozetleri ve uyarı süzgeçleri
 //           ("kim borçlu, kim aksıyor" tek bakışta).
+// Aşama 5: aidat — haftalık gün sayısı ve aylık tutar öğrencide durur; tu-
+//           tar elle yazıldığı için tarife yok. "Bu ayın aidatlarını oluştur"
+//           tek düğmeyle ayın kayıtlarını açar, kaydı olanı atlar.
 //
 // Bu dosya saf hesap ve HTML üretiminden ibarettir: DOM'a dokunmaz, ağa
 // çıkmaz. Böylece node testleriyle doğrudan sınanabiliyor (bkz.
@@ -115,6 +118,59 @@
     };
   }
 
+  // ---------- Aylık aidat oluşturma ----------
+
+  // Bu ayın aidat kayıtları: tutarı elle yazılmış, aktif her öğrenci için bir
+  // "ödemeler" satırı üretir. Tarife yok — tutar öğrencide yazılı olduğu gibi
+  // alınır, çünkü haftada 2 gün gelenle 3 gün gelenin fiyatı ayrı.
+  //
+  // Çift kayıt koruması: o ay için zaten bir ödeme kaydı düşülmüşse (elle
+  // girilmiş bir tahsilat da olabilir) öğrenci atlanır. Düğmeye iki kez basmak
+  // bu yüzden ikinci kez kayıt açmaz; atlananlar ayrıca sayılır ki ekran
+  // "neden 5 değil 3 kayıt açıldı" sorusunu cevaplayabilsin.
+  function aylikAidatlar(liste, kayitListesi, a) {
+    const ayar = a || {};
+    const bos = { kayitlar: [], atlanan: 0, toplam: 0 };
+    if (!ayar.yil || !ayar.ay) return bos;
+    const onek = ayOnek(ayar.yil, ayar.ay);
+    const kayitlar = [];
+    let atlanan = 0;
+    (liste || []).forEach(o => {
+      if (!o || !o.id || o.aktif === false) return;
+      const tutar = Number(o.aylik_tutar || 0);
+      if (!(tutar > 0)) return;
+      const varMi = ogrenciKayitlari(kayitListesi, o.id, 'odeme')
+        .some(k => String(k.gun).slice(0, 7) === onek);
+      if (varMi) { atlanan++; return; }
+      kayitlar.push({
+        ogrenci_id: o.id, tur: 'odeme', gun: onek + '-01',
+        metin: AYLAR_ADI[ayar.ay - 1] + ' aidatı', tutar: tutar, bitti: false
+      });
+    });
+    return {
+      kayitlar: kayitlar, atlanan: atlanan,
+      toplam: kayitlar.reduce((t, k) => t + k.tutar, 0)
+    };
+  }
+
+  // Toplu aidat düğmesi. Tutarı yazılmış öğrenci yoksa hiç basılmaz (işlevsiz
+  // düğme durmaz). Kaydı zaten olanlar varsa bu yazıyla söylenir: yönetici
+  // "aidatlar oluşturuldu mu" sorusunu düğmeden cevaplayabilsin.
+  function aidatDugmesi(liste, kayitListesi, a) {
+    if (!(liste || []).length) return '';
+    const h = aylikAidatlar(liste, kayitListesi, a);
+    if (!h.kayitlar.length && !h.atlanan) return '';
+    if (!h.kayitlar.length) {
+      return `<p class="ogr-aidat-tamam">${esc(AYLAR_ADI[(a || {}).ay - 1] + ' ' + (a || {}).yil)}
+        aidatları hazır · ${h.atlanan} öğrencinin kaydı var</p>`;
+    }
+    return `<div class="ogr-aidat">
+      <button class="ogr-aidat-dugme" data-act="ogrenci-aidat-olustur" type="button">
+        Bu ayın aidatlarını oluştur</button>
+      <small>${h.kayitlar.length} öğrenci · toplam <b>${para(h.toplam)} ₺</b>${h.atlanan ? ` · ${h.atlanan} öğrencinin kaydı zaten var` : ''}</small>
+    </div>`;
+  }
+
   // Bu eşiği aşan devamsızlık satırda ayrı renkte vurgulanır: stüdyo sahibi
   // "kim aksıyor" sorusunu listeyi tek tek açmadan görsün.
   const DEVAMSIZLIK_ESIK = 3;
@@ -193,6 +249,18 @@
         type="button">kaydedilemedi — tekrar dene</button>`
     : '';
 
+  // Haftalık ders günü sayısı: hazır seçenekler (2/3/4) sunulur ama alan
+  // serbest bırakılır — haftada 5 gün gelen olabilir. <select> serbest girişi
+  // kapatırdı; bu yüzden sayı alanı + datalist kullanılıyor.
+  const GUN_SECENEKLERI = [2, 3, 4];
+  const GUN_LISTESI_ID = 'ogr-gun-sayisi-listesi';
+
+  // Aynı datalist birden çok forma hizmet eder; sayfada bir kez basılır
+  // (bkz. ogrenciTakvimi). data- listesi formu açan sayı alanlarına bağlanır.
+  const gunSecenekListesi = () => `<datalist id="${GUN_LISTESI_ID}">`
+    + GUN_SECENEKLERI.map(n => `<option value="${n}"></option>`).join('')
+    + '</datalist>';
+
   function alanlar(o, kip) {
     const k = kip === 'duzenle' ? 'ogrenci-duzenle' : 'ogrenci-gir';
     const v = ad => esc(o && o[ad] ? o[ad] : '');
@@ -202,6 +270,11 @@
         placeholder="Veli" value="${v('veli')}">
       <input class="plan-gir" data-${k}="telefon" type="tel" autocomplete="off"
         placeholder="Telefon" value="${v('telefon')}">
+      <input class="plan-gir gun" data-${k}="gun_sayisi" type="number" min="1" max="7" step="1"
+        list="${GUN_LISTESI_ID}" autocomplete="off" placeholder="Haftalık gün"
+        title="Haftada kaç gün geliyor (2/3/4 ya da elle)" value="${v('gun_sayisi')}">
+      <input class="plan-gir tutar" data-${k}="aylik_tutar" type="text" inputmode="decimal"
+        autocomplete="off" placeholder="Aylık tutar ₺" value="${v('aylik_tutar')}">
       <input class="plan-gir" data-${k}="notlar" type="text" autocomplete="off"
         placeholder="Not" value="${v('notlar')}">`;
   }
@@ -213,6 +286,11 @@
     const od = odemeOzeti(liste, o.id, a.yil, a.ay);
     const d = dikkatOzeti(liste, o, a);
     const p = [];
+    // Koşul bilgisi (haftalık gün, aylık tutar) ilk sırada: öğrencinin bu ay
+    // hiç kaydı olmasa bile satırda görünür, "kaça geliyor" sorusu açmadan
+    // okunur.
+    if (o.gun_sayisi) p.push(`<i class="p">Haftada ${esc(o.gun_sayisi)} gün</i>`);
+    if (Number(o.aylik_tutar) > 0) p.push(`<i class="p">Aylık ${para(o.aylik_tutar)} ₺</i>`);
     if (k.toplam) {
       p.push(`<i class="g">${k.geldi} geldi</i>`);
       // Eşiği aşan devamsızlık "d" ile ayrı renkte: göze çarpsın.
@@ -551,6 +629,7 @@
         </span>
         <p class="ogr-ipucu">Güne bas: o günün yoklaması</p>
       </div>
+      ${gunSecenekListesi()}
       ${eksikSeridi(tam, kayitListesi, ayar)}
       <div class="ogr-takvim-sarmal">
         <div class="ogr-takvim-ana">
@@ -589,12 +668,17 @@
       ${toplamSatiri(tam, kayitListesi, ayar)}
       ${odakCubugu(tam, kayitListesi, durum, ayar)}
       ${ekle}
+      ${aidatDugmesi(tam, kayitListesi, ayar)}
       ${govde}
     </div>`;
   }
 
   const api = {
     KATILIM: KATILIM,
+    GUN_SECENEKLERI: GUN_SECENEKLERI,
+    para: para,
+    aylikAidatlar: aylikAidatlar,
+    aidatDugmesi: aidatDugmesi,
     katilimSonraki: katilimSonraki,
     katilimEtiket: katilimEtiket,
     katilimKisa: katilimKisa,

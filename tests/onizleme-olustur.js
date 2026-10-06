@@ -614,6 +614,8 @@ if (senaryo === 'harmonik') {
 
 // "ogrenci-suzgec" modu aynı klasörü uyarı süzgeci seçiliyken önizler:
 // yalnız borçlu öğrenciler listelenir, süzgeç düğmesi ve rozetler görünür.
+// "ogrenci-aidat" bu ayın ödemeleri henüz açılmamışken klasörü önizler:
+// haftalık gün/aylık tutar rozetleri ve "bu ayın aidatlarını oluştur" düğmesi.
 //
 // "plan", "plan-gun" ve "plan-duzenle" modları Ödeme Takip Takvimi'ni
 // (Plan → Takvim) örnek verilerle önizler. "plan" ay ızgarasını ve hücre içi
@@ -622,7 +624,7 @@ if (senaryo === 'harmonik') {
 // (tıklama yok); amaç yerleşimin ve renklerin gözle doğrulanması.
 if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
   || senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme' || senaryo === 'ogrenci-suzgec'
-  || senaryo === 'ogrenci-uyari') {
+  || senaryo === 'ogrenci-uyari' || senaryo === 'ogrenci-aidat') {
   const P = require(path.join(kok, 'plan-takvim.js'));
   // Öğrenci klasörü modülü pencereden okur; node'da pencere yok, burada kurulur.
   global.window = Object.assign(global.window || {}, { DerinOgrenci: require(path.join(kok, 'ogrenciler.js')) });
@@ -655,10 +657,11 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
       { id: 'm4', gun: '2026-10-20', tur: 'madde', metin: 'Radyo jingle yenile', bitti: true, sira: 0 },
       { id: 'n1', gun: '2026-10-27', tur: 'not', metin: 'Havale bekleniyor, dekont istendi.', bitti: false, sira: 0 }
     ],
-    // Öğrenci klasörü boş kalmasın: iki satır örnek veri.
+    // Öğrenci klasörü boş kalmasın: iki satır örnek veri. Haftalık gün
+    // sayısı ve aylık tutar elle yazılı (fiyat gün sayısına göre değişiyor).
     ogrenciler: [
-      { id: 'og1', ad: 'Elif Yılmaz', veli: 'Ayşe Yılmaz', telefon: '0531 111 22 33', notlar: 'Salı-Perşembe', aktif: true },
-      { id: 'og2', ad: 'Mert Demir', veli: 'Ali Demir', telefon: '0532 444 55 66', notlar: '', aktif: true }
+      { id: 'og1', ad: 'Elif Yılmaz', veli: 'Ayşe Yılmaz', telefon: '0531 111 22 33', notlar: 'Salı-Perşembe', gun_sayisi: 3, aylik_tutar: 2500, aktif: true },
+      { id: 'og2', ad: 'Mert Demir', veli: 'Ali Demir', telefon: '0532 444 55 66', notlar: '', gun_sayisi: 2, aylik_tutar: 1800, aktif: true }
     ],
     // Yoklama şeridi ve ödeme listesi gözle doğrulanabilsin diye karışık
     // işaretler: gelen, gelmeyen, mazeretli günler ve iki tahsilat.
@@ -688,6 +691,13 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
     const kalan = ['ok1', 'ok3', 'ok6', 'ok7', 'om1', 'om5'];
     D.ogrenciKayitlari = D.ogrenciKayitlari.filter(k => kalan.indexOf(k.id) !== -1);
   }
+  // Aidat senaryosu: bu ayın ödemeleri henüz açılmamış. "Bu ayın aidatlarını
+  // oluştur" düğmesi kaç kayıt açacağını yazar; geçen ayların borcu kalır ki
+  // "devir" rozeti de görünsün.
+  if (senaryo === 'ogrenci-aidat') {
+    D.ogrenciKayitlari = D.ogrenciKayitlari
+      .filter(k => !(k.tur === 'odeme' && String(k.gun).slice(0, 7) === '2026-10'));
+  }
   const ui = { now: () => simdi };
   // Öğrenci senaryoları marka takviminin ay görünümünde durur; öğrenci işi
   // ALTINDAKİ ikinci takvimde yapılır. "ogrenci" bir günün yoklamasını
@@ -695,7 +705,8 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
   // "ogrenci-odeme" yerinde düzenleme formunu, "ogrenci-suzgec" ise borçlu
   // süzgecini gösterir.
   const ogrenciMi = senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme'
-    || senaryo === 'ogrenci-suzgec' || senaryo === 'ogrenci-uyari';
+    || senaryo === 'ogrenci-suzgec' || senaryo === 'ogrenci-uyari'
+    || senaryo === 'ogrenci-aidat';
   const acikGun = (senaryo === 'plan' || ogrenciMi) ? null : '2026-10-27';
   const duzenle = senaryo === 'plan-duzenle' ? 'o1' : null;
   const state = { nav: 'plan', sub: 'takvim', planYil: 2026, planAy: 10, planAcikGun: acikGun, planDuzenle: duzenle, planKatli: [] };
@@ -714,7 +725,7 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
     state.ogrenciOdak = 'borc';
     state.ogrenciAcik = 'og2';
   }
-  if (senaryo === 'ogrenci-uyari') {
+  if (senaryo === 'ogrenci-uyari' || senaryo === 'ogrenci-aidat') {
     state.ogrenciYil = 2026;
     state.ogrenciAy = 10;
   }
@@ -735,7 +746,8 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
     ogrenci: 'öğrenci · yoklama ve ödeme',
     'ogrenci-odeme': 'öğrenci · ödeme düzenleme',
     'ogrenci-suzgec': 'öğrenci · uyarı süzgeci',
-    'ogrenci-uyari': 'öğrenci · eksik yoklama'
+    'ogrenci-uyari': 'öğrenci · eksik yoklama',
+    'ogrenci-aidat': 'öğrenci · aylık aidat'
   };
   const baslik = SAHNE_BASLIKLARI[senaryo] || 'gün sekmesi';
   const sayfa = `<!doctype html>
