@@ -145,6 +145,29 @@
     return { elden: true, bitti: true };
   }
 
+  // Kaydın günü ile paranın ele geçtiği gün ayrı şeyler: aidat kaydı "1
+  // Ekim aidatı" diye ayın başına düşer ama para 14 Ekim'de gelebilir. Bu
+  // yüzden ödeme günü ayrı tutulur; kaydın günü aidatın AYINI söylemeye devam
+  // eder (gelir özeti ve aidat kontrolü ona bakar).
+  //
+  // Ödendi işareti konurken gün boşsa bugün yazılır: parayı aldığın gün ayrıca
+  // sorulmasın. Bir kez yazılmış günün üstüne yazılmaz — kullanıcı 14 Ekim'i
+  // elle girmişse işareti kaldırıp yeniden koymak onu bugüne çevirmemeli.
+  function odemeGunu(k, bugun) {
+    if (!k || k.odeme_gunu) return {};
+    const s = String(bugun == null ? '' : bugun).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return {};
+    return { odeme_gunu: s };
+  }
+
+  // Ödeme günü satırda yalnız kaydın gününden FARKLIYSA yazılır: aynı günü iki
+  // kez okumanın anlamı yok.
+  const odemeGunuNotu = k => {
+    const g = String((k && k.odeme_gunu) || '').slice(0, 10);
+    if (!g || g === String((k && k.gun) || '').slice(0, 10)) return '';
+    return ' · ödendi ' + gunKisa(g);
+  };
+
   // Elden düğmesi işaretsizken de basılır durumda durur: yalnız işaretliyken
   // görünseydi özellik hiç bulunamazdı. data-act panelde karşılanır.
   function eldenDugmesi(k) {
@@ -680,6 +703,8 @@
           placeholder="Açıklama" value="${esc(k.metin || '')}">
         <input class="plan-gir tutar" data-ogrenci-odeme-duzenle="tutar" type="text" inputmode="decimal"
           autocomplete="off" value="${esc(k.tutar == null ? '' : k.tutar)}" placeholder="Tutar ₺">
+        <input class="plan-gir tarih" data-ogrenci-odeme-duzenle="odeme_gunu" type="date"
+          title="Paranın eline geçtiği gün — boş bırakılabilir" value="${tarihDeger(k.odeme_gunu)}">
         <button class="plan-kaydet" data-act="ogrenci-odeme-duzenle-kaydet" data-id="${esc(k.id)}" type="button">kaydet</button>
         <button class="plan-vazgec" data-act="ogrenci-odeme-duzenle-kapat" type="button" aria-label="Vazgeç">×</button>
       </li>`;
@@ -687,7 +712,7 @@
     return `<li class="plan-satir ogr-odeme${k.bitti ? ' bitti' : ''}${k.elden ? ' elden' : ''}">
       <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="${esc(k.id)}" type="button"
         aria-label="${k.bitti ? 'Ödenmedi işaretle' : 'Ödendi işaretle'}">${k.bitti ? '✓' : ''}</button>
-      <span class="metin">${esc(k.metin || 'Ödeme')} <small>${esc(gunKisa(k.gun))}</small></span>
+      <span class="metin">${esc(k.metin || 'Ödeme')} <small>${esc(gunKisa(k.gun))}${esc(odemeGunuNotu(k))}</small></span>
       ${eldenDugmesi(k)}
       <b class="tutar">${para(k.tutar)} ₺</b>
       <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="${esc(k.id)}" type="button" aria-label="Düzenle">✎</button>
@@ -893,6 +918,8 @@
     odemeOzeti: odemeOzeti,
     eldenCevir: eldenCevir,
     eldenDugmesi: eldenDugmesi,
+    odemeGunu: odemeGunu,
+    odemeGunuNotu: odemeGunuNotu,
     sonOdeme: sonOdeme,
     borcOzeti: borcOzeti,
     dikkatOzeti: dikkatOzeti,

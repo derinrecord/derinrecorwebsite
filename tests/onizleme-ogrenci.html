@@ -687,6 +687,9 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .plan-satir.ogr-odeme.duzenliyor .plan-gir{flex:1 1 60%}
 .plan-satir.ogr-odeme.duzenliyor .plan-gir.tutar{flex:0 1 108px}
 .plan-satir.ogr-odeme.duzenliyor{flex-wrap:wrap}
+/* Düzenleme formundaki ödeme günü alanı ne açıklama kadar geniş ne tutar
+   kadar dar olsun: tarih alanı en fazla 150 px yer kaplar. */
+.plan-satir.ogr-odeme.duzenliyor .plan-gir.tarih{flex:0 1 150px}
 /* Elden işareti: ödeme satırında hem koyan hem kaldıran düğme. İşaretsizken
    sessiz bir yazı, işaretliyken dolu rozet durur — satırdaki asıl bilgi
    tutar ve açıklama olduğu için ölçüsü küçük tutulur, göze ilk o çarpmasın. */
@@ -1044,7 +1047,7 @@ body{background:#0b0b0d;padding:22px;display:block}
     </li><li class="plan-satir ogr-odeme bitti elden">
       <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="om1" type="button"
         aria-label="Ödenmedi işaretle">✓</button>
-      <span class="metin">Ekim aidatı <small>3 Ekim</small></span>
+      <span class="metin">Ekim aidatı <small>3 Ekim · ödendi 20 Ekim</small></span>
       <button class="ogr-elden secili" data-act="ogrenci-odeme-elden"
         data-id="om1" type="button" aria-pressed="true"
         title="Elden alındı — işareti kaldır (ödendi sayılır)">elden</button>

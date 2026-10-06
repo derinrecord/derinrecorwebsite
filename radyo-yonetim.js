@@ -743,7 +743,8 @@
       if (islem === 'ekle') return (await depo.insert(veri)).error || null;
       if (islem === 'guncelle') {
         const degisim = { updated_at: new Date().toISOString() };
-        ['durum', 'tutar', 'metin', 'bitti', 'gun', 'elden'].forEach(a => { if (a in veri) degisim[a] = veri[a]; });
+        ['durum', 'tutar', 'metin', 'bitti', 'gun', 'elden', 'odeme_gunu']
+          .forEach(a => { if (a in veri) degisim[a] = veri[a]; });
         return (await depo.update(degisim).eq('id', veri.id)).error || null;
       }
       if (islem === 'sil') return (await depo.delete().eq('id', veri.id)).error || null;
@@ -834,8 +835,11 @@
       return;
     }
     const metinKutu = sec('metin');
+    const tarihKutu = sec('odeme_gunu');
     const hata = await ogrenciKayitYazDene('guncelle', {
-      id: kayitId, metin: metinKutu ? metinKutu.value.trim() : '', tutar: tutar
+      id: kayitId, metin: metinKutu ? metinKutu.value.trim() : '', tutar: tutar,
+      // Boş bırakılırsa gün silinir (null): "hangi gün ödendi bilinmiyor".
+      odeme_gunu: tarihOku(tarihKutu ? tarihKutu.value : '')
     });
     if (hata) { bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true); return; }
     state.ogrenciOdemeDuzenle = null;
@@ -851,6 +855,8 @@
     if (!OG || !OG.eldenCevir) { bildir('Öğrenci modülü yüklenemedi.', 'err'); return; }
     const degisim = OG.eldenCevir(kayit);
     degisim.id = kayitId;
+    // Elden işareti ödendi de sayar: gün boşsa bugün de yazılır.
+    if (OG.odemeGunu) Object.assign(degisim, OG.odemeGunu(kayit, bugunIso()));
     return ogrenciKayitYaz('guncelle', degisim);
   }
 
@@ -1720,10 +1726,11 @@
         if (!kayit) return;
         // Ödendi işareti kaldırılınca "elden" de düşer: elden alınmış ama
         // ödenmemiş bir tahsilat olamaz. İşaret yeniden konurken elden bilgisi
-        // olduğu gibi korunur.
-        return ogrenciKayitYaz('guncelle', {
-          id: id, bitti: !kayit.bitti, elden: kayit.bitti ? false : !!kayit.elden
-        });
+        // olduğu gibi korunur. İşaret konarken ödeme günü boşsa bugün yazılır
+        // (kural modülde: eldenCevir ile aynı yerde durur).
+        const veri = { id: id, bitti: !kayit.bitti, elden: kayit.bitti ? false : !!kayit.elden };
+        if (!kayit.bitti && OG && OG.odemeGunu) Object.assign(veri, OG.odemeGunu(kayit, bugunIso()));
+        return ogrenciKayitYaz('guncelle', veri);
       }
       case 'ogrenci-odeme-elden': return ogrenciOdemeElden(id);
       case 'ogrenci-odeme-duzenle': {

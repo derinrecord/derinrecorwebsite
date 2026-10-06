@@ -474,7 +474,61 @@ test('panel elden eylemini karşılar, işaret kaldırılınca elden düşer', (
   assert.ok(isaret[0].includes('elden: kayit.bitti ? false : !!kayit.elden'),
     'işaret kaldırılınca elden temizlenmeli');
   // Güncelleme beyaz listesi elden'ı taşımalı; taşımasa yazma sessizce düşerdi.
-  assert.ok(/'elden'\]\.forEach/.test(panelKaynak), 'elden güncelleme listesinde olmalı');
+  assert.ok(/'elden', 'odeme_gunu'\]\s*\.forEach/.test(panelKaynak),
+    'elden güncelleme listesinde olmalı');
+});
+
+// ---------- Ödemenin yapıldığı gün ----------
+
+// Kaydın günü aidatın ayını söyler (toplu kayıtlar ayın 1'ine düşer), ödeme
+// günü ise paranın ele geçtiği gündür; geç ödemede ikisi ayrışır.
+test('ödeme günü boşken bugünle dolar, yazılmış güne dokunulmaz', () => {
+  assert.deepEqual(O.odemeGunu({ odeme_gunu: null }, '2026-10-14'), { odeme_gunu: '2026-10-14' });
+  assert.deepEqual(O.odemeGunu({}, '2026-10-14'), { odeme_gunu: '2026-10-14' });
+  assert.deepEqual(O.odemeGunu({ odeme_gunu: '2026-10-03' }, '2026-10-14'), {},
+    'elle girilmiş günün üstüne yazılmamalı');
+  // Bozuk "bugün" kayda geçmez: geçersiz tarih yazmaktansa alan boş kalsın.
+  assert.deepEqual(O.odemeGunu({}, ''), {});
+  assert.deepEqual(O.odemeGunu({}, '14.10.2026'), {});
+  assert.deepEqual(O.odemeGunu(null, '2026-10-14'), {});
+});
+
+test('ödeme günü satırda yalnız kaydın gününden farklıysa yazılır', () => {
+  assert.equal(O.odemeGunuNotu({ gun: '2026-10-01', odeme_gunu: '2026-10-14' }), ' · ödendi 14 Ekim');
+  assert.equal(O.odemeGunuNotu({ gun: '2026-10-01', odeme_gunu: '2026-10-01' }), '',
+    'aynı gün iki kez yazılmamalı');
+  assert.equal(O.odemeGunuNotu({ gun: '2026-10-01' }), '');
+  const h = O.odemeSatiri({
+    id: 'k1', tur: 'odeme', gun: '2026-10-01', metin: 'Ekim aidatı', tutar: 2500,
+    bitti: true, odeme_gunu: '2026-10-14'
+  });
+  assert.ok(h.includes('1 Ekim · ödendi 14 Ekim'), 'aidat ayı ve ödeme günü birlikte okunmalı');
+});
+
+test('düzenleme formunda ödeme günü alanı değeriyle açılır', () => {
+  const h = O.odemeSatiri({
+    id: 'k1', tur: 'odeme', gun: '2026-10-01', metin: 'Ekim aidatı', tutar: 2500,
+    bitti: true, odeme_gunu: '2026-10-14'
+  }, 'k1');
+  assert.ok(/data-ogrenci-odeme-duzenle="odeme_gunu" type="date"/.test(h),
+    'gün seçici tarayıcıdan gelmeli');
+  assert.ok(h.includes('value="2026-10-14"'), 'mevcut gün alana yazılmalı');
+  // Gün yokken alan boş kalır: kaydın gününü oraya kopyalamak yanlış bilgi olurdu.
+  const bos = O.odemeSatiri({ id: 'k2', tur: 'odeme', gun: '2026-10-01', metin: 'Ek gelir', tutar: 100 }, 'k2');
+  assert.ok(!bos.includes('value="2026-10-01"'), 'ödeme günü uydurulmamalı');
+});
+
+test('panel ödeme gününü yazar, işaret konarken boşsa bugünü doldurur', () => {
+  assert.ok(/'odeme_gunu'\]\s*\.forEach/.test(panelKaynak), 'güncelleme listesi ödeme gününü taşımalı');
+  assert.ok(/odeme_gunu: tarihOku\(tarihKutu \? tarihKutu\.value : ''\)/.test(panelKaynak),
+    'düzenleme formu günü okuyup yazmalı');
+  assert.ok(/if \(!kayit\.bitti && OG && OG\.odemeGunu\)/.test(panelKaynak),
+    'ödendi işareti konarken gün doldurulmalı');
+  assert.ok(/Object\.assign\(degisim, OG\.odemeGunu\(kayit, bugunIso\(\)\)\)/.test(panelKaynak),
+    'elden işareti de günü doldurmalı');
+  const sql = fs.readFileSync(require.resolve('../supabase/ogrenciler.sql'), 'utf8');
+  assert.match(sql, /add column if not exists odeme_gunu date;/);
+  assert.match(sql, /check \(odeme_gunu is null or tur = 'odeme'\)/, 'gün yalnız ödemede anlamlı olmalı');
 });
 
 test('elden rozetinin stili var, şemada kolon olarak duruyor', () => {
@@ -515,10 +569,10 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   };
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '14', 'sürüm artırılmalı');
-  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '31', 'CSS sürümü artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '15', 'sürüm artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '32', 'CSS sürümü artırılmalı');
   // Panel dosyası da damgalı: içeriği değişip damga artmadan kalırsa tarayıcı
   // eski kopyayı çalıştırır ve yeni alanı görmez (bir kez tam bu yüzden kaçtı).
   const panelSayfa = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');
-  assert.match(panelSayfa, /radyo-yonetim\.js\?v=20261005q/, 'panel damgası artırılmalı');
+  assert.match(panelSayfa, /radyo-yonetim\.js\?v=20261005r/, 'panel damgası artırılmalı');
 });

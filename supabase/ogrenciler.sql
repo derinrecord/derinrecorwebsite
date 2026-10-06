@@ -94,6 +94,14 @@ create table if not exists public.ogrenci_kayitlari (
 alter table public.ogrenci_kayitlari
   add column if not exists elden boolean not null default false;
 
+-- Paranın ele geçtiği gün. `gun` kolonu aidatın AYINI söyler (toplu aidat
+-- kayıtları ayın 1'ine düşer, gelir özeti ve aidat kontrolü ona bakar);
+-- ödeme günü ise gerçek tahsilat günüdür ve geç ödemelerde ayrışır
+-- (1 Ekim aidatı 14 Ekim'de ödenebilir). Bu yüzden ikisi ayrı tutulur.
+-- Boş bırakılabilir: gün bilinmiyorsa kayıt yine geçerlidir.
+alter table public.ogrenci_kayitlari
+  add column if not exists odeme_gunu date;
+
 -- Kısıt adlandırılmış ve kontrollü ekleniyor: bu dosya tekrar tekrar
 -- çalıştırılabildiği için ikinci kez eklenmeye çalışmak hata verirdi.
 do $$
@@ -103,6 +111,13 @@ begin
   ) then
     alter table public.ogrenci_kayitlari
       add constraint ogrenci_kayitlari_elden_ck check (not elden or tur = 'odeme');
+  end if;
+  -- Ödeme günü de yalnız ödeme satırlarında anlamlıdır.
+  if not exists (
+    select 1 from pg_constraint where conname = 'ogrenci_kayitlari_odeme_gunu_ck'
+  ) then
+    alter table public.ogrenci_kayitlari
+      add constraint ogrenci_kayitlari_odeme_gunu_ck check (odeme_gunu is null or tur = 'odeme');
   end if;
 end $$;
 

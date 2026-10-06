@@ -680,6 +680,9 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .plan-satir.ogr-odeme.duzenliyor .plan-gir{flex:1 1 60%}
 .plan-satir.ogr-odeme.duzenliyor .plan-gir.tutar{flex:0 1 108px}
 .plan-satir.ogr-odeme.duzenliyor{flex-wrap:wrap}
+/* Düzenleme formundaki ödeme günü alanı ne açıklama kadar geniş ne tutar
+   kadar dar olsun: tarih alanı en fazla 150 px yer kaplar. */
+.plan-satir.ogr-odeme.duzenliyor .plan-gir.tarih{flex:0 1 150px}
 /* Elden işareti: ödeme satırında hem koyan hem kaldıran düğme. İşaretsizken
    sessiz bir yazı, işaretliyken dolu rozet durur — satırdaki asıl bilgi
    tutar ve açıklama olduğu için ölçüsü küçük tutulur, göze ilk o çarpmasın. */

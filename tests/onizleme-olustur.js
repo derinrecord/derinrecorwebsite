@@ -681,8 +681,9 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
       { id: 'ok8', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-08', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
       { id: 'ok9', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-13', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
       // Ekim aidatı elden alınmış: satırda dolu "elden" rozeti ve satır
-      // çipinde "elden" eki bu kayıttan doğar.
-      { id: 'om1', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-03', metin: 'Ekim aidatı', tutar: 2000, bitti: true, elden: true },
+      // çipinde "elden" eki bu kayıttan doğar. Kaydın günü ile ödeme günü
+      // ayrı düşsün ki "ödendi 20 Ekim" notu da görünsün.
+      { id: 'om1', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-03', metin: 'Ekim aidatı', tutar: 2000, bitti: true, elden: true, odeme_gunu: '2026-10-20' },
       { id: 'om2', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-20', metin: 'Kasım aidatı', tutar: 1500, bitti: false },
       { id: 'om3', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-09-15', metin: 'Eylül aidatı', tutar: 2000, bitti: true },
       // Geçen aydan devreden açık borç: satırda "devir" rozeti çıkar.
