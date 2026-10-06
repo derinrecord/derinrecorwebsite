@@ -106,7 +106,33 @@
     const ayin = ogrenciOdemeleri(liste, ogrenciId)
       .filter(x => String(x.gun).slice(0, 7) === onek);
     const topla = f => ayin.filter(f).reduce((t, x) => t + Number(x.tutar || 0), 0);
-    return { tahsil: topla(x => x.bitti), bekleyen: topla(x => !x.bitti), adet: ayin.length };
+    return {
+      tahsil: topla(x => x.bitti), bekleyen: topla(x => !x.bitti), adet: ayin.length,
+      // Elden alınan kısmı ayrı toplanır: "bu ay ne kadar nakit geçti elime"
+      // sorusu tahsil toplamından çıkarılamaz, çünkü havale de tahsildir.
+      elden: topla(x => x.bitti && !!x.elden)
+    };
+  }
+
+  // Elden işaretinin tek kuralı: nakit para ele geçtiği anda tahsilat hem
+  // "alındı" hem "elden" olur. Bu yüzden işareti açmak ÖDENMİŞLİĞİ de yazar —
+  // kullanıcıdan iki ayrı tıklama istemek "parayı aldım ama ödenmiş
+  // görünmüyor" hâlini üretirdi.
+  //
+  // İşareti kaldırmak yalnız "elden" bilgisini siler, tahsilatı borca
+  // çevirmez: yanlışlıkla basılmış bir işareti geri almak, alınmış parayı yok
+  // saymak olmamalı.
+  function eldenCevir(k) {
+    if (k && k.elden) return { elden: false };
+    return { elden: true, bitti: true };
+  }
+
+  // Elden düğmesi işaretsizken de basılır durumda durur: yalnız işaretliyken
+  // görünseydi özellik hiç bulunamazdı. data-act panelde karşılanır.
+  function eldenDugmesi(k) {
+    return `<button class="ogr-elden${k.elden ? ' secili' : ''}" data-act="ogrenci-odeme-elden"
+        data-id="${esc(k.id)}" type="button" aria-pressed="${k.elden ? 'true' : 'false'}"
+        title="${k.elden ? 'Elden alındı — işareti kaldır' : 'Elden alındı olarak işaretle'} (ödendi sayılır)">elden</button>`;
   }
 
   // En son ÖDENMİŞ ay — ay sınırı yok. odemeOzeti yalnız görünen aya bakar;
@@ -123,7 +149,11 @@
     const ayniAy = odemeler.filter(x => x.bitti && String(x.gun).slice(0, 7) === ay);
     return {
       ay: ay, gun: son.gun, adet: ayniAy.length,
-      tutar: ayniAy.reduce((t, x) => t + Number(x.tutar || 0), 0)
+      tutar: ayniAy.reduce((t, x) => t + Number(x.tutar || 0), 0),
+      // Ayın TAMAMI elden ödendiyse çip "elden" der; bir kısmı havaleyle
+      // geldiyse sessiz kalır. "Kısmen elden" yazmak satırda yanıltıcı olurdu:
+      // yönetici çipe bakıp "hepsi nakit" sanmamalı.
+      elden: ayniAy.length > 0 && ayniAy.every(x => !!x.elden)
     };
   }
 
@@ -401,7 +431,10 @@
       }
       if (k.mazeret) p.push(`<i class="m">${k.mazeret} mazeret</i>`);
     }
-    if (od.tahsil) p.push(`<i class="g">${para(od.tahsil)} ₺ ödendi</i>`);
+    // Ayın tamamı elden alındıysa çip bunu söyler (bkz. sonOdeme.elden):
+    // "kim bana nakit ödedi" sorusu satırda cevaplanır.
+    const ayElden = od.tahsil > 0 && od.elden === od.tahsil;
+    if (od.tahsil) p.push(`<i class="g">${para(od.tahsil)} ₺ ödendi${ayElden ? ' · elden' : ''}</i>`);
     // Görünen ayda tahsilat yoksa geçen tahsilatın ayı yazılır: "kim ödedi"
     // sorusu ekrandaki aya takılıp boşta kalmasın. Ay kaydı varken bu çip
     // basılmaz — aynı bilgi iki kez yazılmaz.
@@ -409,7 +442,7 @@
       const son = sonOdeme(liste, o.id);
       if (son) {
         const ayAdi = AYLAR_ADI[Number(son.ay.slice(5, 7)) - 1];
-        p.push(`<i class="g">${esc(ayAdi)} ödendi · ${para(son.tutar)} ₺</i>`);
+        p.push(`<i class="g">${esc(ayAdi)} ödendi · ${para(son.tutar)} ₺${son.elden ? ' · elden' : ''}</i>`);
       }
     }
     if (od.bekleyen) p.push(`<i class="y">${para(od.bekleyen)} ₺ bekliyor</i>`);
@@ -631,10 +664,11 @@
         <button class="plan-vazgec" data-act="ogrenci-odeme-duzenle-kapat" type="button" aria-label="Vazgeç">×</button>
       </li>`;
     }
-    return `<li class="plan-satir ogr-odeme${k.bitti ? ' bitti' : ''}">
+    return `<li class="plan-satir ogr-odeme${k.bitti ? ' bitti' : ''}${k.elden ? ' elden' : ''}">
       <button class="kutu" data-act="ogrenci-odeme-isaret" data-id="${esc(k.id)}" type="button"
         aria-label="${k.bitti ? 'Ödenmedi işaretle' : 'Ödendi işaretle'}">${k.bitti ? '✓' : ''}</button>
       <span class="metin">${esc(k.metin || 'Ödeme')} <small>${esc(gunKisa(k.gun))}</small></span>
+      ${eldenDugmesi(k)}
       <b class="tutar">${para(k.tutar)} ₺</b>
       <button class="duzenle" data-act="ogrenci-odeme-duzenle" data-id="${esc(k.id)}" type="button" aria-label="Düzenle">✎</button>
       <button class="sil" data-act="ogrenci-odeme-sil" data-id="${esc(k.id)}" type="button" aria-label="Sil">×</button>
@@ -675,7 +709,7 @@
       <div class="ogr-bolum">
         <h4>ÖDEMELER</h4>
         <p class="ogr-ozet">${esc(AYLAR_ADI[a.ay - 1] + ' ' + a.yil)} ·
-          <b class="g">${para(oz.tahsil)} ₺ tahsil</b>${oz.bekleyen ? ` · <b class="y">${para(oz.bekleyen)} ₺ bekliyor</b>` : ''}</p>
+          <b class="g">${para(oz.tahsil)} ₺ tahsil</b>${oz.elden ? ` · <b class="e">${para(oz.elden)} ₺ elden</b>` : ''}${oz.bekleyen ? ` · <b class="y">${para(oz.bekleyen)} ₺ bekliyor</b>` : ''}</p>
         ${acikBorc}
         ${form}
         ${govde}
@@ -831,6 +865,8 @@
     katilimOzeti: katilimOzeti,
     ogrenciOdemeleri: ogrenciOdemeleri,
     odemeOzeti: odemeOzeti,
+    eldenCevir: eldenCevir,
+    eldenDugmesi: eldenDugmesi,
     sonOdeme: sonOdeme,
     borcOzeti: borcOzeti,
     dikkatOzeti: dikkatOzeti,

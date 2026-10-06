@@ -734,7 +734,7 @@
       if (islem === 'ekle') return (await depo.insert(veri)).error || null;
       if (islem === 'guncelle') {
         const degisim = { updated_at: new Date().toISOString() };
-        ['durum', 'tutar', 'metin', 'bitti', 'gun'].forEach(a => { if (a in veri) degisim[a] = veri[a]; });
+        ['durum', 'tutar', 'metin', 'bitti', 'gun', 'elden'].forEach(a => { if (a in veri) degisim[a] = veri[a]; });
         return (await depo.update(degisim).eq('id', veri.id)).error || null;
       }
       if (islem === 'sil') return (await depo.delete().eq('id', veri.id)).error || null;
@@ -831,6 +831,18 @@
     if (hata) { bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true); return; }
     state.ogrenciOdemeDuzenle = null;
     await yenile();
+  }
+
+  // Elden işareti: nakit alındığı anda hem "alındı" hem "elden" yazılır.
+  // Kural modülde durur (ogrenciler.js · eldenCevir), panel yalnız uygular —
+  // iki yerde ayrı yazılsaydı biri diğerinden kaçardı.
+  async function ogrenciOdemeElden(kayitId) {
+    const kayit = (D.ogrenciKayitlari || []).find(x => x.id === kayitId);
+    if (!kayit) return;
+    if (!OG || !OG.eldenCevir) { bildir('Öğrenci modülü yüklenemedi.', 'err'); return; }
+    const degisim = OG.eldenCevir(kayit);
+    degisim.id = kayitId;
+    return ogrenciKayitYaz('guncelle', degisim);
   }
 
   // Bu ayın aidatlarını topluca açar. Tutar öğrencide yazılı olduğu için
@@ -1697,8 +1709,14 @@
       case 'ogrenci-odeme-isaret': {
         const kayit = (D.ogrenciKayitlari || []).find(x => x.id === id);
         if (!kayit) return;
-        return ogrenciKayitYaz('guncelle', { id: id, bitti: !kayit.bitti });
+        // Ödendi işareti kaldırılınca "elden" de düşer: elden alınmış ama
+        // ödenmemiş bir tahsilat olamaz. İşaret yeniden konurken elden bilgisi
+        // olduğu gibi korunur.
+        return ogrenciKayitYaz('guncelle', {
+          id: id, bitti: !kayit.bitti, elden: kayit.bitti ? false : !!kayit.elden
+        });
       }
+      case 'ogrenci-odeme-elden': return ogrenciOdemeElden(id);
       case 'ogrenci-odeme-duzenle': {
         state.ogrenciOdemeDuzenle = state.ogrenciOdemeDuzenle === id ? null : id;
         state.ogrenciOdemeYeni = null;

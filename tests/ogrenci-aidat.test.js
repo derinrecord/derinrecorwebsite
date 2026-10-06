@@ -396,6 +396,97 @@ test('yeni alanlar için stil var', () => {
   assert.ok(/\.ogr-cip i\.p\{/.test(cssKaynak), 'koşul rozeti ayrı renkte olmalı');
 });
 
+// ---------- Elden alınan tahsilat ----------
+
+// Elden işareti tek kurala bağlıdır: nakit para ele geçtiği anda tahsilat hem
+// "alındı" hem "elden" olur. İşareti kaldırmak yalnız elden bilgisini siler;
+// alınmış parayı borca çevirmez.
+test('elden işareti ödenmişliği de yazar, kaldırırken tahsilatı bozmaz', () => {
+  assert.deepEqual(O.eldenCevir({ elden: false, bitti: false }), { elden: true, bitti: true });
+  assert.deepEqual(O.eldenCevir({}), { elden: true, bitti: true });
+  assert.deepEqual(O.eldenCevir({ elden: true, bitti: true }), { elden: false });
+  assert.ok(!('bitti' in O.eldenCevir({ elden: true, bitti: true })),
+    'işaret kaldırılırken bitti geri alınmamalı');
+});
+
+test('ödeme satırında elden düğmesi işaretsizken de basılır', () => {
+  const kapali = O.odemeSatiri({
+    id: 'k1', tur: 'odeme', gun: '2026-10-03', metin: 'Ekim aidatı', tutar: 2500, bitti: false
+  });
+  assert.ok(kapali.includes('data-act="ogrenci-odeme-elden"'), 'düğme her satırda olmalı');
+  assert.ok(kapali.includes('aria-pressed="false"'), 'durum ekran okuyucuya yazılmalı');
+  assert.ok(!kapali.includes('ogr-elden secili'), 'işaretsiz satır dolu görünmemeli');
+
+  const acik = O.odemeSatiri({
+    id: 'k1', tur: 'odeme', gun: '2026-10-03', metin: 'Ekim aidatı', tutar: 2500, bitti: true, elden: true
+  });
+  assert.ok(acik.includes('ogr-elden secili'), 'işaretli satırda düğme dolu olmalı');
+  assert.ok(acik.includes('aria-pressed="true"'));
+  assert.ok(/class="plan-satir ogr-odeme[^"]*elden/.test(acik), 'satır elden diye işaretlenmeli');
+});
+
+test('elden toplamı ayın ödemeler başlığında ayrı yazılır', () => {
+  const kayitlar = [
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-03', tutar: 2500, bitti: true, elden: true },
+    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-10', tutar: 500, bitti: true, elden: false },
+    { id: 'k3', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-20', tutar: 900, bitti: false, elden: false }
+  ];
+  const oz = O.odemeOzeti(kayitlar, 'o1', 2026, 10);
+  assert.equal(oz.tahsil, 3000, 'havale de tahsildir');
+  assert.equal(oz.elden, 2500, 'yalnız elden alınan kısım sayılmalı');
+  assert.equal(oz.bekleyen, 900, 'elden bekleyeni etkilememeli');
+  const d = O.ogrenciDetay(OGR[0], kayitlar, { ogrenciAcik: 'o1' }, AY);
+  assert.ok(d.includes('2.500 ₺ elden'), 'başlıkta elden toplamı görünmeli');
+});
+
+test('satır çipi ayın tamamı elden ödendiyse elden der', () => {
+  const hepsi = O.ogrenciSatiri(OGR[0], {}, [
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-03', tutar: 2500, bitti: true, elden: true }
+  ], AY);
+  assert.ok(hepsi.includes('2.500 ₺ ödendi · elden'), 'tamamı elden ödenmişse yazılmalı');
+  // Kısmen elden bir ay çipte "elden" demez: yönetici çipe bakıp hepsini
+  // nakit sanmamalı.
+  const karisik = O.ogrenciSatiri(OGR[0], {}, [
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-03', tutar: 2000, bitti: true, elden: true },
+    { id: 'k2', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-10-04', tutar: 500, bitti: true, elden: false }
+  ], AY);
+  assert.ok(!karisik.includes('elden'), 'kısmen elden ödeme çipe yazılmamalı');
+});
+
+test('geçen ay elden ödenmişse çip yine elden der', () => {
+  const h = O.ogrenciSatiri(OGR[0], {}, [
+    { id: 'k1', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-09-15', tutar: 2500, bitti: true, elden: true }
+  ], AY);
+  assert.ok(h.includes('Eylül ödendi · 2.500 ₺ · elden'));
+});
+
+test('panel elden eylemini karşılar, işaret kaldırılınca elden düşer', () => {
+  const m = panelKaynak.match(/async function ogrenciOdemeElden\([\s\S]*?\n  \}/);
+  assert.ok(m, 'ogrenciOdemeElden bulunmalı');
+  assert.ok(m[0].includes('OG.eldenCevir('), 'kural modülden gelmeli');
+  assert.ok(m[0].includes("ogrenciKayitYaz('guncelle'"), 'satır güncellenmeli');
+  assert.ok(/case 'ogrenci-odeme-elden': return ogrenciOdemeElden\(id\);/.test(panelKaynak),
+    'eylem panelde karşılanmalı');
+  // Ödendi işareti kaldırılınca elden de düşer; yoksa "elden ama ödenmemiş"
+  // diye tutarsız bir satır kalırdı.
+  const isaret = panelKaynak.match(/case 'ogrenci-odeme-isaret': \{[\s\S]*?\n      \}/);
+  assert.ok(isaret, 'ödendi işareti hâlâ karşılanmalı');
+  assert.ok(isaret[0].includes('elden: kayit.bitti ? false : !!kayit.elden'),
+    'işaret kaldırılınca elden temizlenmeli');
+  // Güncelleme beyaz listesi elden'ı taşımalı; taşımasa yazma sessizce düşerdi.
+  assert.ok(/'elden'\]\.forEach/.test(panelKaynak), 'elden güncelleme listesinde olmalı');
+});
+
+test('elden rozetinin stili var, şemada kolon olarak duruyor', () => {
+  assert.ok(jsKaynak.includes('ogr-elden'), 'rozet JS\'te üretilmeli');
+  assert.ok(/\.ogr-elden\{/.test(cssKaynak) && /\.ogr-elden\.secili\{/.test(cssKaynak),
+    'rozetin iki hâli de stillenmeli');
+  assert.ok(cssKaynak.includes('.plan-satir.ogr-odeme.elden'), 'elden satırı çerçevede belli olmalı');
+  const sql = fs.readFileSync(require.resolve('../supabase/ogrenciler.sql'), 'utf8');
+  assert.match(sql, /add column if not exists elden boolean not null default false;/);
+  assert.match(sql, /check \(not elden or tur = 'odeme'\)/, 'elden yalnız ödemede anlamlı olmalı');
+});
+
 test('kolonlar şemada tekrar çalıştırılabilir biçimde eklenir', () => {
   const sql = fs.readFileSync(require.resolve('../supabase/ogrenciler.sql'), 'utf8');
   assert.match(sql, /alter table public\.ogrenciler add column if not exists gun_sayisi int;/);
@@ -411,6 +502,6 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   };
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '12', 'sürüm artırılmalı');
-  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '29', 'CSS sürümü artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '13', 'sürüm artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '30', 'CSS sürümü artırılmalı');
 });

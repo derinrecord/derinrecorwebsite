@@ -74,6 +74,32 @@ create table if not exists public.ogrenci_kayitlari (
   )
 );
 
+-- Elden alınan tahsilat işareti.
+--
+-- Amacı ödeme YÖNTEMİNİ sınıflandırmak değil: Derin'in ihtiyacı kimin parayı
+-- elden verdiğini görebilmek. Bu yüzden kolon tek bir evet/hayır — kart/havale
+-- ayrımı tutulmuyor, yoksa panelde bir de yöntem seçmek gerekirdi. İşaret
+-- yalnız 'odeme' satırlarında anlamlıdır; yoklamada "elden" diye bir şey
+-- olamayacağı için kısıtla bağlanır (aşağıdaki check).
+--
+-- Varsayılan false: bugüne kadar girilmiş tahsilatların hiçbiri elden
+-- sayılmaz, mevcut veri olduğu gibi kalır. Kolon boş geçilemez (not null)
+-- çünkü "bilinmiyor" hâli yok — bir tahsilat ya elden alınmıştır ya alınmamıştır.
+alter table public.ogrenci_kayitlari
+  add column if not exists elden boolean not null default false;
+
+-- Kısıt adlandırılmış ve kontrollü ekleniyor: bu dosya tekrar tekrar
+-- çalıştırılabildiği için ikinci kez eklenmeye çalışmak hata verirdi.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'ogrenci_kayitlari_elden_ck'
+  ) then
+    alter table public.ogrenci_kayitlari
+      add constraint ogrenci_kayitlari_elden_ck check (not elden or tur = 'odeme');
+  end if;
+end $$;
+
 -- Öğrenci detayı açılınca o öğrencinin kayıtları gün sırasıyla okunur.
 create index if not exists ogrenci_kayitlari_ogrenci_idx
   on public.ogrenci_kayitlari (ogrenci_id, gun, tur);

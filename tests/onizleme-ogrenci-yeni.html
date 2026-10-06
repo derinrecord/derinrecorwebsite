@@ -670,6 +670,8 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .ogr-ozet b.g{color:var(--gold)}
 .ogr-ozet b.y{color:var(--warn,#f0a132)}
 .ogr-ozet b.m{color:var(--muted)}
+/* Elden toplamı ayrı renkte: tahsil toplamının içinde kaybolmasın. */
+.ogr-ozet b.e{color:var(--purple)}
 .ogr-ipucu{margin:7px 0 0;font-size:10.5px;color:var(--muted);opacity:.7}
 
 /* Ödeme satırı ve ekleme formu; açıklama alanı tutardan geniş durur. */
@@ -681,6 +683,33 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .plan-satir.ogr-odeme.duzenliyor .plan-gir{flex:1 1 60%}
 .plan-satir.ogr-odeme.duzenliyor .plan-gir.tutar{flex:0 1 108px}
 .plan-satir.ogr-odeme.duzenliyor{flex-wrap:wrap}
+/* Elden işareti: ödeme satırında hem koyan hem kaldıran düğme. İşaretsizken
+   sessiz bir yazı, işaretliyken dolu rozet durur — satırdaki asıl bilgi
+   tutar ve açıklama olduğu için ölçüsü küçük tutulur, göze ilk o çarpmasın. */
+.ogr-elden{flex:0 0 auto;padding:3px 7px;font:inherit;font-size:10px;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:none;
+  border:1px solid var(--line);border-radius:7px;cursor:pointer}
+.ogr-elden:hover{color:var(--txt);border-color:rgba(255,255,255,.3)}
+.ogr-elden.secili{color:#fff;background:var(--purple);border-color:var(--purple)}
+/* Elden alınmış tahsilat satırı: açıklama üstü çizilmez (para gerçekten
+   alındı), yalnız sol kenarda ince bir işaret kalır. */
+.plan-satir.ogr-odeme.elden{border-left:3px solid var(--purple)}
+/* Yan sütunda öğrenci listesi 320 px: beş öğeli tahsilat satırı tek satıra
+   sığmadığı için açıklama dar bir kutuya sıkışıp üç satıra bölünüyordu.
+   Geniş ekranda ödeme satırı bilinçli olarak iki satıra yerleşir — üstte
+   açıklama, altta işaretler; tutar sağa yaslanır. 1100 px altında yan sütun
+   tam genişliğe çıktığı için kural orada geri alınır (aşağıdaki sorgu). */
+@media(min-width:1101px){
+  .ogr-takvim-yan .plan-satir.ogr-odeme{flex-wrap:wrap;row-gap:7px}
+  .ogr-takvim-yan .plan-satir.ogr-odeme .metin{flex:1 1 100%;order:-1}
+  .ogr-takvim-yan .plan-satir.ogr-odeme .tutar{margin-left:auto}
+}
+/* Tam genişlikte yine de daralan ekranlar: satır sarmasın, açıklama kırpılsın
+   (tam metin düzenleme formunda duruyor), düğme biraz küçülsün. */
+@media (max-width:560px){
+  .ogr-odeme .metin{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ogr-elden{padding:2px 5px;font-size:9.5px;letter-spacing:0}
+}
 
 /* Kaydedilemeyen satır: silinmez, kırmızı çerçeveyle işaretlenir ve metin
    ekranda kalır. Altında "tekrar dene" belirir. */
@@ -982,7 +1011,7 @@ body{background:#0b0b0d;padding:22px;display:block}
       <button class="ogr-ac" data-act="ogrenci-detay" data-id="og1"
       type="button" aria-expanded="false"
       aria-label="Ödeme listesi ve ay özeti">▸</button>
-      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33</small><br><small>Salı-Perşembe</small><span class="ogr-cip"><i class="p">Haftada 3 gün</i><i class="p">Aylık 2.500 ₺</i><i class="g">3 geldi</i><i class="y">1 gelmedi</i><i class="m">1 mazeret</i><i class="g">2.000 ₺ ödendi</i><i class="y">1.500 ₺ bekliyor</i><i class="b">900 ₺ devir</i></span></span>
+      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33</small><br><small>Salı-Perşembe</small><span class="ogr-cip"><i class="p">Haftada 3 gün</i><i class="p">Aylık 2.500 ₺</i><i class="g">3 geldi</i><i class="y">1 gelmedi</i><i class="m">1 mazeret</i><i class="g">2.000 ₺ ödendi · elden</i><i class="y">1.500 ₺ bekliyor</i><i class="b">900 ₺ devir</i></span></span>
       <button class="duzenle" data-act="ogrenci-duzenle" data-id="og1" type="button" aria-label="Düzenle">✎</button>
       <button class="sil" data-act="ogrenci-sil" data-id="og1" type="button" aria-label="Sil">×</button>
       
