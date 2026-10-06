@@ -466,15 +466,22 @@
 
   // Izgara hücresi: gün numarası, o gün gelenlerin sayısı ve gelmeyen/mazeret
   // işaretleri. Üç renk durumu var: tam (herkes geldi), eksik (gelmeyen var),
-  // işaretsiz (henüz yoklama yapılmadı).
-  function ogrHucre(h, liste, kayitListesi, s, a) {
+  // işaretsiz (henüz yoklama yapılmadı). Ders günü ise kalıptan okunup ayrıca
+  // işaretlenir (bkz. dersKalibi) — ay daha bakarken hangi günlerin çalışma
+  // günü olduğu görünsün.
+  //   kalip: dersKalibi() sonucu (hafta günü kümesi). Verilmezse hücre
+  //   renklenmez; takvim bu kümeyi bir kez hesaplayıp bütün hücrelere geçirir.
+  function ogrHucre(h, liste, kayitListesi, s, a, kalip) {
     const toplam = (liste || []).length;
     const k = gunKatilim(liste, kayitListesi, h.iso);
     const isaretli = k.geldi + k.gelmedi + k.mazeret;
     const tam = toplam > 0 && k.geldi === toplam && k.gelmedi === 0 && k.mazeret === 0;
     const eksik = k.gelmedi > 0;
     const acik = (s || {}).ogrenciGun === h.iso;
-    const sinif = ['ogr-hucre', h.ayIcinde ? '' : 'disari', h.iso === a.bugun ? 'bugun' : '',
+    // Ay dışı kareler renklenmez: komşu ayın günleri kendi ayında görünür.
+    const ders = !!kalip && h.ayIcinde && kalip.has(haftaGunu(h.iso));
+    const sinif = ['ogr-hucre', h.ayIcinde ? '' : 'disari', ders ? 'ders' : '',
+      h.iso === a.bugun ? 'bugun' : '',
       tam ? 'tam' : '', eksik ? 'eksik' : '', isaretli ? '' : 'isaretsiz', acik ? 'acik' : '']
       .filter(Boolean).join(' ');
     const rozet = isaretli ? `<i class="rozet">${k.geldi}/${toplam}</i>` : '';
@@ -482,6 +489,7 @@
       ? `<span class="hucre-alt">${k.gelmedi ? `<i class="y">${k.gelmedi}×</i>` : ''}${k.mazeret ? `<i class="m">${k.mazeret}M</i>` : ''}</span>`
       : '';
     const etiket = gunUzun(h.iso)
+      + (ders ? ' · ders günü' : '')
       + (isaretli ? ` · ${k.geldi}/${toplam} geldi` : ' · yoklama yapılmadı')
       + (k.gelmedi ? ` · ${k.gelmedi} gelmedi` : '') + (k.mazeret ? ` · ${k.mazeret} mazeret` : '');
     return `<button class="${sinif}" data-act="ogrenci-gun" data-id="${h.iso}" type="button"
@@ -545,6 +553,24 @@
       const iso = String(k.gun).slice(0, 10);
       if (iso.slice(0, 7) !== onek) return;
       const h = haftaGunu(iso);
+      if (h >= 0) gunler.add(h);
+    });
+    return gunler;
+  }
+
+  // Haftalık ders kalıbı — AY SINIRI YOK. dersGunleri ay içinden okunduğu
+  // için yeni ayın ilk günlerinde kalıp eksik çıkar: ekimde henüz yalnız
+  // cumartesi işaretliydi, oysa dersler pazartesi/çarşamba/cumartesi. Takvim
+  // o günleri renksiz bırakırdı. Kalıp geçmişin tamamından okunur; haftalık
+  // ritim zamanla oturur, ay başında sıfırlanmaz.
+  //   Yalnız listede olan öğrencilerin kayıtları sayılır — gunKatilim ile aynı
+  //   kapsam, yoksa silinmiş bir öğrencinin geçmişi kalıba sızardı.
+  function dersKalibi(liste, kayitListesi) {
+    const kimler = (liste || []).map(o => o.id);
+    const gunler = new Set();
+    (kayitListesi || []).forEach(k => {
+      if (k.tur !== 'katilim' || kimler.indexOf(k.ogrenci_id) === -1) return;
+      const h = haftaGunu(k.gun);
       if (h >= 0) gunler.add(h);
     });
     return gunler;
@@ -729,8 +755,9 @@
     const ayar = a || {};
     const tam = liste || [];
     const gun = durum.ogrenciGun && String(durum.ogrenciGun).slice(0, 10);
+    const kalip = dersKalibi(tam, kayitListesi);
     const hucreler = aylikOgrenciIzgara(ayar.yil, ayar.ay)
-      .map(h => ogrHucre(h, tam, kayitListesi, durum, ayar)).join('');
+      .map(h => ogrHucre(h, tam, kayitListesi, durum, ayar, kalip)).join('');
     return `<section class="ogr-takvim">
       <div class="ogr-takvim-bas">
         <span class="ogr-takvim-ay">
@@ -738,7 +765,7 @@
           <b>${esc(AYLAR_ADI[ayar.ay - 1] + ' ' + ayar.yil)}</b>
           <button data-act="ogrenci-ay" data-id="sonraki" type="button" aria-label="Sonraki ay">›</button>
         </span>
-        <p class="ogr-ipucu">Güne bas: o günün yoklaması</p>
+        <p class="ogr-ipucu">${kalip.size ? 'Renkli günler ders günü · ' : ''}Güne bas: o günün yoklaması</p>
       </div>
       ${gunSecenekListesi()}
       ${gelirSeridi(tam, kayitListesi, ayar)}
@@ -821,6 +848,7 @@
     gunUzun: gunUzun,
     haftaGunu: haftaGunu,
     dersGunleri: dersGunleri,
+    dersKalibi: dersKalibi,
     eksikYoklamalar: eksikYoklamalar,
     eksikSeridi: eksikSeridi,
     aylikOgrenciIzgara: aylikOgrenciIzgara,

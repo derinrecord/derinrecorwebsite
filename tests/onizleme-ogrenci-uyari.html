@@ -28,6 +28,7 @@
   --gold:#d4c24e;
   --gold-ink:#14120a;
   --purple:#a855f7;
+  --purple-lt:#d9c2ff;
   --live:#22c98a;
   --danger:#ff5f6d;
   --warn:#f0a132;
@@ -623,6 +624,14 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .ogr-hucre .hucre-alt i.m{color:var(--warn,#f0a132)}
 .ogr-hucre.disari{opacity:.34}
 .ogr-hucre.isaretsiz{opacity:.72}
+/* Ders günleri: haftalık kalıp geçmişten okunur (bkz. ogrenciler.js ·
+   dersKalibi) ve hücre mor bir zemin alır — ay daha bakarken stüdyonun hangi
+   günler çalıştığı görünsün. Durum renkleri (bugün/tam/eksik/seçili) bu
+   kuraldan SONRA geldiği için onlar üstte kalır. İşaretsiz ders günü
+   soluklaşmaz: "burası ders günü, yoklama girilmedi" görülmesi gereken şey. */
+.ogr-hucre.ders{background:rgba(168,85,247,.24);border-color:rgba(168,85,247,.62)}
+.ogr-hucre.ders .gun{color:var(--purple-lt);font-weight:700}
+.ogr-hucre.ders.isaretsiz{opacity:1}
 .ogr-hucre.bugun{border-color:var(--gold)}
 .ogr-hucre.bugun .gun{color:var(--gold);font-weight:700}
 .ogr-hucre.tam{border-color:rgba(212,194,78,.45)}
@@ -794,7 +803,7 @@ body{background:#0b0b0d;padding:22px;display:block}
           <b>Ekim 2026</b>
           <button data-act="ogrenci-ay" data-id="sonraki" type="button" aria-label="Sonraki ay">›</button>
         </span>
-        <p class="ogr-ipucu">Güne bas: o günün yoklaması</p>
+        <p class="ogr-ipucu">Renkli günler ders günü · Güne bas: o günün yoklaması</p>
       </div>
       <datalist id="ogr-gun-sayisi-listesi"><option value="2"></option><option value="3"></option><option value="4"></option></datalist>
       <div class="ogr-gelir">
@@ -822,8 +831,8 @@ body{background:#0b0b0d;padding:22px;display:block}
     </button><button class="ogr-hucre disari isaretsiz" data-act="ogrenci-gun" data-id="2026-09-30" type="button"
       aria-label="30 Eylül 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">30</span></span>
-    </button><button class="ogr-hucre tam" data-act="ogrenci-gun" data-id="2026-10-01" type="button"
-      aria-label="1 Ekim 2026 · Per · 2/2 geldi" aria-pressed="false">
+    </button><button class="ogr-hucre ders tam" data-act="ogrenci-gun" data-id="2026-10-01" type="button"
+      aria-label="1 Ekim 2026 · Per · ders günü · 2/2 geldi" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">1</span><i class="rozet">2/2</i></span><span class="hucre-alt"></span>
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-02" type="button"
       aria-label="2 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
@@ -837,14 +846,14 @@ body{background:#0b0b0d;padding:22px;display:block}
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-05" type="button"
       aria-label="5 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">5</span></span>
-    </button><button class="ogr-hucre eksik" data-act="ogrenci-gun" data-id="2026-10-06" type="button"
-      aria-label="6 Ekim 2026 · Sal · 0/2 geldi · 2 gelmedi" aria-pressed="false">
+    </button><button class="ogr-hucre ders eksik" data-act="ogrenci-gun" data-id="2026-10-06" type="button"
+      aria-label="6 Ekim 2026 · Sal · ders günü · 0/2 geldi · 2 gelmedi" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">6</span><i class="rozet">0/2</i></span><span class="hucre-alt"><i class="y">2×</i></span>
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-07" type="button"
       aria-label="7 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">7</span></span>
-    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-08" type="button"
-      aria-label="8 Ekim 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+    </button><button class="ogr-hucre ders isaretsiz" data-act="ogrenci-gun" data-id="2026-10-08" type="button"
+      aria-label="8 Ekim 2026 · Per · ders günü · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">8</span></span>
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-09" type="button"
       aria-label="9 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
@@ -858,14 +867,14 @@ body{background:#0b0b0d;padding:22px;display:block}
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-12" type="button"
       aria-label="12 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">12</span></span>
-    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-13" type="button"
-      aria-label="13 Ekim 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+    </button><button class="ogr-hucre ders isaretsiz" data-act="ogrenci-gun" data-id="2026-10-13" type="button"
+      aria-label="13 Ekim 2026 · Sal · ders günü · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">13</span></span>
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-14" type="button"
       aria-label="14 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">14</span></span>
-    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-15" type="button"
-      aria-label="15 Ekim 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+    </button><button class="ogr-hucre ders isaretsiz" data-act="ogrenci-gun" data-id="2026-10-15" type="button"
+      aria-label="15 Ekim 2026 · Per · ders günü · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">15</span></span>
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-16" type="button"
       aria-label="16 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
@@ -879,14 +888,14 @@ body{background:#0b0b0d;padding:22px;display:block}
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-19" type="button"
       aria-label="19 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">19</span></span>
-    </button><button class="ogr-hucre bugun isaretsiz" data-act="ogrenci-gun" data-id="2026-10-20" type="button"
-      aria-label="20 Ekim 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+    </button><button class="ogr-hucre ders bugun isaretsiz" data-act="ogrenci-gun" data-id="2026-10-20" type="button"
+      aria-label="20 Ekim 2026 · Sal · ders günü · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">20</span></span>
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-21" type="button"
       aria-label="21 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">21</span></span>
-    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-22" type="button"
-      aria-label="22 Ekim 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+    </button><button class="ogr-hucre ders isaretsiz" data-act="ogrenci-gun" data-id="2026-10-22" type="button"
+      aria-label="22 Ekim 2026 · Per · ders günü · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">22</span></span>
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-23" type="button"
       aria-label="23 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">
@@ -900,14 +909,14 @@ body{background:#0b0b0d;padding:22px;display:block}
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-26" type="button"
       aria-label="26 Ekim 2026 · Pzt · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">26</span></span>
-    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-27" type="button"
-      aria-label="27 Ekim 2026 · Sal · yoklama yapılmadı" aria-pressed="false">
+    </button><button class="ogr-hucre ders isaretsiz" data-act="ogrenci-gun" data-id="2026-10-27" type="button"
+      aria-label="27 Ekim 2026 · Sal · ders günü · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">27</span></span>
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-28" type="button"
       aria-label="28 Ekim 2026 · Çar · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">28</span></span>
-    </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-29" type="button"
-      aria-label="29 Ekim 2026 · Per · yoklama yapılmadı" aria-pressed="false">
+    </button><button class="ogr-hucre ders isaretsiz" data-act="ogrenci-gun" data-id="2026-10-29" type="button"
+      aria-label="29 Ekim 2026 · Per · ders günü · yoklama yapılmadı" aria-pressed="false">
       <span class="hucre-ust"><span class="gun">29</span></span>
     </button><button class="ogr-hucre isaretsiz" data-act="ogrenci-gun" data-id="2026-10-30" type="button"
       aria-label="30 Ekim 2026 · Cum · yoklama yapılmadı" aria-pressed="false">

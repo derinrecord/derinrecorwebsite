@@ -391,6 +391,9 @@ test('ikinci takvim sınıflarının stili de var', () => {
   });
   assert.ok(/\.ogr-hucre\.tam\{/.test(cssKaynak), 'herkes gelince kutu ayrı renkte olmalı');
   assert.ok(/\.ogr-hucre\.eksik\{/.test(cssKaynak), 'gelmeyen varsa kutu ayrı renkte olmalı');
+  assert.ok(/\.ogr-hucre\.ders\{/.test(cssKaynak), 'ders günü kutusu ayrı renkte olmalı');
+  assert.ok(/\.ogr-hucre\.ders\.isaretsiz\{opacity:1\}/.test(cssKaynak),
+    'ders günü soluklaşmamalı: henüz yoklama girilmemiş olsa da görünsün');
   assert.ok(/\.ogr-durum\.gelmedi\{/.test(cssKaynak), 'durum düğmesi renklenmeli');
   // Dar ekranda ikinci takvim tek sütuna iner.
   assert.ok(/\.ogr-takvim-sarmal\{grid-template-columns:1fr\}/.test(cssKaynak),

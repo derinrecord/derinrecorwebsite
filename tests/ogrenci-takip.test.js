@@ -154,6 +154,48 @@ test('ay dışı hücre soluklaşır', () => {
   assert.ok(h.includes('disari'));
 });
 
+// ---------- Ders günleri ----------
+// Haftalık kalıp takvimde renkle gösterilir. Kalıp ay içinden değil geçmişin
+// tamamından okunur: yeni ayda birkaç işaret kalmışsa ders günleri renksiz
+// kalırdı (ekimde henüz yalnız cumartesi işaretliydi).
+
+test('ders kalıbı bütün aylardan okunur, ay sınırı tanımaz', () => {
+  const k = [
+    { id: 'd1', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-09-07', durum: 'geldi' },  // Pt
+    { id: 'd2', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-09-09', durum: 'geldi' },  // Ça
+    { id: 'd3', ogrenci_id: 'o1', tur: 'katilim', gun: '2026-10-03', durum: 'geldi' },  // Ct
+    { id: 'd4', ogrenci_id: 'o9', tur: 'katilim', gun: '2026-09-10', durum: 'geldi' },  // lisede yok
+    { id: 'd5', ogrenci_id: 'o1', tur: 'odeme', gun: '2026-09-01', metin: '', tutar: 100, bitti: true }
+  ];
+  assert.deepEqual([...O.dersKalibi([OGR], k)].sort((a, b) => a - b), [0, 2, 5],
+    'pazartesi, çarşamba, cumartesi toplanmalı');
+  assert.deepEqual([...O.dersKalibi([], k)], [], 'liste boşsa kalıp çıkmaz');
+  assert.deepEqual([...O.dersKalibi([OGR], null)], [], 'kayıt yoksa kalıp çıkmaz');
+});
+
+test('ders günü hücresi renklenir, diğerleri renklenmez', () => {
+  const kalip = new Set([0, 2, 5]); // Pt, Ça, Ct
+  const pzt = O.ogrHucre({ iso: '2026-10-05', gunNo: 5, ayIcinde: true }, [OGR], [], {}, AY, kalip);
+  assert.ok(pzt.includes('ogr-hucre ders'), 'ders günü ayrı sınıf taşımalı');
+  assert.ok(pzt.includes('ders günü'), 'ekran okuyucuya söylenmeli');
+  const sali = O.ogrHucre({ iso: '2026-10-06', gunNo: 6, ayIcinde: true }, [OGR], [], {}, AY, kalip);
+  assert.ok(!sali.includes('ders'), 'ders günü olmayan kare renklenmemeli');
+  const disari = O.ogrHucre({ iso: '2026-09-28', gunNo: 28, ayIcinde: false }, [OGR], [], {}, AY, kalip);
+  assert.ok(!disari.includes('ders'), 'komşu ayın karesi renklenmemeli');
+  const kalipsiz = O.ogrHucre({ iso: '2026-10-05', gunNo: 5, ayIcinde: true }, [OGR], [], {}, AY);
+  assert.ok(!kalipsiz.includes('ders'), 'kalıp verilmezse hücre renklenmemeli');
+});
+
+test('takvim ders gününü yazıyla da söyler', () => {
+  const h = O.ogrenciTakvimi([OGR], KAYIT, {}, AY);
+  assert.ok(h.includes('Renkli günler ders günü'), 'açıklama takvim başlığında olmalı');
+  assert.ok(/class="ogr-hucre ders/.test(h), 'kalıba giren gün ızgarada renklenmeli');
+  // Kayıt yoksa kalıp da yok: renksiz ızgarada açıklama yanıltırdı.
+  const bos = O.ogrenciTakvimi([OGR], [], {}, AY);
+  assert.ok(!bos.includes('ders günü'), 'kalıp yokken ders günü yazılmamalı');
+  assert.ok(!/class="ogr-hucre ders/.test(bos));
+});
+
 // ---------- İkinci takvim: gün yoklaması ----------
 // Bir günün yoklaması BÜTÜN öğrencileri tek listede gösterir: sınıfı toplu
 // işaretlemek için gün gün gezinmek gerekmesin.
