@@ -661,8 +661,10 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
     // Öğrenci klasörü boş kalmasın: iki satır örnek veri. Haftalık gün
     // sayısı ve aylık tutar elle yazılı (fiyat gün sayısına göre değişiyor).
     ogrenciler: [
-      { id: 'og1', ad: 'Elif Yılmaz', veli: 'Ayşe Yılmaz', telefon: '0531 111 22 33', notlar: 'Salı-Perşembe', gun_sayisi: 3, aylik_tutar: 2500, aktif: true },
-      { id: 'og2', ad: 'Mert Demir', veli: 'Ali Demir', telefon: '0532 444 55 66', notlar: '', gun_sayisi: 2, aylik_tutar: 1800, aktif: true }
+      // Birinci öğrencide başlama tarihi var, ikincide yok: satırda tarih
+      // etiketinin çıkıp çıkmaması gözle karşılaştırılabilsin.
+      { id: 'og1', ad: 'Elif Yılmaz', veli: 'Ayşe Yılmaz', telefon: '0531 111 22 33', notlar: 'Salı-Perşembe', gun_sayisi: 3, aylik_tutar: 2500, baslama: '2026-02-12', aktif: true },
+      { id: 'og2', ad: 'Mert Demir', veli: 'Ali Demir', telefon: '0532 444 55 66', notlar: '', gun_sayisi: 2, aylik_tutar: 1800, baslama: null, aktif: true }
     ],
     // Yoklama şeridi ve ödeme listesi gözle doğrulanabilsin diye karışık
     // işaretler: gelen, gelmeyen, mazeretli günler ve iki tahsilat.

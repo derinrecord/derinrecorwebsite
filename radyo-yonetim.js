@@ -632,6 +632,13 @@
     const n = sayiOku(v);
     return n == null || n < 1 ? null : Math.round(n);
   };
+  // Başlama tarihi: tarayıcının tarih alanı YYYY-AA-GG verir. Beklenmedik bir
+  // değer gelirse boş kabul edilir — sunucudaki date kolonuna bozuk metin
+  // gönderilmesin (boş bırakmak geçerli: tarih sonradan öğrenilebilir).
+  const tarihOku = v => {
+    const s = String(v == null ? '' : v).trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  };
 
   async function ogrenciYazDene(islem, veri) {
     const depo = client.from('ogrenciler');
@@ -641,7 +648,7 @@
         // Yalnız gönderilen alanlar yazılır; gönderilmeyen alanın üstüne
         // yazılmaz (planYazDene ile aynı kural).
         const degisim = { updated_at: new Date().toISOString() };
-        ['ad', 'veli', 'telefon', 'notlar', 'gun_sayisi', 'aylik_tutar']
+        ['ad', 'veli', 'telefon', 'notlar', 'gun_sayisi', 'aylik_tutar', 'baslama']
           .forEach(a => { if (a in veri) degisim[a] = veri[a]; });
         return (await depo.update(degisim).eq('id', veri.id)).error || null;
       }
@@ -666,7 +673,7 @@
   async function ogrenciEkle(veri) {
     const yerel = Object.assign({
       id: 'yerel-' + Date.now(), ad: '', veli: '', telefon: '', notlar: '',
-      gun_sayisi: null, aylik_tutar: null, aktif: true, hata: null
+      gun_sayisi: null, aylik_tutar: null, baslama: null, aktif: true, hata: null
     }, veri);
     D.ogrenciler = (D.ogrenciler || []).concat([yerel]);
     state.ogrenciYeni = false;
@@ -693,7 +700,8 @@
     }
     return ogrenciEkle({
       ad: ad, veli: oku('veli'), telefon: oku('telefon'), notlar: oku('notlar'),
-      gun_sayisi: gunOku(oku('gun_sayisi')), aylik_tutar: sayiOku(oku('aylik_tutar'))
+      gun_sayisi: gunOku(oku('gun_sayisi')), aylik_tutar: sayiOku(oku('aylik_tutar')),
+      baslama: tarihOku(oku('baslama'))
     });
   }
 
@@ -716,7 +724,8 @@
     }
     const hata = await ogrenciYazDene('guncelle', {
       id: id, ad: ad, veli: oku('veli'), telefon: oku('telefon'), notlar: oku('notlar'),
-      gun_sayisi: gunOku(oku('gun_sayisi')), aylik_tutar: sayiOku(oku('aylik_tutar'))
+      gun_sayisi: gunOku(oku('gun_sayisi')), aylik_tutar: sayiOku(oku('aylik_tutar')),
+      baslama: tarihOku(oku('baslama'))
     });
     if (hata) { bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true); return; }
     state.ogrenciDuzenle = null;
@@ -1756,7 +1765,8 @@
         const hata = await ogrenciYazDene('ekle', {
           ad: satir.ad, veli: satir.veli, telefon: satir.telefon, notlar: satir.notlar,
           gun_sayisi: satir.gun_sayisi == null ? null : satir.gun_sayisi,
-          aylik_tutar: satir.aylik_tutar == null ? null : satir.aylik_tutar
+          aylik_tutar: satir.aylik_tutar == null ? null : satir.aylik_tutar,
+          baslama: satir.baslama == null ? null : satir.baslama
         });
         if (hata) { satir.hata = hata.message || 'kaydedilemedi'; ciz(); return; }
         await yenile();

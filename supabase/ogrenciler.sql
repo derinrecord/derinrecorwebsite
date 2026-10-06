@@ -34,6 +34,12 @@ create table if not exists public.ogrenciler (
 alter table public.ogrenciler add column if not exists gun_sayisi int;
 alter table public.ogrenciler add column if not exists aylik_tutar numeric;
 
+-- Kursa başlama tarihi. Boş bırakılabilir: eski öğrencilerin başlangıcı
+-- bilinmiyor olabilir ve panel tarihi olmayan satırı sakince karşılar.
+-- Metin değil date olarak tutulur ki ileride "kaç aydır geliyor" gibi
+-- hesaplar veritabanına sorulabilsin, gün.ay.yıl biçimi panelde üretilir.
+alter table public.ogrenciler add column if not exists baslama date;
+
 -- Liste ada göre okunur.
 create index if not exists ogrenciler_ad_idx
   on public.ogrenciler (ad);

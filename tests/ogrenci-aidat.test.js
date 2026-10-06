@@ -492,6 +492,19 @@ test('kolonlar şemada tekrar çalıştırılabilir biçimde eklenir', () => {
   assert.match(sql, /alter table public\.ogrenciler add column if not exists gun_sayisi int;/);
   assert.match(sql, /alter table public\.ogrenciler add column if not exists aylik_tutar numeric;/);
   assert.ok(!/drop column/i.test(sql), 'mevcut veri düşürülmemeli');
+  assert.match(sql, /alter table public\.ogrenciler add column if not exists baslama date;/);
+});
+
+test('başlama tarihi panele bağlı, okunur ve yazılır', () => {
+  assert.ok(/'baslama'\]\s*\.forEach/.test(panelKaynak), 'güncelleme listesi başlamayı taşımalı');
+  assert.ok(/const tarihOku = v => \{/.test(panelKaynak), 'tarih okuma yardımcısı olmalı');
+  assert.ok(panelKaynak.includes('^\\d{4}-\\d{2}-\\d{2}$'), 'tarih biçimi doğrulanmalı');
+  // Ekleme ve düzenleme formu tarihi okumalı; kaydedilemeyen satır yeniden
+  // gönderilirken de taşınmalı (yoksa "tekrar dene" tarihi düşürürdü).
+  assert.equal((panelKaynak.match(/baslama: tarihOku\(oku\('baslama'\)\)/g) || []).length, 2,
+    'iki form da tarihi okumalı');
+  assert.ok(/baslama: satir\.baslama/.test(panelKaynak), 'tekrar dene tarihi taşımalı');
+  assert.ok(/baslama: null/.test(panelKaynak), 'yerel satır varsayılanı boş tarih olmalı');
 });
 
 test('iki panel sayfası aynı güncel sürümü yükler', () => {
@@ -502,6 +515,6 @@ test('iki panel sayfası aynı güncel sürümü yükler', () => {
   };
   assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'),
     surum('../radyo-panel-prova.html', 'ogrenciler.js'), 'modül sürümleri eşleşmeli');
-  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '13', 'sürüm artırılmalı');
-  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '30', 'CSS sürümü artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'ogrenciler.js'), '14', 'sürüm artırılmalı');
+  assert.equal(surum('../radyo-yonetim.html', 'radyo-panel.css'), '31', 'CSS sürümü artırılmalı');
 });

@@ -479,6 +479,10 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
   background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px}
 .plan-gir:focus{outline:none;border-color:var(--gold)}
 .plan-gir.tutar{flex:0 0 108px}
+/* Tarih alanı: gün seçici tarayıcıdan gelir; koyu panelde beyaz bir kutu gibi
+   durmasın diye şeması koyu veriliyor, takvim simgesi de soluklaştırılıyor. */
+.plan-gir.tarih{color-scheme:dark}
+.plan-gir.tarih::-webkit-calendar-picker-indicator{filter:invert(.8);opacity:.75;cursor:pointer}
 .plan-vazgec{width:30px;height:30px;flex:0 0 auto;font-size:16px;line-height:1;color:var(--muted);
   background:none;border:0;border-radius:8px;cursor:pointer}
 .plan-vazgec:hover{color:var(--danger)}

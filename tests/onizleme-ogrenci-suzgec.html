@@ -486,6 +486,10 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
   background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px}
 .plan-gir:focus{outline:none;border-color:var(--gold)}
 .plan-gir.tutar{flex:0 0 108px}
+/* Tarih alanı: gün seçici tarayıcıdan gelir; koyu panelde beyaz bir kutu gibi
+   durmasın diye şeması koyu veriliyor, takvim simgesi de soluklaştırılıyor. */
+.plan-gir.tarih{color-scheme:dark}
+.plan-gir.tarih::-webkit-calendar-picker-indicator{filter:invert(.8);opacity:.75;cursor:pointer}
 .plan-vazgec{width:30px;height:30px;flex:0 0 auto;font-size:16px;line-height:1;color:var(--muted);
   background:none;border:0;border-radius:8px;cursor:pointer}
 .plan-vazgec:hover{color:var(--danger)}
@@ -993,7 +997,7 @@ body{background:#0b0b0d;padding:22px;display:block}
       <button class="ogr-ac" data-act="ogrenci-detay" data-id="og1"
       type="button" aria-expanded="false"
       aria-label="Ödeme listesi ve ay özeti">▸</button>
-      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33</small><br><small>Salı-Perşembe</small><span class="ogr-cip"><i class="p">Haftada 3 gün</i><i class="p">Aylık 2.500 ₺</i><i class="g">3 geldi</i><i class="y">1 gelmedi</i><i class="m">1 mazeret</i><i class="g">2.000 ₺ ödendi · elden</i><i class="y">1.500 ₺ bekliyor</i><i class="b">900 ₺ devir</i></span></span>
+      <span class="metin"><b>Elif Yılmaz</b> <small>Ayşe Yılmaz · 0531 111 22 33 · başlama 12.02.2026</small><br><small>Salı-Perşembe</small><span class="ogr-cip"><i class="p">Haftada 3 gün</i><i class="p">Aylık 2.500 ₺</i><i class="g">3 geldi</i><i class="y">1 gelmedi</i><i class="m">1 mazeret</i><i class="g">2.000 ₺ ödendi · elden</i><i class="y">1.500 ₺ bekliyor</i><i class="b">900 ₺ devir</i></span></span>
       <button class="duzenle" data-act="ogrenci-duzenle" data-id="og1" type="button" aria-label="Düzenle">✎</button>
       <button class="sil" data-act="ogrenci-sil" data-id="og1" type="button" aria-label="Sil">×</button>
       

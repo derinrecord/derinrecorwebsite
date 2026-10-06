@@ -51,6 +51,24 @@
     return p[2] + ' ' + AYLAR_ADI[p[1] - 1];
   };
 
+  // Başlama tarihi satırda gün.ay.yıl olarak yazılır (12.10.2026). Ay adıyla
+  // yazılsaydı ekini tahmin etmek gerekirdi ("Ekim'den" ama "Ocak'tan");
+  // sayı biçimi hem kısa hem ek istemiyor.
+  const tarihKisa = iso => {
+    const p = String(iso == null ? '' : iso).slice(0, 10).split('-');
+    if (p.length !== 3 || !p[0] || !p[1] || !p[2]) return '';
+    return p[2] + '.' + p[1] + '.' + p[0];
+  };
+
+  // Form alanına tarih değeri: yalnız YYYY-AA-GG yazılır. Veritabanındaki
+  // date kolonu bu biçimde döner; başka bir şey gelirse (elle doldurulmuş
+  // satır, eski kayıt) alan boş kalır — tarih alanına geçersiz metin yazmak
+  // tarayıcıda sessizce silinirdi.
+  const tarihDeger = v => {
+    const s = String(v == null ? '' : v).slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+  };
+
   // ---------- Yoklama ----------
   // Tek düğmeyle üç durum arasında dönülür; dördüncü basış işareti kaldırır.
   // Böylece gün şeridinde onlarca düğme yerine tek bir nokta olur ve yanlış
@@ -400,6 +418,8 @@
         placeholder="Veli" value="${v('veli')}">
       <input class="plan-gir" data-${k}="telefon" type="tel" autocomplete="off"
         placeholder="Telefon" value="${v('telefon')}">
+      <input class="plan-gir tarih" data-${k}="baslama" type="date"
+        title="Kursa başladığı gün — boş bırakılabilir" value="${tarihDeger(o && o.baslama)}">
       <input class="plan-gir gun" data-${k}="gun_sayisi" type="number" min="1" max="7" step="1"
         list="${GUN_LISTESI_ID}" autocomplete="off" placeholder="Haftalık gün"
         title="Haftada kaç gün geliyor — 2/3/4 seç ya da elle yaz" value="${v('gun_sayisi')}">
@@ -735,7 +755,12 @@
     }
     const yerel = !!o.hata || String(o.id).indexOf('yerel-') === 0;
     const acik = durum.ogrenciAcik === o.id;
-    const alt = [o.veli, o.telefon].filter(x => x && String(x).trim()).join(' · ');
+    // Başlama tarihi veli/telefonun yanında durur: satırın kimlik bilgisi,
+    // durum rozeti değil. "başlama" etiketiyle yazılır, yoksa tarihin tek
+    // başına ne olduğu (kayıt mı, tahsilat mı) belirsiz kalırdı.
+    const baslama = tarihKisa(o.baslama);
+    const alt = [o.veli, o.telefon, baslama ? 'başlama ' + baslama : '']
+      .filter(x => x && String(x).trim()).join(' · ');
     const acDugme = yerel ? '' : `<button class="ogr-ac" data-act="ogrenci-detay" data-id="${esc(o.id)}"
       type="button" aria-expanded="${acik ? 'true' : 'false'}"
       aria-label="${acik ? 'Ödeme listesini ve ay özetini kapat' : 'Ödeme listesi ve ay özeti'}">${acik ? '▾' : '▸'}</button>`;
@@ -860,6 +885,7 @@
     katilimKisa: katilimKisa,
     ayGunSayisi: ayGunSayisi,
     gunKisa: gunKisa,
+    tarihKisa: tarihKisa,
     ogrenciKayitlari: ogrenciKayitlari,
     katilimDurum: katilimDurum,
     katilimOzeti: katilimOzeti,

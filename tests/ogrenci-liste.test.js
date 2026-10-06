@@ -62,7 +62,7 @@ test('boş listede davet metni çıkar', () => {
 
 test('ekleme formu açıkken bütün alanlar ve ekle düğmesi basılır', () => {
   const h = bolum([], { ogrenciYeni: true });
-  ['ad', 'veli', 'telefon', 'gun_sayisi', 'aylik_tutar', 'notlar'].forEach(a =>
+  ['ad', 'veli', 'telefon', 'baslama', 'gun_sayisi', 'aylik_tutar', 'notlar'].forEach(a =>
     assert.ok(h.includes(`data-ogrenci-gir="${a}"`), a + ' alanı olmalı'));
   assert.ok(h.includes('data-act="ogrenci-kaydet"'), 'ekle düğmesi olmalı');
   assert.ok(h.includes('data-act="ogrenci-yeni-kapat"'), 'vazgeç düğmesi olmalı');
@@ -78,6 +78,40 @@ test('düzenlenen satır yerinde form olur', () => {
   assert.ok(h.includes('data-act="ogrenci-duzenle-kapat"'), 'vazgeç düğmesi olmalı');
   assert.ok(h.includes('data-act="ogrenci-duzenle" data-id="2"'), 'diğer satırda düzenle düğmesi kalmalı');
   assert.ok(!h.includes('data-act="ogrenci-duzenle" data-id="1"'), 'düzenlenen satırda düğme basılmamalı');
+});
+
+// ---------- Başlama tarihi ----------
+
+test('başlama tarihi formda tarayıcının tarih alanı olarak durur', () => {
+  const h = bolum([], { ogrenciYeni: true });
+  assert.ok(/data-ogrenci-gir="baslama" type="date"/.test(h),
+    'gün seçici tarayıcıdan gelmeli, elle yazılan tarih biçim hatasına açık');
+  assert.ok(h.includes('boş bırakılabilir'), 'alanın zorunlu olmadığı yazılmalı');
+});
+
+test('düzenleme formu başlama tarihini değeriyle doldurur', () => {
+  const h = bolum([{ id: '1', ad: 'Elif', baslama: '2026-02-12' }], { ogrenciDuzenle: '1' });
+  assert.ok(h.includes('data-ogrenci-duzenle="baslama"'), 'düzenleme alanı olmalı');
+  assert.ok(h.includes('value="2026-02-12"'), 'mevcut tarih alanı doldurmalı');
+});
+
+test('satırda başlama tarihi gün.ay.yıl yazılır', () => {
+  const h = bolum([
+    { id: '1', ad: 'Elif', veli: 'Ayşe', telefon: '0531', baslama: '2026-02-12' }
+  ], {});
+  assert.ok(h.includes('başlama 12.02.2026'), 'tarih satırda gün.ay.yıl görünmeli');
+  assert.ok(h.includes('Ayşe') && h.includes('0531'), 'veli ve telefon yerinde kalmalı');
+  assert.equal(O.tarihKisa('2026-02-12'), '12.02.2026');
+  assert.equal(O.tarihKisa(''), '');
+  assert.equal(O.tarihKisa(null), '');
+});
+
+test('başlama tarihi boşken satırda etiket çıkmaz', () => {
+  const h = bolum([{ id: '1', ad: 'Elif', veli: '', telefon: '', baslama: null }], {});
+  assert.ok(!h.includes('başlama'), 'tarih yoksa etiket de yazılmamalı');
+  // Bozuk değer de saat gibi görünmesin: yalnız gün.ay.yıl basılır.
+  const bozuk = bolum([{ id: '2', ad: 'Mert', baslama: 'bilinmiyor' }], {});
+  assert.ok(!bozuk.includes('başlama'), 'biçimsiz değer satıra yazılmamalı');
 });
 
 test('kaydedilemeyen satırda düzenle düğmesi çıkmaz', () => {
