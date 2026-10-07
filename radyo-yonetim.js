@@ -14,7 +14,6 @@
 
 (() => {
   const V = window.DerinRadyoViews;
-  const OG = window.DerinOgrenci;
   const Ses = window.DerinAudioTypes;
   const el = id => document.getElementById(id);
   const esc = V.esc;
@@ -49,9 +48,6 @@
     // Plan takvimi: açık gün, görünen ay, katlanmış bölümler. Katlı olanlar
     // tarayıcıda hatırlanır; her açılışta hepsi yeniden açılmasın diye.
     planAcikGun: null, planYil: null, planAy: null, planKatli: [], planYeni: null,
-    // İkinci takvim (öğrenciler): kendi ayı ve açık günü. Marka takviminden
-    // bağımsızdır — öğrenci okları marka takvimini kaydırmaz.
-    ogrenciYil: null, ogrenciAy: null, ogrenciGun: null,
     // Yayın başlatma ekranının seçimleri: marka → şube → kaynak → parça.
     yayin: { brandId: '', playerId: '', kaynak: '', parcaId: '' },
     // Açık bırakılan katlanabilir bölümler (marka sayfasındaki geçmiş listeleri).
@@ -415,10 +411,6 @@
     state.nav = temel.nav;
     state.sub = temel.sub;
     state.openFolder = state.openBrand = state.openPlaylist = null;
-    // Plan bölümünün iki sayfası aynı adres ailesinde yaşar: #/plan/takvim ve
-    // #/plan/ogrenciler. İkinci yol burada okunmazsa sayfa sessizce takvime
-    // düşerdi (menü işareti yanlış yerde kalırdı).
-    if (sayfa === 'plan' && id === 'ogrenciler') state.sub = 'ogrenciler';
     if (sayfa === 'klasorler' && id) state.openFolder = id;
     else if (sayfa === 'markalar' && id) {
       state.openBrand = id;
@@ -453,7 +445,7 @@
     if (state.sub === 'abonelikler') return '#/abonelikler';
     if (state.sub === 'talepler') return '#/talepler';
     if (state.nav === 'kurulum') return '#/kurulum';
-    if (state.nav === 'plan') return state.sub === 'ogrenciler' ? '#/plan/ogrenciler' : '#/plan/takvim';
+    if (state.nav === 'plan') return '#/plan/takvim';
     return '#/markalar';
   }
 
@@ -510,28 +502,51 @@
   // Sunucuya yazmayı dener; ekranı çizmez. Dönüş null ise başarılı, değilse
   // hata nesnesi. Böylece çağıran, iyimser güncelleme yapıp yapmayacağına
   // kendisi karar verebiliyor.
+  // Eksik kolon (plan_maddeleri 'yontem' eklenmeden güncellenmişse) sunucudan
+  // 42703 ile döner. Ham mesaj "column ... does not exists" der ve kullanıcı
+  // ne yapacağını anlamaz; onun yerine çalıştırılacak dosya söylenir.
+  function planHatasi(hata) {
+    if (hata && hata.code === '42703') {
+      return { code: '42703', message: 'plan_maddeleri güncellenmemiş: supabase/plan-takvimi.sql dosyasını SQL Editor\'de bir kez çalıştırın.' };
+    }
+    return hata;
+  }
+
+  // Ödeme yöntemi seçicisini okur. Boş ya da tanınmayan değer null sayılır:
+  // veritabanındaki sınırlı liste (nakit / kart / havale) dışına yazılmaz ve
+  // "yöntem belirtilmedi" durumu veriye uydurulmaz. İki form aynı anda açık
+  // kalabildiği için önek ayrır ('gir' ekleme, 'duzenle' satır düzenleme).
+  function planYontemOku(onek) {
+    const kutu = el('view').querySelector('[data-plan-' + onek + '="odeme-yontem"]');
+    const v = kutu ? String(kutu.value || '') : '';
+    const list = (window.DerinPlan && window.DerinPlan.ODEME_YONTEMLERI) || [];
+    return list.some(x => x[0] === v) ? v : null;
+  }
+
   async function planYazDene(islem, veri) {
     const depo = client.from('plan_maddeleri');
+    let hata = null;
     try {
-      if (islem === 'ekle') return (await depo.insert(veri)).error || null;
-      if (islem === 'guncelle') {
+      if (islem === 'ekle') {
+        hata = (await depo.insert(veri)).error || null;
+      } else if (islem === 'guncelle') {
         // Yalnız gönderilen alanlar yazılır: işaret değişikliği 'bitti' taşır,
-        // satır düzenleme ise 'marka'/'tutar'. Birini diğerinin üstüne yazmak
-        // (ör. düzenlemede bitti'yi false yapmak) veriyi bozar.
+        // satır düzenleme ise 'marka'/'tutar'/'yontem'. Birini diğerinin üstüne
+        // yazmak (ör. düzenlemede bitti'yi false yapmak) veriyi bozar.
         const degisim = { updated_at: new Date().toISOString() };
-        ['bitti', 'marka', 'tutar', 'metin'].forEach(a => { if (a in veri) degisim[a] = veri[a]; });
-        return (await depo.update(degisim).eq('id', veri.id)).error || null;
-      }
-      if (islem === 'sil') return (await depo.delete().eq('id', veri.id)).error || null;
-      if (islem === 'not') {
+        ['bitti', 'marka', 'tutar', 'metin', 'yontem'].forEach(a => { if (a in veri) degisim[a] = veri[a]; });
+        hata = (await depo.update(degisim).eq('id', veri.id)).error || null;
+      } else if (islem === 'sil') {
+        hata = (await depo.delete().eq('id', veri.id)).error || null;
+      } else if (islem === 'not') {
         const mevcut = (D.planItems || []).find(x => x.gun === veri.gun && x.tur === 'not');
         const sorgu = mevcut
           ? depo.update({ metin: veri.metin, updated_at: new Date().toISOString() }).eq('id', mevcut.id)
           : depo.insert({ gun: veri.gun, tur: 'not', metin: veri.metin });
-        return (await sorgu).error || null;
+        hata = (await sorgu).error || null;
       }
-    } catch (e) { return e; }
-    return null;
+    } catch (e) { hata = e; }
+    return planHatasi(hata);
   }
 
   // Tek yerden yazma: ekle / güncelle / sil. Başarısızlıkta kullanıcıya
@@ -574,7 +589,7 @@
     const tutar = Number(String(tutarKutu ? tutarKutu.value : '').replace(',', '.'));
     if (!marka) { bildir('Marka / açıklama gerekli.', 'err'); if (markaKutu) markaKutu.focus(); return; }
     if (!isFinite(tutar)) { bildir('Tutar sayı olmalı.', 'err'); if (tutarKutu) tutarKutu.focus(); return; }
-    return planEkle('odeme', iso, { metin: '', marka: marka, tutar: tutar });
+    return planEkle('odeme', iso, { metin: '', marka: marka, tutar: tutar, yontem: planYontemOku('gir') });
   }
 
   // Enter: maddeyi ekler; ödemede marka→tutar ilerler, tutarda kaydeder.
@@ -608,292 +623,10 @@
     // Kayıt düşerse form açık ve yazılan değerler ekranda kalır: yeniden
     // çizim ancak başarıdan sonra olur, sessiz kayıp olmaz. planYaz burada
     // kullanılmaz, çünkü o başarısızlıkta da çizer ve formu kapatırdı.
-    const hata = await planYazDene('guncelle', { id: id, marka: marka, tutar: tutar });
+    const hata = await planYazDene('guncelle', { id: id, marka: marka, tutar: tutar, yontem: planYontemOku('duzenle') });
     if (hata) { bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true); return; }
     state.planDuzenle = null;
     await yenile();
-  }
-
-  // --- öğrenci listesi (bkz. ogrenciler.js) ---
-  // Takvim içindeki ayrı klasör. Kaydetme deseni takvimin birebir aynısı:
-  // anında kayıt, iyimser ekleme, "kaydedilemedi — tekrar dene".
-  // Form alanlarındaki sayıları okur. Boş alan null döner: kolon boş kalır,
-  // "0" yazılmış gibi görünmez. Sayı olmayan girdi de null'a düşer — panele
-  // elle yazılan çöp sunucuya taşınmaz (sunucu da reddederdi, ama kullanıcı
-  // sessiz bir hata yerine alanın boş kaldığını görsün).
-  const sayiOku = v => {
-    const s = String(v == null ? '' : v).trim().replace(',', '.');
-    if (!s) return null;
-    const n = Number(s);
-    return isFinite(n) ? n : null;
-  };
-  // Haftalık gün sayısı tam sayıdır; 1'in altı anlamsız olduğu için boş sayılır.
-  const gunOku = v => {
-    const n = sayiOku(v);
-    return n == null || n < 1 ? null : Math.round(n);
-  };
-  // Başlama tarihi: tarayıcının tarih alanı YYYY-AA-GG verir. Beklenmedik bir
-  // değer gelirse boş kabul edilir — sunucudaki date kolonuna bozuk metin
-  // gönderilmesin (boş bırakmak geçerli: tarih sonradan öğrenilebilir).
-  const tarihOku = v => {
-    const s = String(v == null ? '' : v).trim();
-    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
-  };
-
-  async function ogrenciYazDene(islem, veri) {
-    const depo = client.from('ogrenciler');
-    try {
-      if (islem === 'ekle') return (await depo.insert(veri)).error || null;
-      if (islem === 'guncelle') {
-        // Yalnız gönderilen alanlar yazılır; gönderilmeyen alanın üstüne
-        // yazılmaz (planYazDene ile aynı kural).
-        const degisim = { updated_at: new Date().toISOString() };
-        ['ad', 'veli', 'telefon', 'notlar', 'gun_sayisi', 'aylik_tutar', 'baslama']
-          .forEach(a => { if (a in veri) degisim[a] = veri[a]; });
-        return (await depo.update(degisim).eq('id', veri.id)).error || null;
-      }
-      if (islem === 'sil') return (await depo.delete().eq('id', veri.id)).error || null;
-    } catch (e) { return e; }
-    return null;
-  }
-
-  async function ogrenciYaz(islem, veri) {
-    const hata = await ogrenciYazDene(islem, veri);
-    if (hata) {
-      bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true);
-      return false;
-    }
-    await yenile();
-    return true;
-  }
-
-  // İyimser ekleme: satır önce ekranda belirir, sonra sunucuya gider. Kayıt
-  // düşerse satır silinmez; yazılanlar ekranda durur, satır "kaydedilemedi"
-  // diye işaretlenir (planEkle ile aynı kural).
-  async function ogrenciEkle(veri) {
-    const yerel = Object.assign({
-      id: 'yerel-' + Date.now(), ad: '', veli: '', telefon: '', notlar: '',
-      gun_sayisi: null, aylik_tutar: null, baslama: null, aktif: true, hata: null
-    }, veri);
-    D.ogrenciler = (D.ogrenciler || []).concat([yerel]);
-    state.ogrenciYeni = false;
-    ciz();
-
-    const hata = await ogrenciYazDene('ekle', veri);
-    if (hata) { yerel.hata = hata.message || 'kaydedilemedi'; ciz(); return; }
-    await yenile();
-  }
-
-  // Ekleme formunu okur ve kaydeder. Ad boşsa kayıt yapılmaz, alan odakta
-  // kalır; böylece adı konmamış bir satır oluşmaz.
-  function ogrenciGirKaydet() {
-    const oku = ad => {
-      const k = el('view').querySelector('[data-ogrenci-gir="' + ad + '"]');
-      return k ? k.value.trim() : '';
-    };
-    const ad = oku('ad');
-    if (!ad) {
-      bildir('Öğrenci adı gerekli.', 'err');
-      const k = el('view').querySelector('[data-ogrenci-gir="ad"]');
-      if (k) k.focus();
-      return;
-    }
-    return ogrenciEkle({
-      ad: ad, veli: oku('veli'), telefon: oku('telefon'), notlar: oku('notlar'),
-      gun_sayisi: gunOku(oku('gun_sayisi')), aylik_tutar: sayiOku(oku('aylik_tutar')),
-      baslama: tarihOku(oku('baslama'))
-    });
-  }
-
-  // Açık düzenleme formunu okur ve satırı günceller. Kayıt düşerse form açık
-  // ve yazılan değerler ekranda kalır: yeniden çizim ancak başarıdan sonra
-  // olur, sessiz kayıp olmaz (planDuzenleKaydet ile aynı kural).
-  async function ogrenciDuzenleKaydet(id) {
-    const satir = (D.ogrenciler || []).find(x => x.id === id);
-    if (!satir) return;
-    const oku = ad => {
-      const k = el('view').querySelector('[data-ogrenci-duzenle="' + ad + '"]');
-      return k ? k.value.trim() : '';
-    };
-    const ad = oku('ad');
-    if (!ad) {
-      bildir('Öğrenci adı gerekli.', 'err');
-      const k = el('view').querySelector('[data-ogrenci-duzenle="ad"]');
-      if (k) k.focus();
-      return;
-    }
-    const hata = await ogrenciYazDene('guncelle', {
-      id: id, ad: ad, veli: oku('veli'), telefon: oku('telefon'), notlar: oku('notlar'),
-      gun_sayisi: gunOku(oku('gun_sayisi')), aylik_tutar: sayiOku(oku('aylik_tutar')),
-      baslama: tarihOku(oku('baslama'))
-    });
-    if (hata) { bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true); return; }
-    state.ogrenciDuzenle = null;
-    await yenile();
-  }
-
-  // --- öğrenci kayıtları: yoklama ve ödeme (bkz. ogrenciler.js) ---
-  // Aynı tabloda iki tür: 'katilim' ve 'odeme'. Yazma deseni takvimle aynı:
-  // anında kayıt, iyimser ekran, başarısızlıkta açıkça söylenir.
-  const bugunIso = () => new Date().toISOString().slice(0, 10);
-
-  async function ogrenciKayitYazDene(islem, veri) {
-    const depo = client.from('ogrenci_kayitlari');
-    try {
-      if (islem === 'ekle') return (await depo.insert(veri)).error || null;
-      if (islem === 'guncelle') {
-        const degisim = { updated_at: new Date().toISOString() };
-        ['durum', 'tutar', 'metin', 'bitti', 'gun', 'elden', 'odeme_gunu']
-          .forEach(a => { if (a in veri) degisim[a] = veri[a]; });
-        return (await depo.update(degisim).eq('id', veri.id)).error || null;
-      }
-      if (islem === 'sil') return (await depo.delete().eq('id', veri.id)).error || null;
-    } catch (e) { return e; }
-    return null;
-  }
-
-  async function ogrenciKayitYaz(islem, veri) {
-    const hata = await ogrenciKayitYazDene(islem, veri);
-    if (hata) {
-      bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true);
-      return false;
-    }
-    await yenile();
-    return true;
-  }
-
-  // Yoklama işareti: tek düğme dört hâl arasında döner, dördüncü basış
-  // işareti siler. İyimser çalışır — işaret hemen ekranda döner; kayıt
-  // düşerse liste bütünüyle eski hâline alınır ve kullanıcıya söylenir.
-  // (Satır kaydırmada olduğu gibi "tekrar dene" düğmesi burada yok: tek bir
-  // hücreyi işaretleyen kullanıcı için doğru davranış sessiz kalmamak, ekranı
-  // gerçeğe döndürüp hatayı söylemek.)
-  async function ogrenciKatilimYaz(ogrId, iso, yeni) {
-    const onceki = (D.ogrenciKayitlari || []).slice();
-    const eski = onceki.find(k => k.tur === 'katilim'
-      && k.ogrenci_id === ogrId && String(k.gun).slice(0, 10) === iso) || null;
-    if (!yeni && !eski) return;
-
-    const liste = onceki.filter(k => k !== eski);
-    if (yeni) {
-      liste.push(eski
-        ? Object.assign({}, eski, { durum: yeni })
-        : {
-          id: 'yerel-katilim-' + Date.now(), ogrenci_id: ogrId, tur: 'katilim',
-          gun: iso, durum: yeni, metin: '', tutar: null, bitti: false
-        });
-    }
-    D.ogrenciKayitlari = liste;
-    ciz();
-
-    const hata = !eski
-      ? await ogrenciKayitYazDene('ekle', { ogrenci_id: ogrId, tur: 'katilim', gun: iso, durum: yeni })
-      : (yeni ? await ogrenciKayitYazDene('guncelle', { id: eski.id, durum: yeni })
-        : await ogrenciKayitYazDene('sil', { id: eski.id }));
-    if (hata) {
-      D.ogrenciKayitlari = onceki;
-      ciz();
-      bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true);
-      return;
-    }
-    await yenile();
-  }
-
-  // Ödeme ekleme formunu okur. Tutar boş ya da sayı değilse satır oluşmaz ve
-  // alan odakta kalır; yarım kaydedilmiş bir tahsilat oluşmasın. Kayıt düşerse
-  // form açık ve yazılanlar ekranda kalır (planDuzenleKaydet ile aynı kural).
-  async function ogrenciOdemeGir(ogrId) {
-    const kutu = el('view').querySelector('[data-ogrenci-odeme-gir="tutar"]');
-    const ham = kutu ? kutu.value.trim() : '';
-    const tutar = Number(ham.replace(',', '.'));
-    if (!ham || !isFinite(tutar)) {
-      bildir('Tutar sayı olmalı.', 'err');
-      if (kutu) kutu.focus();
-      return;
-    }
-    const metinKutu = el('view').querySelector('[data-ogrenci-odeme-gir="metin"]');
-    const hata = await ogrenciKayitYazDene('ekle', {
-      ogrenci_id: ogrId, tur: 'odeme', gun: bugunIso(),
-      metin: metinKutu ? metinKutu.value.trim() : '', tutar: tutar, bitti: false
-    });
-    if (hata) { bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true); return; }
-    state.ogrenciOdemeYeni = null;
-    await yenile();
-  }
-
-  // Açık ödeme düzenleme formunu okur ve satırı günceller.
-  async function ogrenciOdemeDuzenleKaydet(kayitId) {
-    const kayit = (D.ogrenciKayitlari || []).find(x => x.id === kayitId);
-    if (!kayit) return;
-    const sec = ad => el('view').querySelector('[data-ogrenci-odeme-duzenle="' + ad + '"]');
-    const tutarKutu = sec('tutar');
-    const ham = tutarKutu ? tutarKutu.value.trim() : '';
-    const tutar = Number(ham.replace(',', '.'));
-    if (!ham || !isFinite(tutar)) {
-      bildir('Tutar sayı olmalı.', 'err');
-      if (tutarKutu) tutarKutu.focus();
-      return;
-    }
-    const metinKutu = sec('metin');
-    const tarihKutu = sec('odeme_gunu');
-    const hata = await ogrenciKayitYazDene('guncelle', {
-      id: kayitId, metin: metinKutu ? metinKutu.value.trim() : '', tutar: tutar,
-      // Boş bırakılırsa gün silinir (null): "hangi gün ödendi bilinmiyor".
-      odeme_gunu: tarihOku(tarihKutu ? tarihKutu.value : '')
-    });
-    if (hata) { bildir('Kaydedilemedi: ' + (hata.message || 'bilinmeyen hata'), true); return; }
-    state.ogrenciOdemeDuzenle = null;
-    await yenile();
-  }
-
-  // Elden işareti: nakit alındığı anda hem "alındı" hem "elden" yazılır.
-  // Kural modülde durur (ogrenciler.js · eldenCevir), panel yalnız uygular —
-  // iki yerde ayrı yazılsaydı biri diğerinden kaçardı.
-  async function ogrenciOdemeElden(kayitId) {
-    const kayit = (D.ogrenciKayitlari || []).find(x => x.id === kayitId);
-    if (!kayit) return;
-    if (!OG || !OG.eldenCevir) { bildir('Öğrenci modülü yüklenemedi.', 'err'); return; }
-    const degisim = OG.eldenCevir(kayit);
-    degisim.id = kayitId;
-    // Elden işareti ödendi de sayar: gün boşsa bugün de yazılır.
-    if (OG.odemeGunu) Object.assign(degisim, OG.odemeGunu(kayit, bugunIso()));
-    return ogrenciKayitYaz('guncelle', degisim);
-  }
-
-  // Bu ayın aidatlarını topluca açar. Tutar öğrencide yazılı olduğu için
-  // kayıtlar tarifeden değil oradan üretilir (bkz. ogrenciler.js · aylikAidatlar).
-  // Tek istekte toplu ekleme yapılır: öğrenci başına ayrı gidiş, onlarca
-  // satırlı sınıfta yarım kalmış bir ay bırakırdı. Onay penceresinden geçer —
-  // bütün ayın borçlarını bir anda açan bir işlem sessizce çalışmamalı.
-  async function ogrenciAidatOlustur(yil, ay) {
-    if (!OG) { bildir('Öğrenci modülü yüklenemedi.', 'err'); return; }
-    const h = OG.aylikAidatlar(D.ogrenciler || [], D.ogrenciKayitlari || [], { yil: yil, ay: ay });
-    if (!h.kayitlar.length) { bildir('Bu ay için oluşturulacak aidat yok.', 'err'); return; }
-    const kayitHatasi = await ogrenciKayitYazDene('ekle', h.kayitlar);
-    if (kayitHatasi) {
-      bildir('Kaydedilemedi: ' + (kayitHatasi.message || 'bilinmeyen hata'), true);
-      return;
-    }
-    await yenile();
-    bildir(h.kayitlar.length + ' aidat kaydı oluşturuldu · ' + OG.para(h.toplam) + ' ₺');
-  }
-
-  // Haftalık gün sayısı yazılınca aylık tutarı tarifeden doldurur (2 gün →
-  // 3.200 ₺, 3 gün → 4.100 ₺; bkz. ogrenciler.js · TARIFE). Alan serbest
-  // kalır: içinde el yazısı bir tutar varsa üstüne yazılmaz, yalnız alan
-  // boşken ya da değer tarifeden gelmişse güncellenir — 2 günden 3 güne geçen
-  // kullanıcı tutarı iki kez yazmak zorunda kalmasın.
-  function tarifeDoldur(gunAlan) {
-    if (!OG) return;
-    const kip = gunAlan.dataset.ogrenciGir != null ? 'ogrenci-gir' : 'ogrenci-duzenle';
-    const form = gunAlan.closest('.plan-yeni,.plan-satir') || document;
-    const tutarAlan = form.querySelector('[data-' + kip + '="aylik_tutar"]');
-    if (!tutarAlan) return;
-    const tutar = OG.tarifeTutar(gunAlan.value);
-    if (tutar == null) return;
-    const mevcut = tutarAlan.value.trim();
-    if (mevcut && !OG.tarifeMi(mevcut)) return;
-    tutarAlan.value = String(tutar);
   }
 
   state.planKatli = planKatliOku();
@@ -920,27 +653,6 @@
       const alan = el('view').querySelector('[data-plan-duzenle]');
       if (alan) { alan.focus(); if (alan.select) alan.select(); }
     }
-    // Öğrenci ekleme formu açıksa odak ad alanına gider: düğmeye basan
-    // kullanıcı hemen yazmaya başlayabilsin.
-    if (state.ogrenciYeni) {
-      const alan = el('view').querySelector('[data-ogrenci-gir="ad"]');
-      if (alan) alan.focus();
-    }
-    // Öğrenci düzenleme açıksa odak ad alanına gider ve metin seçili gelir.
-    if (state.ogrenciDuzenle) {
-      const alan = el('view').querySelector('[data-ogrenci-duzenle="ad"]');
-      if (alan) { alan.focus(); if (alan.select) alan.select(); }
-    }
-    // Öğrenci ödeme formu açıksa odak ilk alana gider.
-    if (state.ogrenciOdemeYeni) {
-      const alan = el('view').querySelector('[data-ogrenci-odeme-gir="metin"]');
-      if (alan) alan.focus();
-    }
-    // Ödeme düzenleme açıksa odak açıklamaya gider ve metin seçili gelir.
-    if (state.ogrenciOdemeDuzenle) {
-      const alan = el('view').querySelector('[data-ogrenci-odeme-duzenle="metin"]');
-      if (alan) { alan.focus(); if (alan.select) alan.select(); }
-    }
     const now = Date.now();
     const caliyor = D.players.filter(p => p.is_playing && V.canliMi(p, now)).length;
     const bagli = D.players.filter(p => V.canliMi(p, now)).length;
@@ -964,7 +676,7 @@
   }
 
   async function veriYukle() {
-    const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans, planItems, ogrenciler, ogrenciKayitlari] = await Promise.all([
+    const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans, planItems] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec,cover_path').order('sort_order'),
@@ -988,15 +700,7 @@
       // Plan takvimi (supabase/plan-takvimi.sql). Tablo kurulmadıysa sorgu
       // hata döner, data null gelir: takvim boş açılır, panelin geri kalanı
       // çalışmaya devam eder.
-      client.from('plan_maddeleri').select('*').order('gun'),
-      // Öğrenci listesi (supabase/ogrenciler.sql). Tablo kurulmadıysa sorgu
-      // hata döner, data null gelir: klasör boş açılır, panelin geri kalanı
-      // çalışmaya devam eder.
-      client.from('ogrenciler').select('*').order('ad'),
-      // Öğrenci yoklama ve ödeme kayıtları (supabase/ogrenciler.sql). Tablo
-      // kurulmadıysa sorgu hata döner, data null gelir: öğrenci listesi
-      // çalışır, yalnız yoklama/ödeme boş görünür.
-      client.from('ogrenci_kayitlari').select('*').order('gun')
+      client.from('plan_maddeleri').select('*').order('gun')
     ]);
     D = {
       brands: brands.data || [], folders: folders.data || [], tracks: tracks.data || [],
@@ -1006,8 +710,6 @@
       coffeeAttempts: coffeeAttempts.data || [], olaylar: olaylar.data || [],
       subscriptions: subscriptions.data || [], plans: plans.data || [],
       planItems: planItems.data || [],
-      ogrenciler: ogrenciler.data || [],
-      ogrenciKayitlari: ogrenciKayitlari.data || [],
       requests: D.requests
     };
 
@@ -1027,7 +729,6 @@
     D.kurulum['radio-subeye-ozel-yayin.sql'] = !playerBroadcast.error;
     D.kurulum['radio-baglanti-gecmisi.sql'] = !olaylar.error;
     D.kurulum['plan-takvimi.sql'] = !planItems.error;
-    D.kurulum['ogrenciler.sql'] = !ogrenciler.error && !ogrenciKayitlari.error;
 
     // Çalan parça ve çalma listesi alanları sonradan eklendi
     // (supabase/radio-calan-parca.sql, supabase/radio-liste-bildirimi.sql).
@@ -1617,167 +1318,9 @@
         const satir = (D.planItems || []).find(x => x.id === id);
         if (!satir || !satir.hata) return;
         const veri = satir.tur === 'odeme'
-          ? { metin: '', marka: satir.marka, tutar: satir.tutar }
+          ? { metin: '', marka: satir.marka, tutar: satir.tutar, yontem: satir.yontem || null }
           : { metin: satir.metin };
         const hata = await planYazDene('ekle', Object.assign({ gun: satir.gun, tur: satir.tur, sira: satir.sira }, veri));
-        if (hata) { satir.hata = hata.message || 'kaydedilemedi'; ciz(); return; }
-        await yenile();
-        return;
-      }
-
-      // --- öğrenci listesi ve ikinci takvim (bkz. ogrenciler.js) ---
-      case 'ogrenci-ay': {
-        // İkinci takvimin ayı ayrı tutulur. Henüz seçilmediyse marka takvimiyle
-        // başlar; ama buradan sonra bağımsız yürür. Ay değişince açık gün
-        // kapanır — yoksa panel görünmeyen bir günü gösterirdi.
-        // Varsayılan ay, ekranda görünen ayla aynı kaynaktan gelir (bugün).
-        // Marka takviminin ayına bağlanmaz: iki sayfa artık bağımsız.
-        const simdi = new Date();
-        let y = state.ogrenciYil || simdi.getUTCFullYear();
-        let a = state.ogrenciAy || (simdi.getUTCMonth() + 1);
-        a += (id === 'onceki' ? -1 : 1);
-        if (a < 1) { a = 12; y -= 1; } else if (a > 12) { a = 1; y += 1; }
-        state.ogrenciYil = y;
-        state.ogrenciAy = a;
-        state.ogrenciGun = null;
-        return ciz();
-      }
-      case 'ogrenci-gun': {
-        // Ay ızgarasındaki güne bas: o günün yoklaması açılır. Aynı güne tekrar
-        // basmak kapatır. Satır detayı ve formlar kapanır ki ekran üst üste
-        // binmesin; yoklama zaten ikinci takvimde yapılıyor.
-        state.ogrenciGun = state.ogrenciGun === id ? null : id;
-        state.ogrenciAcik = null;
-        state.ogrenciDuzenle = null;
-        state.ogrenciYeni = false;
-        return ciz();
-      }
-      case 'ogrenci-gun-kapat': {
-        state.ogrenciGun = null;
-        return ciz();
-      }
-      case 'ogrenci-yeni': {
-        state.ogrenciYeni = true;
-        state.ogrenciDuzenle = null;
-        return ciz();
-      }
-      case 'ogrenci-yeni-kapat': {
-        state.ogrenciYeni = false;
-        return ciz();
-      }
-      case 'ogrenci-kaydet': return ogrenciGirKaydet();
-      case 'ogrenci-odak': {
-        // Uyarı süzgeci (Tümü / Borçlular / Gelmedi ≥ eşik). Aynı düğmeye
-        // tekrar basmak süzgeci kaldırır; "Tümü" her zaman boş anahtardır.
-        state.ogrenciOdak = state.ogrenciOdak === id ? '' : (id || '');
-        return ciz();
-      }
-      case 'ogrenci-detay': {
-        // Satırdaki ok: yoklama şeridi ve ödemeler açılır. Aynı satıra tekrar
-        // basmak kapatır; düzenleme formu ve ödeme formları kapanır ki
-        // üst üste binmesinler.
-        state.ogrenciAcik = state.ogrenciAcik === id ? null : id;
-        state.ogrenciDuzenle = null;
-        state.ogrenciOdemeYeni = null;
-        state.ogrenciOdemeDuzenle = null;
-        return ciz();
-      }
-      case 'ogrenci-katilim': {
-        // id: "<ogrenci>:<gun>:<mevcut durum>". Tek düğme dört hâl arasında
-        // döner; dördüncü basış işareti siler.
-        if (!OG) return;
-        const p = String(id).split(':');
-        if (p.length < 2 || !p[0] || !p[1]) return;
-        return ogrenciKatilimYaz(p[0], p[1], OG.katilimSonraki(p[2] || ''));
-      }
-      case 'ogrenci-odeme-yeni': {
-        state.ogrenciOdemeYeni = state.ogrenciOdemeYeni === id ? null : id;
-        state.ogrenciOdemeDuzenle = null;
-        return ciz();
-      }
-      case 'ogrenci-odeme-kapat': {
-        state.ogrenciOdemeYeni = null;
-        return ciz();
-      }
-      case 'ogrenci-aidat-olustur': {
-        // Ayın aidatlarını topluca açar. Görünen ay esas alınır: öğrenci
-        // okuyla Eylül'e geçen yönetici Eylül'ün aidatını oluşturur.
-        if (!OG) return hata('Öğrenci modülü yüklenemedi.');
-        const simdi = new Date();
-        const yil = state.ogrenciYil || simdi.getUTCFullYear();
-        const ay = state.ogrenciAy || (simdi.getUTCMonth() + 1);
-        const h = OG.aylikAidatlar(D.ogrenciler || [], D.ogrenciKayitlari || [], { yil: yil, ay: ay });
-        if (!h.kayitlar.length) return hata('Bu ay için oluşturulacak aidat yok.');
-        pencere({
-          baslik: OG.AYLAR[ay - 1] + ' ' + yil + ' aidatları',
-          govde: '<p class="sub">' + h.kayitlar.length + ' öğrenci için toplam '
-            + OG.para(h.toplam) + ' ₺ aidat kaydı açılacak. Kayıtlar ödenmemiş '
-            + 'olarak düşer; ödeme alındıkça tek tek işaretlenir.'
-            + (h.atlanan ? ' ' + h.atlanan + ' öğrencinin bu ay kaydı zaten var, atlanacak.' : '')
-            + (h.gecBaslayan ? ' ' + h.gecBaslayan + ' öğrenci ayın '
-              + OG.AIDAT_GEC_BASLAMA_GUN + '\'inden sonra başladığı için bu ay '
-              + 'aidatı açılmayacak; ilk aidatları bir sonraki ay.' : '')
-            + '</p>',
-          onayMetni: 'AİDATLARI OLUŞTUR',
-          onOnay: () => ogrenciAidatOlustur(yil, ay)
-        });
-        return;
-      }
-      case 'ogrenci-odeme-kaydet': return ogrenciOdemeGir(id);
-      case 'ogrenci-odeme-isaret': {
-        const kayit = (D.ogrenciKayitlari || []).find(x => x.id === id);
-        if (!kayit) return;
-        // Ödendi işareti kaldırılınca "elden" de düşer: elden alınmış ama
-        // ödenmemiş bir tahsilat olamaz. İşaret yeniden konurken elden bilgisi
-        // olduğu gibi korunur. İşaret konarken ödeme günü boşsa bugün yazılır
-        // (kural modülde: eldenCevir ile aynı yerde durur).
-        const veri = { id: id, bitti: !kayit.bitti, elden: kayit.bitti ? false : !!kayit.elden };
-        if (!kayit.bitti && OG && OG.odemeGunu) Object.assign(veri, OG.odemeGunu(kayit, bugunIso()));
-        return ogrenciKayitYaz('guncelle', veri);
-      }
-      case 'ogrenci-odeme-elden': return ogrenciOdemeElden(id);
-      case 'ogrenci-odeme-duzenle': {
-        state.ogrenciOdemeDuzenle = state.ogrenciOdemeDuzenle === id ? null : id;
-        state.ogrenciOdemeYeni = null;
-        return ciz();
-      }
-      case 'ogrenci-odeme-duzenle-kapat': {
-        state.ogrenciOdemeDuzenle = null;
-        return ciz();
-      }
-      case 'ogrenci-odeme-duzenle-kaydet': return ogrenciOdemeDuzenleKaydet(id);
-      case 'ogrenci-odeme-sil': return ogrenciKayitYaz('sil', { id: id });
-      case 'ogrenci-duzenle': {
-        // Satırda kalem simgesi: yerinde form açılır. Aynı satıra tekrar
-        // basmak düzenlemeyi kapatır (aynı satırda takılı kalmasın).
-        state.ogrenciDuzenle = state.ogrenciDuzenle === id ? null : id;
-        state.ogrenciYeni = false;
-        state.ogrenciAcik = null;
-        return ciz();
-      }
-      case 'ogrenci-duzenle-kapat': {
-        state.ogrenciDuzenle = null;
-        return ciz();
-      }
-      case 'ogrenci-duzenle-kaydet': return ogrenciDuzenleKaydet(id);
-      case 'ogrenci-sil': {
-        // Öğrenci silinince kayıtları da gider (veritabanında on delete
-        // cascade). Ekrandaki açık detay artık olmayan bir satıra bakmasın.
-        if (state.ogrenciAcik === id) state.ogrenciAcik = null;
-        if (state.ogrenciOdemeYeni === id) state.ogrenciOdemeYeni = null;
-        return ogrenciYaz('sil', { id: id });
-      }
-      case 'ogrenci-tekrar': {
-        // Kaydedilemeyen satırı yeniden gönderir. Başarılıysa sunucudan okunan
-        // gerçek satırla yer değiştirir; yine düşerse işaret kalır.
-        const satir = (D.ogrenciler || []).find(x => x.id === id);
-        if (!satir || !satir.hata) return;
-        const hata = await ogrenciYazDene('ekle', {
-          ad: satir.ad, veli: satir.veli, telefon: satir.telefon, notlar: satir.notlar,
-          gun_sayisi: satir.gun_sayisi == null ? null : satir.gun_sayisi,
-          aylik_tutar: satir.aylik_tutar == null ? null : satir.aylik_tutar,
-          baslama: satir.baslama == null ? null : satir.baslama
-        });
         if (hata) { satir.hata = hata.message || 'kaydedilemedi'; ciz(); return; }
         await yenile();
         return;
@@ -2810,35 +2353,12 @@
   // sunucuya gitmek hem gereksiz hem de yazarken takılmaya yol açar.
   let planNotSayac = null;
   let planAraSayac = null;
-  let ogrenciAraSayac = null;
   document.addEventListener('input', e => {
     const not = e.target.closest('[data-act="plan-not"]');
     if (not) {
       const gun = not.dataset.id, metin = not.value;
       clearTimeout(planNotSayac);
       planNotSayac = setTimeout(() => planYaz('not', { gun: gun, metin: metin }), 1000);
-      return;
-    }
-    const gunAlan = e.target.closest('[data-ogrenci-gir="gun_sayisi"],[data-ogrenci-duzenle="gun_sayisi"]');
-    if (gunAlan) {
-      tarifeDoldur(gunAlan);
-      return;
-    }
-    const ogrenciAra = e.target.closest('[data-act="ogrenci-ara"]');
-    if (ogrenciAra) {
-      // Öğrenci araması da yazma durunca süzülür; yeniden çizim odağı
-      // düşürdüğü için odak ve imleç geri verilir (plan-arama ile aynı).
-      const imlec = ogrenciAra.selectionStart;
-      clearTimeout(ogrenciAraSayac);
-      ogrenciAraSayac = setTimeout(() => {
-        state.ogrenciAra = ogrenciAra.value;
-        ciz();
-        const yeni = el('view').querySelector('[data-act="ogrenci-ara"]');
-        if (yeni) {
-          yeni.focus();
-          try { yeni.setSelectionRange(imlec, imlec); } catch (err) { /* desteklenmezse sorun değil */ }
-        }
-      }, 220);
       return;
     }
     const ara = e.target.closest('[data-act="plan-arama"]');
@@ -2932,33 +2452,6 @@
       e.preventDefault();
       const dugme = duzenle.closest('.plan-satir') && duzenle.closest('.plan-satir').querySelector('[data-act="plan-duzenle-kaydet"]');
       planDuzenleKaydet(dugme ? dugme.dataset.id : '');
-    }
-    // Öğrenci formunda Enter: ekleme formundaysa ekler, düzenlemedeyse
-    // kaydeder. Düzenleme satırındaki kaydet düğmesinden id okunur.
-    const ogrenciAlan = e.target.closest('[data-ogrenci-gir],[data-ogrenci-duzenle]');
-    if (ogrenciAlan && e.key === 'Enter') {
-      e.preventDefault();
-      const satir = ogrenciAlan.closest('.plan-satir');
-      const dugme = satir && satir.querySelector('[data-act="ogrenci-duzenle-kaydet"]');
-      if (dugme) ogrenciDuzenleKaydet(dugme.dataset.id);
-      else ogrenciGirKaydet();
-    }
-    // Öğrenci ödemesinde Enter: ekleme formundaysa ekler, düzenlemedeyse
-    // kaydeder. Tutar alanında da kaydeder — para formunda doğal akış budur.
-    const odemeGir = e.target.closest('[data-ogrenci-odeme-gir]');
-    if (odemeGir && e.key === 'Enter') {
-      e.preventDefault();
-      const kap = odemeGir.closest('.ogr-detay') || el('view');
-      const dugme = kap.querySelector('[data-act="ogrenci-odeme-kaydet"]');
-      if (dugme) ogrenciOdemeGir(dugme.dataset.id);
-      return;
-    }
-    const odemeDuzenle = e.target.closest('[data-ogrenci-odeme-duzenle]');
-    if (odemeDuzenle && e.key === 'Enter') {
-      e.preventDefault();
-      const satir = odemeDuzenle.closest('.plan-satir');
-      const dugme = satir && satir.querySelector('[data-act="ogrenci-odeme-duzenle-kaydet"]');
-      if (dugme) ogrenciOdemeDuzenleKaydet(dugme.dataset.id);
     }
   });
   el('backdrop').onclick = cekmeceKapat;

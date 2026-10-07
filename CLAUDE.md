@@ -25,6 +25,7 @@ Derin Record, cimnastik/aerobik performansları için özel müzik prodüksiyonu
 - `chat.html` + `chat.js` + `chat-crypto.js` — uçtan uca şifreli (ECDH P-256 + AES-GCM) antrenör sohbeti. Özel anahtarlar tarayıcıda IndexedDB'de tutulur (`derin-record-private-keys`); cihazlar arası taşıma PBKDF2 tabanlı yedekleme koduyla yapılır.
 - `auth.js` — tüm sayfalarda ortak giriş/kayıt kabuğu; `window.DerinAuth` global state'ini yönetir, `derin:authchange` event'i yayınlar.
 - `admin.js` / `admin.html` — sadece `profiles.role = 'admin'` olan kullanıcılara açık yönetim paneli (antrenörlere demo erişimi verme/kaldırma).
+- **Öğrenci takvimi bu depodan çıkarıldı (2026-10-07):** `ogrenci-takvimi/` klasörü, öğrenci testleri, `tests/masaustu-olustur.js`, öğrenci önizlemeleri ve `supabase/ogrenciler.sql` silindi; uygulama bağımsız bir çalışmaya taşındı. Bu sitede öğrenci sayfası, menü linki, dosya veya bağlantı **yoktur** (test korur). Veri iki yerde durur: (1) masaüstündeki tek dosya panel (`Öğrenci Takvimi.html` — ilk açılışta gömülü başlangıç verisi 5 öğrenci + 35 kaydı depoya yazar), (2) uygulamanın kendi ayrı Supabase projesi (`ogrenci-takvimi`, ref `qhheazmfrtkumogmgezi`). Yedek akışı: masaüstü YEDEK AL → JSON → herhangi bir kopyada YEDEK YÜKLE.
 - `config.js` — Supabase Project URL ve **publishable (anon)** anahtarı. Secret/service_role anahtarı buraya asla girilmez.
 - `supabase/*.sql` — şema ve RLS politikaları:
   - `derin-record.sql`: `profiles`, `demo_access`, `feedback_notes` tabloları + `is_admin()` / `has_demo_access()` güvenlik fonksiyonları.

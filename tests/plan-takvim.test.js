@@ -745,3 +745,99 @@ test('panel ödeme süzgeci ve araması eylemlerini karşılıyor', () => {
   assert.ok(panelKaynak.includes('plan-durum'), 'durum süzgeci işlenmeli');
   assert.ok(panelKaynak.includes('plan-arama'), 'arama kutusu işlenmeli');
 });
+
+// ---------- Ödeme yöntemi ----------
+// Nakit / kart / havale ayrımı hem ekleme hem düzenlemede seçilebilmeli,
+// satırda da okunabilmeli. Eski kayıtlarda alan yoktur: veri uydurulmaz,
+// rozet hiç basılmaz. Değerler veritabanındaki kontrol listesiyle aynıdır.
+
+test('ödeme ekleme formunda yöntem seçici çıkar', () => {
+  const h = P.takvimView(
+    { planYil: 2026, planAy: 10, planAcikGun: '2026-10-27', planYeni: 'odeme:2026-10-27' },
+    ile({ planItems: [] }), UI);
+  assert.ok(h.includes('data-plan-gir="odeme-yontem"'), 'yöntem seçici olmalı');
+  ['nakit', 'kart', 'havale'].forEach(k =>
+    assert.ok(h.includes(`value="${k}"`), k + ' seçeneği olmalı'));
+  assert.ok(/<option value=""[^>]*selected/.test(h), 'varsayılan "belirtilmedi" olmalı');
+  // Seçici ayrı form sınıfıyla sarılır: dar ekranda satır kırılsın.
+  assert.ok(h.includes('plan-yeni odeme-yeni'), 'ödeme formu kendi sınıfını taşımalı');
+});
+
+test('satır düzenleme formunda mevcut yöntem seçili gelir', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Kira', tutar: 12500, bitti: true, metin: '', sira: 0, yontem: 'havale' }
+  ] });
+  const h = P.takvimView(
+    { planYil: 2026, planAy: 10, planAcikGun: '2026-10-27', planDuzenle: 'o1' }, D2, UI);
+  assert.ok(h.includes('data-plan-duzenle="odeme-yontem"'), 'yöntem seçici olmalı');
+  assert.ok(h.includes('<option value="havale" selected>'), 'mevcut yöntem seçili gelmeli');
+  assert.ok(!h.includes('<option value="nakit" selected>'), 'yanlış seçenek seçili olmamalı');
+});
+
+test('yöntemli satır rozetle gösterilir, methodsiz satır rozetsiz kalır', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-27', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0, yontem: 'kart' },
+    { id: 'o2', gun: '2026-10-27', tur: 'odeme', marka: 'Kira', tutar: 12500, bitti: false, metin: '', sira: 1 }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10, planAcikGun: '2026-10-27' }, D2, UI);
+  assert.ok(h.includes('<i class="yontem-etiket">Kart</i>'), 'yöntem rozeti basılmalı');
+  // Kira satırında yöntem yok: eski kayıt olduğu gibi kalmalı.
+  const satirlar = h.match(/<li class="plan-satir odeme[^"]*">[\s\S]*?<\/li>/g) || [];
+  const kira = satirlar.find(s => s.includes('Kira')) || '';
+  assert.ok(kira && !kira.includes('yontem-etiket'), 'methodsiz satır rozet almamalı');
+});
+
+test('ödeme geçmişinde yöntem yanına yazılır', () => {
+  const D2 = ile({ planItems: [
+    { id: 'o1', gun: '2026-10-01', tur: 'odeme', marka: 'Chemex', tutar: 2000, bitti: true, metin: '', sira: 0, yontem: 'nakit' }
+  ] });
+  const h = P.takvimView({ planYil: 2026, planAy: 10 }, D2, UI);
+  assert.ok(h.includes('ödendi · Nakit'), 'geçmişte yöntem yazılmalı');
+});
+
+test('yöntem ödeme akışında ve geçmişinde taşınır', () => {
+  const m = [{ id: 'o1', gun: '2026-10-01', tur: 'odeme', marka: 'Kira', tutar: 500, bitti: true, metin: '', sira: 0, yontem: 'kart' }];
+  const k = P.odemeKalemleri({}, m, '2026-10-05', 400, 400).find(x => x.marka === 'Kira');
+  assert.equal(k && k.yontem, 'kart', 'akışta yöntem kaybolmamalı');
+  assert.equal(P.odemeGecmisi(m)[0].yontem, 'kart', 'geçmişte yöntem kaybolmamalı');
+  // Yöntemsiz kayıt: alan boş kalmalı, uydurulmamalı.
+  const bos = [{ id: 'o2', gun: '2026-10-01', tur: 'odeme', marka: 'A', tutar: 1, bitti: false, metin: '', sira: 0 }];
+  assert.equal(P.odemeGecmisi(bos)[0].yontem, '');
+});
+
+test('yöntem listesi veritabanı kontrolüyle aynı', () => {
+  assert.deepEqual(P.ODEME_YONTEMLERI.map(x => x[0]), ['nakit', 'kart', 'havale']);
+  assert.equal(P.yontemEtiket('havale'), 'Havale');
+  assert.equal(P.yontemEtiket(''), '', 'belirtilmemiş yöntemin etiketi olmamalı');
+  assert.equal(P.yontemEtiket('bozuk'), '', 'tanınmayan değer etiketlenmemeli');
+  const sql = fs.readFileSync(require.resolve('../supabase/plan-takvimi.sql'), 'utf8');
+  P.ODEME_YONTEMLERI.forEach(([k]) =>
+    assert.ok(sql.includes(`'${k}'`), `SQL kontrolü '${k}' içermeli`));
+});
+
+test('plan_maddeleri yöntem kolonunu ve yükseltme cümlesini taşıyor', () => {
+  const sql = fs.readFileSync(require.resolve('../supabase/plan-takvimi.sql'), 'utf8');
+  // Kolon + kısıt...
+  assert.match(sql, /yontem text check \(yontem is null or yontem in \('nakit', 'kart', 'havale'\)\)/);
+  // ...ve kurulu veritabanı için yükseltme: create table if not exists kolon eklemez.
+  assert.match(sql, /add column if not exists yontem text/);
+  assert.match(sql, /plan_maddeleri_yontem_ck/);
+  // Yetki değişmedi: kural yalnız is_admin(), RLS'e dokunulmamalı.
+  assert.match(sql, /create policy "plan: yalnizca yonetici"[\s\S]*?using \(public\.is_admin\(\)\) with check \(public\.is_admin\(\)\)/);
+});
+
+test('panel yöntemi yazıyor ve eksik kolonu anlaşılır söylüyor', () => {
+  const yazici = panelKaynak.match(/async function planYazDene\([\s\S]*?\n  \}/);
+  assert.ok(yazici, 'planYazDene gövdesi bulunmalı');
+  assert.ok(/'yontem'/.test(yazici[0]), 'güncelleme yontem alanını da kapsamalı');
+  // Her iki form da yöntemi okur; önekleri ayrı, çünkü ikisi aynı anda açık.
+  const gir = panelKaynak.match(/function planGirOdeme\([\s\S]*?\n  \}/);
+  assert.ok(gir && /yontem: planYontemOku\('gir'\)/.test(gir[0]), 'ekleme yöntemi okumalı');
+  const duzenle = panelKaynak.match(/async function planDuzenleKaydet\([\s\S]*?\n  \}/);
+  assert.ok(duzenle && /yontem: planYontemOku\('duzenle'\)/.test(duzenle[0]), 'düzenleme yöntemi okumalı');
+  assert.ok(panelKaynak.includes("hata.code === '42703'"), 'eksik kolon hatası ayırt edilmeli');
+  assert.ok(panelKaynak.includes('plan-takvimi.sql'), 'eksik kolonda çalıştırılacak dosya söylenmeli');
+  // Yeniden denemede de yöntem kaybolmamalı.
+  const tekrar = panelKaynak.match(/case 'plan-tekrar'[\s\S]*?\n      \}/);
+  assert.ok(tekrar && /yontem: satir\.yontem/.test(tekrar[0]), 'tekrar denemede yöntem taşınmalı');
+});

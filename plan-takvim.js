@@ -134,6 +134,7 @@
         gun: x.gun,
         marka: x.marka || x.metin || '—',
         tutar: Number(x.tutar || 0),
+        yontem: x.yontem || '',
         bitti: !!x.bitti
       }))
       .sort((a, b) => (a.gun === b.gun ? 0 : a.gun < b.gun ? 1 : -1));
@@ -169,6 +170,7 @@
       if (gorulen[x.gun + '|' + norm(marka)]) return; // aboneliğin aynası
       liste.push({
         iso: x.gun, marka: marka, tutar: Number(x.tutar || 0),
+        yontem: x.yontem || '',
         iptal: false, gecmis: x.gun < bugunIso,
         bitti: !!x.bitti, isaretli: true, kaynak: 'elle'
       });
@@ -258,6 +260,23 @@
   // çevrilsin diye varsayılan yerel yeterli değil.
   const norm = v => String(v == null ? '' : v).trim().toLocaleLowerCase('tr');
 
+  // Ödeme yöntemi. Eski kayıtlarda alan boş olduğu için "belirtilmedi" de bir
+  // seçimdir; veri asla uydurulmaz. Değerler veritabanındaki kontrolle aynı.
+  const ODEME_YONTEMLERI = [['nakit', 'Nakit'], ['kart', 'Kart'], ['havale', 'Havale']];
+  const yontemEtiket = y => {
+    const b = ODEME_YONTEMLERI.find(x => x[0] === y);
+    return b ? b[1] : '';
+  };
+  // Satır içi yöntem seçici. onek hangi form olduğunu söyler: 'plan-gir' ekleme
+  // formu, 'plan-duzenle' satır düzenleme formu. İkisi aynı anda açık kalabildiği
+  // için seçicilerin öneki ayrıdır (bkz. radyo-yonetim.js · planYontemOku).
+  function yontemSecici(deger, onek, id) {
+    const v = yontemEtiket(deger) ? deger : '';
+    return `<select class="plan-gir yontem-sec" data-${onek}="odeme-yontem"${id ? ` data-id="${esc(id)}"` : ''}
+      aria-label="Ödeme yöntemi"><option value=""${v ? '' : ' selected'}>Yöntem</option>${ODEME_YONTEMLERI.map(x =>
+        `<option value="${esc(x[0])}"${x[0] === v ? ' selected' : ''}>${esc(x[1])}</option>`).join('')}</select>`;
+  }
+
   const AYLAR = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN',
     'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
   // Gün başlığı cümle içinde geçtiği için ay adı düz yazılır ("27 Ekim 2026").
@@ -307,6 +326,7 @@
           value="${esc(o.marka || o.metin || '')}" placeholder="Marka / açıklama">
         <input class="plan-gir tutar" data-plan-duzenle="odeme-tutar" type="text" inputmode="decimal"
           autocomplete="off" value="${esc(o.tutar == null ? '' : o.tutar)}" placeholder="Tutar ₺">
+        ${yontemSecici(o.yontem, 'plan-duzenle')}
         <button class="plan-kaydet" data-act="plan-duzenle-kaydet" data-id="${esc(o.id)}" type="button">kaydet</button>
         <button class="plan-vazgec" data-act="plan-duzenle-kapat" type="button" aria-label="Vazgeç">×</button>
       </li>`;
@@ -314,7 +334,7 @@
     return `<li class="plan-satir odeme${o.bitti ? ' bitti' : ''}${o.hata ? ' hata' : ''}">
       <button class="kutu" data-act="plan-isaret" data-id="${esc(o.id)}" type="button"
         aria-label="${o.bitti ? 'Ödenmedi işaretle' : 'Ödendi işaretle'}">${o.bitti ? '✓' : ''}</button>
-      <span class="metin">${esc(o.marka || o.metin)}</span>
+      <span class="metin">${esc(o.marka || o.metin)}${o.yontem ? ` <i class="yontem-etiket">${esc(yontemEtiket(o.yontem))}</i>` : ''}</span>
       <b class="tutar">${para(o.tutar)} ₺</b>
       ${o.hata ? '' : `<button class="duzenle" data-act="plan-duzenle" data-id="${esc(o.id)}" type="button" aria-label="Düzenle">✎</button>`}
       <button class="sil" data-act="plan-sil" data-id="${esc(o.id)}" type="button" aria-label="Sil">×</button>
@@ -337,11 +357,12 @@
         <button class="plan-vazgec" data-act="plan-yeni-kapat" type="button" aria-label="Vazgeç">×</button>
       </div>`;
     }
-    return `<div class="plan-yeni">
+    return `<div class="plan-yeni odeme-yeni">
       <input class="plan-gir" data-plan-gir="odeme-marka" data-id="${esc(iso)}"
         type="text" autocomplete="off" placeholder="Marka / açıklama">
       <input class="plan-gir tutar" data-plan-gir="odeme-tutar" data-id="${esc(iso)}"
         type="text" inputmode="decimal" autocomplete="off" placeholder="Tutar ₺">
+      ${yontemSecici('', 'plan-gir', iso)}
       <button class="plan-kaydet" data-act="plan-odeme-kaydet" data-id="${esc(iso)}" type="button">ekle</button>
       <button class="plan-vazgec" data-act="plan-yeni-kapat" type="button" aria-label="Vazgeç">×</button>
     </div>`;
@@ -485,7 +506,7 @@
             <span class="t">${esc(g.gun)}</span>
             <span class="m">${esc(g.marka)}</span>
             <b>${para(g.tutar)} ₺</b>
-            <i>${g.bitti ? 'ödendi' : 'ödenmedi'}</i>
+            <i>${g.bitti ? 'ödendi' : 'ödenmedi'}${g.yontem ? ' · ' + esc(yontemEtiket(g.yontem)) : ''}</i>
           </li>`).join('')}</ul>
       </div>`
       : `<p class="bos">${(filtre.q || filtre.durum)
@@ -533,9 +554,9 @@
       }).join('')}</ul>
     </div>`;
 
-    // Öğrenci takibi bu sayfada DEĞİL: Plan bölümünün ikinci sayfası
-    // (Plan → Öğrenciler, bkz. ogrenciler.js). Marka ödemeleriyle aynı ekranı
-    // paylaşmadığı için burada yalnız marka işi kalır.
+    // Öğrenci takibi bu sayfada DEĞİL: o iş artık Derin Record'un dışında,
+    // ayrı bir uygulama. Marka ödemeleriyle aynı ekranı paylaşmadığı için
+    // burada yalnız marka işi kalır.
 
     // Bir güne girildiğinde ay ızgarası yerine o günün sekmesi açılır: başlıkta
     // geri düğmesi (aya dön) ve gün gün gezinme okları durur. Ay görünümünde ise
@@ -586,6 +607,8 @@
     odemeGecmisi: odemeGecmisi,
     odemeOzeti: odemeOzeti,
     odemeKalemleri: odemeKalemleri,
+    ODEME_YONTEMLERI: ODEME_YONTEMLERI,
+    yontemEtiket: yontemEtiket,
     aylikOzet: aylikOzet,
     tahsilatTrendi: tahsilatTrendi,
     kalemUyuyor: kalemUyuyor,

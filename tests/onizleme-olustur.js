@@ -612,28 +612,14 @@ if (senaryo === 'harmonik') {
   return;
 }
 
-// "ogrenci-suzgec" modu aynı klasörü uyarı süzgeci seçiliyken önizler:
-// yalnız borçlu öğrenciler listelenir, süzgeç düğmesi ve rozetler görünür.
-// "ogrenci-aidat" bu ayın ödemeleri henüz açılmamışken klasörü önizler:
-// haftalık gün/aylık tutar rozetleri ve "bu ayın aidatlarını oluştur" düğmesi.
-//
 // "plan", "plan-gun" ve "plan-duzenle" modları Ödeme Takip Takvimi'ni
 // (Plan → Takvim) örnek verilerle önizler. "plan" ay ızgarasını ve hücre içi
 // detayları, "plan-gun" bir kareye girilince açılan gün sekmesini, "plan-duzenle"
 // ise bir ödeme satırının yerinde düzenleme formunu gösterir. Takvim statiktir
 // (tıklama yok); amaç yerleşimin ve renklerin gözle doğrulanması.
-if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
-  || senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme' || senaryo === 'ogrenci-suzgec'
-  || senaryo === 'ogrenci-uyari' || senaryo === 'ogrenci-aidat'
-  || senaryo === 'ogrenci-yeni') {
+if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle') {
   const P = require(path.join(kok, 'plan-takvim.js'));
-  // Öğrenci klasörü modülü pencereden okur; node'da pencere yok, burada kurulur.
-  global.window = Object.assign(global.window || {}, { DerinOgrenci: require(path.join(kok, 'ogrenciler.js')) });
-  // Eksik yoklama senaryosu ayın ortasını gösterir: işaretsiz ders günleri
-  // "geçmiş" sayılabilsin diye bugün ileri alınır.
-  const simdi = senaryo === 'ogrenci-uyari'
-    ? Date.parse('2026-10-20T09:00:00Z')
-    : Date.parse('2026-10-05T09:00:00Z');
+  const simdi = Date.parse('2026-10-05T09:00:00Z');
   const D = {
     brands: [{ id: 'b1', name: 'Chemex' }, { id: 'b2', name: 'starbucks' }, { id: 'b3', name: 'Uzak' }],
     plans: [
@@ -658,124 +644,16 @@ if (senaryo === 'plan' || senaryo === 'plan-gun' || senaryo === 'plan-duzenle'
       { id: 'm4', gun: '2026-10-20', tur: 'madde', metin: 'Radyo jingle yenile', bitti: true, sira: 0 },
       { id: 'n1', gun: '2026-10-27', tur: 'not', metin: 'Havale bekleniyor, dekont istendi.', bitti: false, sira: 0 }
     ],
-    // Öğrenci klasörü boş kalmasın: iki satır örnek veri. Haftalık gün
-    // sayısı ve aylık tutar elle yazılı (fiyat gün sayısına göre değişiyor).
-    ogrenciler: [
-      // Birinci öğrencide başlama tarihi var, ikincide yok: satırda tarih
-      // etiketinin çıkıp çıkmaması gözle karşılaştırılabilsin.
-      { id: 'og1', ad: 'Elif Yılmaz', veli: 'Ayşe Yılmaz', telefon: '0531 111 22 33', notlar: 'Salı-Perşembe', gun_sayisi: 3, aylik_tutar: 2500, baslama: '2026-02-12', aktif: true },
-      { id: 'og2', ad: 'Mert Demir', veli: 'Ali Demir', telefon: '0532 444 55 66', notlar: '', gun_sayisi: 2, aylik_tutar: 1800, baslama: null, aktif: true },
-      // Üçüncü öğrenci ödemesini geç yapıyor: gecikme şeridinin ortalaması
-      // tek kayıtla değil, iki kayıtla anlamlı çıksın.
-      { id: 'og3', ad: 'Zeynep Ak', veli: 'Murat Ak', telefon: '0533 777 88 99', notlar: '', gun_sayisi: 3, aylik_tutar: 4100, baslama: '2026-09-01', aktif: true }
-    ],
-    // Yoklama şeridi ve ödeme listesi gözle doğrulanabilsin diye karışık
-    // işaretler: gelen, gelmeyen, mazeretli günler ve iki tahsilat.
-    ogrenciKayitlari: [
-      { id: 'ok1', ogrenci_id: 'og1', tur: 'katilim', gun: '2026-10-01', durum: 'geldi', metin: '', tutar: null, bitti: false },
-      { id: 'ok2', ogrenci_id: 'og1', tur: 'katilim', gun: '2026-10-02', durum: 'geldi', metin: '', tutar: null, bitti: false },
-      { id: 'ok3', ogrenci_id: 'og1', tur: 'katilim', gun: '2026-10-06', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
-      { id: 'ok4', ogrenci_id: 'og1', tur: 'katilim', gun: '2026-10-08', durum: 'mazeret', metin: '', tutar: null, bitti: false },
-      { id: 'ok5', ogrenci_id: 'og1', tur: 'katilim', gun: '2026-10-09', durum: 'geldi', metin: '', tutar: null, bitti: false },
-      { id: 'ok6', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-01', durum: 'geldi', metin: '', tutar: null, bitti: false },
-      // İkinci öğrenci eşiği aşan devamsızlıkla dursun: "Gelmedi ≥ 3" süzgeci
-      // ve rozet rengi önizlemede görülsün.
-      { id: 'ok7', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-06', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
-      { id: 'ok8', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-08', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
-      { id: 'ok9', ogrenci_id: 'og2', tur: 'katilim', gun: '2026-10-13', durum: 'gelmedi', metin: '', tutar: null, bitti: false },
-      // Ekim aidatı elden alınmış: satırda dolu "elden" rozeti ve satır
-      // çipinde "elden" eki bu kayıttan doğar. Kaydın günü ile ödeme günü
-      // ayrı düşsün ki "ödendi 20 Ekim" notu da görünsün. Ay İÇİNDE ödendiği
-      // için gecikme sayılmaz — vade kaydın ayının son günü (bkz. ogrenciler.js
-      // · vadeSonu). Yani "ayın 1'i geçti" diye kimse gecikmeye düşmez.
-      { id: 'om1', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-03', metin: 'Ekim aidatı', tutar: 2000, bitti: true, elden: true, odeme_gunu: '2026-10-20' },
-      { id: 'om2', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-10-20', metin: 'Kasım aidatı', tutar: 1500, bitti: false },
-      // Gerçek gecikme örneği: Eylül aidatı Ekim'de ödenmiş. Vade 30 Eylül
-      // olduğu için 14 gün geç sayılır ve satırdaki geçmiş notu buradan doğar.
-      { id: 'om3', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-09-15', metin: 'Eylül aidatı', tutar: 2000, bitti: true, odeme_gunu: '2026-10-14' },
-      // Geçen aydan devreden açık borç: satırda "devir" rozeti çıkar.
-      { id: 'om4', ogrenci_id: 'og1', tur: 'odeme', gun: '2026-08-10', metin: 'Ağustos aidatı', tutar: 900, bitti: false },
-      { id: 'om5', ogrenci_id: 'og2', tur: 'odeme', gun: '2026-10-04', metin: 'Ekim aidatı', tutar: 1500, bitti: false },
-      // Zeynep Ekim aidatını ay içinde (16 Ekim) ödedi: geç ödeme sayılmaz,
-      // satırında geçmiş notu çıkmaz. Kuralın "gecikme yok" tarafı budur.
-      { id: 'om6', ogrenci_id: 'og3', tur: 'odeme', gun: '2026-10-01', metin: 'Ekim aidatı', tutar: 4100, bitti: true, odeme_gunu: '2026-10-16' }
-    ]
   };
-  // Eksik yoklama senaryosu seyrek işaret kullanır: kalıp perşembe + salı
-  // kalır, aradaki ders günleri işaretsiz kalır ve uyarı şeridi görünür.
-  if (senaryo === 'ogrenci-uyari') {
-    const kalan = ['ok1', 'ok3', 'ok6', 'ok7', 'om1', 'om5'];
-    D.ogrenciKayitlari = D.ogrenciKayitlari.filter(k => kalan.indexOf(k.id) !== -1);
-  }
-  // Aidat senaryosu: bu ayın ödemeleri henüz açılmamış. "Bu ayın aidatlarını
-  // oluştur" düğmesi kaç kayıt açacağını yazar; geçen ayların borcu kalır ki
-  // "devir" rozeti de görünsün.
-  if (senaryo === 'ogrenci-aidat') {
-    D.ogrenciKayitlari = D.ogrenciKayitlari
-      .filter(k => !(k.tur === 'odeme' && String(k.gun).slice(0, 7) === '2026-10'));
-    // Ayın 21'inden sonra başlayan öğrenci yalnız bu senaryoda eklenir: kural
-    // gözle görülsün (kaydı açılmaz, ekran sayarak söyler) ama yoklama
-    // senaryolarının listesini kalabalıklaştırmasın.
-    D.ogrenciler = D.ogrenciler.concat([
-      { id: 'og4', ad: 'Yeni Başlayan', veli: 'Deniz Kaya', telefon: '0534 000 11 22',
-        notlar: '', gun_sayisi: 2, aylik_tutar: 3200, baslama: '2026-10-28', aktif: true }
-    ]);
-  }
   const ui = { now: () => simdi };
-  // Öğrenci senaryoları marka takviminin ay görünümünde durur; öğrenci işi
-  // ALTINDAKİ ikinci takvimde yapılır. "ogrenci" bir günün yoklamasını
-  // (bütün öğrenciler tek listede) ve listede açık bir öğrencinin ödemelerini,
-  // "ogrenci-odeme" yerinde düzenleme formunu, "ogrenci-suzgec" ise borçlu
-  // süzgecini gösterir.
-  const ogrenciMi = senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme'
-    || senaryo === 'ogrenci-suzgec' || senaryo === 'ogrenci-uyari'
-    || senaryo === 'ogrenci-aidat' || senaryo === 'ogrenci-yeni';
-  const acikGun = (senaryo === 'plan' || ogrenciMi) ? null : '2026-10-27';
+  const acikGun = senaryo === 'plan' ? null : '2026-10-27';
   const duzenle = senaryo === 'plan-duzenle' ? 'o1' : null;
   const state = { nav: 'plan', sub: 'takvim', planYil: 2026, planAy: 10, planAcikGun: acikGun, planDuzenle: duzenle, planKatli: [] };
-  if (senaryo === 'ogrenci' || senaryo === 'ogrenci-odeme') {
-    // İkinci takvimin ayı marka takviminden ayrı tutulur; örnekte ikisi de
-    // ekim, ama ayrı alanlardan geliyor.
-    state.ogrenciYil = 2026;
-    state.ogrenciAy = 10;
-    state.ogrenciGun = '2026-10-06';
-    state.ogrenciAcik = 'og1';
-    if (senaryo === 'ogrenci-odeme') state.ogrenciOdemeDuzenle = 'om3';
-  }
-  if (senaryo === 'ogrenci-suzgec') {
-    state.ogrenciYil = 2026;
-    state.ogrenciAy = 10;
-    state.ogrenciOdak = 'borc';
-    state.ogrenciAcik = 'og2';
-  }
-  if (senaryo === 'ogrenci-uyari' || senaryo === 'ogrenci-aidat'
-    || senaryo === 'ogrenci-yeni') {
-    state.ogrenciYil = 2026;
-    state.ogrenciAy = 10;
-  }
-  // Ekleme formu: haftalık gün ve aylık tutar alanları, datalist seçenekleri
-  // ve tarife ipucu burada görünür (panelde otomatik dolum JS ile çalışır).
-  if (senaryo === 'ogrenci-yeni') state.ogrenciYeni = true;
-  // Öğrenci senaryoları Plan → Öğrenciler sayfasının gövdesini basar (marka
-  // takvimi ayrı sayfada kaldı); plan senaryoları marka takvimini.
-  const O = require(path.join(kok, 'ogrenciler.js'));
-  // Bugün kurgudan okunur; sabit yazılsaydı senaryonun tarihi ile ekrandaki
-  // tarih ayrışır, eksik yoklama uyarısı hiç çıkmazdı.
-  const kurguBugun = new Date(simdi).toISOString().slice(0, 10);
-  const govde = ogrenciMi
-    ? O.ogrenciTakvimi(D.ogrenciler, D.ogrenciKayitlari, state,
-      { yil: state.ogrenciYil, ay: state.ogrenciAy, bugun: kurguBugun })
-    : P.takvimView(state, D, ui);
+  const govde = P.takvimView(state, D, ui);
   const SAHNE_BASLIKLARI = {
     plan: 'ödeme takip takvimi',
     'plan-duzenle': 'satır düzenleme',
-    'plan-gun': 'gün sekmesi',
-    ogrenci: 'öğrenci · yoklama ve ödeme',
-    'ogrenci-odeme': 'öğrenci · ödeme düzenleme',
-    'ogrenci-suzgec': 'öğrenci · uyarı süzgeci',
-    'ogrenci-uyari': 'öğrenci · eksik yoklama',
-    'ogrenci-aidat': 'öğrenci · aylık aidat',
-    'ogrenci-yeni': 'öğrenci · ekleme formu'
+    'plan-gun': 'gün sekmesi'
   };
   const baslik = SAHNE_BASLIKLARI[senaryo] || 'gün sekmesi';
   const sayfa = `<!doctype html>

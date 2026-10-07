@@ -20,10 +20,34 @@ create table if not exists public.plan_maddeleri (
   bitti boolean not null default false,   -- 'madde'de yapıldı, 'odeme'de ödendi
   marka text,                             -- yalnız 'odeme' için
   tutar numeric,                          -- yalnız 'odeme' için
+  -- Ödeme yöntemi (yalnız 'odeme'). null = belirtilmemiş: eski kayıtlar ve
+  -- abonelikten işaretlenen ödemeler yöntem taşımaz, veri uydurulmaz.
+  yontem text check (yontem is null or yontem in ('nakit', 'kart', 'havale')),
   sira integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Kurulu bir veritabanında dosya yeniden çalıştırıldığında 'yontem' kolonu
+-- gelsin: create table if not exists mevcut tabloya kolon EKLEMEZ.
+alter table if exists public.plan_maddeleri
+  add column if not exists yontem text;
+
+-- Tablo eski sürümden geldiyse kısıt henüz yoktur (kolon sonradan eklenince
+-- satır içi check de gelmez). Aynı dosya ikinci kez çalıştırılmasın diye
+-- önce adı aranır.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.plan_maddeleri'::regclass
+      and conname = 'plan_maddeleri_yontem_ck'
+  ) then
+    alter table public.plan_maddeleri
+      add constraint plan_maddeleri_yontem_ck
+      check (yontem is null or yontem in ('nakit', 'kart', 'havale'));
+  end if;
+end $$;
 
 -- Not: sistemdeki markaların ödemeleri bu tabloda TUTULMAZ. Onlar
 -- subscriptions tablosundan canlı okunup takvimde gösterilir; abonelik
