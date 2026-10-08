@@ -243,8 +243,10 @@
     if (composeFocused) window.requestAnimationFrame(() => { composeField.focus(); composeField.setSelectionRange(composeCaretStart, composeCaretEnd); });
     app.querySelectorAll('[data-delete]').forEach(button => button.onclick = async () => {
       if (!window.confirm('Bu mesaj silinsin mi?')) return;
-      const { error: deleteError } = await client.from('direct_messages').delete().eq('id', button.dataset.delete).eq('sender_id', user.id);
+      const { data: silinen, error: deleteError } = await client.from('direct_messages').delete()
+        .eq('id', button.dataset.delete).eq('sender_id', user.id).select('id');
       if (deleteError) { status.textContent = deleteError.message; return; }
+      if (!silinen || !silinen.length) { status.textContent = 'Mesaj silinemedi: kayıt bulunamadı ya da yetkiniz yok.'; return; }
       load();
     });
     app.querySelectorAll('[data-approve-msg]').forEach(button => button.onclick = async () => {
@@ -270,7 +272,11 @@
         if (trackInsert.error) status.textContent = 'Proje oluştu ama parçalar eklenemedi: ' + trackInsert.error.message;
       }
       if (payload.note) await client.from('project_feedback').insert({ project_id: proj.data.id, author_id: user.id, body: 'Antrenörün notu: ' + payload.note, kind: 'note' });
-      await client.from('direct_messages').update({ research_project_id: proj.data.id }).eq('id', button.dataset.approveMsg);
+      const { data: isaretlenen, error: isaretError } = await client.from('direct_messages')
+        .update({ research_project_id: proj.data.id }).eq('id', button.dataset.approveMsg).select('id');
+      if (isaretError || !isaretlenen || !isaretlenen.length) {
+        status.textContent = 'Proje oluşturuldu ancak mesaj kaydı projeye bağlanamadı.';
+      }
       load();
     });
     app.querySelectorAll('[data-edit]').forEach(button => button.onclick = () => {
@@ -283,8 +289,10 @@
         const body = article.querySelector('.message-edit-field').value.trim();
         if (!body) { status.textContent = 'Mesaj boş bırakılamaz.'; return; }
         const encryptedBody = await window.DerinChatCrypto.seal(body, contactId);
-        const { error: updateError } = await client.from('direct_messages').update({ body: encryptedBody }).eq('id', button.dataset.edit).eq('sender_id', user.id);
+        const { data: guncellenen, error: updateError } = await client.from('direct_messages').update({ body: encryptedBody })
+          .eq('id', button.dataset.edit).eq('sender_id', user.id).select('id');
         if (updateError) { status.textContent = updateError.message; return; }
+        if (!guncellenen || !guncellenen.length) { status.textContent = 'Mesaj düzenlenemedi: kayıt bulunamadı ya da yetkiniz yok.'; return; }
         load();
       };
     });
@@ -312,8 +320,10 @@
       });
       menu.querySelector('[data-delete-menu]')?.addEventListener('click', async () => {
         if (!window.confirm('Bu mesaj silinsin mi?')) return;
-        const { error: deleteError } = await client.from('direct_messages').delete().eq('id', article.dataset.messageId).eq('sender_id', user.id);
+        const { data: silinen, error: deleteError } = await client.from('direct_messages').delete()
+          .eq('id', article.dataset.messageId).eq('sender_id', user.id).select('id');
         if (deleteError) { status.textContent = deleteError.message; return; }
+        if (!silinen || !silinen.length) { status.textContent = 'Mesaj silinemedi: kayıt bulunamadı ya da yetkiniz yok.'; return; }
         load();
       });
       menu.querySelector('[data-edit-menu]')?.addEventListener('click', () => {
@@ -327,8 +337,10 @@
           let encryptedBody;
           try { encryptedBody = await window.DerinChatCrypto.seal(updated, contactId); }
           catch (cryptoError) { status.textContent = cryptoError.message || 'Mesaj şifrelenemedi.'; return; }
-          const { error: updateError } = await client.from('direct_messages').update({ body: encryptedBody }).eq('id', article.dataset.messageId).eq('sender_id', user.id);
+          const { data: guncellenen, error: updateError } = await client.from('direct_messages').update({ body: encryptedBody })
+            .eq('id', article.dataset.messageId).eq('sender_id', user.id).select('id');
           if (updateError) { status.textContent = updateError.message; return; }
+          if (!guncellenen || !guncellenen.length) { status.textContent = 'Mesaj düzenlenemedi: kayıt bulunamadı ya da yetkiniz yok.'; return; }
           load();
         };
       });
@@ -523,7 +535,10 @@
       const Ses = window.DerinAudioTypes;
       if (!Ses || !Ses.gecerli(file)) {
         status.textContent = `“${file.name}” desteklenen bir ses dosyası değil. Desteklenenler: ${Ses ? Ses.desteklenenler() : 'wav, mp3, flac, m4a, aac, ogg'}.`;
-        if (yeniProje) await client.from('music_projects').delete().eq('id', hedefProje);
+        if (yeniProje) {
+          const sil = await client.from('music_projects').delete().eq('id', hedefProje).select('id');
+          if (sil.error || !sil.data || !sil.data.length) status.textContent += ' Yarım kalan proje silinemedi; Projelerim sayfasından kaldırın.';
+        }
         return;
       }
       const syncKart = fileRow.querySelector('#us-sync');
@@ -550,13 +565,19 @@
       if (up.error) {
         // Yarım kalan yeni proje listede kalmasın (aksi hâlde “Henüz parça
         // eklenmedi” yazan boş bir kaset oluşuyordu).
-        if (yeniProje) await client.from('music_projects').delete().eq('id', hedefProje);
+        let yarimKaldi = false;
+        if (yeniProje) {
+          const sil = await client.from('music_projects').delete().eq('id', hedefProje).select('id');
+          yarimKaldi = !!(sil.error || !sil.data || !sil.data.length);
+        }
         const ek = /maximum allowed size|exceeded the maximum|413/i.test(up.error.message)
           ? ' Dosya boyutu depolama sınırını aşıyor.'
           : /row-level security|policy|Unauthorized/i.test(up.error.message)
             ? ' Depolama yetkisi reddedildi; depolama izinlerini kontrol edin.'
             : '';
-        status.textContent = 'Yükleme hatası: ' + up.error.message + ek + (yeniProje ? ' Hiçbir proje oluşturulmadı.' : '');
+        status.textContent = 'Yükleme hatası: ' + up.error.message + ek + (yeniProje
+          ? (yarimKaldi ? ' Yarım kalan proje listede kaldı; Projelerim sayfasından kaldırın.' : ' Hiçbir proje oluşturulmadı.')
+          : '');
         const hataKutusu = fileRow.querySelector('.chat-file-msg') || document.createElement('div');
         hataKutusu.className = 'chat-file-msg';
         hataKutusu.style.cssText = 'flex:1 1 100%;font-size:12px;color:#ff9db0;padding-top:6px';
@@ -571,9 +592,12 @@
       const versionGuncellendi = !!(existing.data && existing.data.length);
 
       if (existing.data && existing.data.length) {
-        await client.from('project_tracks')
+        const { data: yazilan, error: yazmaHatasi } = await client.from('project_tracks')
           .update({ audio_path: path, version: (existing.data[0].version || 1) + 1 })
-          .eq('id', existing.data[0].id);
+          .eq('id', existing.data[0].id).select('id');
+        if (yazmaHatasi || !yazilan || !yazilan.length) {
+          status.textContent = 'Parça kaydı güncellenemedi: dosya yüklendi ama projeye bağlanamadı.';
+        }
       } else {
         await client.from('project_tracks')
                    .insert({ project_id: hedefProje, label, audio_path: path, sort_order: 0 });
