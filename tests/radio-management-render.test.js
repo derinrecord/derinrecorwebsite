@@ -614,3 +614,32 @@ test('pencere kabuğu eksikse panel onu yerinde üretir', () => {
   assert.ok(blok.indexOf("el('modal').innerHTML") > blok.indexOf('appendChild'),
     'üretim, içerik yazılmadan önce olmalı');
 });
+
+// Şube kodu ve paylaşım alarmı (supabase/radio-sube-kodu.sql): panel kodu
+// üretebilmeli/yenileyebilmeli, alarmı temizleyebilmeli ve şube eklerken kodu
+// da hazırlamalı. Bunlar yalnız yöneticinin elindeki işlerdir.
+test('panel şube kodunu üretir, yeniler ve alarmı temizler', () => {
+  assert.match(source, /case 'player-kod-yenile'/, 'kod üretme/yenileme işlenmeli');
+  assert.match(source, /case 'player-kod-kaldir'/, 'kod kaldırma işlenmeli');
+  assert.match(source, /case 'ihlal-temizle'/, 'paylaşım kaydı temizlenebilmeli');
+
+  const yenile = source.slice(source.indexOf("case 'player-kod-yenile'"), source.indexOf("case 'player-kod-kaldir'"));
+  assert.ok(yenile.includes('V.kodUret()'), 'kod görünüm katmanından üretilmeli');
+  assert.ok(yenile.includes('yazDogrula'), 'yazma doğrulanmalı (sessiz başarısızlık olmasın)');
+  assert.ok(yenile.includes('duplicate|unique|23505'), 'benzersizlik çakışmasında yeniden denenmeli');
+  assert.match(yenile, /!kullanici\.adminMi\) return hata/, 'yönetici kapısı olmalı');
+
+  const temizle = source.slice(source.indexOf("case 'ihlal-temizle'"), source.indexOf('"Şubedeki cihaz çalmıyor"'));
+  assert.match(temizle, /rpc\('radio_ihlal_temizle'/, 'temizleme sunucu işlevinden geçmeli');
+  assert.ok(temizle.includes('data !== true'), 'sunucu hayır dediyse panel başarı yazmamalı');
+  assert.ok(temizle.includes('radio-sube-kodu.sql'), 'işlev yoksa kurulum dosyası söylenmeli');
+
+  // Şube eklenirken kod da üretilmeli: yeni şube kodsuz kalırsa koruma yok demektir.
+  const ekle = source.slice(source.indexOf("case 'player-add'"), source.indexOf("case 'folder-open'"));
+  assert.ok(ekle.includes('player_code: V.kodUret()'), 'yeni şubeye kod üretilmeli');
+
+  // Kod ve alarm alanları şube sorgusunda istenmeli; yoksa ekran boş kalır.
+  assert.match(source, /select\('id,brand_id,label,player_key,player_code,[^']*ihlal_sayisi[^']*son_ihlal_konum'\)/,
+    'kod ve ihlal alanları yüklenmeli');
+  assert.match(source, /D\.kurulum\['radio-sube-kodu\.sql'\]/, 'kurulum durumu yoklanmalı');
+});

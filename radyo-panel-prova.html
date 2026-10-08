@@ -16,6 +16,9 @@
 </head>
 <body>
 
+<!-- Şerit kabuğu: paylaşım girişimi ve kesinti uyarıları buraya yazılır. -->
+<div class="uyari-serit" id="uyari" hidden></div>
+
 <aside class="rail" id="rail"></aside>
 
 <div class="app">
@@ -39,7 +42,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=55"></script>
+<script src="radyo-panel-views.js?v=61"></script>
 <script src="plan-takvim.js?v=15"></script>
 <script>
 (() => {
@@ -69,10 +72,14 @@
       { id: 't7', folder_id: 'f3', title: 'Lo-fi Closing 02', storage_path: 'f3/lofi-02.wav', sort_order: 1, duration_sec: 302, cover_path: null }
     ],
     players: [
-      { id: 'p1', brand_id: 'b1', label: 'Mokka — Nişantaşı', player_key: 'dr-8f21c4', last_seen_at: new Date().toISOString(), open_time: '09:00:00', close_time: '22:00:00', bound_device_id: 'cihaz-a', bound_at: iso(-3 * GUN), first_ip: '1.2.3.4', last_ip: '1.2.3.4', last_ip_at: iso(-240000), is_playing: true },
-      { id: 'p2', brand_id: 'b1', label: 'Mokka — Kadıköy', player_key: 'dr-2be907', last_seen_at: new Date().toISOString(), open_time: '10:00:00', close_time: '23:00:00', bound_device_id: 'cihaz-b', bound_at: iso(-9 * GUN), first_ip: '5.6.7.8', last_ip: '5.6.7.8', last_ip_at: iso(-420000), is_playing: true },
-      { id: 'p3', brand_id: 'b3', label: 'Kahve Durağı — Bebek', player_key: 'dr-a41f55', last_seen_at: iso(-26 * 3600000), open_time: '08:30:00', close_time: '21:00:00', bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null, is_playing: false },
-      { id: 'p4', brand_id: 'b2', label: 'Brew Lab — Alsancak', player_key: 'dr-77c010', last_seen_at: new Date().toISOString(), open_time: '09:00:00', close_time: '20:00:00', bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null, is_playing: false }
+      // Kod: her şubeye özel davet kodu. p4 kodsuz: ekran "KOD ÜRET" teklif eder.
+      { id: 'p1', brand_id: 'b1', label: 'Mokka — Nişantaşı', player_key: 'dr-8f21c4', player_code: 'K7M2-4QPD', last_seen_at: new Date().toISOString(), open_time: '09:00:00', close_time: '22:00:00', bound_device_id: 'cihaz-a', bound_at: iso(-3 * GUN), first_ip: '1.2.3.4', last_ip: '1.2.3.4', last_ip_at: iso(-240000), is_playing: true },
+      // Paylaşım girişimi: linki başka şubeye veren bu şube; kodu yanlış girilmiş,
+      // deneme "öteki" şubenin ağından (5.6.7.8) yapılmış.
+      { id: 'p2', brand_id: 'b1', label: 'Mokka — Kadıköy', player_key: 'dr-2be907', player_code: 'G5LV-S8VD', last_seen_at: new Date().toISOString(), open_time: '10:00:00', close_time: '23:00:00', bound_device_id: 'cihaz-b', bound_at: iso(-9 * GUN), first_ip: '5.6.7.8', last_ip: '5.6.7.8', last_ip_at: iso(-420000), is_playing: true,
+        ihlal_sayisi: 3, son_ihlal_at: iso(-2 * 3600000), son_ihlal_tur: 'cihaz', son_ihlal_cihaz: 'cihaz-yabanci-42', son_ihlal_ip: '5.6.7.8', son_ihlal_konum: 'IP: İzmir, Türkiye' },
+      { id: 'p3', brand_id: 'b3', label: 'Kahve Durağı — Bebek', player_key: 'dr-a41f55', player_code: '5HGG-EAK7', last_seen_at: iso(-26 * 3600000), open_time: '08:30:00', close_time: '21:00:00', bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null, is_playing: false },
+      { id: 'p4', brand_id: 'b2', label: 'Brew Lab — Alsancak', player_key: 'dr-77c010', player_code: null, last_seen_at: new Date().toISOString(), open_time: '09:00:00', close_time: '20:00:00', bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null, is_playing: false }
     ],
     broadcast: [
       { brand_id: 'b1', folder_id: null, playlist_id: 'l1' },
@@ -172,6 +179,9 @@
   const sayimlar = () => ({
     players: D.players.length, folders: D.folders.length, announcements: D.announcements.length,
     brands: D.brands.length, playlists: D.playlists.length, requests: D.requests.length,
+    // Kırmızı rozet: susan şube + paylaşım girişimi olan şube.
+    sessiz: V.sessizSayi(D) || null,
+    paylasim: V.paylasimSayi(D) || null,
     kurulumEksik: V.kurulumOzet(D).eksik || null
   });
 
@@ -269,6 +279,10 @@
     el('page-title').textContent = g.baslik;
     el('page-sub').textContent = g.alt;
     el('view').innerHTML = g.html;
+    // Üst şerit: kurulum eksiği + şube kodu/paylaşım girişimi + kesinti.
+    const serit = V.kurulumSeridi(D) + V.uyariSeridi(D, ui);
+    el('uyari').innerHTML = serit;
+    el('uyari').hidden = !serit;
     const bagli = D.players.filter(p => V.canliMi(p, Date.now())).length;
     el('live-text').textContent = bagli + ' şube bağlı';
     suruklemeBagla();
@@ -516,6 +530,8 @@
   ciz();
   const ek = p.get('ek');
   if (ek === 'cekmece') cekmeceAc(V.subeCekmecesi('p1', D, ui));
+  // Paylaşım alarmı olan şube (kod + kanıt bölümleri açık gelsin).
+  if (ek === 'paylasim') cekmeceAc(V.subeCekmecesi('p2', D, ui));
   if (ek === 'mic') mikrofon('b1');
   if (ek === 'sarki') el('view').innerHTML = V.gorunum(Object.assign(state, { nav: 'musteri', sub: 'markalar', openBrand: 'b1', openPlaylist: 'l1' }), D, ui).html;
   if (ek === 'onay') pencere({ baslik: 'Liste silinsin mi?', govde: '“Mokka — Gündüz Akışı” silinir ve bu listeyi kullanan şubeler yayın bekler duruma geçer.', tehlike: true, onayMetni: 'LİSTEYİ SİL' });

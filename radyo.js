@@ -8,6 +8,15 @@
   // ses, biri başlat düğmesine basmadan çalmaz.
   const kioskModu = url.get('kiosk') === '1';
 
+  // Şubeye özel davet kodu (supabase/radio-sube-kodu.sql). Link tek başına
+  // yeterli değildir: şube henüz bir cihaza bağlanmamışken sunucu kodu da sorar,
+  // yani linki ele geçiren biri yayını açamaz. Kod bilinçli olarak ADRES
+  // ÇUBUĞUNDAN gelmez (link ile kod aynı yerde durursa link kopyalandığında kod
+  // da kopyalanmış olur): cihaza ilk kurulumda bir kez elle girilir, sonra
+  // tarayıcıda saklanır.
+  const KOD_ANAHTARI = 'derin_record_kod' + (key ? '_' + key : '');
+  let kod = (() => { try { return localStorage.getItem(KOD_ANAHTARI) || ''; } catch { return ''; } })();
+
   let client = null, brandId = null, queue = [], index = 0, started = false, lastStamp = null, karistir = true;
   let bootTime = Date.now(), announcing = false;
   let openTime = null, closeTime = null, wasOpen = null;
@@ -543,9 +552,29 @@
     olay('durakladi', sebep === 'cihaz' && gizli ? 'cihaz-gizli' : sebep);
   });
 
+  // Sunucu yeni alanları (p_kod, p_konum) tanımıyorsa isteği daraltarak
+  // tekrarlarız: sahada açık duran eski SQL ile yayına giren yeni oynatıcı
+  // çakışmasın (aynı desen icerikRpc'de de kullanılır).
+  const imzaYok = r => r && r.error
+    && IMZA_YOK.test([r.error.message, r.error.code, r.error.details, r.error.hint].filter(Boolean).join(' '));
+
+  async function pingRpc(playing, konum) {
+    const tam = { p_player_key: key, p_device_id: deviceId, p_playing: playing };
+    if (konum) tam.p_konum = konum;
+    if (kod) tam.p_kod = kod;
+    let r = await withTimeout(client.rpc('radio_ping', tam), 8000);
+    if (imzaYok(r) && (konum || kod)) {
+      r = await withTimeout(client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: playing }), 8000);
+    }
+    if (imzaYok(r)) {
+      r = await withTimeout(client.rpc('radio_ping', { p_player_key: key, p_playing: playing }), 8000);
+    }
+    return r;
+  }
+
   function reportPlaying(playing) {
     if (!client || !key) return;
-    Promise.resolve(client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: playing })).catch(() => {});
+    Promise.resolve(pingRpc(playing)).catch(() => {});
   }
 
   // Sunucuya "şu an bu parça ve bu liste çalıyor" bilgisini bırakır. Alanlar ve
@@ -840,8 +869,65 @@
       .subscribe();
   }
 
+  // Kilit ekranına düşen (ya da kodu reddedilen) cihaz, bulunduğu yeri sunucuya
+  // bırakır: panel "hangi şube linkini nereden denedi" sorusunu cevaplayabilsin.
+  // İki yol var: tarayıcı konum izni verilmişse tam koordinat, verilmemişse
+  // (kiosk tarayıcısında olağan durum) IP'den çözülen şehir.
+  let konumBildirildi = false;
+
+  // Kanıt gönderimi ayrı bir fonksiyona (radio_kanit) gider: yoklama sayacını
+  // artırmaz, yani "bir deneme" iki ihlal gibi görünmez ve yalnız hâlihazırda
+  // alarm kaydı olan şubeye yazılır.
+  function kanitGonder(metin) {
+    if (!metin) return;
+    try {
+      Promise.resolve(client.rpc('radio_kanit', {
+        p_player_key: key, p_device_id: deviceId, p_konum: metin
+      })).catch(() => {});
+    } catch { /* kanıt "olsa iyi olur" katmanıdır: ekranı etkilemez */ }
+  }
+
+  // IP'den şehir/ülke: /api/konum-coz yalnız isteği yapanın kendi IP'sini
+  // çözer. Bu çağrı yalnız reddedilen cihazda yapılır; olağan yayında dış
+  // servise hiç çıkılmaz.
+  async function ipKonumu() {
+    try {
+      if (typeof fetch !== 'function') return null;
+      const y = await withTimeout(fetch('/api/konum-coz'), 6000);
+      if (!y || !y.ok) return null;
+      const v = await y.json();
+      const yer = [v && v.sehir, v && v.ulke].filter(Boolean).join(', ');
+      return yer ? 'IP: ' + yer : null;
+    } catch { return null; }
+  }
+
+  function konumBildir() {
+    if (konumBildirildi) return;
+    konumBildirildi = true;
+    // Her şey tek bir try içinde: konum "olsa iyi olur" katmanıdır, kilit
+    // ekranını hiçbir koşulda engellememeli (konum API'si olmayan tarayıcı,
+    // izin reddi, test ortamı…).
+    try {
+      if (!client || !gecerliAnahtar(key)) return;
+      const konumApi = typeof navigator !== 'undefined' && navigator && navigator.geolocation;
+      const ipYedek = () => { Promise.resolve(ipKonumu()).then(kanitGonder).catch(() => {}); };
+      if (!konumApi || typeof konumApi.getCurrentPosition !== 'function') { ipYedek(); return; }
+      konumApi.getCurrentPosition(
+        konum => {
+          try {
+            const yuvarla = n => Math.round(n * 100000) / 100000;   // ~1 m hassasiyet
+            kanitGonder(yuvarla(konum.coords.latitude) + ',' + yuvarla(konum.coords.longitude));
+          } catch { ipYedek(); }   // okunamadı: IP'den şehir
+        },
+        () => ipYedek(),           // izin yok/reddedildi: IP'den şehir
+        { timeout: 8000, maximumAge: 600000, enableHighAccuracy: false }
+      );
+    } catch { /* konum alınamadı: kilidi etkilemez */ }
+  }
+
   function lockedOut() {
     kilitli = true;
+    konumBildir();
     queue = [];
     started = false;
     olay('kilitlendi', 'bu link başka bir cihaza kayıtlı');
@@ -857,24 +943,111 @@
     setState('Bu yayın linki başka bir cihaza kayıtlı. Derin Record ile iletişime geçin.');
   }
 
+  // ---- Şube kodu kapısı ---------------------------------------------------
+  // Sunucu "kod gerek" ya da "kod yanlış" dediğinde oynatıcı çalmaya başlamaz:
+  // yayın, kodu olan şubeye aittir. Ekran kodu olan kişiye yol gösterir;
+  // yanlış kod denemesi kanıt olarak (IP ve mümkünse konum) yönetime gider.
+  let kodKapisi = null;   // 'gerekli' | 'yanlis' | null
+
+  function kodKapisiGoster(durum) {
+    // "Yanlış kod" uyarısı, kodu olmayan bir çağrının cevabıyla silinmesin:
+    // personel mesajı okuyup bize ulaşana kadar ekranda kalsın.
+    if (durum === 'gerekli' && kodKapisi === 'yanlis') return;
+    const yeniAlarm = durum === 'yanlis' && kodKapisi !== 'yanlis';
+    kodKapisi = durum;
+    kilitli = false;
+    queue = [];
+    index = 0;
+    started = false;
+    // Listeyi "henüz şarkı eklenmemiş" diye boş çizmeyiz: bu ekranda anlatılan
+    // konu liste değil, koddur. Boş liste satırı şubeyi arızalı gösterirdi.
+    byId('playlist').innerHTML = '';
+    calanListe = null;
+    byId('brand').textContent = 'Şube kodu gerekiyor';
+    byId('now').textContent = '';
+    byId('folder').textContent = '';
+    byId('cover').style.display = 'none';
+    byId('start').hidden = true;
+    const kap = byId('kod-kap');
+    if (kap) kap.hidden = false;
+    // Yanlış kod gönderildiyse bellekteki kodu bırakırız: 60 saniyede bir
+    // yoklama aynı yanlış kodu tekrar gönderip sayacı şişirmesin.
+    if (durum === 'yanlis') {
+      kod = '';
+      try { localStorage.removeItem(KOD_ANAHTARI); } catch { /* yok say */ }
+    }
+    setState(durum === 'yanlis'
+      ? 'Girilen kod bu şubeye ait değil. Bu deneme yönetime bildirildi; doğru şube kodunu Derin Record’dan isteyin.'
+      : 'Bu şube kodla korunuyor. Derin Record’un verdiği şube kodunu girin (linki tek başına açmak yayını başlatmaz).');
+    if (yeniAlarm) {
+      konumBildir();
+      olay('kod-yanlis', 'girilen kod bu şubeye ait değil');
+    }
+  }
+
+  // Girilen kodu dener. Doğruysa kod cihazda saklanır ve açılış kaldığı yerden
+  // sürer; yanlışsa ekran uyarır ve sunucudaki alarm kaydı büyür.
+  async function koduDene() {
+    const alan = byId('kod-gir');
+    const girilen = String((alan && alan.value) || '').trim().toUpperCase();
+    if (!girilen) { setState('Şube kodunu yazın.'); return; }
+    kod = girilen;
+    const r = await ping();
+    if (r.durum === 'ok') {
+      try { localStorage.setItem(KOD_ANAHTARI, girilen); } catch { /* saklanamadı */ }
+      kodKapisi = null;
+      const kap = byId('kod-kap');
+      if (kap) kap.hidden = true;
+      await devamEt();
+      return;
+    }
+    if (r.durum === 'kod-yanlis') { kodKapisiGoster('yanlis'); return; }
+    if (r.durum === 'kilitli') return;      // aynı cihaz sınırı: kilit ekranı kaldı
+    if (r.durum === 'gecersiz') {             // anahtar tanınmadı: kod ekranında oyalanmayalım
+      byId('brand').textContent = 'Bu link tanınmadı';
+      setState('Bu adresteki yayın anahtarı sunucuda bulunamadı. Panelden şubeyi açıp “LİNKİ KOPYALA” ile bağlantıyı baştan alın.');
+      return;
+    }
+    // Sunucu cevap vermedi: kod ekranında kaldığımızı söyleriz, yanlış kod
+    // yazdırmayız.
+    setState('Kod doğrulanamadı: internet bağlantısını kontrol edip tekrar deneyin.');
+  }
+
+  const kodFormu = byId('kod-kap');
+  if (kodFormu) kodFormu.onsubmit = olay => {
+    if (olay && olay.preventDefault) olay.preventDefault();
+    koduDene();
+  };
+
   async function ping() {
     let data, error;
     try {
-      ({ data, error } = await withTimeout(client.rpc('radio_ping', { p_player_key: key, p_device_id: deviceId, p_playing: !audio.paused }), 8000));
+      ({ data, error } = await pingRpc(!audio.paused));
     } catch {
       return { durum: 'belirsiz' };
     }
     if (error) return { durum: 'belirsiz' };
     const row = data && data[0];
-    if (row && row.ok === false && row.reason === 'locked_to_other_device') {
-      lockedOut();
-      return { durum: 'kilitli' };
-    }
-    if (row && row.ok === false && row.reason === 'invalid_key') {
-      // Sunucu bu anahtarla şube bulamıyor: 'bu link tanınmadı' demenin
-      // asıl sebebi bu olabilir, o yüzden ayrı işaretleriz.
-      anahtarDurumu = 'yok';
-      return { durum: 'gecersiz' };
+    if (row && row.ok === false) {
+      if (row.reason === 'locked_to_other_device') {
+        lockedOut();
+        return { durum: 'kilitli' };
+      }
+      if (row.reason === 'invalid_key') {
+        // Sunucu bu anahtarla şube bulamıyor: 'bu link tanınmadı' demenin
+        // asıl sebebi bu olabilir, o yüzden ayrı işaretleriz.
+        anahtarDurumu = 'yok';
+        return { durum: 'gecersiz' };
+      }
+      // Şube kodu: ilk kurulumda kod şart, yanlışsa alarm kaydı sunucuda oluştu.
+      if (row.reason === 'code_required') {
+        kodKapisiGoster('gerekli');
+        return { durum: 'kod-gerekli' };
+      }
+      if (row.reason === 'invalid_code') {
+        kodKapisiGoster('yanlis');
+        return { durum: 'kod-yanlis' };
+      }
     }
     anahtarDurumu = 'var';
     return { durum: 'ok' };
@@ -912,7 +1085,16 @@
 
     const ilkPing = await ping();
     if (ilkPing.durum === 'kilitli') return;
+    // Şube kodu kapısı: kod girilip onaylanana kadar yayın hazırlanmaz.
+    // Kod doğruysa koduDene() → devamEt() ile buradan devam edilir.
+    if (ilkPing.durum === 'kod-gerekli' || ilkPing.durum === 'kod-yanlis') return;
 
+    await devamEt();
+  }
+
+  // Kapılar (anahtar, cihaz kilidi, şube kodu) geçildikten sonraki açılış:
+  // yürürlükteki kaynağı al, listeleri hazırla, zamanlayıcıları kur.
+  async function devamEt() {
     await fetchBroadcast({ restart: true });
     if (!brandId) return;
 

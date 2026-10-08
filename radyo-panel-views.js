@@ -608,9 +608,130 @@
     return gun + ' gün' + (saatKalan ? ' ' + saatKalan + ' saattir' : 'dür');
   }
 
-  // Ekranın üstünde duran şerit: hangi şube, ne zamandır ve kimin tarafında.
-  // Sessiz şube yoksa boş döner; panel hiçbir şey göstermez.
+  // --- Şube kodu ve paylaşım girişimi --------------------------------------
+  // Panelin sözü şuydu: her şubeye giden link ve kod kendisine özel olsun,
+  // paylaşılırsa açılmasın ve bana haber gelsin. Haber burada görünür.
+
+  // Şube davet kodu: panelde üretilir. Alfabede karışan harfler yok (I, O, 0, 1
+  // yok) — kod telefonda okunup yazılabilir olmalı. Rastgelelik kriptografik
+  // kaynaktan (crypto.getRandomValues); çakışma olasılığına karşı benzersizlik
+  // veritabanında kilitli (bkz. supabase/radio-sube-kodu.sql).
+  const KOD_ALFABE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  function kodUret(rastgele) {
+    const n = new Uint8Array(8);
+    if (rastgele) rastgele(n);
+    else if (typeof crypto !== 'undefined' && crypto.getRandomValues) crypto.getRandomValues(n);
+    else for (let i = 0; i < n.length; i++) n[i] = Math.floor(Math.random() * 256);
+    let s = '';
+    for (let i = 0; i < n.length; i++) s += KOD_ALFABE[n[i] % KOD_ALFABE.length];
+    return s.slice(0, 4) + '-' + s.slice(4);
+  }
+
+  // Bir şubede paylaşım girişimi kaydı var mı? (Sayaç ve zaman birlikte dolu
+  // olmalı: temizlenmiş alarm yeniden "var" görünmesin.)
+  const ihlalVar = p => !!(p && Number(p.ihlal_sayisi || 0) > 0 && p.son_ihlal_at);
+
+  const IHLAL_TUR = {
+    cihaz: 'Link başka bir cihazdan açılmayı denendi',
+    kod: 'Yanlış şube kodu girildi'
+  };
+
+  // Konum iki biçimde gelir: "enlem,boylam" (tarayıcı izni verilmiş) ya da
+  // "IP: İzmir, Türkiye" (izin yokken IP'den çözülen). Ham metni ekranda
+  // olduğu gibi göstermek yerine okunur hâle getiririz.
+  const KONUM_GPS = /^-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?$/;
+  function konumBilgi(konum) {
+    const k = String(konum || '').trim();
+    if (!k) return null;
+    if (!KONUM_GPS.test(k)) return { metin: k, harita: null };
+    const [en, boy] = k.split(',').map(Number);
+    const nokta = en.toFixed(5) + ', ' + boy.toFixed(5);
+    return {
+      metin: 'Cihaz konumu: ' + nokta,
+      harita: 'https://www.openstreetmap.org/?mlat=' + en.toFixed(5) + '&mlon=' + boy.toFixed(5)
+        + '#map=16/' + en.toFixed(5) + '/' + boy.toFixed(5)
+    };
+  }
+
+  // İhlalde görülen IP başka bir şubenin kayıtlı IP'siyle aynıysa bu, "linki
+  // dışarı verdiler" sorusunun en somut cevabıdır: deneme o şubenin ağından
+  // yapılmış. Tahmin değil eşleşme olduğu için ekranda açıkça söylenir.
+  function paylasanSube(D, p) {
+    const ip = p && p.son_ihlal_ip;
+    if (!ip) return null;
+    return (D.players || []).find(x => x.id !== p.id && (x.last_ip === ip || x.first_ip === ip)) || null;
+  }
+
+  // Şubeye gönderilecek davet: link ve kod tek metinde, olduğu gibi
+  // iletilebilsin diye. Kod kaldırılmışsa yalnız link yazılır.
+  function davetMetni(p, link) {
+    return [
+      'Derin Record — yayın daveti',
+      p.label ? 'Şube: ' + p.label : '',
+      'Yayın linki: ' + link,
+      p.player_code ? 'Şube kodu: ' + p.player_code : '',
+      'Kurulum: cihazda linki açın, istenen şube kodunu bir kez girin.',
+      'Bu link yalnız bu şubeye aittir; başka bir cihazda açılırsa yayın çalışmaz ve bize bildirim gelir.'
+    ].filter(Boolean).join('\n');
+  }
+
+  function konumSatiri(p) {
+    const k = konumBilgi(p.son_ihlal_konum);
+    if (!k) return '<span class="sub">Konum alınamadı: cihaz izin vermedi, IP de çözülemedi.</span>';
+    return k.harita
+      ? `<span class="sub">${esc(k.metin)} · <a href="${esc(k.harita)}" target="_blank" rel="noopener">HARİTADA AÇ ↗</a></span>`
+      : `<span class="sub">${esc(k.metin)}</span>`;
+  }
+
+  // İhlalin türünü okunur cümleye çevirir (kayıtsız tür için güvenli varsayılan).
+  function ihlalCumlesi(p) {
+    return IHLAL_TUR[p.son_ihlal_tur] || 'Link/kod başka bir yerde denendi';
+  }
+
+  // Paylaşım girişimi şeridi: linki/kodu dağıtan şube burada adıyla çıkar.
+  // Bir şey yoksa boş döner.
+  function paylasimSeridi(D, ui) {
+    const vuranlar = (D.players || []).filter(ihlalVar);
+    if (!vuranlar.length) return '';
+    // En yeni deneme önce: "şu an ne oldu" sorusu ilk cevaplanır.
+    const sirali = vuranlar.slice().sort((a, b) => String(b.son_ihlal_at).localeCompare(String(a.son_ihlal_at)));
+    const ilk = sirali[0];
+    const b = (D.brands || []).find(x => x.id === ilk.brand_id);
+    const baslik = sirali.length === 1
+      ? ilk.label + (b ? ' · ' + b.name : '')
+      : sirali.length + ' şubede paylaşım girişimi · son: ' + ilk.label;
+    const paylasan = paylasanSube(D, ilk);
+    const satirlar = [
+      ihlalCumlesi(ilk) + ' · ' + goreli(ilk.son_ihlal_at, ui.now()) + ' · toplam ' + ilk.ihlal_sayisi + ' deneme',
+      (konumBilgi(ilk.son_ihlal_konum) || {}).metin || 'Konum alınamadı (cihaz izin vermedi, IP çözülemedi).',
+      ilk.son_ihlal_ip
+        ? 'IP: ' + ilk.son_ihlal_ip + (paylasan ? ' — bu IP ' + paylasan.label + ' şubesinin kayıtlı IP’si!' : '')
+        : null
+    ].filter(Boolean);
+    return `<div class="uyari-serit" style="flex:1 1 100%">
+      <span class="chip danger">PAYLAŞIM GİRİŞİMİ</span>
+      <div class="uyari-govde">
+        <b>${esc(baslik)}</b>
+        <span class="sub">${satirlar.map(esc).join('<br>')}</span>
+      </div>
+      <div class="uyari-dugmeler">
+        ${sirali.slice(0, 3).map(x => `<button class="btn sm" data-act="branch-open" data-id="${esc(x.id)}" type="button">${esc(x.label)} · ${esc(x.ihlal_sayisi)} deneme</button>`).join('')}
+        <button class="btn sm danger" data-act="gecmis-ac" type="button">KAYITLARI AÇ</button>
+      </div>
+    </div>`;
+  }
+
+  // Menü rozeti için: kaç şubede paylaşım girişimi kaydı var.
+  const paylasimSayi = D => (D.players || []).filter(ihlalVar).length;
+
+  // Ekranın üstünde duran şeritler: paylaşım girişimi (varsa) + sessiz şube.
+  // İkisi de yoksa panel hiçbir şey göstermez.
   function uyariSeridi(D, ui) {
+    return paylasimSeridi(D, ui) + kesintiSeridi(D, ui);
+  }
+
+  // Sessiz şube şeridi: hangi şube, ne zamandır ve kimin tarafında.
+  function kesintiSeridi(D, ui) {
     const now = ui.now();
     const sessiz = sessizSubeler(D, now);
     if (!sessiz.length) return '';
@@ -893,7 +1014,10 @@
       </div>
       <nav class="nav">
         <div class="nav-title">GÜNLÜK</div>
-        ${oge('canli', 'subeler', 'Canlı durum', 'Şubeler, yayın başlat, sağlık', counts.players, ikonlar.canli, counts.sessiz)}
+        ${oge('canli', 'subeler', 'Canlı durum', 'Şubeler, yayın başlat, sağlık', counts.players, ikonlar.canli,
+          // Kırmızı rozet: mesai içinde susan şube + paylaşım girişimi olan şube.
+          // İkisi de "bakman gereken bir iş var" demektir; ikisi de yoksa çizilmez.
+          ((counts.sessiz || 0) + (counts.paylasim || 0)) || null)}
 
         <div class="nav-title">İÇERİK</div>
         ${oge('icerik', 'klasorler', 'Yayın klasörleri', 'Parçalar, sıra, kapak', counts.folders, ikonlar.klasor)}
@@ -967,7 +1091,7 @@
         return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
           <td><div class="cell-main"><span class="cover">📻</span><span><b>${esc(p.label)}</b>
             <span class="sub">${esc(marka ? marka.name : '—')}</span></span></div></td>
-          <td class="tight">${bagliChip(p, now)}</td>
+          <td class="tight">${bagliChip(p, now)}${ihlalVar(p) ? chip('danger', 'PAYLAŞIM GİRİŞİMİ') : ''}</td>
           <td>${yayinHucresi(p, k, now, D)}</td>
           <td class="tight">${esc(hhmm(p.open_time) || '—')}–${esc(hhmm(p.close_time) || '—')}</td>
           <td class="tight">${kilitChip(p)}</td>
@@ -984,6 +1108,7 @@
         <div class="tile"><span>ŞUBE</span><b>${D.players.length}</b><small>${bagli} bağlı · ${D.players.length - bagli} çevrimdışı</small></div>
         <div class="tile"><span>ŞU AN ÇALIYOR</span><b>${caliyor}</b><small>canlı yayında</small></div>
         <div class="tile"><span>KİLİTLİ CİHAZ</span><b>${kilitli}</b><small>başka cihazda açılamaz</small></div>
+        ${paylasimSayi(D) ? `<div class="tile danger"><span>PAYLAŞIM GİRİŞİMİ</span><b>${paylasimSayi(D)}</b><small>link/kod başka yerde denendi</small></div>` : ''}
       </div>
       <div class="panel">
         <h3>ŞUBELER (${D.players.length})</h3>
@@ -1188,6 +1313,8 @@
       aciklama: 'Çalan parçanın hangi listeden geldiğini panele bildirir.', etki: 'Canlı durum' },
     { anahtar: 'radio-erisim.sql', ad: 'Şube erişim kapısı',
       aciklama: 'Şube linki ve sunum kodu doğrulanmadan katalog okunamaz; içerik dışarıya kapanır.', etki: 'Güvenlik · oynatıcı' },
+    { anahtar: 'radio-sube-kodu.sql', ad: 'Şube kodu ve paylaşım alarmı',
+      aciklama: 'Her şubeye özel davet kodu; link başka yerde açılırsa ya da kod yanlış girilirse alarm ve kanıt (IP, konum).', etki: 'Güvenlik · şube çekmecesi' },
     { anahtar: 'radio-yayin-durdurma.sql', ad: 'Yayın durumu ayrımı',
       aciklama: '“Yayın yok” cevabının sebebini ayırır: durdurulmuş mu, marka mı kapalı, abonelik mi bitti.', etki: 'Oynatıcı' },
     { anahtar: 'marka-kapagi.sql', ad: 'Marka kapağı',
@@ -1602,7 +1729,7 @@
         <td><b>${esc(p.label)}</b><span class="sub">${esc(p.player_key)}</span>${ozel.tip
           ? `<span class="sub">özel yayın: <b>${esc(ozel.ad)}</b></span>` : ''}${farkli
           ? `<span class="sub">çalıyor: <b>${esc(farkli.ad)}</b></span>` : ''}</td>
-        <td class="tight">${bagliChip(p, now)}${ozel.tip ? chip('gold', 'ÖZEL YAYIN', true) : ''}${farkli ? chip('gold', 'FARKLI LİSTE', true) : ''}</td>
+        <td class="tight">${bagliChip(p, now)}${ozel.tip ? chip('gold', 'ÖZEL YAYIN', true) : ''}${farkli ? chip('gold', 'FARKLI LİSTE', true) : ''}${ihlalVar(p) ? chip('danger', 'PAYLAŞIM GİRİŞİMİ') : ''}</td>
         <td class="tight">${p.last_seen_at ? esc(tarih(p.last_seen_at)) : 'hiç bağlanmadı'}</td>
         <td class="tight">${kilitChip(p)}</td>
         <td><div class="row-actions">
@@ -2255,6 +2382,9 @@
       p.last_ip ? 'IP: ' + p.last_ip : null,
       p.last_ip_at ? 'son görülme: ' + tarih(p.last_ip_at) : null
     ].filter(Boolean).join(' · ');
+    // Paylaşım girişiminde görülen IP başka bir şubenin kayıtlı IP'siyse
+    // (satır içinde) adıyla söylenir: en somut kanıt budur.
+    const paylasan = paylasanSube(D, p);
     // Şubeye atanmış çalma listeleri. Hiçbiri atanmadıysa şube çalmaz; bu
     // yüzden durum çekmecede adlarıyla yazılır, yalnız sayıyla geçilmez.
     const yukluAdlar = subeYukluListeleri(D, p.id)
@@ -2297,7 +2427,21 @@
         <p class="sub">Şubeye birden çok çalma listesi atamak için supabase/radio-sube-listeleri.sql çalıştırılmalı. O zamana kadar bu şube markanın bütün listelerini görür.</p>`}
       </div>
 
-      <div class="block"><h4>YAYIN LİNKİ</h4>
+      ${ihlalVar(p) ? `<div class="block">
+        <h4 style="color:#ff8f9a">PAYLAŞIM GİRİŞİMİ · ${esc(p.ihlal_sayisi)} DENEME</h4>
+        <p class="sub"><b>${esc(ihlalCumlesi(p))}</b> · son deneme ${esc(tarih(p.son_ihlal_at))}.
+          Bu şubenin linki ya da kodu başka bir yerde kullanılmaya çalışıldı; yayın açılmadı.</p>
+        ${konumSatiri(p)}
+        ${p.son_ihlal_ip ? `<p class="sub">IP: <b>${esc(p.son_ihlal_ip)}</b>${p.son_ihlal_cihaz ? ' · cihaz: ' + esc(String(p.son_ihlal_cihaz).slice(0, 12)) + '…' : ''}${paylasan
+          ? ` · <b>bu IP ${esc(paylasan.label)} şubesinin kayıtlı IP’si</b>` : ''}</p>` : ''}
+        <div class="row" style="margin-top:12px">
+          <button class="btn sm" data-act="ihlal-temizle" data-id="${esc(p.id)}" type="button">KAYDI TEMİZLE</button>
+          <button class="btn sm danger" data-act="player-lock" data-id="${esc(p.id)}" type="button">CİHAZ KİLİDİNİ SIFIRLA</button>
+        </div>
+        <p class="sub" style="margin-top:10px">Karar sizde: meşru şube cihaz değiştirdiyse kilidi sıfırlayın, şüpheli bir denemeyse kaydı saklayıp şubeyle konuşun.</p>
+      </div>` : ''}
+
+      <div class="block"><h4>ŞUBE LİNKİ</h4>
         <div class="key">${esc(link)}</div>
         <div class="row" style="margin-top:12px">
           <button class="btn sm" data-act="copy" data-copy="${esc(link)}" type="button">LİNKİ KOPYALA</button>
@@ -2310,6 +2454,25 @@
           : '<p class="sub">Bu şube henüz bir cihaza kilitlenmedi; bağlantı <b>ilk açıldığı cihaza kilitlenir</b>.</p>'}
         ${p.last_seen_at ? `<p class="sub">son bağlantı: ${esc(tarih(p.last_seen_at))}</p>` : '<p class="sub">hiç bağlanmadı</p>'}
         ${kilitBilgi ? `<p class="sub">${esc(kilitBilgi)}</p>` : ''}
+      </div>
+
+      <div class="block"><h4>ŞUBE KODU</h4>
+        <p class="sub">Linki ele geçiren biri yayını açamaz: cihaz ilk kez bağlanırken bu kod da sorulur.
+          Kodu şubeye linkle birlikte gönderin; cihaz bir kez kilitlendikten sonra kod her açılışta sorulmaz.
+          Kodu dağıtılan bir sürüm sızarsa <b>KODU YENİLE</b> ile eski kodu geçersiz kılın.</p>
+        ${p.player_code
+          ? `<div class="key">${esc(p.player_code)}</div>
+            <div class="row" style="margin-top:12px">
+              <button class="btn sm primary" data-act="copy" data-copy="${esc(davetMetni(p, link))}" type="button">DAVETİ KOPYALA</button>
+              <button class="btn sm" data-act="copy" data-copy="${esc(p.player_code)}" type="button">KODU KOPYALA</button>
+              <button class="btn sm" data-act="player-kod-yenile" data-id="${esc(p.id)}" type="button">KODU YENİLE</button>
+              <button class="btn sm danger" data-act="player-kod-kaldir" data-id="${esc(p.id)}" type="button">KODU KALDIR</button>
+            </div>
+            <p class="sub" style="margin-top:10px">DAVETİ KOPYALA, link ve kodu tek mesaj hâlinde panoya alır; şubeye olduğu gibi iletebilirsiniz.</p>`
+          : `<p class="sub">Bu şubede kod yok: yayın yalnız linkle açılır. Şube cihaza henüz bağlanmadıysa kod ekleyin.</p>
+            <div class="row" style="margin-top:12px">
+              <button class="btn sm primary" data-act="player-kod-yenile" data-id="${esc(p.id)}" type="button">KOD ÜRET</button>
+            </div>`}
       </div>
 
       <div class="block"><h4>YAYIN SAATLERİ</h4>
@@ -2479,6 +2642,19 @@
     sessizSayi: sessizSayi,
     sureCumle: sureCumle,
     uyariSeridi: uyariSeridi,
+    kesintiSeridi: kesintiSeridi,
+    // Şube kodu / paylaşım girişimi (supabase/radio-sube-kodu.sql): kod üretimi,
+    // alarm şeridi, konum çözümü, davet metni ve "hangi şube dağıttı" eşleşmesi.
+    kodUret: kodUret,
+    ihlalVar: ihlalVar,
+    ihlalCumlesi: ihlalCumlesi,
+    IHLAL_TUR: IHLAL_TUR,
+    konumBilgi: konumBilgi,
+    konumSatiri: konumSatiri,
+    paylasanSube: paylasanSube,
+    paylasimSeridi: paylasimSeridi,
+    paylasimSayi: paylasimSayi,
+    davetMetni: davetMetni,
     kurulumSeridi: kurulumSeridi,
     kapakYok: kapakYok,
     kapakPenceresi: kapakPenceresi,

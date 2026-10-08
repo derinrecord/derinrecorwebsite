@@ -40,7 +40,7 @@
       'radio-baglanti-gecmisi.sql': null, 'radio-yayin-baslat.sql': null,
       'radio-calan-parca.sql': null, 'radio-liste-bildirimi.sql': null,
       'radio-erisim.sql': null, 'radio-yayin-durdurma.sql': null,
-      'marka-kapagi.sql': null
+      'radio-sube-kodu.sql': null, 'marka-kapagi.sql': null
     }
   };
   const state = {
@@ -121,6 +121,22 @@
   }
 
   // ---------- Tek tip pencere ----------
+  // Kod üretildikten sonra açılan pencere: kodu ve şubeye gönderilecek hazır
+  // davet metnini tek ekranda gösterir (kopyalanabilir).
+  function kodPenceresi(p, kod) {
+    const link = ui.playerBase() + p.player_key;
+    pencere({
+      baslik: p.label + ' — şube kodu',
+      govde: `<p class="sub">Kodu şubeye linkle birlikte gönderin; cihaz ilk kez bağlanırken bir kez sorulur.</p>
+        <div class="key">${esc(kod)}</div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn sm primary" data-act="copy" data-copy="${esc(V.davetMetni({ label: p.label, player_code: kod }, link))}" type="button">DAVETİ KOPYALA</button>
+          <button class="btn sm" data-act="copy" data-copy="${esc(kod)}" type="button">KODU KOPYALA</button>
+        </div>`,
+      gizleOnay: true, kapatMetni: 'KAPAT'
+    });
+  }
+
   function pencere(s) {
     modalOnay = s.onOnay || null;
     modalKapat = s.onKapat || null;
@@ -493,6 +509,8 @@
       olaySorun: V.olaySorunSayi(D) || null,
       // Mesai içinde şu an susan şube: menüde kırmızı rozet, üstte şerit.
       sessiz: V.sessizSayi(D) || null,
+      // Link/kod paylaşım girişimi olan şube: menüde aynı kırmızı rozete eklenir.
+      paylasim: V.paylasimSayi(D) || null,
       // Kurulum eksiği varsa menü satırında kırmızı rozet: yönetici ekranı
       // açmadan kaç özelliğin kapalı olduğunu görsün.
       kurulumEksik: V.kurulumOzet(D).eksik || null
@@ -714,7 +732,11 @@
       client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec,cover_path').order('sort_order'),
-      client.from('brand_players').select('id,brand_id,label,player_key,last_seen_at,open_time,close_time,bound_device_id,bound_at,first_ip,last_ip,last_ip_at,is_playing').order('label'),
+      // player_code ve ihlal_* alanları supabase/radio-sube-kodu.sql ile gelir.
+      // Dosya henüz çalıştırılmadıysa PostgREST bu alanları tanımaz ve sorgu hata
+      // döner: o durumda şubeler boş görünür, eksiklik Kurulum durumu ekranında
+      // dosya adıyla yazar ve tek dokunuşla kurulur.
+      client.from('brand_players').select('id,brand_id,label,player_key,player_code,last_seen_at,open_time,close_time,bound_device_id,bound_at,first_ip,last_ip,last_ip_at,is_playing,ihlal_sayisi,son_ihlal_at,son_ihlal_tur,son_ihlal_cihaz,son_ihlal_ip,son_ihlal_konum').order('label'),
       client.from('brand_broadcast').select('brand_id,folder_id,playlist_id,shuffle,updated_at'),
       // Şubeye özel yayın (supabase/radio-subeye-ozel-yayin.sql). Tablo henüz
       // kurulmadıysa sorgu hata döner: bütün şubeler genel yayında sayılır.
@@ -807,6 +829,13 @@
     const sahteAnahtar = '00000000-0000-4000-8000-000000000000';
     D.kurulum['radio-erisim.sql'] = await rpcVarMi('radio_listeler', { p_player_key: sahteAnahtar });
     D.kurulum['radio-yayin-durdurma.sql'] = await rpcVarMi('radio_yayin_durumu', { p_player_key: sahteAnahtar });
+    // Şube kodu ve paylaşım alarmı (supabase/radio-sube-kodu.sql). Fonksiyonu
+    // yan etkisiz yoklarız: bilinmeyen anahtar hiçbir şey yazmaz, yalnız "yok"
+    // cevabını verir. Kurulmadıysa oynatıcı yalnız linkle açılır (koruma yok) ve
+    // panel bunu kurulum ekranında söyler.
+    D.kurulum['radio-sube-kodu.sql'] = await rpcVarMi('radio_kanit', {
+      p_player_key: sahteAnahtar, p_konum: 'prova'
+    });
 
     // Şubeye yüklenen listeler (supabase/radio-sube-listeleri.sql). Tablo henüz
     // kurulmadıysa sorgu hata döner: o zaman şube satırında yükleme sütunu
@@ -1740,6 +1769,71 @@
         setTimeout(() => { hedef.textContent = 'LİNK'; }, 1600);
         return;
       }
+      // --- şube davet kodu ve paylaşım alarmı (supabase/radio-sube-kodu.sql) ---
+      // Kod, linkin yanında duran ikinci sırdır: linki ele geçiren biri kodu
+      // bilmiyorsa yayını açamaz. Kodu üretmek/yenilemek de yöneticinin işi.
+      case 'player-kod-yenile': {
+        if (!kullanici.adminMi) return hata('Şube kodu üretmek yönetici yetkisi ister.');
+        const p = D.players.find(x => x.id === id);
+        if (!p) return hata('Şube bulunamadı.');
+        if (!await onaySor({
+          baslik: p.player_code ? 'Şube kodu yenilensin mi?' : 'Şubeye kod üretilsin mi?',
+          govde: p.bound_device_id
+            ? `${p.label} şubesi zaten bir cihaza bağlı: o cihaz kodu sormaz. Yeni kod, cihaz kilidi sıfırlandığında ya da cihaz değiştiğinde istenir.`
+            : `${p.label} şubesinde yayın ilk kez açılırken bu kod sorulacak. Eski kod varsa anında geçersiz olur; kodu şubeye yeniden iletin.`,
+          onayMetni: p.player_code ? 'KODU YENİLE' : 'KOD ÜRET'
+        })) return;
+        // Kod panelde üretilir; aynı kodun başka şubede olması ihtimaline karşı
+        // veritabanı benzersizliği çakışma derse yeni kodla tekrar denenir.
+        const yeni = V.kodUret();
+        let sorun = await yazDogrula(
+          client.from('brand_players').update({ player_code: yeni }).eq('id', p.id), 'Kod kaydedilemedi');
+        if (sorun && /duplicate|unique|23505/i.test(sorun)) {
+          const ikinci = V.kodUret();
+          sorun = await yazDogrula(
+            client.from('brand_players').update({ player_code: ikinci }).eq('id', p.id), 'Kod kaydedilemedi');
+          if (!sorun) { await yenile(false); bildir('Yeni şube kodu üretildi.'); return kodPenceresi(p, ikinci); }
+        }
+        if (sorun) return hata(sorun);
+        await yenile(false);
+        return kodPenceresi(p, yeni);
+      }
+      case 'player-kod-kaldir': {
+        if (!kullanici.adminMi) return hata('Şube kodunu kaldırmak yönetici yetkisi ister.');
+        const p = D.players.find(x => x.id === id);
+        if (!p) return hata('Şube bulunamadı.');
+        if (!p.player_code) return hata('Bu şubede zaten kod yok.');
+        if (!await onaySor({
+          baslik: 'Şube kodu kaldırılsın mı?',
+          govde: `${p.label} artık yalnız linkle açılır: linki ele geçiren biri ilk kurulumu yapabilir. Cihaz kilidi ve paylaşım alarmı çalışmaya devam eder.`,
+          onayMetni: 'KODU KALDIR'
+        })) return;
+        const sorun = await yazDogrula(
+          client.from('brand_players').update({ player_code: null }).eq('id', p.id), 'Kod kaldırılamadı');
+        if (sorun) return hata(sorun);
+        cekmeceKapat(); await yenile(false); bildir('Şube kodu kaldırıldı.');
+        return;
+      }
+      case 'ihlal-temizle': {
+        if (!kullanici.adminMi) return hata('Paylaşım kaydını temizlemek yönetici yetkisi ister.');
+        const p = D.players.find(x => x.id === id);
+        if (!p) return hata('Şube bulunamadı.');
+        if (!await onaySor({
+          baslik: 'Paylaşım kaydı temizlensin mi?',
+          govde: `${p.label} için sayaç ve kanıt (IP, konum) sıfırlanır. Bağlantı geçmişindeki kayıtlar silinmez; oradan geriye dönük bakmaya devam edebilirsiniz.`,
+          onayMetni: 'KAYDI TEMİZLE'
+        })) return;
+        const { data, error } = await client.rpc('radio_ihlal_temizle', { p_player_id: p.id });
+        if (error) {
+          return hata(/does not exist|schema cache/i.test(error.message || '')
+            ? 'Sunucu bu işlevi tanımıyor: supabase/radio-sube-kodu.sql dosyasını çalıştırın.'
+            : 'Kayıt temizlenemedi: ' + error.message);
+        }
+        if (data !== true) return hata('Kayıt temizlenemedi: yönetici yetkisi doğrulanamadı.');
+        cekmeceKapat(); await yenile(false); bildir('Paylaşım kaydı temizlendi.');
+        return;
+      }
+
       // "Şubedeki cihaz çalmıyor" durumunu yerinden anlamak için: oynatıcının
       // kullandığı iki okuma çağrısını yapar. radio_ping BİLİNÇLİ olarak
       // çağrılmaz — ping, cihazı şubeye kilitler; panelden sınarken kilidi
@@ -1798,6 +1892,9 @@
         const { error } = await client.from('brand_players').insert({
           brand_id: id, label: ad,
           player_key: crypto.randomUUID(),
+          // Şube kodu ilk kurulumda linkle birlikte istenir (radio-sube-kodu.sql);
+          // panelde üretilip şubeye "DAVETİ KOPYALA" ile gönderilir.
+          player_code: V.kodUret(),
           open_time: el('p-open').value || null, close_time: el('p-close').value || null
         });
         if (error) return hata('Şube eklenemedi: ' + error.message);

@@ -1493,3 +1493,108 @@ test('eksik kurulum yokken üst şerit hiç çizilmez', () => {
   assert.equal(V.kurulumSeridi(D), '', 'veri yokken şerit çizilmemeli');
 });
 
+
+// ---------- ŞUBE KODU VE PAYLAŞIM GİRİŞİMİ ----------
+// Panelin verdiği söz: her şubeye giden link ve kod kendisine özel; paylaşılırsa
+// açılmayacak ve yönetime haber gelecek. Aşağısı o haberin görünümünü bağlar.
+const KODLU_P = {
+  ...D.players[0], id: 'p2', label: 'Alsancak', player_key: ANAHTAR_ALSANCAK,
+  player_code: 'K7M2-4QPD', bound_device_id: null, bound_at: null, is_playing: false,
+  ihlal_sayisi: 3, son_ihlal_at: iso(-3600000), son_ihlal_tur: 'kod',
+  son_ihlal_cihaz: 'cihaz-yabanci-9', son_ihlal_ip: '5.6.7.8',
+  son_ihlal_konum: 'IP: İzmir, Türkiye'
+};
+const IHLAL_D = { ...D, players: [D.players[0], KODLU_P] };
+
+test('şube kodu üretimi okunabilir biçimde ve karışan harfler olmadan yapılır', () => {
+  for (let i = 0; i < 40; i++) {
+    const kod = V.kodUret();
+    assert.match(kod, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/, 'kod XXXX-XXXX biçiminde olmalı: ' + kod);
+    // I, O, 0, 1 telefonda karışır: alfabede bulunmaz.
+    assert.ok(!/[IO01]/.test(kod), 'karışan karakter kullanılmamalı: ' + kod);
+  }
+  // Aynı tohum aynı kodu üretmeli (tekrarlanabilir prova).
+  const tohum = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.equal(V.kodUret(n => n.set(tohum)), V.kodUret(n => n.set(tohum)));
+});
+
+test('paylaşım girişimi yokken ne şerit ne rozet çizilir', () => {
+  assert.equal(V.paylasimSeridi(D, ui), '', 'kayıt yokken şerit boş');
+  assert.equal(V.paylasimSayi(D), 0);
+  assert.equal(V.uyariSeridi(D, ui), '', 'kesinti de yokken üst şerit hiç çizilmez');
+  assert.equal(V.ihlalVar(D.players[0]), false);
+});
+
+test('paylaşım girişimi şeritte şubeyle, konumla ve IP ile yazılır', () => {
+  const serit = V.paylasimSeridi(IHLAL_D, ui);
+  assert.ok(serit.includes('PAYLAŞIM GİRİŞİMİ'), 'şerit başlığı çizilmeli');
+  assert.ok(serit.includes('Alsancak'), 'şube adı yazılmalı');
+  assert.ok(serit.includes('Yanlış şube kodu girildi'), 'ihlal türü okunur olmalı');
+  assert.ok(serit.includes('3 deneme'), 'kaç kez denendiği yazılmalı');
+  assert.ok(serit.includes('IP: İzmir, Türkiye'), 'konum yazılmalı');
+  assert.ok(serit.includes('5.6.7.8'), 'IP yazılmalı');
+  assert.ok(serit.includes('data-act="branch-open" data-id="p2"'), 'şubeye tek dokunuşla gidilmeli');
+  assert.equal(V.paylasimSayi(IHLAL_D), 1);
+});
+
+test('ihlaldeki IP başka bir şubeye aitse adıyla söylenir', () => {
+  const digeri = { ...D.players[0], id: 'p3', label: 'Karşıyaka', player_key: ANAHTAR_ZEYTINLI, last_ip: '5.6.7.8' };
+  const veri = { ...IHLAL_D, players: [digeri, KODLU_P] };
+  assert.equal(V.paylasanSube(veri, KODLU_P).label, 'Karşıyaka');
+  assert.ok(V.paylasimSeridi(veri, ui).includes('Karşıyaka şubesinin kayıtlı IP'));
+  // Eşleşme yoksa suçlama yok: yalnız IP yazılır.
+  assert.equal(V.paylasanSube(IHLAL_D, KODLU_P), null);
+});
+
+test('konum GPS ise koordinat ve harita bağlantısı, IP ise metin olarak okunur', () => {
+  const gps = V.konumBilgi('38.4127265,27.1383824');
+  assert.match(gps.metin, /38\.41273, 27\.13838/, 'koordinat okunur biçimde');
+  assert.match(gps.harita, /openstreetmap\.org\/\?mlat=38\.41273/);
+  const ip = V.konumBilgi('IP: İzmir, Türkiye');
+  assert.equal(ip.metin, 'IP: İzmir, Türkiye');
+  assert.equal(ip.harita, null, 'IP için harita bağlantısı üretilmez');
+  assert.equal(V.konumBilgi(''), null);
+  assert.equal(V.konumBilgi(null), null);
+});
+
+test('şube çekmecesi kodu, davet metnini ve alarm kanıtını gösterir', () => {
+  const cekmece = V.subeCekmecesi('p2', IHLAL_D, ui);
+  assert.ok(cekmece.includes('ŞUBE KODU'), 'kod bölümü olmalı');
+  assert.ok(cekmece.includes('K7M2-4QPD'), 'kod yazılmalı');
+  assert.ok(cekmece.includes('DAVETİ KOPYALA'), 'link + kod tek mesaj olarak kopyalanabilmeli');
+  assert.ok(cekmece.includes('player-kod-yenile'), 'kod yenileme düğmesi olmalı');
+  assert.ok(cekmece.includes('player-kod-kaldir'), 'kodu kaldırma düğmesi olmalı');
+  assert.ok(cekmece.includes('PAYLAŞIM GİRİŞİMİ'), 'alarm bölümü olmalı');
+  assert.ok(cekmece.includes('ihlal-temizle'), 'alarm temizlenebilmeli');
+  assert.ok(cekmece.includes('5.6.7.8') && cekmece.includes('IP: İzmir, Türkiye'), 'kanıt yazılmalı');
+  // Kopyalanacak davet metni; link, kod ve kurulum cümlesini birlikte taşır.
+  const davet = V.davetMetni(KODLU_P, 'https://ornek.test/radyo.html?key=' + ANAHTAR_ALSANCAK);
+  assert.ok(davet.includes('K7M2-4QPD') && davet.includes('Yayın linki'));
+  assert.ok(davet.includes('başka bir cihazda açılırsa yayın çalışmaz'));
+});
+
+test('kodu olmayan şubede çekmece kod üretmeyi teklif eder, alarm çizilmez', () => {
+  const cekmece = V.subeCekmecesi('p1', D, ui);
+  assert.ok(cekmece.includes('KOD ÜRET'), 'kodsuz şubede üretme düğmesi olmalı');
+  assert.ok(!cekmece.includes('PAYLAŞIM GİRİŞİMİ'), 'kayıt yokken alarm bölümü çizilmemeli');
+  assert.equal(V.davetMetni(D.players[0], 'https://x/radyo.html?key=' + ANAHTAR_NISANTASI).includes('Şube kodu'), false);
+});
+
+test('paylaşım girişimi menüde kırmızı rozet olarak okunur', () => {
+  const sayim = { players: 2, folders: 1, brands: 1, sessiz: null, paylasim: V.paylasimSayi(IHLAL_D) };
+  const html = V.nav(durum({}), sayim, { ad: 'Derin Record', alt: 'a@b', basHarf: 'DR' });
+  assert.ok(html.includes('class="say uyari">1</span>'), 'paylaşım girişimi menüde rozet olmalı');
+  // Kesintisiz ve paylaşımsız veride rozet çizilmez.
+  const sakin = V.nav(durum({}), { players: 2, sessiz: null, paylasim: null }, { ad: 'DR', alt: 'a@b', basHarf: 'D' });
+  assert.ok(!sakin.includes('say uyari'), 'kayıt yokken rozet çizilmemeli');
+});
+
+test('kurulum durumunda şube kodu dosyası izlenir', () => {
+  const anahtarlar = V.KURULUM.map(x => x.anahtar);
+  assert.ok(anahtarlar.includes('radio-sube-kodu.sql'), 'dosya kurulum listesinde olmalı');
+  // Kurulum ekranı: dosya adı, uygulanmamış hâlde görünür olmalı (durum false).
+  const veri = { ...D, kurulum: { 'radio-sube-kodu.sql': false } };
+  const html = V.gorunum(durum({ nav: 'kurulum', sub: 'kurulum' }), veri, ui).html;
+  assert.ok(html.includes('radio-sube-kodu.sql'), 'dosya adı ekranda yazılmalı');
+  assert.ok(html.includes('KURULMADI'), 'uygulanmamış dosya işaretlenmeli');
+});

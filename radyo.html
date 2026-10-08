@@ -71,7 +71,7 @@
   .cover{position:relative;z-index:1;width:180px;height:180px;object-fit:cover;display:none;
         border:2px solid var(--line-2);box-shadow:9px 9px 0 var(--pink);background:var(--ink)}
   /* İçerik, kapağın arkasından taşan plağın üstünde kalsın. */
-  h1#brand,.sub,.now,.folder,.dalga,.playlist,button,.state,.tani,.hours,.liste{
+  h1#brand,.sub,.now,.folder,.dalga,.playlist,button,.state,.tani,.hours,.liste,.kod{
         position:relative;z-index:1}
 
   h1#brand{margin:8px 0 4px;font-size:clamp(23px,6vw,28px);font-weight:900;letter-spacing:-.02em}
@@ -132,6 +132,16 @@
      büyütülür ki tablette bir bakışta "buradan liste seçilir" densin. */
   .liste{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);
         display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+  /* Şube kodu kapısı: şube henüz bir cihaza bağlanmamışken link tek başına
+     yetmez; ekranda kod alanı çıkar. Görsel dil liste seçicisiyle aynı. */
+  .kod{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);
+        display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+  .kod label{font-size:12px;letter-spacing:.18em;font-weight:900;color:var(--yellow)}
+  .kod input{width:14ch;padding:13px 16px;font:inherit;font-size:16px;letter-spacing:.1em;
+        text-align:center;text-transform:uppercase;color:var(--cream);background:var(--ink);
+        border:2px solid var(--line-2)}
+  .kod input:focus{outline:none;border-color:var(--yellow);box-shadow:0 0 0 3px rgba(216,187,44,.25)}
+  .kod button{margin-top:0;padding:14px 22px;font-size:12px}
   .liste label{font-size:12px;letter-spacing:.18em;font-weight:900;color:var(--yellow)}
   .liste select{appearance:none;-webkit-appearance:none;padding:13px 18px;font:inherit;font-size:14px;
         color:var(--cream);cursor:pointer;max-width:100%;background:var(--ink);
@@ -163,6 +173,12 @@
   <div class="folder" id="folder"></div>
   <div class="dalga" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <ol class="playlist" id="playlist" aria-label="Çalma listesi"></ol>
+  <form class="kod" id="kod-kap" hidden autocomplete="off">
+    <label for="kod-gir">ŞUBE KODU</label>
+    <input id="kod-gir" name="kod" spellcheck="false" autocapitalize="characters"
+           maxlength="12" placeholder="XXXX-XXXX">
+    <button id="kod-gonder" type="submit">DOĞRULA</button>
+  </form>
   <button id="start" hidden>YAYINI BAŞLAT</button>
   <div class="state" id="state"></div>
   <div class="tani" id="tani" hidden></div>
@@ -177,6 +193,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="radio-playlist-queue.js?v=20260926a"></script>
 <script src="r2-depo.js?v=1"></script>
-<script src="radyo.js?v=20261008b"></script>
+<script src="radyo.js?v=20261008c"></script>
 </body>
 </html>

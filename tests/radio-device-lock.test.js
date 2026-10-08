@@ -56,7 +56,8 @@ async function calistir(senaryo) {
   const al = id => {
     if (!dugumler.has(id)) {
       const d = dugum();
-      if (id === 'start') d.hidden = true;   // gerçek sayfada <button id="start" hidden>
+      if (id === 'start') d.hidden = true;      // gerçek sayfada <button id="start" hidden>
+      if (id === 'kod-kap') d.hidden = true;    // ve <form id="kod-kap" hidden>
       dugumler.set(id, d);
     }
     return dugumler.get(id);
@@ -119,8 +120,21 @@ async function calistir(senaryo) {
     if (ad === 'radio_ping') {
       if (senaryo.ping === 'kilitli') return [{ ok: false, reason: 'locked_to_other_device' }];
       if (senaryo.ping === 'taninmiyor') return [{ ok: false, reason: 'invalid_key' }];
+      // Şube kodu kapısı (supabase/radio-sube-kodu.sql). 'kodDogru' verilirse
+      // sunucu gerçekte olduğu gibi davranır: kodsuz çağrı "code_required",
+      // yanlış kod "invalid_code", doğru kod geçer.
+      if (senaryo.kodDogru) {
+        const gelen = String((p && p.p_kod) || '').toUpperCase();
+        if (!gelen) return [{ ok: false, reason: 'code_required' }];
+        if (gelen !== String(senaryo.kodDogru).toUpperCase()) {
+          return [{ ok: false, reason: 'invalid_code' }];
+        }
+      }
       return [{ ok: true }];
     }
+    // Konum kanıtı (radio-sube-kodu.sql): reddedilen cihazın konumu ayrı bir
+    // fonksiyonla yazılır, yoklama sayacı artmaz.
+    if (ad === 'radio_kanit') return [true];
     if (ad === 'radio_now_report') return [{ ok: true }];
     // 'baslangicParca': yönetim yayını o parçadan başlattı (panelden seçilen
     // başlangıç parçası sunucudan her satırla birlikte gelir).
@@ -172,9 +186,18 @@ async function calistir(senaryo) {
     return [];
   };
 
+  // Konum kanıtı: tarayıcı konum izni vermezse oynatıcı /api/konum-coz'a sorar.
+  // 'konumApi' senaryosu o uç noktanın cevabını taklit eder; istek adresleri
+  // kaydedilir ki "gerçekten soruldu mu" sınanabilsin.
+  const konumIstekleri = [];
+  const fetchSahte = senaryo.konumApi ? adres => {
+    konumIstekleri.push(String(adres));
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(senaryo.konumApi) });
+  } : undefined;
+
   const icerik = {
     console, Date: SahteDate, Math, JSON, Promise, Object, Array, String, Number, isFinite, RegExp, Intl,
-    URLSearchParams,
+    URLSearchParams, fetch: fetchSahte,
     setTimeout: (fn) => setTimeout(fn, 0),
     clearTimeout,
     // Zamanlayıcılar kaydedilir ama kendiliğinden çalışmaz: test hangi
@@ -289,6 +312,20 @@ async function calistir(senaryo) {
     // Yoklamayla gelip çalınan anons dosyaları.
     get anonsSesleri() { return anonsSesleri.slice(); },
     get calmaDenemesi() { return calmaDenemesi; },
+    // Şube kodu kapısı: form görünür mü, girilen kod ne, cihazda saklandı mı?
+    get kodKapisi() { return al('kod-kap').hidden === false; },
+    get kayitliKod() { return depo.get('derin_record_kod_' + (senaryo.key || PROVA_ANAHTAR)) || null; },
+    get konumIstekleri() { return konumIstekleri.slice(); },
+    get kanitlar() { return cagrilar.filter(c => c.ad === 'radio_kanit').map(c => c.p || {}); },
+    // Personel kodu yazıp DOĞRULA'ya basmış gibi davranır (form gönderimi).
+    async koduGir(deger) {
+      // al(): oynatıcının document.getElementById'iyle AYNI düğümü verir;
+      // ayrı bir nesne üretilirse yazdığımız kod oynatıcıya ulaşmaz.
+      al('kod-gir').value = deger;
+      const kap = al('kod-kap');
+      if (kap.onsubmit) await kap.onsubmit({ preventDefault() {} });
+      await new Promise(done => setTimeout(done, 40));
+    },
     // "YAYINI BAŞLAT" düğmesine dokunulmuş gibi davranır.
     async basla() {
       const d = dugumAl('start');
@@ -1018,6 +1055,102 @@ test('içerik fonksiyonları cihaz kimliğini sorar', () => {
 
   // Ping: bağlı cihazda kimlik göndermemek kilidi atlamamalı.
   assert.match(sql, /v_row\.bound_device_id is not null\s*\n?\s*and \(v_device is null or v_row\.bound_device_id <> v_device\)/);
+});
+
+// ---- Şube kodu kapısı ---------------------------------------------------
+// Linki ele geçirmek yayını açmaya yetmemeli: şube henüz bir cihaza bağlanmamışken
+// sunucu kodu da sorar (supabase/radio-sube-kodu.sql). Oynatıcının bu kapıyı
+// doğru göstermesi, yanlış kodu kanıt olarak bırakması ve kodu bir kez sorup
+// cihazda saklaması gerekir.
+test('kodu olan şube ilk açılışta kod ister ve yayını hazırlamaz', async () => {
+  const s = await calistir({ parca: true, abonelik: 'gecerli', kodDogru: 'K7M2-4QPD' });
+  assert.equal(s.kodKapisi, true, 'kod alanı görünmeli');
+  assert.match(s.durum, /şube kodunu girin/i);
+  assert.equal(s.baslatGorunur, false, 'kod girilmeden yayın başlatılamaz');
+  assert.ok(!s.liste.includes('Sabah Işığı'), 'liste hazırlanmamalı');
+  assert.equal(s.olayTuru('kod-yanlis').length, 0, 'kod istemek alarm değildir');
+});
+
+test('doğru kod girilince yayın açılır ve kod cihazda saklanır', async () => {
+  const s = await calistir({ parca: true, abonelik: 'gecerli', kodDogru: 'k7m2-4qpd' });
+  await s.koduGir('K7M2-4QPD');
+  assert.equal(s.kodKapisi, false, 'kod ekranı kapanmalı');
+  assert.equal(s.kayitliKod, 'K7M2-4QPD', 'kod cihazda saklanmalı (her açılışta sorulmasın)');
+  assert.equal(s.marka, 'Mokka Coffee');
+  assert.ok(s.liste.includes('Sabah Işığı'), 'yayın hazırlanmalı');
+});
+
+test('yanlış kod yayını açmaz: kanıt ve konum kaydedilir, kod saklanmaz', async () => {
+  const s = await calistir({
+    parca: true, abonelik: 'gecerli', kodDogru: 'K7M2-4QPD',
+    konumApi: { sehir: 'İzmir', ulke: 'Türkiye' }
+  });
+  await s.koduGir('AAAA-1111');
+
+  assert.equal(s.kodKapisi, true, 'kod ekranı kalmalı');
+  assert.match(s.durum, /ait değil/i);
+  assert.ok(!s.liste.includes('Sabah Işığı'), 'yanlış kodla yayın açılmamalı');
+  assert.equal(s.kayitliKod, null, 'yanlış kod cihaza saklanmamalı');
+  assert.equal(s.olayTuru('kod-yanlis').length, 1, 'deneme geçmişe düşmeli');
+
+  // Konum: tarayıcı izni yok → IP'den çözülen şehir kanıt olarak gider.
+  assert.ok(s.konumIstekleri.includes('/api/konum-coz'), 'IP konumu sorulmalı');
+  assert.equal(s.kanitlar.length, 1, 'kanıt ayrı fonksiyonla yazılmalı');
+  assert.equal(s.kanitlar[0].p_konum, 'IP: İzmir, Türkiye');
+
+  // Yanlış kod bellekte bırakılırsa her yoklama aynı denemeyi tekrarlar ve
+  // alarm sayacı şişer: kod temizlenmeli.
+  const pingSayisi = s.pingler.length;
+  await s.tikla(60000);
+  assert.equal(s.pingler.length, pingSayisi, 'yanlış kod kendiliğinden tekrar gönderilmemeli');
+});
+
+test('bağlı şube başka cihazda kilitli kalır: kod ekranı kilidin önüne geçmez', async () => {
+  const s = await calistir({ ping: 'kilitli', kodDogru: 'K7M2-4QPD', parca: true });
+  assert.equal(s.marka, 'Bu cihaz yetkili değil');
+  assert.equal(s.kodKapisi, false, 'kilit ekranı kod ekranından önce gelir');
+  assert.match(s.durum, /başka bir cihaza kayıtlı/);
+});
+
+test('oynatıcı kodu gönderir, sunucu tanımıyorsa kodsuz tekrarlar ve kod linkte taşınmaz', () => {
+  const radyo = fs.readFileSync(path.join(KOK, 'radyo.js'), 'utf8');
+  const yardimci = radyo.slice(radyo.indexOf('async function pingRpc'), radyo.indexOf('function reportPlaying'));
+  assert.match(yardimci, /if \(kod\) tam\.p_kod = kod/, 'kod yoklamada gönderilmeli');
+  assert.match(yardimci, /imzaYok\(r\)/, 'eski imzaya düşme ölçütü olmalı');
+  // Kod adres çubuğundan gelmemeli: link kopyalandığında kod da kopyalanmasın.
+  assert.ok(!/url\.get\('k'\)/.test(radyo), 'kod bağlantıda taşınmamalı');
+  assert.match(radyo, /localStorage\.getItem\(KOD_ANAHTARI\)/);
+});
+
+test('şube kodu kapısı sunucuda zorunlu ve yanlış kod alarm üretir', () => {
+  const sql = fs.readFileSync(path.join(KOK, 'supabase', 'radio-sube-kodu.sql'), 'utf8');
+
+  // Kolon + benzersizlik: kod büyük/küçük harf duyarsız tekil olmalı.
+  assert.match(sql, /add column if not exists player_code\s+text/);
+  assert.match(sql, /create unique index if not exists brand_players_player_code_uniq[\s\S]{0,120}?upper\(player_code\)/);
+
+  // Kapı: bağlanmamış şubede kod yoksa "code_required", yanlışsa "invalid_code".
+  assert.match(sql, /p_kod text default null/);
+  assert.match(sql, /if v_row\.bound_device_id is null and v_row\.player_code is not null then/);
+  assert.match(sql, /if v_kod is null then[\s\S]{0,80}?return query select false, 'code_required'/);
+  assert.match(sql, /if v_kod <> upper\(v_row\.player_code\) then/);
+  assert.match(sql, /son_ihlal_tur = 'kod'/);
+  assert.match(sql, /son_ihlal_tur = 'cihaz'/);
+  assert.ok(sql.includes("'kod-denemesi'"), 'yanlış kod geçmişe düşmeli');
+
+  // Denenen kod ASLA kaydedilmez: geçmiş satırı yalnız konum ve IP taşır.
+  const bas = sql.indexOf('insert into public.radio_player_events');
+  const kayit = sql.slice(bas, bas + 420);
+  assert.ok(bas > 0 && !kayit.includes('p_kod') && !kayit.includes('v_kod'),
+    'yanlış kod kanıt kaydına yazılmamalı');
+
+  // Konum kanıtı ayrı fonksiyondan: yoklama sayacı iki kez artmasın.
+  assert.match(sql, /create or replace function public\.radio_kanit\(/);
+  assert.match(sql, /if not found or v_row\.son_ihlal_at is null then/);
+
+  // Eski imza düşürülmeli: iki imza kalırsa PostgREST hangisini çağıracağını
+  // bilemez ve oynatıcı hiçbir cevap alamaz.
+  assert.match(sql, /drop function if exists public\.radio_ping\(uuid, text, boolean, text\)/);
 });
 
 // Oynatıcı, cihaz kimliğini içerik çağrılarının hepsinde göndermeli; biri
