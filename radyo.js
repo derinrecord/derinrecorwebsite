@@ -38,6 +38,10 @@
   // "yok" ise sunucu bu anahtarla bir şube kaydı bulamıyor demektir; bu,
   // marka pasif/kaynak atanmamış olmasından ayrı bir arızadır.
   let anahtarDurumu = null;
+  // Bu link başka bir cihaza bağlı olduğu için oynatıcı kilitlendi mi?
+  // İçerik fonksiyonları kilitli cihaza boş döndüğünde yanlış teşhis
+  // ("anahtar tanınmıyor") yazmamak için bu bayrağı hatırlarız.
+  let kilitli = false;
   // Kafedeki personelin cihazdan seçtiği çalma listesi. Boşsa yönetimin
   // atadığı kaynak ("otomatik") çalınır. Seçim cihazda saklanır.
   let seciliListe = null;
@@ -211,7 +215,7 @@
   async function serbestModaGecilirMi() {
     let yd = null;
     try {
-      const r = await withTimeout(client.rpc('radio_yayin_durumu', { p_player_key: key }), 8000);
+      const r = await icerikRpc('radio_yayin_durumu', { p_player_key: key });
       yd = r && r.data && r.data[0];
     } catch { /* fonksiyon yoksa serbest moda geçilmez */ }
     return !!(yd && yd.marka_aktif && yd.gecerli && !yd.kaynak_var);
@@ -225,7 +229,7 @@
     }
     let data, error;
     try {
-      ({ data, error } = await withTimeout(client.rpc('radio_now_playing', { p_player_key: key }), 10000));
+      ({ data, error } = await icerikRpc('radio_now_playing', { p_player_key: key }));
     } catch (networkErr) {
       error = { message: networkErr.message };
     }
@@ -238,6 +242,10 @@
     }
     fetchAttempts = 0;
     if (!data || !data.length) {
+      // Cihaz kilidi (bkz. supabase/radio-baglanti-korumasi.sql): içerik
+      // fonksiyonları kilitli cihaza hiç satır vermez. Bunu "anahtar
+      // tanınmıyor" gibi göstermek yerine doğru ekranı basarız.
+      if (kilitli) { lockedOut(); return; }
       // radio_now_playing boş döndüğünde dört ayrı arıza aynı ekrana düşer:
       // anahtar hiç tanınmıyor, marka pasif, canlı yayın kaynağı atanmamış ya da
       // abonelik geçersiz. Aşağıda bunları tek tek ayırıp doğrusunu söyleriz,
@@ -562,12 +570,12 @@
       p_playlist_name: calanListe && calanListe.ad ? calanListe.ad : null
     };
     try {
-      const tam = await client.rpc('radio_now_report', Object.assign({}, ortak, listeAlanlari));
+      const tam = await icerikRpc('radio_now_report', Object.assign({}, ortak, listeAlanlari));
       if (!tam || !tam.error) return;
-      // supabase/radio-liste-bildirimi.sql henüz çalıştırılmadıysa sunucu beş
-      // parametreli çağrıyı reddeder. Eski imzayla tekrar deneriz: parça adı
-      // panele akmaya devam etsin, kaybedilen yalnızca liste satırı olsun.
-      await client.rpc('radio_now_report', ortak);
+      // supabase/radio-liste-bildirimi.sql henüz çalıştırılmadıysa sunucu liste
+      // alanlarını reddeder. Onlarsız tekrar deneriz: parça adı panele akmaya
+      // devam etsin, kaybedilen yalnızca liste satırı olsun.
+      await icerikRpc('radio_now_report', ortak);
     } catch { /* bildirim "olsa iyi olur" katmanıdır: yayın etkilenmez */ }
   }
 
@@ -605,11 +613,26 @@
     return [...gorulen.values()];
   };
 
+  // Sunucu fonksiyonlarını cihaz kimliğiyle çağırır. Neden iki denemeli:
+  // cihaz kilidi (supabase/radio-baglanti-korumasi.sql) çalıştırıldığında
+  // fonksiyonlar p_device_id de sorar. Biz de kimliği her zaman göndeririz;
+  // ama dosya henüz çalıştırılmadıysa sunucu bu parametreyi tanımaz ve
+  // PGRST202 döner. O durumda isteği cihazsız tekrarlarız: böylece hem kilitli
+  // sunucuda koruma çalışır hem de dosya uygulanmadan önce kafeler susmaz.
+  async function icerikRpc(ad, alanlar) {
+    const tam = Object.assign({ p_device_id: deviceId }, alanlar);
+    let r = await withTimeout(client.rpc(ad, tam), 10000);
+    if (r && r.error && /PGRST202|does not exist/i.test(r.error.message || r.error.code || '')) {
+      r = await withTimeout(client.rpc(ad, alanlar), 10000);
+    }
+    return r;
+  }
+
   // Şube anahtarını sunucuda doğrulayan fonksiyonlardan liste satırlarını okur.
   // Fonksiyon kurulmadıysa null döner; çağıran eski yola düşer.
   async function rpcListeler(ad) {
     try {
-      const r = await withTimeout(client.rpc(ad, { p_player_key: key }), 10000);
+      const r = await icerikRpc(ad, { p_player_key: key });
       if (r && !r.error && Array.isArray(r.data)) return r.data;
     } catch { /* fonksiyon yok: eski yola düşülür */ }
     return null;
@@ -773,12 +796,12 @@
     if (!gecerliAnahtar(key)) return;
     let data = null;
     try {
-      const r = await withTimeout(client.rpc('radio_anonslar', {
+      const r = await icerikRpc('radio_anonslar', {
         p_player_key: key,
         // Açılıştan önceki anonsları yeniden çalmayız (gerçek zamanlı akışta da
         // aynı sınır var): ilk yoklama yalnız son bir dakikayı sorar.
         p_since: sonAnonsAni || new Date(bootTime - 60000).toISOString()
-      }), 10000);
+      });
       data = r && r.data;
     } catch { return; }
     if (!Array.isArray(data) || !data.length) return;
@@ -811,6 +834,7 @@
   }
 
   function lockedOut() {
+    kilitli = true;
     queue = [];
     started = false;
     olay('kilitlendi', 'bu link başka bir cihaza kayıtlı');

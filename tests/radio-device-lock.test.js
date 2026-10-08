@@ -964,8 +964,10 @@ test('oynatıcı ve sunum sayfası katalog verisini sunucu fonksiyonundan ister'
   // fonksiyonundan gelir, tablo doğrudan okunmaz (kapı kapalıyken çalışsın).
   assert.match(radyo, /rpcListeler\('radio_sube_listeler'\)/);
   assert.match(radyo, /rpcListeler\('radio_listeler'\)/);
-  assert.match(radyo, /rpcListeler\('radio_anonslar'\)|rpc\('radio_anonslar'/);
-  assert.match(radyo, /client\.rpc\(ad, \{ p_player_key: key \}\)/);
+  assert.match(radyo, /rpcListeler\('radio_anonslar'\)|icerikRpc\('radio_anonslar'|rpc\('radio_anonslar'/);
+  // Cihaz kimliği de gitmeli: bağlantı koruması (radio-baglanti-korumasi.sql)
+  // içerik fonksiyonlarını cihaza bağlar, kimlik gönderilmezse liste boş döner.
+  assert.match(radyo, /const r = await icerikRpc\(ad, \{ p_player_key: key \}\)/);
   assert.match(radyo, /from\('brand_playlists'\)/, 'yedek yol durmalı');
 
   const sunum = fs.readFileSync(path.join(KOK, 'coffee-marka.js'), 'utf8');
@@ -973,7 +975,76 @@ test('oynatıcı ve sunum sayfası katalog verisini sunucu fonksiyonundan ister'
   assert.match(sunum, /from\('brand_playlists'\)/, 'yedek yol durmalı');
 });
 
-// Kapıyı kapatan dosya, katalog verisini taşıyan bütün tabloları kapatmalı: yeni
+// Kafe linki cihaza bağlı olmalı: içerik fonksiyonları cihaz kimliği sormazsa,
+// linki ele geçiren biri rest çağrısıyla bütün listeyi ve dosya yollarını okuyup
+// müziği başka bir cihazda çalabilir (cihaz kilidi yalnız ping'de kalır).
+test('içerik fonksiyonları cihaz kimliğini sorar', () => {
+  const sql = fs.readFileSync(path.join(KOK, 'supabase', 'radio-baglanti-korumasi.sql'), 'utf8');
+
+  // Ortak kapı: yönetici muaf, bağlı cihaz eşleşmeli, kimlik boş gönderilemez.
+  assert.match(sql, /function public\.radio_cihaz_uygun\(p_player_key uuid, p_device_id text\)/);
+  assert.match(sql, /when public\.is_admin\(\) then true/);
+  assert.match(sql, /p\.bound_device_id = nullif\(btrim\(coalesce\(p_device_id/);
+
+  // İçerik ve bilgi fonksiyonlarının hepsi kapıdan geçmeli.
+  ['radio_now_playing', 'radio_listeler', 'radio_sube_listeler',
+    'radio_anonslar', 'radio_yayin_durumu'].forEach(fonksiyon => {
+    assert.match(sql, new RegExp('function public\\.' + fonksiyon + '\\([\\s\\S]{0,160}?p_device_id text default null'),
+      fonksiyon + ' cihaz kimliği almalı');
+  });
+  const kapiSayisi = (sql.match(/radio_cihaz_uygun\(p_player_key, p_device_id\)/g) || []).length;
+  assert.ok(kapiSayisi >= 6, 'her içerik yolu kapıdan geçmeli (bulunan: ' + kapiSayisi + ')');
+
+  // Yazma yolları da kapıdan geçer: kilitli cihaz paneli kandıramasın.
+  assert.match(sql, /function public\.radio_now_report\([\s\S]{0,400}?p_device_id text default null/);
+  assert.match(sql, /function public\.radio_log_event\([\s\S]{0,400}?p_device_id text default null/);
+
+  // Eski tek parametreli imzalar düşürülmeli: iki imza kalırsa PostgREST
+  // hangisini çağıracağını bilemez (PGRST203) ve oynatıcı içerik alamaz.
+  ['radio_now_playing', 'radio_listeler', 'radio_sube_listeler', 'radio_yayin_durumu']
+    .forEach(fonksiyon => assert.match(sql, new RegExp('drop function if exists public\\.' + fonksiyon + '\\(uuid\\)')));
+  assert.match(sql, /drop function if exists public\.radio_anonslar\(uuid, timestamp with time zone\)/);
+
+  // Ping: bağlı cihazda kimlik göndermemek kilidi atlamamalı.
+  assert.match(sql, /v_row\.bound_device_id is not null\s*\n?\s*and \(v_device is null or v_row\.bound_device_id <> v_device\)/);
+});
+
+// Oynatıcı, cihaz kimliğini içerik çağrılarının hepsinde göndermeli; biri
+// atlanırsa o çağrı kilitli cihaza da boş döner ve yayın sebepsiz susar.
+test('oynatıcı cihaz kimliğini bütün içerik çağrılarında gönderir', () => {
+  const radyo = fs.readFileSync(path.join(KOK, 'radyo.js'), 'utf8');
+
+  // Tek yardımcı: kimliği ekler, sunucu eski imzadaysa cihazsız tekrarlar.
+  // İkinci deneme şart: SQL dosyası uygulanmadan dağıtım yapılırsa çağrı
+  // PGRST202 ile reddedilir ve kafeler susardı.
+  const yardimci = radyo.slice(radyo.indexOf('async function icerikRpc'),
+    radyo.indexOf('async function listeleriGetir'));
+  assert.match(yardimci, /p_device_id: deviceId/, 'yardımcı cihaz kimliği eklemeli');
+  assert.match(yardimci, /PGRST202/, 'eski imzaya düşebilmeli');
+
+  // İçerik yolları yardımcıdan geçmeli: doğrudan çağrı kalırsa o çağrı kilitli
+  // cihaza da içerik verir (yani koruma yarım kalır).
+  ['radio_now_playing', 'radio_yayin_durumu', 'radio_anonslar', 'radio_now_report']
+    .forEach(ad => {
+      assert.ok(!radyo.includes("client.rpc('" + ad + "'"), ad + ' yardımcıdan geçmeli');
+    });
+  assert.match(radyo, /icerikRpc\('radio_now_playing'/);
+  assert.match(radyo, /icerikRpc\('radio_yayin_durumu'/);
+  assert.match(radyo, /icerikRpc\('radio_anonslar'/);
+  assert.match(radyo, /icerikRpc\('radio_now_report'/);
+  assert.match(radyo, /const r = await icerikRpc\(ad, \{ p_player_key: key \}\)/);
+  assert.match(radyo, /rpcListeler\('radio_sube_listeler'\)/);
+  assert.match(radyo, /rpcListeler\('radio_listeler'\)/);
+
+  // Yoklama ve geçmiş yazımı imzalarında zaten cihaz kimliği taşır.
+  ['radio_ping', 'radio_log_event'].forEach(ad => {
+    const bas = radyo.indexOf("rpc('" + ad + "'");
+    assert.ok(bas > 0, ad + ' çağrılmalı');
+    assert.match(radyo.slice(bas, bas + 420), /p_device_id: deviceId/, ad + ' çağrısında cihaz kimliği olmalı');
+  });
+});
+
+// Kapatma dosyası, katalog verisini taşıyan bütün tabloları kapatmalı: yeni
 // bir radyo tablosu eklenip buraya yazılmazsa liste yine dışarıdan okunabilir.
 test('kapatma dosyası katalog tablolarının hepsini dışarıya kapatır', () => {
   const sql = fs.readFileSync(path.join(KOK, 'supabase', 'radio-erisim-kapat.sql'), 'utf8');
