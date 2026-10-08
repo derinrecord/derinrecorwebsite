@@ -109,6 +109,19 @@
   function pencere(s) {
     modalOnay = s.onOnay || null;
     modalKapat = s.onKapat || null;
+    // Pencere kabuğu HTML'de hazır gelir. Eksikse (uzun süre açık kalan eski
+    // bir sekme, değiştirilmiş bir kabuk) burada üretilir: aksi hâlde onay
+    // penceresi açılamaz ve SİL gibi düğmeler sessizce boşa düşerdi.
+    if (!el('modal-wrap') || !el('modal')) {
+      if (el('modal-wrap')) el('modal-wrap').remove();
+      const sarma = document.createElement('div');
+      sarma.id = 'modal-wrap'; sarma.className = 'modal-wrap';
+      sarma.setAttribute('role', 'dialog'); sarma.setAttribute('aria-modal', 'true');
+      const kutu = document.createElement('div');
+      kutu.id = 'modal'; kutu.className = 'modal';
+      sarma.appendChild(kutu);
+      document.body.appendChild(sarma);
+    }
     el('modal').innerHTML = `
       <h3>${esc(s.baslik || '')}</h3>
       ${s.govde ? `<div class="modal-body">${s.govde}</div>` : ''}

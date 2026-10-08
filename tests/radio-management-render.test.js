@@ -558,3 +558,16 @@ test('düğme tıklamasındaki beklenmeyen hatalar kullanıcıya söylenir', () 
   assert.match(blok, /try \{\s*\n\s*switch \(act\) \{/, 'düğme işleri try içinde olmalı');
   assert.match(blok, /catch \(err\)[\s\S]{0,240}hata\('İşlem yapılamadı/, 'catch kullanıcıya bildirmeli');
 });
+
+// Pencere kabuğu (#modal-wrap / #modal) eksikse onay penceresi açılamaz ve
+// SİL düğmesi sessizce boşa düşerdi; panel kabuğu yerinde üretmeli.
+test('pencere kabuğu eksikse panel onu yerinde üretir', () => {
+  const bas = source.indexOf('function pencere(s) {');
+  const blok = source.slice(bas, source.indexOf('function pencereKapat()', bas));
+  assert.ok(bas > 0, 'pencere fonksiyonu bulunmalı');
+  assert.match(blok, /if \(!el\('modal-wrap'\) \|\| !el\('modal'\)\)/, 'eksik kabuk yoklanmalı');
+  assert.match(blok, /document\.createElement\('div'\)/, 'kabuk üretilmeli');
+  assert.match(blok, /document\.body\.appendChild\(sarma\)/, 'kabuk gövdeye eklenmeli');
+  assert.ok(blok.indexOf("el('modal').innerHTML") > blok.indexOf('appendChild'),
+    'üretim, içerik yazılmadan önce olmalı');
+});
