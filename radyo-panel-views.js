@@ -792,7 +792,7 @@
         : null;
       const konum = konumBilgi(a.konum);
       const taze = new Date(ev.at).getTime() > okunduAn;
-      return `<tr class="selectable${taze ? ' yeni' : ''}" data-act="branch-open" data-id="${esc(p ? p.id : '')}">
+      return `<tr class="selectable" data-act="branch-open" data-id="${esc(p ? p.id : '')}">
         <td><div class="cell-main"><span class="cover">${ev.kind === 'kod-denemesi' ? '🔑' : '🔗'}</span>
           <span><b>${esc(p ? p.label : 'Bilinmeyen şube')}</b><span class="sub">${esc(b ? b.name : '—')}
             ${taze ? ' · yeni' : ''}</span></span></div></td>
