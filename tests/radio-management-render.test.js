@@ -698,3 +698,30 @@ test('davet QR\'ı yalnız linki taşır ve kodlayıcı yoksa yazıya düşer', 
   const sayfa = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');
   assert.match(sayfa, /qrcode-generator@[0-9.]+/, 'kodlayıcı sayfaya eklenmeli');
 });
+
+// Bildirimler bölümü: şube kodu / link denemeleri her şubenin kendi geçmişinde
+// dağılıp kaybolmasın. Panelde tek akışta okunur, menü rozeti son bakıştan
+// sonrasını sayar ve bölüm açılınca damga tazelenir.
+test('bildirimler bölümü kendi adresi, rozeti ve okundu damgasıyla bağlanır', () => {
+  assert.match(source, /bildirimler: \{ nav: 'bildirim', sub: 'bildirimler' \}/, '#/bildirimler rotası olmalı');
+  assert.match(source, /if \(state\.nav === 'bildirim'\) return '#\/bildirimler';/, 'bölüm kendi adresini yazmalı');
+  assert.match(source, /bildirim: V\.bildirimSayi\(D, bildirimOkunduZamani\(\)\) \|\| null/,
+    'menü rozeti okunmamış denemeleri saymalı');
+  assert.match(source, /bildirimOkundu: \(\) => bildirimOkunduZamani\(\)/, 'görünüm katmanı damgayı okumalı');
+
+  const oku = source.slice(source.indexOf('function bildirimOkunduZamani()'), source.indexOf('function bildir(mesaj, tur)'));
+  assert.ok(oku.includes('localStorage.getItem'), 'damga tarayıcıda tutulmalı (yeni SQL gerekmesin)');
+  assert.ok(!/throw /.test(oku), 'depo kapalıysa panel çökmemeli');
+
+  // Bölüm açıldığında damga yazılır ve menü satırı yeniden çizilir; yoksa rozet
+  // bir sonraki veri tazelemesini bekleyip dakikalarca açık kalırdı. Damga ekran
+  // çizildikten SONRA yazılır ki o turda gelen satırlar yine "yeni" görünsün.
+  const ciz = source.slice(source.indexOf('function ciz()'), source.indexOf('// ---------- Veri ----------'));
+  const isaret = ciz.indexOf('localStorage.setItem(BILDIRIM_OKUNDU_ANAHTARI');
+  const cizim = ciz.indexOf("el('view').innerHTML");
+  assert.ok(isaret > 0, 'bildirimler açılınca damga yazılmalı');
+  assert.ok(cizim > 0 && isaret > cizim, 'damga ekran çizildikten sonra yazılmalı');
+  assert.ok(ciz.slice(isaret).includes("el('rail').innerHTML = V.nav("), 'rozet hemen silinmeli');
+  // Damga yalnız bu bölüm açıkken yazılmalı: başka ekranı gezmek okundu saymaz.
+  assert.match(ciz, /if \(state\.nav === 'bildirim'\) \{/);
+});

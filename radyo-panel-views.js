@@ -159,6 +159,11 @@
       taraf: 'bizde', sorun: true
     };
     if (kind === 'kilitlendi') return { ad: 'Bu cihaz yetkili değil', ek: det, taraf: 'bizde', sorun: true };
+    // Şube kodu / link denemeleri (supabase/radio-sube-kodu.sql · radio_ping).
+    // Kendi bölümü var (Bildirimler), ama geçmiş çizelgesinde de ham kod
+    // ("kod-denemesi") yerine okunur bir adla görünsün.
+    if (kind === 'kod-denemesi') return { ad: 'Yanlış şube kodu girildi', ek: det, taraf: null, sorun: true };
+    if (kind === 'paylasim-girisimi') return { ad: 'Link başka bir cihazda açılmayı denendi', ek: det, taraf: null, sorun: true };
     if (kind === 'takildi') return { ad: 'Yayın takıldı, yeniden bağlandı', ek: det, taraf: 'bizde', sorun: true };
     if (kind === 'yuklenemedi') return { ad: 'Parçanın ses dosyası çalınamadı', ek: det, taraf: 'bizde', sorun: true };
     return { ad: kind || 'Bilinmeyen olay', ek: det, taraf: null, sorun: true };
@@ -726,6 +731,110 @@
   // Menü rozeti için: kaç şubede paylaşım girişimi kaydı var.
   const paylasimSayi = D => (D.players || []).filter(ihlalVar).length;
 
+  // ---------- BİLDİRİMLER (şube kodu / link denemeleri) ----------
+  // Bu olaylar zaten sunucuda yazılıyor (radio_ping → radio_player_events,
+  // kind = 'kod-denemesi' | 'paylasim-girisimi'); eksik olan, şube şube
+  // dağılmış kanıtı tek akışta ve "okundu" bilgisiyle göstermekti. Buraya
+  // yalnız erişim denemeleri girer: yayının durup başlaması Bağlantı
+  // geçmişi ekranının işidir, bildirim gürültüsü olmasın.
+  const BILDIRIM_TUR = ['kod-denemesi', 'paylasim-girisimi'];
+
+  const bildirimMi = ev => BILDIRIM_TUR.indexOf(String(ev.kind || '')) > -1;
+
+  // En yeni deneme önce: "şu an ne oldu" ilk cevaplanır.
+  function bildirimOlaylari(D) {
+    return (D.olaylar || []).filter(bildirimMi)
+      .slice().sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  }
+
+  // Menü rozeti: son bakılan andan sonra gelen deneme sayısı. Damga yoksa
+  // (panele ilk kez girildi) hepsi okunmamış sayılır: haber görünmeden
+  // susmasın.
+  function bildirimSayi(D, okundu) {
+    const t = okundu ? new Date(okundu).getTime() : 0;
+    return bildirimOlaylari(D).filter(ev => new Date(ev.at).getTime() > t).length;
+  }
+
+  // Olay detayı "konum · ip" biçiminde yazılır (radio-sube-kodu.sql:
+  // left(concat_ws(' · ', konum, ip), 300)). İkisini ayırırız: konum okunur
+  // hâle çevrilir, IP ise "hangi şubenin ağından denendi" eşleşmesi için kalır.
+  function olayAyrinti(detay) {
+    const parcalar = String(detay || '').split(' · ').map(x => x.trim()).filter(Boolean);
+    const ip = parcalar.filter(x => /^\d{1,3}(\.\d{1,3}){3}$/.test(x))[0] || null;
+    return { ip: ip, konum: parcalar.filter(x => x !== ip).join(' · ') };
+  }
+
+  function bildirimView(state, D, ui) {
+    const now = ui.now();
+    const olaylar = bildirimOlaylari(D);
+    const okundu = ui.bildirimOkundu ? ui.bildirimOkundu() : null;
+    const okunduAn = okundu ? new Date(okundu).getTime() : 0;
+    const yeni = bildirimSayi(D, okundu);
+    const vuranSube = (D.players || []).filter(ihlalVar).length;
+    // Arama kutusu bu ekranda da çalışır (panel geneli kuralı): şube, marka,
+    // deneme adı ya da IP ile daraltılır.
+    const q = norm(state.q);
+
+    const satirlar = olaylar.filter(ev => {
+      if (!q) return true;
+      const p = (D.players || []).find(x => x.id === ev.player_id);
+      const b = p ? (D.brands || []).find(x => x.id === p.brand_id) : null;
+      return hit(q, p ? p.label : '', b ? b.name : '', olayBilgi(ev).ad, ev.detail, ev.kind);
+    }).slice(0, 150).map(ev => {
+      const p = (D.players || []).find(x => x.id === ev.player_id);
+      const b = p ? (D.brands || []).find(x => x.id === p.brand_id) : null;
+      const o = olayBilgi(ev);
+      const a = olayAyrinti(ev.detail);
+      // Denemenin IP'si başka bir şubenin kayıtlı IP'siyle aynıysa adıyla
+      // söylenir: "hangi kafeden denendi" sorusunun en somut cevabı budur.
+      const eslesen = a.ip
+        ? (D.players || []).find(x => x.id !== ev.player_id && (x.last_ip === a.ip || x.first_ip === a.ip))
+        : null;
+      const konum = konumBilgi(a.konum);
+      const taze = new Date(ev.at).getTime() > okunduAn;
+      return `<tr class="selectable${taze ? ' yeni' : ''}" data-act="branch-open" data-id="${esc(p ? p.id : '')}">
+        <td><div class="cell-main"><span class="cover">${ev.kind === 'kod-denemesi' ? '🔑' : '🔗'}</span>
+          <span><b>${esc(p ? p.label : 'Bilinmeyen şube')}</b><span class="sub">${esc(b ? b.name : '—')}
+            ${taze ? ' · yeni' : ''}</span></span></div></td>
+        <td><b>${esc(o.ad)}</b></td>
+        <td>${konum
+          ? (konum.harita
+            ? `<a href="${esc(konum.harita)}" target="_blank" rel="noopener">${esc(konum.metin)} ↗</a>`
+            : esc(konum.metin))
+          : '<span class="sub">Konum yok (cihaz izin vermedi, IP de çözülemedi)</span>'}
+          ${a.ip ? `<span class="sub">IP: ${esc(a.ip)}${eslesen ? ' · <b>bu IP ' + esc(eslesen.label) + ' şubesinin kayıtlı IP’si</b>' : ''}</span>` : ''}</td>
+        <td class="tight"><span class="sub">${esc(tarih(ev.at))}</span><span class="sub">${esc(goreli(ev.at, now))}</span></td>
+      </tr>`;
+    }).join('');
+
+    // Alarm özeti şubede tutulur (ihlal_sayisi her denemede artar); bu çizelge
+    // ise erişim denemelerini zaman sırasıyla gösterir. İki sayı bilerek ayrı
+    // yazılır: "kaç kez denendi" ve "kaç satır kayıt var" aynı şey değildir.
+    const kurulmamis = D.kurulum && D.kurulum['radio-baglanti-gecmisi.sql'] === false;
+    return `
+      <div class="tiles">
+        <div class="tile ${yeni ? 'danger' : ''}"><span>YENİ</span><b>${yeni}</b><small>son bakıştan bu yana gelen deneme</small></div>
+        <div class="tile"><span>DENEME</span><b>${olaylar.length}</b><small>kayıtlı erişim denemesi</small></div>
+        <div class="tile ${vuranSube ? 'gold' : ''}"><span>ŞUBE</span><b>${vuranSube}</b><small>alarm kaydı açık şube</small></div>
+      </div>
+      <div class="panel">
+        <h3>ŞUBE KODU VE LİNK DENEMELERİ <span>${D.players.length} şube izleniyor</span></h3>
+        <p class="panel-sub">Bir şube yalnız kendi cihazında açar ve ilk kurulumda şube kodunu ister. Yanlış kod girilirse ya da bağlı
+          bir şubenin linki başka bir cihazda açılırsa yayın başlamaz; deneme buraya cihaz, IP ve konumla düşer.
+          Aynı deneme 10 dakika içinde birden çok kez yinelenirse tek satır yazılır (şube çekmecesindeki sayaç hepsini sayar),
+          konum cihaz izin vermezse IP'den şehir düzeyinde kalır.</p>
+        ${kurulmamis
+          ? '<p class="sub">Bağlantı geçmişi tablosu henüz kurulmadı (supabase/radio-baglanti-gecmisi.sql): denemeler kaydedilse de burada listelenemez.</p>'
+          : ''}
+        <table>
+          <thead><tr><th>KAFE / ŞUBE</th><th>DENEME</th><th>NEREDEN</th><th>ZAMAN</th></tr></thead>
+          <tbody>${satirlar || bos(4, q
+            ? 'Aramayla eşleşen deneme yok.'
+            : 'Şube alarmı yok: hiçbir şubenin linki ya da kodu başka bir yerde denenmedi.')}</tbody>
+        </table>
+      </div>`;
+  }
+
   // Davet QR'ı: gönderilen linki kafede kamerayla okutmak, 40 karakterlik
   // anahtarı kiosk klavyesinden yazmaktan kolaydır. Kodu bilerek QR'a
   // koymayız: kod da kareye girseydi QR'ın fotoğrafı, tek başına yayını açan
@@ -1004,6 +1113,7 @@
     // aksi halde bölümün bütün satırları birden seçili görünürdü.
     const MENU_SATIRLARI = {
       canli: ['subeler'],
+      bildirim: ['bildirimler'],
       icerik: ['klasorler', 'anonslar'],
       musteri: ['markalar', 'abonelikler', 'talepler'],
       plan: ['takvim'],
@@ -1029,6 +1139,7 @@
       saglik: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>',
       kurulum: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 01-5.4 5.4L5 16l3 3 4.3-4.3a4 4 0 005.4-5.4l-2.3 2.3-2-2z"/></svg>',
       gecmis: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+      bildirim: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9a6 6 0 1112 0c0 4 1.4 5.4 2 6H4c.6-.6 2-2 2-6z"/><path d="M10 19a2 2 0 004 0"/></svg>',
       yayin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.6l6 3.4-6 3.4z"/></svg>'
     };
     return `
@@ -1042,6 +1153,10 @@
           // Kırmızı rozet: mesai içinde susan şube + paylaşım girişimi olan şube.
           // İkisi de "bakman gereken bir iş var" demektir; ikisi de yoksa çizilmez.
           ((counts.sessiz || 0) + (counts.paylasim || 0)) || null)}
+        ${oge('bildirim', 'bildirimler', 'Bildirimler', 'Şube kodu ve link denemeleri', null, ikonlar.bildirim,
+          // Kaç denemeye bakılmadığı burada görünür; bölüm açılınca sıfırlanır.
+          // Sayaç değil kırmızı rozet: bu sayı "iş var" demektir, arşiv değil.
+          counts.bildirim || null)}
 
         <div class="nav-title">İÇERİK</div>
         ${oge('icerik', 'klasorler', 'Yayın klasörleri', 'Parçalar, sıra, kapak', counts.folders, ikonlar.klasor)}
@@ -1077,7 +1192,8 @@
     'musteri/abonelikler': ['Abonelikler', 'Paketler, deneme ve lisans süreleri'],
     'musteri/talepler': ['Talepler', 'Kahve markalarından gelen başvurular'],
     'plan/takvim': ['Takvim', 'Günlük planlar, notlar ve yaklaşan ödemeler'],
-    'kurulum/kurulum': ['Kurulum durumu', 'Panelin hangi özellikleri açık; eksik SQL dosyaları tek ekranda']
+    'kurulum/kurulum': ['Kurulum durumu', 'Panelin hangi özellikleri açık; eksik SQL dosyaları tek ekranda'],
+    'bildirim/bildirimler': ['Bildirimler', 'Şube kodu ve link başka bir yerde kullanılmaya çalışıldığında buraya düşer']
   };
   const ALT_SEKME = { klasorler: 'Yayın klasörleri', anonslar: 'Anonslar' };
 
@@ -2372,6 +2488,7 @@
         : (state.sub === 'anonslar' ? anonsListesi(state, D, ui) : klasorListesi(state, D, ui));
       return kabuk(sekmeler(state, D) + govde);
     }
+    if (state.nav === 'bildirim') return kabuk(bildirimView(state, D, ui));
     if (state.nav === 'kurulum') return kabuk(kurulumView(state, D, ui));
     // Takvimin gövdesi plan-takvim.js'te. Öğrenci takibi Derin Record'dan
     // ayrı bir uygulamadır: bu panelde menüsü, adresi ve görünümü yok.
@@ -2678,6 +2795,11 @@
     paylasanSube: paylasanSube,
     paylasimSeridi: paylasimSeridi,
     paylasimSayi: paylasimSayi,
+    BILDIRIM_TUR: BILDIRIM_TUR,
+    bildirimOlaylari: bildirimOlaylari,
+    bildirimSayi: bildirimSayi,
+    olayAyrinti: olayAyrinti,
+    bildirimView: bildirimView,
     qrGorsel: qrGorsel,
     davetMetni: davetMetni,
     kurulumSeridi: kurulumSeridi,

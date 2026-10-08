@@ -95,8 +95,18 @@
     now: () => Date.now(),
     saglikSonuc: id => saglikSonuc[id] || null,
     // İzin verilmemişse alarm şeridinde "BİLDİRİMLERİ AÇ" düğmesi çizilir.
-    bildirimGerekli: () => typeof Notification !== 'undefined' && Notification.permission !== 'granted'
+    bildirimGerekli: () => typeof Notification !== 'undefined' && Notification.permission !== 'granted',
+    // Bildirimler ekranında "yeni" işaretlenen satırların sınırı: son bakış anı.
+    bildirimOkundu: () => bildirimOkunduZamani()
   };
+
+  // Bildirimler bölümü: şube kodu / link denemeleri bir kez okundu sayılınca
+  // menü rozeti susar. Damga tarayıcıda tutulur (yeni SQL ya da kolon
+  // gerekmez); başka bir cihazdan bakılırsa o cihaz kendi damgasını taşır.
+  const BILDIRIM_OKUNDU_ANAHTARI = 'derin_bildirim_okundu';
+  function bildirimOkunduZamani() {
+    try { return localStorage.getItem(BILDIRIM_OKUNDU_ANAHTARI) || null; } catch { return null; }
+  }
 
   function bildir(mesaj, tur) {
     const t = el('toast');
@@ -475,7 +485,8 @@
     abonelikler: { nav: 'musteri', sub: 'abonelikler' },
     talepler: { nav: 'musteri', sub: 'talepler' },
     kurulum: { nav: 'kurulum', sub: 'kurulum' },
-    plan: { nav: 'plan', sub: 'takvim' }
+    plan: { nav: 'plan', sub: 'takvim' },
+    bildirimler: { nav: 'bildirim', sub: 'bildirimler' }
   };
 
   function hashCoz() {
@@ -518,6 +529,7 @@
     if (state.nav === 'icerik') return state.sub === 'anonslar' ? '#/anons' : '#/klasorler';
     if (state.sub === 'abonelikler') return '#/abonelikler';
     if (state.sub === 'talepler') return '#/talepler';
+    if (state.nav === 'bildirim') return '#/bildirimler';
     if (state.nav === 'kurulum') return '#/kurulum';
     if (state.nav === 'plan') return '#/plan/takvim';
     return '#/markalar';
@@ -541,6 +553,9 @@
       sessiz: V.sessizSayi(D) || null,
       // Link/kod paylaşım girişimi olan şube: menüde aynı kırmızı rozete eklenir.
       paylasim: V.paylasimSayi(D) || null,
+      // Son bakıştan sonra gelen şube-kodu/link denemesi: Bildirimler satırında
+      // kendi kırmızı rozeti olur (bu bir arıza değil, erişim denemesidir).
+      bildirim: V.bildirimSayi(D, bildirimOkunduZamani()) || null,
       // Kurulum eksiği varsa menü satırında kırmızı rozet: yönetici ekranı
       // açmadan kaç özelliğin kapalı olduğunu görsün.
       kurulumEksik: V.kurulumOzet(D).eksik || null
@@ -788,6 +803,14 @@
     nokta.className = 'status-dot' + (bagli ? '' : ' bekliyor');
     el('live-text').textContent = bagli ? `${bagli} şube bağlı` : (caliyor ? `${caliyor} kanal çalıyor` : 'canlı bağlantı yok');
     satirSuruklemeBagla();
+    // Bildirimler ekranı açıkken damga hemen tazelenir: ekran bir önceki
+    // damgayla çizildi (yeni satırlar "yeni" göründü), rozet ise bu turda
+    // susmaya başlar. Menü satırını yeniden çizmek rozeti anında siler;
+    // bir sonraki veri tazelemesini beklemek rozeti dakikalarca açık bırakırdı.
+    if (state.nav === 'bildirim') {
+      try { localStorage.setItem(BILDIRIM_OKUNDU_ANAHTARI, new Date().toISOString()); } catch { /* saklanamadı */ }
+      el('rail').innerHTML = V.nav(state, sayimlar(), kullanici);
+    }
   }
 
   // ---------- Veri ----------

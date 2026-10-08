@@ -1642,3 +1642,95 @@ test('QR görseli kodlayıcıya metni aynen verir, yoksa/bozuksa null döner', (
   // Şube kodu QR'a girmemeli: kareyi gören kişi tek başına yayını açamamalı.
   assert.ok(!gorsel.includes('G5LV-S8VD'), 'kare kodu taşımamalı');
 });
+
+// ---------- BİLDİRİMLER ----------
+// Denemeler sunucuda radio_player_events'e zaten yazılıyor; bu ekran onları
+// şube şube dağılmış hâlde değil, tek akışta ve okundu bilgisiyle gösterir.
+const DENEMELER = [
+  { id: 1, player_key: ANAHTAR_ALSANCAK, player_id: 'p2', brand_id: 'b1', device_id: 'cihaz-yabanci-9', kind: 'kod-denemesi', detail: 'IP: İzmir, Türkiye · 5.6.7.8', at: iso(-600000) },
+  { id: 2, player_key: ANAHTAR_NISANTASI, player_id: 'p1', brand_id: 'b1', device_id: 'cihaz-x', kind: 'paylasim-girisimi', detail: '38.4127265,27.1383824 · 5.6.7.8', at: iso(-7200000) },
+  // Yayın olayları bu ekrana girmez: onlar Bağlantı geçmişi ekranının işi.
+  { id: 3, player_key: ANAHTAR_NISANTASI, player_id: 'p1', brand_id: 'b1', device_id: 'cihaz-1', kind: 'caliyor', detail: 'Sabah Açılış', at: iso(-300000) }
+];
+const D_EV = { ...IHLAL_D, olaylar: DENEMELER };
+
+// IP eşleşmesi için ikinci şubenin kayıtlı IP'si denemenin IP'siyle aynı olmalı.
+const PAYLASAN = { ...D.players[0], id: 'p3', label: 'Karşıyaka', player_key: ANAHTAR_ZEYTINLI, last_ip: '5.6.7.8' };
+const D_ES = { ...D_EV, players: [PAYLASAN, KODLU_P] };
+
+test('bildirim akışı yalnız erişim denemelerini alır, en yeni önce', () => {
+  assert.deepEqual(V.BILDIRIM_TUR, ['kod-denemesi', 'paylasim-girisimi']);
+  const olaylar = V.bildirimOlaylari(D_EV);
+  assert.equal(olaylar.length, 2, 'yayın olayı bildirim sayılmamalı');
+  assert.equal(olaylar[0].kind, 'kod-denemesi', 'en yeni deneme ilk sırada');
+  assert.deepEqual(V.bildirimOlaylari({}), [], 'olay verisi yokken çökmemeli');
+});
+
+test('okunmamış sayısı son bakış anından sonrasını sayar', () => {
+  assert.equal(V.bildirimSayi(D_EV, null), 2, 'damga yoksa hepsi okunmamış');
+  assert.equal(V.bildirimSayi(D_EV, iso(-3600000)), 1, 'bir saat önceki damgadan sonrası');
+  assert.equal(V.bildirimSayi(D_EV, iso(0)), 0, 'hepsi okunduysa rozet susar');
+});
+
+test('olay detayı konum ve IP olarak ayrıştırılır', () => {
+  assert.deepEqual(V.olayAyrinti('IP: İzmir, Türkiye · 5.6.7.8'), { ip: '5.6.7.8', konum: 'IP: İzmir, Türkiye' });
+  assert.deepEqual(V.olayAyrinti('38.4127265,27.1383824 · 5.6.7.8'), { ip: '5.6.7.8', konum: '38.4127265,27.1383824' });
+  assert.deepEqual(V.olayAyrinti('IP: İzmir, Türkiye'), { ip: null, konum: 'IP: İzmir, Türkiye' });
+  assert.deepEqual(V.olayAyrinti(null), { ip: null, konum: '' });
+});
+
+test('bildirim ekranı denemeyi şube, konum, IP ve zamanla yazar', () => {
+  const html = V.gorunum(durum({ nav: 'bildirim', sub: 'bildirimler' }), D_EV, ui).html;
+  assert.ok(html.includes('ŞUBE KODU VE LİNK DENEMELERİ'), 'ekran başlığı çizilmeli');
+  assert.ok(html.includes('Yanlış şube kodu girildi'), 'kod denemesi okunur adla yazılmalı');
+  assert.ok(html.includes('Link başka bir cihazda açılmayı denendi'), 'link denemesi okunur adla yazılmalı');
+  assert.ok(html.includes('Alsancak') && html.includes('Nişantaşı'), 'iki şube de listelenmeli');
+  assert.ok(html.includes('IP: İzmir, Türkiye'), 'konum yazılmalı');
+  assert.ok(html.includes('5.6.7.8'), 'IP yazılmalı');
+  assert.ok(html.includes('openstreetmap.org'), 'GPS konumu haritada açılabilmeli');
+  assert.ok(html.includes('data-act="branch-open"'), 'satırdan şubeye gidilebilmeli');
+  assert.ok(!html.includes('Yayın çalmaya başladı'), 'yayın olayı bu ekrana düşmemeli');
+  // Aynı IP başka şubenin kayıtlı IP'siyse adıyla söylenir.
+  assert.ok(!html.includes('Karşıyaka şubesinin kayıtlı IP'), 'eşleşme yokken suçlama yazılmamalı');
+  const esli = V.gorunum(durum({ nav: 'bildirim', sub: 'bildirimler' }), D_ES, ui).html;
+  assert.ok(esli.includes('Karşıyaka şubesinin kayıtlı IP'), 'eşleşen IP adıyla yazılmalı');
+});
+
+test('bildirim ekranı okunmamış sayısını ve boş durumu dürüstçe söyler', () => {
+  const yeni = V.gorunum(durum({ nav: 'bildirim', sub: 'bildirimler' }), D_EV, { ...ui, bildirimOkundu: () => null }).html;
+  assert.ok(yeni.includes('>2</b>'), 'okunmamış sayısı yazılmalı');
+  assert.ok(yeni.includes('yeni'), 'yeni satırlar işaretlenmeli');
+
+  const okunmus = V.gorunum(durum({ nav: 'bildirim', sub: 'bildirimler' }), D_EV, { ...ui, bildirimOkundu: () => iso(0) }).html;
+  assert.ok(okunmus.includes('>0</b>'), 'okunduysa yeni sayısı sıfır');
+
+  // Hiç deneme yoksa "iyi haber" yazılır, uydurma satır çizilmez.
+  const bosEkran = V.gorunum(durum({ nav: 'bildirim', sub: 'bildirimler' }), D, ui).html;
+  assert.ok(bosEkran.includes('Şube alarmı yok'), 'boş durum dürüstçe yazılmalı');
+  // Geçmiş tablosu kurulmadıysa denemeler listelenemez; panel bunu saklamaz.
+  const kurulmamis = V.gorunum(durum({ nav: 'bildirim', sub: 'bildirimler' }),
+    { ...D_EV, kurulum: { 'radio-baglanti-gecmisi.sql': false } }, ui).html;
+  assert.ok(kurulmamis.includes('radio-baglanti-gecmisi.sql'), 'eksik kurulum yazılmalı');
+});
+
+test('bildirim ekranında arama kutusu şube, IP ve deneme adıyla daraltır', () => {
+  const sube = V.gorunum(durum({ nav: 'bildirim', sub: 'bildirimler', q: 'Alsancak' }), D_EV, ui).html;
+  assert.ok(sube.includes('Alsancak') && !sube.includes('Nişantaşı'), 'eşleşmeyen satır çizilmemeli');
+  const ip = V.gorunum(durum({ nav: 'bildirim', sub: 'bildirimler', q: '5.6.7.8' }), D_EV, ui).html;
+  assert.ok(ip.includes('Alsancak') && ip.includes('Nişantaşı'), 'IP ile de aranabilmeli');
+  const hic = V.gorunum(durum({ nav: 'bildirim', sub: 'bildirimler', q: 'zzz' }), D_EV, ui).html;
+  assert.ok(hic.includes('Aramayla eşleşen deneme yok'), 'eşleşme yokken dürüst mesaj yazılmalı');
+  assert.ok(!hic.includes('Şube alarmı yok'), 'eşleşme yokken “alarm yok” denmez');
+});
+
+test('bildirimler menüde kendi satırı, başlığı ve rozetiyle durur', () => {
+  const html = V.nav(durum({ nav: 'bildirim', sub: 'bildirimler' }),
+    { players: 2, folders: 1, brands: 1, bildirim: 2 }, { ad: 'Derin Record', alt: 'a@b', basHarf: 'DR' });
+  assert.ok(html.includes('data-nav="bildirim" data-sub="bildirimler"'), 'menü satırı olmalı');
+  assert.ok(html.includes('Bildirimler'), 'satır adı yazılmalı');
+  assert.ok(html.includes('class="say uyari">2</span>'), 'okunmamış sayısı kırmızı rozet olmalı');
+  assert.equal(html.split('nav-item active').length - 1, 1, 'yalnız bildirim satırı işaretli olmalı');
+  const sakin = V.nav(durum({}), { players: 1, bildirim: null }, { ad: 'DR', alt: 'a@b', basHarf: 'D' });
+  assert.ok(sakin.includes('data-nav="bildirim"'), 'rozetsizken de satır kalmalı');
+  assert.ok(!sakin.includes('say uyari'), 'okunmamış yokken rozet çizilmemeli');
+});

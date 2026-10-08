@@ -12,7 +12,7 @@
   .vercelignore sayesinde yayına girmez (*-prova.html).
 -->
 <link rel="stylesheet" href="auth.css">
-<link rel="stylesheet" href="radyo-panel.css?v=36">
+<link rel="stylesheet" href="radyo-panel.css?v=37">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
 <div class="player" id="player"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="radyo-panel-views.js?v=61"></script>
+<script src="radyo-panel-views.js?v=63"></script>
 <script src="plan-takvim.js?v=15"></script>
 <script>
 (() => {
@@ -129,7 +129,10 @@
       { id: 'y3', player_id: 'p2', brand_id: 'b1', player_key: 'dr-2be907', device_id: 'cihaz-b', kind: 'durakladi', detail: 'cihaz', at: iso(-95 * 60000) },
       { id: 'y4', player_id: 'p2', brand_id: 'b1', player_key: 'dr-2be907', device_id: 'cihaz-b', kind: 'devam', detail: '', at: iso(-80 * 60000) },
       { id: 'y5', player_id: 'p4', brand_id: 'b2', player_key: 'dr-77c010', device_id: 'cihaz-d', kind: 'liste_degisti', detail: 'Gün Ortası — Indie', at: iso(-3 * 3600000) },
-      { id: 'y6', player_id: 'p3', brand_id: 'b3', player_key: 'dr-a41f55', device_id: 'cihaz-c', kind: 'mesai', detail: 'kapandi', at: iso(-26 * 3600000) }
+      { id: 'y6', player_id: 'p3', brand_id: 'b3', player_key: 'dr-a41f55', device_id: 'cihaz-c', kind: 'mesai', detail: 'kapandi', at: iso(-26 * 3600000) },
+      // Şube kodu / link denemeleri (Bildirimler ekranının konusu).
+      { id: 'y7', player_id: 'p2', brand_id: 'b1', player_key: 'dr-2be907', device_id: 'cihaz-yabanci-42', kind: 'kod-denemesi', detail: 'IP: İzmir, Türkiye · 5.6.7.8', at: iso(-35 * 60000) },
+      { id: 'y8', player_id: 'p1', brand_id: 'b1', player_key: 'dr-8f21c4', device_id: 'cihaz-yabanci-9', kind: 'paylasim-girisimi', detail: '38.4127265,27.1383824 · 5.6.7.8', at: iso(-6 * 3600000) }
     ],
     coffeeAttempts: [
       { id: 'c1', brand_id: 'b1', slug: 'mokka-coffee', success: true, ip: '88.1.1.1', created_at: iso(-600000) },
@@ -176,7 +179,9 @@
     now: () => Date.now(),
     // Prova gerçek tarayıcı iznini okumaz: düğmenin nasıl göründüğünü göstermek
     // için izin verilmemiş sayılır.
-    bildirimGerekli: () => true
+    bildirimGerekli: () => true,
+    // Prova okundu damgası tutmaz: satırların "yeni" hâlini görebilelim.
+    bildirimOkundu: () => null
   };
 
   const sayimlar = () => ({
@@ -185,6 +190,7 @@
     // Kırmızı rozet: susan şube + paylaşım girişimi olan şube.
     sessiz: V.sessizSayi(D) || null,
     paylasim: V.paylasimSayi(D) || null,
+    bildirim: V.bildirimSayi(D, null) || null,
     kurulumEksik: V.kurulumOzet(D).eksik || null
   });
 
@@ -301,6 +307,7 @@
     if (state.nav === 'icerik') return state.sub === 'anonslar' ? '#/anons' : '#/klasorler';
     if (state.sub === 'abonelikler') return '#/abonelikler';
     if (state.sub === 'talepler') return '#/talepler';
+    if (state.nav === 'bildirim') return '#/bildirimler';
     if (state.nav === 'kurulum') return '#/kurulum';
     return '#/markalar';
   };
