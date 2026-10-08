@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><title>bekliyor</title>
+<style>body{font-family:sans-serif}</style>
+<!--
+  KLASÖR / LİSTE SİLME PROVASI — gerçek veritabanı kurallarıyla.
+
+  Sorun: klasör ya da liste bir şubenin özel yayın kaynağıyken silinince FK
+  kaynağı boşaltıyor, player_broadcast satırı kaynaksız kalıyor ve tablodaki
+  CHECK (folder_id ya da playlist_id zorunlu) silmeyi geri alıyordu. Panel ham
+  kural adıyla konuşuyordu: "Klasör silinemedi: new row for relation
+  \"player_broadcast\" violates check constraint \"player_broadcast_check\"".
+
+  Bu sayfa gerçek panel kodunu (radyo-yonetim.js) yükler, Supabase yerine
+  FK + CHECK davranışını taklit eden sahte bir istemci verir ve silme akışını
+  senaryo senaryo ölçer. Sonuç document.title'a "KURAL::..." olarak yazılır.
+
+  Kullanım: dosyayı tarayıcıda açın, sırayla ?s=A ... ?s=E deneyin
+  (A: klasör kaynağı · B: atama kaldırılamıyor · C: liste kaynağı ·
+   D: silme kurala takılıyor · E: 0 satır sildi, RLS sessiz başarısızlığı).
+  .vercelignore sayesinde tests/ yayına girmez.
+-->
+</head><body>
+<div id="app"></div>
+<script>
+(function () {
+  const IDLER = "ab-birim ab-brand-contact ab-brand-name ab-miktar anons-brand backdrop brand-code brand-contact brand-name brand-slug drawer f-name folder-desc folder-name kapak-bos kapak-file kapak-msg kapak-onizleme kapi-buton kaynak-sec live-dot live-text mik-bars mik-msg mik-rec mik-sure modal modal-wrap p-close p-cur p-dur p-img p-label p-next p-now p-open p-prev p-seek p-sub p-title p-toggle p-vol page-sub page-title pl-name player playlist playlist-name playlist-source radyo-panel-subeler rail sa-birim sa-miktar sa-plan sa-sube saglik-msg sarki-ara sarki-liste search tasi-liste tasi-marka toast track-drop track-file track-msg up-bar uyari view".split(' ');
+  const kap = document.getElementById('app');
+  IDLER.forEach(id => { const d = document.createElement('div'); d.id = id; kap.appendChild(d); });
+})();
+</script>
+<script>
+// ---- Gerçek veritabanının iki davranışı burada taklit edilir ----
+//   1) CHECK (folder_id IS NOT NULL OR playlist_id IS NOT NULL)  -> player_broadcast /
+//      brand_broadcast satırı kaynaksız kalamaz.
+//   2) FK ON DELETE SET NULL -> klasör/liste silinince o satırların ilgili kolonu
+//      boşaltılır; (1) ile birlikte silmeyi geri alır.
+const YAYIN = { player_broadcast: 'player_id', brand_broadcast: 'brand_id' };
+const KURAL_HATA = t => ({ code: '23514', message: 'new row for relation "' + t + '" violates check constraint "' + t + '_check"' });
+const kaynaksiz = satir => !satir.folder_id && !satir.playlist_id;
+
+window.__VERI = {
+  brands: [{ id: 'b1', name: 'Chemex', slug: 'chemex', is_active: true, access_code: 'CHEM' }],
+  radio_folders: [{ id: 'f-mid', name: 'Midnight List', description: null, cover_path: null, shuffle: true }],
+  radio_tracks: [],
+  brand_players: [{ id: 'p1', brand_id: 'b1', label: 'Şube 1', player_key: 'k1', is_playing: false }],
+  brand_broadcast: [],
+  // Şubeye özel yayın kaynağı: klasör (A/D/E) veya liste (C) senaryosunda.
+  player_broadcast: [{ player_id: 'p1', folder_id: 'f-mid', playlist_id: null, updated_at: '2026-10-01T22:02:03Z' }],
+  radio_announcements: [],
+  brand_playlists: [{ id: 'p-mid', brand_id: 'b1', name: 'midnight list', description: null, cover_path: null, shuffle: true }],
+  brand_playlist_tracks: [],
+  coffee_access_attempts: [], coffee_requests: [], radio_player_events: [],
+  subscriptions: [], plans: [], plan_maddeleri: []
+};
+window.__OPS = [];
+window.__ZORLA = null;   // { tablo: 'hata' | 'sifir' | 'kural' }
+
+// Senaryo verisi panel AÇILMADAN önce kurulur: aksi hâlde panel eski satırı okur
+// ve ölçüm geçersiz olur.
+(function () {
+  const s = (location.search.match(/s=([A-E])/) || [])[1] || 'A';
+  if (s === 'C') {
+    // Şubeye özel yayın kaynağı klasör değil liste: silme yolu farklı çalışır.
+    window.__VERI.player_broadcast = [{ player_id: 'p1', folder_id: null, playlist_id: 'p-mid', updated_at: '2026-10-01T22:02:03Z' }];
+  }
+  if (s === 'B') window.__ZORLA = { player_broadcast: 'hata' };
+  if (s === 'D') window.__ZORLA = { radio_folders: 'kural' };
+  if (s === 'E') window.__ZORLA = { radio_folders: 'sifir' };
+})();
+
+function sorgu(tablo) {
+  const st = { tablo: tablo, islem: 'select', filtre: [], secili: false };
+  const api = {
+    select: function () { st.secili = true; return api; },
+    order: function () { return api; },
+    limit: function () { return api; },
+    insert: function (v) { st.islem = 'insert'; st.veri = v; return api; },
+    update: function (v) { st.islem = 'update'; st.veri = v; return api; },
+    upsert: function (v) { st.islem = 'upsert'; st.veri = v; return api; },
+    delete: function () { st.islem = 'delete'; return api; },
+    eq: function (k, v) { st.filtre.push([k, v]); return api; },
+    in: function (k, v) { st.filtre.push([k, 'in', v]); return api; },
+    neq: function () { return api; },
+    is: function () { return api; },
+    single: function () { return Promise.resolve({ data: null, error: null }); },
+    maybeSingle: function () { return Promise.resolve({ data: null, error: null }); },
+    then: function (res) {
+      const satirlar = window.__VERI[tablo] || [];
+      const zorla = window.__ZORLA && window.__ZORLA[tablo];
+      const esler = r => st.filtre.every(function (f) {
+        if (f[1] === 'in') return Array.isArray(f[2]) && f[2].indexOf(r[f[0]]) >= 0;
+        return r[f[0]] === f[1];
+      });
+
+      if (st.islem === 'delete') {
+        if (zorla === 'hata') {
+          window.__OPS.push({ tablo: tablo, islem: 'delete-hata', filtre: st.filtre });
+          res({ data: null, error: { code: '42501', message: 'permission denied for table ' + tablo } });
+          return;
+        }
+        if (zorla === 'sifir') {
+          window.__OPS.push({ tablo: tablo, islem: 'delete-0-satir', filtre: st.filtre });
+          res({ data: [], error: null });
+          return;
+        }
+        if (zorla === 'kural') {
+          window.__OPS.push({ tablo: tablo, islem: 'delete-kural', filtre: st.filtre });
+          res({ data: null, error: KURAL_HATA('player_broadcast') });
+          return;
+        }
+        const silinen = satirlar.filter(esler);
+        // FK ON DELETE SET NULL + CHECK: yabancı anahtar boşaltması kaynaksız
+        // satır üretiyorsa silme geri alınır.
+        if (tablo === 'radio_folders' || tablo === 'brand_playlists') {
+          const kolon = tablo === 'radio_folders' ? 'folder_id' : 'playlist_id';
+          for (const t of Object.keys(YAYIN)) {
+            for (const r of (window.__VERI[t] || [])) {
+              if (silinen.some(s => s.id === r[kolon]) && kaynaksiz(Object.assign({}, r, { [kolon]: null }))) {
+                window.__OPS.push({ tablo: tablo, islem: 'delete-kural-engelledi', kural: t + '_check' });
+                res({ data: null, error: KURAL_HATA(t) });
+                return;
+              }
+            }
+          }
+          // Geçen silmelerde kalan satırların kolonu boşaltılır (SET NULL).
+          for (const t of Object.keys(YAYIN)) {
+            (window.__VERI[t] || []).forEach(r => {
+              if (!silinen.some(s => s.id === r[kolon])) return;
+              if (silinen.some(s => s.id === r.id)) return;
+              r[kolon] = null;
+            });
+          }
+        }
+        window.__VERI[tablo] = satirlar.filter(function (r) { return !esler(r); });
+        window.__OPS.push({ tablo: tablo, islem: 'delete', filtre: st.filtre, silinen: silinen.map(function (r) { return r.id || r.name; }) });
+        res({ data: st.secili ? silinen : null, error: null });
+        return;
+      }
+      if (st.islem === 'insert' || st.islem === 'upsert' || st.islem === 'update') {
+        // Yazma da kurala uymak zorunda: panel bir şubeyi kaynaksız bırakırsa
+        // gerçek veritabanı burada patlardı.
+        const deneme = Object.assign({}, st.veri);
+        window.__OPS.push({ tablo: tablo, islem: st.islem, filtre: st.filtre, veri: deneme });
+        if (tablo in YAYIN && kaynaksiz(deneme)) {
+          res({ data: null, error: KURAL_HATA(tablo) });
+          return;
+        }
+        if (st.islem === 'insert') (window.__VERI[tablo] = satirlar).push(st.veri);
+        res({ data: satirlar, error: null });
+        return;
+      }
+      res({ data: satirlar, error: null });
+    }
+  };
+  return api;
+}
+
+const sahteIstemci = {
+  from: sorgu,
+  rpc: function () { return Promise.resolve({ data: null, error: { code: '42883', message: 'function does not exist' } }); },
+  channel: function () { const k = { on: function () { return k; }, subscribe: function () { return k; } }; return k; },
+  auth: { getSession: function () { return Promise.resolve({ data: { session: null } }); } }
+};
+window.DerinAuth = {
+  ready: Promise.resolve(), configured: true,
+  user: { email: 'test@derinrecord.com' },
+  profile: { role: 'admin', full_name: 'Test Yönetici' },
+  client: sahteIstemci, open: function () {}
+};
+</script>
+<script src="../audio-file-types.js"></script>
+<script src="../radyo-panel-views.js"></script>
+<script src="../r2-depo.js"></script>
+<script src="../plan-takvim.js"></script>
+<script src="../sortable-touch.js"></script>
+<script src="../radyo-yonetim.js"></script>
+<script>
+(() => {
+  const bekle = ms => new Promise(r => setTimeout(r, ms));
+  const bul = sec => document.querySelector(sec);
+  const toast = () => (document.getElementById('toast') || {}).textContent || '';
+  const modal = () => ((document.getElementById('modal') || {}).textContent || '').replace(/\s+/g, ' ').trim();
+  const klasorler = () => (window.__VERI.radio_folders || []).map(f => f.name);
+  const listeler = () => (window.__VERI.brand_playlists || []).map(p => p.name);
+  const atamalar = () => JSON.stringify(window.__VERI.player_broadcast || []);
+  const akis = () => window.__OPS.filter(o => /delete|yaz/.test(o.islem) || o.islem === 'upsert' || o.islem === 'update')
+    .map(o => o.tablo + ':' + o.islem).join(',');
+
+  async function sil(dugmeSec, hash) {
+    const c = [];
+    location.hash = hash;
+    let d = null;
+    for (let i = 0; i < 60 && !d; i++) { await bekle(50); d = bul(dugmeSec); }
+    c.push('dugme=' + !!d);
+    if (!d) { c.push('gorunum=' + (document.getElementById('page-title')||{}).textContent); return c; }
+    d.click();
+    await bekle(150);
+    c.push('pencere=' + modal().slice(0, 150));
+    const ok = bul('[data-act="modal-ok"]');
+    c.push('onay=' + !!ok);
+    if (ok) { ok.click(); await bekle(500); }
+    c.push('toast=' + toast());
+    return c;
+  }
+
+  (async () => {
+    const s = (location.search.match(/s=([A-E])/) || [])[1] || 'A';
+    const cikti = ['senaryo=' + s];
+
+
+    if (s === 'C') {
+      cikti.push(...await sil('[data-act="list-del"]', '#/markalar/b1'));
+      cikti.push('kalan-liste=' + JSON.stringify(listeler()));
+    } else {
+      cikti.push(...await sil('[data-act="folder-del"]', '#/klasorler'));
+      cikti.push('kalan-klasor=' + JSON.stringify(klasorler()));
+    }
+    cikti.push('atamalar=' + atamalar());
+    cikti.push('akis=' + akis());
+    cikti.push('js-hata=' + ((window.__HATALAR || []).join(' ~ ') || 'yok'));
+    document.title = 'KURAL::' + cikti.join(' | ');
+  })();
+
+  window.addEventListener('error', e => { (window.__HATALAR = window.__HATALAR || []).push(String(e.message)); });
+  window.addEventListener('unhandledrejection', e => { (window.__HATALAR = window.__HATALAR || []).push('rej:' + String((e.reason && e.reason.message) || e.reason)); });
+})();
+</script>
+</body></html>
