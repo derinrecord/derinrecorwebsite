@@ -1020,7 +1020,18 @@ test('oynatıcı cihaz kimliğini bütün içerik çağrılarında gönderir', (
   const yardimci = radyo.slice(radyo.indexOf('async function icerikRpc'),
     radyo.indexOf('async function listeleriGetir'));
   assert.match(yardimci, /p_device_id: deviceId/, 'yardımcı cihaz kimliği eklemeli');
-  assert.match(yardimci, /PGRST202/, 'eski imzaya düşebilmeli');
+
+  // Eski imzaya düşme ölçütü, sunucunun GERÇEK hata metnini tanımalı. Bir kez
+  // yalnız PGRST202 aranmıştı; PostgREST bunu sözcükle döndürdüğü için kafeler
+  // susmuştu. Metni burada sabitliyoruz.
+  const desen = radyo.match(/const IMZA_YOK = (\/[^\n]+\/[a-z]*);/);
+  assert.ok(desen, 'imza tanıma deseni bulunmalı');
+  const imzaYok = new RegExp(desen[1].slice(1, desen[1].lastIndexOf('/')), desen[1].slice(desen[1].lastIndexOf('/') + 1));
+  [
+    'Could not find the function public.radio_now_playing(p_device_id, p_player_key) in the schema cache',
+    'function public.radio_listeler(p_device_id, p_player_key) does not exist',
+    'PGRST202'
+  ].forEach(metin => assert.ok(imzaYok.test(metin), 'tanınmalı: ' + metin));
 
   // İçerik yolları yardımcıdan geçmeli: doğrudan çağrı kalırsa o çağrı kilitli
   // cihaza da içerik verir (yani koruma yarım kalır).

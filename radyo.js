@@ -619,10 +619,17 @@
   // ama dosya henüz çalıştırılmadıysa sunucu bu parametreyi tanımaz ve
   // PGRST202 döner. O durumda isteği cihazsız tekrarlarız: böylece hem kilitli
   // sunucuda koruma çalışır hem de dosya uygulanmadan önce kafeler susmaz.
+  // Sunucu cihaz parametresini tanımadığında PostgREST şu metinle reddeder:
+  // "Could not find the function public.radio_now_playing(p_device_id,
+  //  p_player_key) in the schema cache". Metin sürüme göre değişebildiği için
+  // birkaç işareti birden ararız; yakalayamazsak kafe sessiz kalır (bir kez
+  // yaşandı: desen yalnız PGRST202'yi arıyordu, mesaj bu sözcükleri içermiyordu).
+  const IMZA_YOK = /could not find the function|does not exist|PGRST202|schema cache/i;
   async function icerikRpc(ad, alanlar) {
     const tam = Object.assign({ p_device_id: deviceId }, alanlar);
     let r = await withTimeout(client.rpc(ad, tam), 10000);
-    if (r && r.error && /PGRST202|does not exist/i.test(r.error.message || r.error.code || '')) {
+    const hata = r && r.error;
+    if (hata && IMZA_YOK.test([hata.message, hata.code, hata.details, hata.hint].filter(Boolean).join(' '))) {
       r = await withTimeout(client.rpc(ad, alanlar), 10000);
     }
     return r;
