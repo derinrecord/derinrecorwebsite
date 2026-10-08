@@ -53,6 +53,20 @@ test('SQL yalnız erişim denemelerini yollar ve gürültüyü keser', () => {
   assert.match(sql, /coalesce\(v_ayar\.token, ''\) = ''/);
 });
 
+// Bir kez yaşandı: durum fonksiyonu yanıt satırını `record` değişkende
+// tutuyordu ve hiç mesaj gönderilmemişken (son_istek_id null) alanına
+// dokunmak Postgres'te 55000 hatası veriyordu — panel bunu 500 olarak görüp
+// "kurulum eksik" diyordu. Değişkenler tek tek tutulmalı.
+test('durum fonksiyonu atanmamış record okumaz', () => {
+  const blok = sql.slice(
+    sql.indexOf('function public.radio_telegram_durum'),
+    sql.indexOf('function public.radio_telegram_test'));
+  assert.ok(blok.length > 100, 'durum fonksiyonu bulunmalı');
+  assert.ok(!/v_yanit\s+record/.test(blok), 'record değişkeni kullanılmamalı');
+  assert.match(blok, /v_yanit_var\s+boolean\s*:=\s*false/, 'yanıt var/yok bayrağı olmalı');
+  assert.match(blok, /v_yanit_var\s*:=\s*found/, 'satır bulunamazsa bayrak düşmeli');
+});
+
 test('yönetici fonksiyonlarının hepsi is_admin ile korunur', () => {
   const kapilar = (sql.match(/if not public\.is_admin\(\) then/g) || []).length;
   const fonksiyonlar = (sql.match(/create or replace function public\.radio_telegram_\w+\(/g) || []).length;

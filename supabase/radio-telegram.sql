@@ -289,7 +289,14 @@ set search_path to 'public'
 as $$
 declare
   v_ayar public.radio_bildirim_ayari%rowtype;
-  v_yanit record;
+  -- Yanıt satırı `record` yerine tek tek tutulur: atanmamış bir record'un
+  -- alanına dokunmak Postgres'te 55000 hatası verir ve bu fonksiyon panelde
+  -- 500 olarak görünürdü. "Hiç mesaj gönderilmemiş" (son_istek_id null) hâli
+  -- olağan başlangıç durumudur, hata değil.
+  v_kod       int;
+  v_metin     text;
+  v_zaman     timestamptz;
+  v_yanit_var boolean := false;
 begin
   if not public.is_admin() then
     return jsonb_build_object('ok', false, 'hata', 'Bu işlem için yönetici olmanız gerekiyor.');
@@ -301,9 +308,10 @@ begin
   end if;
 
   if v_ayar.son_istek_id is not null then
-    select r.status_code, r.content, r.error_msg, r.timed_out, r.created
-      into v_yanit
+    select r.status_code, coalesce(r.error_msg, r.content), r.created
+      into v_kod, v_metin, v_zaman
       from net._http_response r where r.id = v_ayar.son_istek_id;
+    v_yanit_var := found;
   end if;
 
   return jsonb_build_object(
@@ -318,10 +326,10 @@ begin
     'chat_var', coalesce(v_ayar.chat_id, '') <> '',
     'chat_id', v_ayar.chat_id,
     'son_gonderim_at', v_ayar.son_gonderim_at,
-    'son_yanit', case when v_yanit is null then null else jsonb_build_object(
-      'kod', v_yanit.status_code,
-      'metin', left(coalesce(v_yanit.error_msg, v_yanit.content, ''), 300),
-      'zaman', v_yanit.created
+    'son_yanit', case when not v_yanit_var then null else jsonb_build_object(
+      'kod', v_kod,
+      'metin', left(coalesce(v_metin, ''), 300),
+      'zaman', v_zaman
     ) end
   );
 end $$;
