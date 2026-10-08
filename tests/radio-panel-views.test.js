@@ -1750,6 +1750,8 @@ test('Telegram kartı token, sohbet ve aralık durumunu yazar', () => {
   ['tg-kaydet', 'tg-sohbet', 'tg-test', 'tg-ac'].forEach(act =>
     assert.ok(html.includes('data-act="' + act + '"'), act + ' düğmesi çizilmeli'));
   assert.ok(html.includes('data-tg-token'), 'token alanı olmalı');
+  assert.ok(html.includes("BOT TOKEN'I"), 'alan başlıksız kalmamalı: kullanıcı nereye yapıştıracağını görmeli');
+  assert.ok(html.includes('for="tg-token"') && html.includes('id="tg-token"'), 'etiket alana bağlı olmalı');
   assert.ok(html.includes('type="password"'), 'token ekranda açık yazılmamalı');
   assert.ok(html.includes('8123456789'), 'hangi bot olduğu görülebilmeli');
   assert.ok(html.includes('AÇIK') && html.includes('BULUNDU'), 'açık durum ve sohbet yazılmalı');

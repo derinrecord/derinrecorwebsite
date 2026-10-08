@@ -816,8 +816,10 @@
           <small>${t.chat_var ? 'mesajlar bu sohbete düşer' : 'bota bir kez yazıp SOHBETİ BUL'}</small></div>
         <div class="tile"><span>ARALIK</span><b>${esc(aralik)} dk</b><small>aynı şube için en sık mesaj</small></div>
       </div>
-      <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
-        <input type="password" data-tg-token spellcheck="false" autocomplete="off"
+      <label class="sub" for="tg-token" style="display:block;margin:12px 0 4px">
+        <b>BOT TOKEN'I</b> — Telegram'da @BotFather'ın verdiği satırı buraya yapıştırın: <code>8123456789:AA…</code></label>
+      <div class="row" style="margin-top:0;flex-wrap:wrap;gap:8px">
+        <input id="tg-token" type="password" data-tg-token spellcheck="false" autocomplete="off"
                placeholder="${t.token_var ? 'Yeni token (değiştirmek için)' : 'BotFather tokenı: 123456789:AA…'}"
                style="flex:1;min-width:240px">
         <button class="btn sm primary" data-act="tg-kaydet" type="button">TOKEN'I KAYDET</button>
