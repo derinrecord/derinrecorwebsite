@@ -781,14 +781,24 @@
     const t = D.telegram;
     const now = ui.now();
 
-    // Veri gelmediyse SQL henüz çalıştırılmamıştır (ya da sorgu yetki/ağ
-    // yüzünden düştü). Dosya adını yazarız: kurulum ekranı o dosyayı tek
-    // kopyala-yapıştır ile çalıştırılabilir hâle getirir.
+    // Veri gelmediyse iki ihtimal var ve ikisi farklı iş ister: dosya hiç
+    // çalıştırılmamıştır (kurulum ekranından kopyalanıp çalıştırılır) ya da
+    // sorgu ağ/yetki yüzünden düşmüştür (yapılacak şey sayfayı yenilemek).
+    // Dosya adını yalnız gerçekten eksikken yazarız: yanlış yere bakmaya
+    // yollamamak bu cümlenin işi.
     if (!t || t.kurulu === false) {
+      // Sunucu cevap verdiyse ve "kurulu değil" dediyse eksik bellidir; cevap
+      // hiç gelmediyse panelin kurulum bayrağına bakarız (false: dosya yok,
+      // null: bilinmiyor).
+      const kuruluDegil = (t && t.kurulu === false)
+        || (D.kurulum && D.kurulum['radio-telegram.sql'] === false);
       return `<div class="panel">
         <h3>TELEFONA BİLDİRİM <span>panel kapalıyken de haber verir</span></h3>
-        <p class="sub">Telegram altyapısı kurulmadı (supabase/radio-telegram.sql). Kurulum durumu ekranından dosyayı kopyalayıp
-          Supabase SQL Editor'de bir kez çalıştırın; bu bölüm sonra açılır.</p>
+        ${kuruluDegil
+          ? `<p class="sub">Telegram altyapısı kurulmadı (supabase/radio-telegram.sql). Kurulum durumu ekranından dosyayı kopyalayıp
+              Supabase SQL Editor'de bir kez çalıştırın; bu bölüm sonra açılır.</p>`
+          : `<p class="sub">Telegram ayarına şu an ulaşılamadı (sunucu cevap vermedi ya da bu hesabın yetkisi yok).
+              Sayfayı yenileyin; sorun sürerse bize bildirin.</p>`}
       </div>`;
     }
 

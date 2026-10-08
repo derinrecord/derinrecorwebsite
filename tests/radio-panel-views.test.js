@@ -1735,14 +1735,24 @@ const TG_ACIK = {
 };
 
 test('Telegram kartı kurulum yoksa dosya adını söyler, token kutusu çizmez', () => {
-  const yok = V.telegramKarti(D, ui);
-  assert.ok(yok.includes('TELEFONA BİLDİRİM'), 'kart başlığı çizilmeli');
-  assert.ok(yok.includes('radio-telegram.sql'), 'eksik dosya adıyla söylenmeli');
-  assert.ok(!yok.includes('data-act="tg-kaydet"'), 'kurulum yokken token kutusu çizilmemeli');
+  const kurulmamis = V.telegramKarti({ ...D, kurulum: { 'radio-telegram.sql': false } }, ui);
+  assert.ok(kurulmamis.includes('TELEFONA BİLDİRİM'), 'kart başlığı çizilmeli');
+  assert.ok(kurulmamis.includes('radio-telegram.sql'), 'eksik dosya adıyla söylenmeli');
+  assert.ok(!kurulmamis.includes('data-act="tg-kaydet"'), 'kurulum yokken token kutusu çizilmemeli');
 
-  const kurulmamis = V.telegramKarti({ ...D, telegram: { ok: true, kurulu: false, acik: false } }, ui);
-  assert.ok(kurulmamis.includes('radio-telegram.sql'), 'kurulu=false da aynı cümleyi almalı');
-  assert.ok(!kurulmamis.includes('data-tg-token'));
+  const sunucuDiyor = V.telegramKarti({ ...D, telegram: { ok: true, kurulu: false, acik: false } }, ui);
+  assert.ok(sunucuDiyor.includes('radio-telegram.sql'), 'kurulu=false da aynı cümleyi almalı');
+  assert.ok(!sunucuDiyor.includes('data-tg-token'));
+});
+
+// "Kurulmadı" ile "duruma ulaşılamadı" ayrı işlerdir: birinde dosya
+// çalıştırılır, diğerinde sayfa yenilenir. İkisini tek cümleye sıkıştırmak
+// kullanıcıyı yanlış yere bakmaya yollardı.
+test('Telegram kartı ulaşılamayan durumu kurulum eksiğinden ayırır', () => {
+  const bilinmiyor = V.telegramKarti({ ...D, kurulum: { 'radio-telegram.sql': null } }, ui);
+  assert.ok(bilinmiyor.includes('ulaşılamadı'), 'sorgu düştüğünde doğru cümle yazılmalı');
+  assert.ok(!bilinmiyor.includes('SQL Editor'), 'sorgu hatasında SQL çalıştırma önerilmemeli');
+  assert.ok(!bilinmiyor.includes('data-tg-token'), 'durum bilinmezken alan çizilmemeli');
 });
 
 test('Telegram kartı token, sohbet ve aralık durumunu yazar', () => {

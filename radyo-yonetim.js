@@ -893,16 +893,26 @@
     D.kurulum['plan-takvimi.sql'] = !planItems.error;
 
     // Telefon bildirimi (supabase/radio-telegram.sql): alarmı sunucudan
-    // Telegram'a taşıyan ayar ve tetikleyici. Dosya henüz çalıştırılmadıysa
-    // RPC hata verir; kart "kurulmadı" der ve panelin gerisi çalışmaya devam
-    // eder. Yönetici olmayan oturumda da aynı yol: veri gelmez, kart susar.
+    // Telegram'a taşıyan ayar ve tetikleyici.
+    //
+    // İki ayrı "yok" hâli var ve ikisi farklı cümle ister: fonksiyon sunucuda
+    // hiç yoksa (dosya çalıştırılmamış) kurulum eksiktir; fonksiyon var ama
+    // cevap gelmiyorsa (ağ/yetki) kurulum bilinmiyor demektir. İkisini tek
+    // "kurulmadı" cümlesine sıkıştırmak yanlış yere bakmaya yollardı.
     try {
       const tg = await client.rpc('radio_telegram_durum');
-      D.telegram = tg.error ? null : (tg.data || null);
-      D.kurulum['radio-telegram.sql'] = !tg.error;
+      if (!tg.error) {
+        D.telegram = tg.data || null;
+        D.kurulum['radio-telegram.sql'] = true;
+      } else {
+        const yok = tg.error.code === '42883' || tg.error.code === 'PGRST202'
+          || /does not exist|schema cache/i.test(tg.error.message || '');
+        D.telegram = null;
+        D.kurulum['radio-telegram.sql'] = yok ? false : null;
+      }
     } catch {
       D.telegram = null;
-      D.kurulum['radio-telegram.sql'] = false;
+      D.kurulum['radio-telegram.sql'] = null;
     }
 
     // Çalan parça ve çalma listesi alanları sonradan eklendi
@@ -1555,7 +1565,7 @@
       case 'tg-kaydet': {
         const alan = el('view').querySelector('[data-tg-token]');
         const token = alan ? alan.value.trim() : '';
-        if (!token) return hata('Token alanı boş: BotFather\'ın verdiği satırı yapıştırın.');
+        if (!token) return hata("Token alanı boş: BotFather'ın verdiği satırı yapıştırın.");
         hedef.disabled = true;
         try {
           const { data, error } = await client.rpc('radio_telegram_kaydet', { p_token: token });
