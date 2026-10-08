@@ -726,6 +726,28 @@
   // Menü rozeti için: kaç şubede paylaşım girişimi kaydı var.
   const paylasimSayi = D => (D.players || []).filter(ihlalVar).length;
 
+  // Davet QR'ı: gönderilen linki kafede kamerayla okutmak, 40 karakterlik
+  // anahtarı kiosk klavyesinden yazmaktan kolaydır. Kodu bilerek QR'a
+  // koymayız: kod da kareye girseydi QR'ın fotoğrafı, tek başına yayını açan
+  // bir anahtar olurdu — koruduğumuz şeyin kendisi.
+  //
+  // Kodlayıcı dışarıdan verilir (tarayıcıda CDN'den gelen `qrcode`, testte ve
+  // prova sayfasında gerçek kütüphane). Görünüm katmanı DOM'a dokunmaz, bu
+  // yüzden yalnız data URL döner; kutuyu çizen katman onu <img>'e koyar.
+  function qrGorsel(metin, kodlayici, hucre, kenar) {
+    if (!metin || typeof kodlayici !== 'function') return null;
+    try {
+      // 0: sürümü veri uzunluğuna göre seçer; 'M' orta hata düzeltme —
+      // ekrandan okunacak kadar sağlam, kareyi gereğinden fazla büyütmez.
+      const qr = kodlayici(0, 'M');
+      qr.addData(metin);
+      qr.make();
+      if (typeof qr.createDataURL !== 'function') return null;
+      const url = qr.createDataURL(hucre || 8, kenar == null ? 6 : kenar);
+      return typeof url === 'string' && url ? url : null;
+    } catch { return null; }
+  }
+
   // Ekranın üstünde duran şeritler: paylaşım girişimi (varsa) + sessiz şube.
   // İkisi de yoksa panel hiçbir şey göstermez.
   function uyariSeridi(D, ui) {
@@ -2656,6 +2678,7 @@
     paylasanSube: paylasanSube,
     paylasimSeridi: paylasimSeridi,
     paylasimSayi: paylasimSayi,
+    qrGorsel: qrGorsel,
     davetMetni: davetMetni,
     kurulumSeridi: kurulumSeridi,
     kapakYok: kapakYok,

@@ -676,3 +676,25 @@ test('bildirim izni alarm şeridindeki düğmeden istenir', () => {
   // Görünüm katmanı düğmeyi yalnız izin yokken çizmeli.
   assert.match(source, /bildirimGerekli: \(\) => typeof Notification !== 'undefined' && Notification\.permission !== 'granted'/);
 });
+
+// Davet QR'ı: 40 karakterlik linki kafedeki kiosk klavyesinden yazmak yerine
+// kamerayla okutmak için var. Kodu bilerek taşımaz — kod da kareye girseydi
+// QR'ın fotoğrafı, tek başına yayını açan bir anahtar olurdu (linki ele
+// geçirmek yayını açmaya yetmesin istiyoruz). Kodlayıcı CDN'den gelir;
+// yüklenmezse pencere çökmez, link yazı olarak çizilir.
+test('davet QR\'ı yalnız linki taşır ve kodlayıcı yoksa yazıya düşer', () => {
+  const kod = source.slice(source.indexOf('function kodPenceresi'), source.indexOf('function pencere(s) {'));
+  assert.match(kod, /data-qr="\$\{esc\(link\)\}"/, 'QR yayın linkini taşımalı');
+  assert.ok(!/&kod=|kod=/.test(kod), 'QR metnine şube kodu eklenmemeli');
+  assert.ok(kod.includes('qrCiz()'), 'QR pencere açıldıktan sonra çizilmeli');
+
+  const blok = source.slice(source.indexOf('function qrCiz()'), source.indexOf('// ---------- Kapak yerleştirme ----------'));
+  assert.ok(blok.includes('V.qrGorsel(veri, kutuphane)'), 'kodlama görünüm katmanından gelmeli');
+  assert.ok(blok.includes("el('modal')"), 'kutu pencere içinden alınmalı');
+  assert.ok(blok.includes('qr-metin'), 'kodlayıcı yoksa metne düşülmeli');
+  assert.ok(!/throw /.test(blok), 'kodlayıcı yokken pencere çökmemeli');
+
+  // Kodlayıcı panelin kendi dosyasında değil, CDN'den gelir.
+  const sayfa = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');
+  assert.match(sayfa, /qrcode-generator@[0-9.]+/, 'kodlayıcı sayfaya eklenmeli');
+});

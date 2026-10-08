@@ -1611,3 +1611,34 @@ test('şerit bildirim izni düğmesini yalnız izin yokken çizer', () => {
   // Düğme yoksa da şerit çalışmaya devam eder (eski ui nesnesiyle prova).
   assert.ok(V.paylasimSeridi(IHLAL_D, ui).includes('PAYLAŞIM GİRİŞİMİ'));
 });
+
+// QR görseli: kodlayıcı tarayıcıda CDN'den gelir, testte sahtesi verilir.
+// Görünüm katmanı DOM'a dokunmadığı için dönen şey yalnızca bir data URL'dir.
+test('QR görseli kodlayıcıya metni aynen verir, yoksa/bozuksa null döner', () => {
+  const link = 'https://ornek.test/radyo.html?key=3653e570-f85e-4f44-859d-6083d2486f42';
+  assert.equal(V.qrGorsel(link, null), null, 'kodlayıcı yoksa görsel üretilmemeli');
+  assert.equal(V.qrGorsel('', () => ({ addData() {}, make() {}, createDataURL: () => 'data:x' })), null,
+    'boş metin kodlanmamalı');
+
+  const cokmus = () => ({ addData() {}, make() { throw new Error('kodlayıcı hatası'); } });
+  assert.equal(V.qrGorsel(link, cokmus), null, 'kodlayıcı çökerse panel çökmemeli');
+
+  const veriUrlsuz = () => ({ addData() {}, make() {} });
+  assert.equal(V.qrGorsel(link, veriUrlsuz), null, 'data URL üretmeyen kodlayıcı yok sayılmalı');
+
+  let uretilen = null;
+  const sahte = () => {
+    uretilen = {
+      metin: null, yapildi: false,
+      addData(m) { this.metin = m; }, make() { this.yapildi = true; },
+      createDataURL(h, k) { return 'data:image/gif;base64,' + this.metin + '|' + h + '|' + k; }
+    };
+    return uretilen;
+  };
+  const gorsel = V.qrGorsel(link, sahte);
+  assert.ok(gorsel.startsWith('data:image/gif;base64,'), 'görsel data URL dönmeli');
+  assert.ok(gorsel.includes(link), 'link kodlayıcıya aynen verilmeli');
+  assert.ok(uretilen.yapildi, 'kare üretilmeli');
+  // Şube kodu QR'a girmemeli: kareyi gören kişi tek başına yayını açamamalı.
+  assert.ok(!gorsel.includes('G5LV-S8VD'), 'kare kodu taşımamalı');
+});

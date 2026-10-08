@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Davet QR provası — Derin Record</title>
+<meta name="robots" content="noindex,nofollow">
+<!-- Panelin davet penceresindeki QR'ı gerçekten okunuyor mu?
+
+     Neden ayrı bir prova: QR'ı üreten şey (radyo-panel-views.js · qrGorsel)
+     panelde yalnız yönetici girişinden sonra görünür; kodun kendisi doğru
+     olsa bile "ekrandan okunuyor mu" sorusu ancak gerçek bir okuyucuyla
+     cevaplanır. Bu sayfa aynı fonksiyonu çağırır, çıkan görseli tuvale çizer
+     ve **başka bir kütüphaneyle** (jsQR) çözer; sonuç ekranda yazar.
+
+     Üretimde yayınlanmaz (.vercelignore prova dosyalarını dışarıda bırakır). -->
+<style>
+  :root{--ink:#0b0b0d;--cream:#f4f1e9;--muted:#a8a5a0;--pink:#cb2468;--yellow:#d8bb2c;--line:rgba(244,241,233,.15)}
+  *{box-sizing:border-box}
+  body{margin:0;padding:34px 18px 60px;background:var(--ink);color:var(--cream);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 6px}
+  p.sub{color:var(--muted);margin:0 0 22px}
+  .kart{background:#141014;border:1px solid var(--line);padding:20px;margin-bottom:16px}
+  .kart h2{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--yellow);margin:0 0 12px}
+  .qr{display:flex;align-items:center;justify-content:center;padding:12px;background:#fff;border-radius:6px}
+  .qr img{display:block;width:208px;height:208px;image-rendering:pixelated}
+  .qr.yok{background:#141014;color:var(--muted);justify-content:flex-start;padding:16px}
+  .karar{font-weight:700;padding:12px 14px;border-left:3px solid var(--line);background:#141014;margin-top:14px}
+  .karar.ok{border-color:#3fbf6f;color:#b7f0cd}
+  .karar.hata{border-color:#ff5f6d;color:#ffc2ca}
+  .karar.bekliyor{border-color:var(--yellow);color:#f0e2a8}
+  code{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--cream);
+    word-break:break-all;background:#0b0b0d;padding:2px 5px;border:1px solid var(--line);display:inline-block}
+  ul{margin:8px 0 0;padding-left:20px;color:var(--muted)}
+  li{margin:4px 0}
+  canvas{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Davet QR provası</h1>
+  <p class="sub">Panelin davet penceresindeki QR, gerçek bir okuyucuyla çözülebiliyor mu? Aynı fonksiyon çağrılır, görsel tuvale çizilir ve jsQR ile okunur.</p>
+
+  <div class="kart">
+    <h2>1 · Panelin çizdiği QR</h2>
+    <div class="qr" id="qr-kutu"><span>QR hazırlanıyor…</span></div>
+    <p class="sub" style="margin:12px 0 0">QR'ın taşıdığı metin: <code id="qr-metin">—</code></p>
+    <p class="sub" style="margin:6px 0 0">QR'a gömülen şube kodu: <code id="qr-kod-durumu">—</code></p>
+  </div>
+
+  <div class="kart">
+    <h2>2 · Bağımsız okuyucunun cevabı</h2>
+    <div class="karar bekliyor" id="karar">Okuma sürüyor…</div>
+    <canvas id="tuval" width="240" height="240"></canvas>
+    <ul id="denetimler"></ul>
+  </div>
+</div>
+
+<!-- Panel ile aynı kodlayıcı (radyo-yonetim.html) ve çözme için ayrı bir
+     kütüphane: aynı kütüphaneyle yazıp aynı kütüphaneyle okumak kanıt olmaz. -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="radyo-panel-views.js?v=62"></script>
+<script>
+(() => {
+  const V = window.DerinRadyoViews;
+  const kutu = document.getElementById('qr-kutu');
+  const karar = document.getElementById('karar');
+  const denetimler = document.getElementById('denetimler');
+
+  // Panelin ürettiği linkin aynısı: siteRoot() + 'radyo.html?key=' + player_key.
+  // Gerçek bir şube anahtarı biçiminde (uuid) prova anahtarı kullanılır.
+  const PROVA_ANAHTAR = '3653e570-f85e-4f44-859d-6083d2486f42';
+  const PROVA_KOD = 'G5LV-S8VD';
+  const link = location.origin + '/radyo.html?key=' + PROVA_ANAHTAR;
+
+  const yaz = (sinif, metin) => { karar.className = 'karar ' + sinif; karar.textContent = metin; };
+  const denetim = (metin, gecti) => {
+    const li = document.createElement('li');
+    li.textContent = (gecti ? '✔ ' : '✘ ') + metin;
+    li.style.color = gecti ? '#b7f0cd' : '#ffc2ca';
+    denetimler.appendChild(li);
+    return gecti;
+  };
+
+  document.getElementById('qr-metin').textContent = link;
+
+  if (!V || typeof V.qrGorsel !== 'function') {
+    kutu.className = 'qr yok'; kutu.textContent = 'Görünüm katmanı yüklenmedi (radyo-panel-views.js).';
+    return yaz('hata', 'V.qrGorsel bulunamadı: prova çalıştırılamadı.');
+  }
+
+  const gorsel = V.qrGorsel(link, window.qrcode);
+  if (!gorsel) {
+    kutu.className = 'qr yok';
+    kutu.textContent = 'QR üretilemedi (kodlayıcı yüklenmedi ya da hata verdi).';
+    return yaz('hata', 'V.qrGorsel boş döndü: panelde QR yerine link yazılır.');
+  }
+
+  kutu.innerHTML = '';
+  const resim = new Image();
+  resim.alt = 'Şube yayın linki QR kodu';
+  resim.style.width = '208px';
+  resim.style.height = '208px';
+  resim.src = gorsel;
+  kutu.appendChild(resim);
+
+  const kodDurum = document.getElementById('qr-kod-durumu');
+  const kodGomulu = link.indexOf(PROVA_KOD) !== -1;
+  kodDurum.textContent = kodGomulu ? 'GÖMÜLÜ (olmamalı!)' : 'yok (doğru)';
+  kodDurum.style.color = kodGomulu ? '#ffc2ca' : '#b7f0cd';
+
+  resim.onload = () => {
+    const boyut = resim.naturalWidth || 240;
+    const tuval = document.getElementById('tuval');
+    tuval.width = boyut; tuval.height = boyut;
+    const ctx = tuval.getContext('2d');
+    // Beyaz zemin şart: kodlayıcı siyah modül üretir, okuyucu bunları arar.
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, boyut, boyut);
+    ctx.drawImage(resim, 0, 0, boyut, boyut);
+
+    let sonuc = null;
+    try {
+      const veri = ctx.getImageData(0, 0, boyut, boyut);
+      sonuc = window.jsQR ? window.jsQR(veri.data, boyut, boyut) : null;
+    } catch { sonuc = null; }
+
+    if (!window.jsQR) {
+      return yaz('hata', 'Okuyucu kütüphanesi (jsQR) yüklenmedi; okuma yapılamadı.');
+    }
+    if (!sonuc || !sonuc.data) {
+      return yaz('hata', 'QR okunamadı: kare ekrandan/ baskıdan çözülemiyor.');
+    }
+
+    const okunan = sonuc.data;
+    const ayni = okunan === link;
+    const kodYok = okunan.indexOf(PROVA_KOD) === -1 && okunan.indexOf('kod=') === -1;
+    denetim('Okuyucu karenin içindekini çözdü', true);
+    denetim('Çözülen metin panelin linkiyle aynı: ' + okunan.slice(0, 48) + '…', ayni);
+    denetim('Şube kodu kareye gömülü değil (QR tek başına yayını açmaz)', kodYok);
+    yaz(ayni && kodYok ? 'ok' : 'hata',
+      ayni && kodYok
+        ? 'OK — QR gerçek bir okuyucuyla çözüldü ve yalnız yayın linkini taşıyor.'
+        : 'HATA — çözülen metin beklenenden farklı ya da kodu taşıyor.');
+  };
+  resim.onerror = () => yaz('hata', 'QR görseli yüklenemedi (data URL bozuk).');
+})();
+</script>
+</body>
+</html>

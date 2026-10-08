@@ -131,14 +131,20 @@
       baslik: p.label + ' — şube kodu',
       govde: `<p class="sub">Kodu şubeye linkle birlikte gönderin; cihaz ilk kez bağlanırken bir kez sorulur.</p>
         <div class="key">${esc(kod)}</div>
+        <div class="qr" data-qr="${esc(link)}"><span class="sub">QR hazırlanıyor…</span></div>
+        <p class="sub">QR <b>yalnız yayın linkini</b> taşır: cihazın kamerasına okutulunca link açılır, kodu yukarıdaki alandan bir kez yazarsınız. Kod QR'a gömülmez — QR'ın fotoğrafını alan biri yayını açamaz.</p>
         <div class="row" style="margin-top:10px">
           <button class="btn sm primary" data-act="copy" data-copy="${esc(V.davetMetni({ label: p.label, player_code: kod }, link))}" type="button">DAVETİ KOPYALA</button>
           <button class="btn sm" data-act="copy" data-copy="${esc(kod)}" type="button">KODU KOPYALA</button>
+          <button class="btn sm" data-act="copy" data-copy="${esc(link)}" type="button">LİNKİ KOPYALA</button>
         </div>`,
       gizleOnay: true, kapatMetni: 'KAPAT'
     });
+    qrCiz();
   }
 
+  // Kodlamayı görünüm katmanı yapar (V.qrGorsel): aynı fonksiyon prova
+  // sayfasında gerçek bir okuyucuyla sınanır.
   function pencere(s) {
     modalOnay = s.onOnay || null;
     modalKapat = s.onKapat || null;
@@ -173,6 +179,28 @@
     modalOnay = null; modalKapat = null;
     kaydiTemizle();
     if (kapat) kapat();
+  }
+
+  // Davet penceresindeki QR: kafede linki elle yazmak yerine kamerayla okutmak
+  // için. Kodu bilerek taşımaz; kod QR'a gömülseydi QR'ın fotoğrafı da linkin
+  // kendisi kadar paylaşılabilir bir anahtar olurdu (oynatıcı da kodu adresten
+  // okumaz: bkz. radyo.js · KOD_ANAHTARI). Kodlayıcı CDN'den gelir
+  // (radyo-yonetim.html); yüklenmezse pencere çökmez, link yazı olarak çizilir.
+  function qrCiz() {
+    const kutu = el('modal') && el('modal').querySelector('[data-qr]');
+    if (!kutu) return;
+    const veri = kutu.dataset.qr || '';
+    const kutuphane = typeof window !== 'undefined' ? window.qrcode : null;
+    const metinle = () => {
+      kutu.classList.add('qr-metin');
+      kutu.innerHTML = '<span class="sub">QR üretilemedi (kodlayıcı yüklenmedi); linki elle paylaşın:</span>'
+        + `<div class="key">${esc(veri)}</div>`;
+    };
+    // Kodlama işi görünüm katmanında (V.qrGorsel): prova sayfası da aynı
+    // fonksiyonu çağırıp QR'ı gerçek bir okuyucuyla çözerek doğrulayabiliyor.
+    const gorsel = V.qrGorsel(veri, kutuphane);
+    if (!gorsel) return metinle();
+    kutu.innerHTML = `<img class="qr-img" alt="Şube yayın linki QR kodu" src="${esc(gorsel)}">`;
   }
   // ---------- Kapak yerleştirme ----------
   // Kapaklar elle yerleştirilir: yönetim indirdiği görseli kendi seçer. Panel

@@ -132,6 +132,17 @@ a.nav-item{text-decoration:none}
 .uyari-govde .sub{margin-top:2px;color:rgba(255,201,208,.78)}
 .uyari-dugmeler{display:flex;gap:8px;flex-wrap:wrap}
 
+/* Davet QR'ı: kodlayıcı siyah modül/beyaz boşluk üretir, karanlık zeminde
+   okuyucu bulamaz — bu yüzden zemin beyaz ve kare çevresinde boşluk bırakılır.
+   Kütüphane yüklenemezse aynı kutu metne döner (.qr-metin). */
+.qr{display:flex;align-items:center;justify-content:center;margin:14px 0;padding:12px;
+  background:#fff;border:1px solid var(--line-2);border-radius:var(--r-sm)}
+.qr img{display:block;width:208px;height:208px;image-rendering:pixelated}
+.qr .sub{color:#47424c;text-align:center}
+.qr.qr-metin{display:block;background:var(--surface)}
+.qr.qr-metin .sub{color:var(--muted-2)}
+.qr.qr-metin .key{margin-top:8px}
+
 .view{padding:26px 34px 90px;max-width:1440px}
 .view-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:18px}
 
