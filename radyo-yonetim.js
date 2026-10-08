@@ -1206,7 +1206,10 @@
     const act = hedef.dataset.act, id = hedef.dataset.id;
     const dur = e => { if (e) { e.preventDefault(); e.stopPropagation(); } };
 
-    switch (act) {
+    // Düğme işlenirken beklenmeyen bir hata olursa sessizce yutulmaz:
+    // aksi hâlde tıklama "hiçbir şey olmuyor" gibi görünür (bkz. catch).
+    try {
+      switch (act) {
       // --- plan takvimi (bkz. plan-takvim.js) ---
       // Kaydet düğmesi yok: her değişiklik anında gider. Yazma başarısız
       // olursa kullanıcıya söylenir; sessizce yutulmaz.
@@ -2359,6 +2362,10 @@
           bildir('Talep silindi.');
         }
         return;
+      }
+    } catch (err) {
+      // Beklenmeyen hata kullanıcıya söylenir; panel sessizce boşa düşmez.
+      hata('İşlem yapılamadı: ' + ((err && err.message) || err));
     }
   });
 

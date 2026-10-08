@@ -547,3 +547,14 @@ test('klasör ve liste silme 0 satır silinmesini sessizce yutmaz', () => {
     assert.ok(/return hata\(/.test(blok), act + ': başarısızlık hata olarak bildirilmeli');
   });
 });
+
+// Düğme tıklaması işlenirken beklenmeyen bir hata sessizce yutulmamalı:
+// async dinleyicide hata yakalanmazsa tıklama "hiçbir şey olmuyor" gibi
+// görünür (onay penceresi hiç açılmıyor geri bildirimi).
+test('düğme tıklamasındaki beklenmeyen hatalar kullanıcıya söylenir', () => {
+  const bas = source.indexOf("document.addEventListener('click'");
+  const blok = source.slice(bas, source.indexOf("document.addEventListener('input'", bas));
+  assert.ok(bas > 0 && blok.length > 1000, 'tıklama dinleyicisi bulunmalı');
+  assert.match(blok, /try \{\s*\n\s*switch \(act\) \{/, 'düğme işleri try içinde olmalı');
+  assert.match(blok, /catch \(err\)[\s\S]{0,240}hata\('İşlem yapılamadı/, 'catch kullanıcıya bildirmeli');
+});
