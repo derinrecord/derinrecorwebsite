@@ -389,6 +389,17 @@ test('başka mekândaki cihazdan açılışta cihaz kilidi devreye girer', async
   assert.equal(s.pingler.length, 1);
 });
 
+// Cihaz kilidi sunucuya taşındığında (radio-baglanti-korumasi.sql) kilitli cihaz
+// artık içerik de alamaz: çağrı hata değil BOŞ döner. O anda yanlış teşhis
+// ("yayın zinciri kopuk") yazılırsa ekip markada/kaynakta arar; doğru ekran
+// kilit ekranıdır.
+test('kilitliyken içerik boş dönerse yanlış teşhis yazılmaz', async () => {
+  const s = await calistir({ ping: 'kilitli', parca: false, abonelik: 'gecerli' });
+  assert.equal(s.marka, 'Bu cihaz yetkili değil');
+  assert.match(s.durum, /başka bir cihaza kayıtlı/);
+  assert.ok(!/zinciri kopuk|marka yayında değil/.test(s.durum + s.marka), 'kaynak arızası gibi gösterilmemeli');
+});
+
 test('anahtar geçerli ama yayın zinciri kopuksa oynatıcı doğru halkayı gösterir', async () => {
   // radio_now_playing boş döner, oysa radio_ping anahtarı tanıyor ve abonelik
   // geçerli: yani kopukluk markada (pasif) ya da canlı yayın kaynağında.
