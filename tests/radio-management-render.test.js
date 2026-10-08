@@ -531,3 +531,19 @@ test('geçmiş silme izni veritabanında yalnız yöneticide', () => {
   assert.match(sql, /grant delete on table public\.radio_player_events to authenticated/);
   assert.ok(!/grant delete[^;]*to anon/.test(sql), 'anon silememeli');
 });
+
+// Silme sessizce başarısız olmasın: Supabase, RLS ya da eşleşmeyen kimlik
+// yüzünden 0 satır sildiğinde hata döndürmez. Panel silinen satırları geri
+// isteyip sayıyı kontrol etmeli; yoksa "silindi" der, kayıt yerinde kalır
+// (yöneticinin bildirdiği "klasörü silemiyorum" durumu).
+test('klasör ve liste silme 0 satır silinmesini sessizce yutmaz', () => {
+  ['folder-del', 'list-del'].forEach(act => {
+    const bas = source.indexOf("case '" + act + "'");
+    assert.ok(bas > 0, act + ' işlenmeli');
+    const blok = source.slice(bas, source.indexOf("case '", bas + 10));
+    assert.match(blok, /\.delete\(\)\.eq\('id', id\)\s*\n?\s*\.select\('id'\)/,
+      act + ': silinen satırlar geri istenmeli');
+    assert.ok(/!silinenler\.length/.test(blok), act + ': 0 satır silinirse kullanıcıya söylenmeli');
+    assert.ok(/return hata\(/.test(blok), act + ': başarısızlık hata olarak bildirilmeli');
+  });
+});

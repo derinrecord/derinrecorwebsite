@@ -1793,8 +1793,16 @@
         await kapakDosyaSil(f && f.cover_path);
         for (const t of parcalar) await kapakDosyaSil(t.cover_path);
         await client.from('radio_tracks').delete().eq('folder_id', id);
-        const { error } = await client.from('radio_folders').delete().eq('id', id);
+        // Silinen satırlar geri istenir: Supabase, RLS ya da eşleşmeyen kimlik
+        // yüzünden hiçbir satır silinmediğinde de hata döndürmez. O zaman panel
+        // "silindi" deyip kayıt yerinde kalırdı; sayıyı kontrol edip doğru
+        // söyleriz.
+        const { data: silinenler, error } = await client.from('radio_folders')
+          .delete().eq('id', id).select('id');
         if (error) return hata('Klasör silinemedi: ' + error.message);
+        if (!silinenler || !silinenler.length) {
+          return hata('Klasör silinemedi: kayıt bulunamadı ya da bu işlem için yetkiniz yok.');
+        }
         if (state.openFolder === id) { state.openFolder = null; git('#/klasorler'); }
         await yenile(false); bildir('Klasör silindi.');
         return;
@@ -2128,8 +2136,14 @@
           govde: `“${pl ? pl.name : 'Liste'}” silinir. Bu listeyi kullanan şubeler yayın bekler duruma geçer.`,
           onayMetni: 'LİSTEYİ SİL'
         })) return;
-        const { error } = await client.from('brand_playlists').delete().eq('id', id);
+        // Klasör silmedeki ile aynı gerekçe: 0 satır silinen bir istek hata
+        // döndürmez, "silindi" demek yanlış olurdu.
+        const { data: silinenler, error } = await client.from('brand_playlists')
+          .delete().eq('id', id).select('id');
         if (error) return hata('Liste silinemedi: ' + error.message);
+        if (!silinenler || !silinenler.length) {
+          return hata('Liste silinemedi: kayıt bulunamadı ya da bu işlem için yetkiniz yok.');
+        }
         if (state.openPlaylist === id) { state.openPlaylist = null; git('#/markalar'); }
         await yenile(false); bildir('Liste silindi.');
         return;
