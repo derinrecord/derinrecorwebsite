@@ -163,7 +163,14 @@
       'radio-baglanti-gecmisi.sql': true, 'radio-yayin-baslat.sql': false,
       'radio-calan-parca.sql': true, 'radio-liste-bildirimi.sql': true,
       'radio-erisim.sql': false, 'radio-yayin-durdurma.sql': true,
-      'marka-kapagi.sql': true
+      'radio-telegram.sql': true, 'marka-kapagi.sql': true
+    },
+    // Telefon bildirimi ayarı (gerçek panelde radio_telegram_durum RPC'sinden).
+    telegram: {
+      ok: true, kurulu: true, acik: true, aralik_dk: 30,
+      token_var: true, bot_id: '8123456789', chat_var: true, chat_id: '90210',
+      son_gonderim_at: iso(-22 * 60000),
+      son_yanit: { kod: 200, metin: '{"ok":true}', zaman: iso(-22 * 60000) }
     }
   };
 

@@ -764,6 +764,73 @@
     return { ip: ip, konum: parcalar.filter(x => x !== ip).join(' · ') };
   }
 
+  // ---------- Telefona bildirim (Telegram) ----------
+  // Panel içi "Bildirimler" ekranı yalnız panel açıkken konuşur. Bu kart, aynı
+  // alarmın sunucudan (supabase/radio-telegram.sql → pg_net) Telegram'a da
+  // gitmesini kurar: panel kapalıyken, gece, telefon cebimizdeyken de haber
+  // gelir. Bot token'ı bu kutudan doğrudan veritabanına gider; ekranda, kodda
+  // ya da tarayıcı deposunda tutulmaz.
+  //
+  // Kurulum iki adımdır: (1) Telegram'da @BotFather'dan bot aç, token'ı buraya
+  // yapıştır; (2) bota bir kez yaz, sonra SOHBETİ BUL. İkisi bitmeden "açık"
+  // görünüp hiç mesaj gitmemesi en kötü durum olurdu; bu yüzden eksik kurulumda
+  // açma isteği sunucuda da reddedilir ve sebep burada yazılır.
+  //
+  // Durum verisi D.telegram'dan gelir (radyo-yonetim.js → radio_telegram_durum).
+  function telegramKarti(D, ui) {
+    const t = D.telegram;
+    const now = ui.now();
+
+    // Veri gelmediyse SQL henüz çalıştırılmamıştır (ya da sorgu yetki/ağ
+    // yüzünden düştü). Dosya adını yazarız: kurulum ekranı o dosyayı tek
+    // kopyala-yapıştır ile çalıştırılabilir hâle getirir.
+    if (!t || t.kurulu === false) {
+      return `<div class="panel">
+        <h3>TELEFONA BİLDİRİM <span>panel kapalıyken de haber verir</span></h3>
+        <p class="sub">Telegram altyapısı kurulmadı (supabase/radio-telegram.sql). Kurulum durumu ekranından dosyayı kopyalayıp
+          Supabase SQL Editor'de bir kez çalıştırın; bu bölüm sonra açılır.</p>
+      </div>`;
+    }
+
+    const yanit = t.son_yanit || null;
+    // Telegram cevabı ekranda görünür: "açık ama hiç mesaj gitmiyor" sessiz
+    // bozukluğu en tehlikeli hâldir; yanlış token ya da sohbet burada yakalanır.
+    const yanitSatiri = !yanit
+      ? '<span class="sub">Bu kurulumdan sonra henüz mesaj gönderilmedi.</span>'
+      : (Number(yanit.kod) === 200
+        ? `<span class="sub">Son mesaj Telegram'a ulaştı (${esc(goreli(yanit.zaman, now))}).</span>`
+        : `<span class="sub">Son deneme başarısız · Telegram cevabı: ${esc(yanit.kod == null ? 'yanıt yok' : yanit.kod)}${yanit.metin ? ' — ' + esc(yanit.metin) : ''}</span>`);
+    const aralik = String(t.aralik_dk || 30);
+
+    return `<div class="panel">
+      <h3>TELEFONA BİLDİRİM <span>panel kapalıyken de haber verir</span></h3>
+      <p class="panel-sub">Şube alarmı kaydedildiği anda sunucudan Telegram'a da gider; bu panel açık olmasa da telefonunuza düşer.
+        Kurulum: Telegram'da <b>@BotFather</b>'a <code>/newbot</code> yazın, verdiği token'ı aşağıya yapıştırıp <b>TOKEN'I KAYDET</b>'e basın;
+        bota bir kez "merhaba" yazıp <b>SOHBETİ BUL</b>'a basın; sonra <b>TEST MESAJI GÖNDER</b> ile doğrulayın.</p>
+      <div class="tiles">
+        <div class="tile ${t.acik ? '' : 'gold'}"><span>BİLDİRİM</span><b>${t.acik ? 'AÇIK' : 'KAPALI'}</b>
+          <small>${t.acik ? 'alarm telefona gidiyor' : 'alarm yalnız bu ekranda'}</small></div>
+        <div class="tile ${t.token_var ? '' : 'danger'}"><span>BOT</span><b>${t.token_var ? 'AYARLI' : 'YOK'}</b>
+          <small>${t.token_var ? (t.bot_id ? 'bot kimliği: ' + esc(t.bot_id) : 'token kaydedildi') : 'BotFather tokenı gerekli'}</small></div>
+        <div class="tile ${t.chat_var ? '' : 'danger'}"><span>SOHBET</span><b>${t.chat_var ? 'BULUNDU' : 'YOK'}</b>
+          <small>${t.chat_var ? 'mesajlar bu sohbete düşer' : 'bota bir kez yazıp SOHBETİ BUL'}</small></div>
+        <div class="tile"><span>ARALIK</span><b>${esc(aralik)} dk</b><small>aynı şube için en sık mesaj</small></div>
+      </div>
+      <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
+        <input type="password" data-tg-token spellcheck="false" autocomplete="off"
+               placeholder="${t.token_var ? 'Yeni token (değiştirmek için)' : 'BotFather tokenı: 123456789:AA…'}"
+               style="flex:1;min-width:240px">
+        <button class="btn sm primary" data-act="tg-kaydet" type="button">TOKEN'I KAYDET</button>
+        <button class="btn sm" data-act="tg-sohbet" type="button">SOHBETİ BUL</button>
+        <button class="btn sm" data-act="tg-test" type="button">TEST MESAJI GÖNDER</button>
+        <button class="btn sm" data-act="tg-ac" type="button">${t.acik ? 'BİLDİRİMİ KAPAT' : 'BİLDİRİMİ AÇ'}</button>
+      </div>
+      <div style="margin-top:8px">${yanitSatiri}</div>
+      <p class="sub">Aynı şube ${esc(aralik)} dakikada bir mesaj alır: ısrar eden bir cihaz telefonunuzu boğmaz.
+        ${t.son_gonderim_at ? 'Son gönderim: ' + esc(goreli(t.son_gonderim_at, now)) + '.' : ''}</p>
+    </div>`;
+  }
+
   function bildirimView(state, D, ui) {
     const now = ui.now();
     const olaylar = bildirimOlaylari(D);
@@ -832,7 +899,8 @@
             ? 'Aramayla eşleşen deneme yok.'
             : 'Şube alarmı yok: hiçbir şubenin linki ya da kodu başka bir yerde denenmedi.')}</tbody>
         </table>
-      </div>`;
+      </div>
+      ${telegramKarti(D, ui)}`;
   }
 
   // Davet QR'ı: gönderilen linki kafede kamerayla okutmak, 40 karakterlik
@@ -1455,6 +1523,8 @@
       aciklama: 'Şube linki ve sunum kodu doğrulanmadan katalog okunamaz; içerik dışarıya kapanır.', etki: 'Güvenlik · oynatıcı' },
     { anahtar: 'radio-sube-kodu.sql', ad: 'Şube kodu ve paylaşım alarmı',
       aciklama: 'Her şubeye özel davet kodu; link başka yerde açılırsa ya da kod yanlış girilirse alarm ve kanıt (IP, konum).', etki: 'Güvenlik · şube çekmecesi' },
+    { anahtar: 'radio-telegram.sql', ad: 'Telefona bildirim (Telegram)',
+      aciklama: 'Şube alarmını kaydedildiği anda sunucudan Telegram\'a yollar: panel kapalıyken de telefon çalar.', etki: 'Bildirimler' },
     { anahtar: 'radio-yayin-durdurma.sql', ad: 'Yayın durumu ayrımı',
       aciklama: '“Yayın yok” cevabının sebebini ayırır: durdurulmuş mu, marka mı kapalı, abonelik mi bitti.', etki: 'Oynatıcı' },
     { anahtar: 'marka-kapagi.sql', ad: 'Marka kapağı',
@@ -2800,6 +2870,7 @@
     bildirimSayi: bildirimSayi,
     olayAyrinti: olayAyrinti,
     bildirimView: bildirimView,
+    telegramKarti: telegramKarti,
     qrGorsel: qrGorsel,
     davetMetni: davetMetni,
     kurulumSeridi: kurulumSeridi,

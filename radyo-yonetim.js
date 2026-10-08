@@ -40,7 +40,7 @@
       'radio-baglanti-gecmisi.sql': null, 'radio-yayin-baslat.sql': null,
       'radio-calan-parca.sql': null, 'radio-liste-bildirimi.sql': null,
       'radio-erisim.sql': null, 'radio-yayin-durdurma.sql': null,
-      'radio-sube-kodu.sql': null, 'marka-kapagi.sql': null
+      'radio-sube-kodu.sql': null, 'radio-telegram.sql': null, 'marka-kapagi.sql': null
     }
   };
   const state = {
@@ -826,6 +826,13 @@
     } catch { return null; }
   }
 
+  // Kurulum dosyası çalıştırılmadıysa sunucu fonksiyonu tanımaz (PostgREST
+  // 42883 / "schema cache"). Bu durumu tek cümleyle söyleriz: "token
+  // kaydedilemedi" demek, eksiği saklardı.
+  const kurulumUyarisi = (error, dosya) => /does not exist|schema cache/i.test((error && error.message) || '')
+    ? 'Sunucu bu işlevi tanımıyor: supabase/' + dosya + ' dosyasını çalıştırın.'
+    : null;
+
   async function veriYukle() {
     const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans, planItems] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
@@ -884,6 +891,19 @@
     D.kurulum['radio-subeye-ozel-yayin.sql'] = !playerBroadcast.error;
     D.kurulum['radio-baglanti-gecmisi.sql'] = !olaylar.error;
     D.kurulum['plan-takvimi.sql'] = !planItems.error;
+
+    // Telefon bildirimi (supabase/radio-telegram.sql): alarmı sunucudan
+    // Telegram'a taşıyan ayar ve tetikleyici. Dosya henüz çalıştırılmadıysa
+    // RPC hata verir; kart "kurulmadı" der ve panelin gerisi çalışmaya devam
+    // eder. Yönetici olmayan oturumda da aynı yol: veri gelmez, kart susar.
+    try {
+      const tg = await client.rpc('radio_telegram_durum');
+      D.telegram = tg.error ? null : (tg.data || null);
+      D.kurulum['radio-telegram.sql'] = !tg.error;
+    } catch {
+      D.telegram = null;
+      D.kurulum['radio-telegram.sql'] = false;
+    }
 
     // Çalan parça ve çalma listesi alanları sonradan eklendi
     // (supabase/radio-calan-parca.sql, supabase/radio-liste-bildirimi.sql).
@@ -1529,6 +1549,73 @@
         } catch { ta.select(); bildir('Otomatik kopyalanamadı; metni elle kopyalayın.', 'err'); }
         return;
       }
+      // Telefon bildirimi (supabase/radio-telegram.sql): panel kapalıyken de
+      // alarmın telefona düşmesi. Buradaki dört işlem de aynı yolun parçası:
+      // token'ı kaydet, sohbeti bul, aç/kapat, bir test mesajı gönder.
+      case 'tg-kaydet': {
+        const alan = el('view').querySelector('[data-tg-token]');
+        const token = alan ? alan.value.trim() : '';
+        if (!token) return hata('Token alanı boş: BotFather\'ın verdiği satırı yapıştırın.');
+        hedef.disabled = true;
+        try {
+          const { data, error } = await client.rpc('radio_telegram_kaydet', { p_token: token });
+          if (error) return hata(kurulumUyarisi(error, 'radio-telegram.sql') || 'Token kaydedilemedi: ' + error.message);
+          if (!data || data.ok !== true) return hata((data && data.hata) || 'Token kaydedilemedi.');
+          if (alan) alan.value = '';
+          await yenile(false);
+          bildir('Token kaydedildi. Şimdi bota Telegram\'dan bir kez yazıp SOHBETİ BUL\'a basın.');
+        } finally { hedef.disabled = false; }
+        return;
+      }
+
+      // Sohbet kimliğini Telegram'dan bulur: kullanıcı bota bir kez yazdıktan
+      // sonra sunucu getUpdates'e bakıp son sohbeti kaydeder. Bu çağrı sunucuda
+      // birkaç saniye bekler (Telegram cevabı bekleniyor): düğme kilitli kalır.
+      case 'tg-sohbet': {
+        hedef.disabled = true;
+        const eskiMetin = hedef.textContent;
+        hedef.textContent = 'ARANIYOR…';
+        try {
+          const { data, error } = await client.rpc('radio_telegram_sohbet_bul');
+          if (error) return hata(kurulumUyarisi(error, 'radio-telegram.sql') || 'Sohbet bulunamadı: ' + error.message);
+          if (!data || data.ok !== true) return hata((data && data.hata) || 'Sohbet bulunamadı.');
+          await yenile(false);
+          bildir('Sohbet bulundu: ' + (data.ad || data.chat_id) + '. Şimdi BİLDİRİMİ AÇ\'a basın.');
+        } finally { hedef.disabled = false; hedef.textContent = eskiMetin; }
+        return;
+      }
+
+      case 'tg-test': {
+        hedef.disabled = true;
+        const eskiMetin = hedef.textContent;
+        hedef.textContent = 'GÖNDERİLİYOR…';
+        try {
+          const { data, error } = await client.rpc('radio_telegram_test');
+          if (error) return hata(kurulumUyarisi(error, 'radio-telegram.sql') || 'Test mesajı gönderilemedi: ' + error.message);
+          if (!data || data.ok !== true) return hata((data && data.hata) || 'Test mesajı gönderilemedi.');
+          bildir('Test mesajı gönderildi; birkaç saniye içinde telefona düşer.');
+          // Telegram'ın cevabı birkaç saniye sonra düşer: durumu tazeleyip
+          // ekranda gösteririz, "gitti mi" sorusu cevapsız kalmasın.
+          setTimeout(() => { yenile(false).catch(() => {}); }, 4000);
+        } finally { hedef.disabled = false; hedef.textContent = eskiMetin; }
+        return;
+      }
+
+      case 'tg-ac': {
+        const acilacak = !(D.telegram && D.telegram.acik);
+        hedef.disabled = true;
+        try {
+          const { data, error } = await client.rpc('radio_telegram_ac', { p_acik: acilacak });
+          if (error) return hata(kurulumUyarisi(error, 'radio-telegram.sql') || 'Durum değiştirilemedi: ' + error.message);
+          if (!data || data.ok !== true) return hata((data && data.hata) || 'Durum değiştirilemedi.');
+          await yenile(false);
+          bildir(acilacak
+            ? 'Telefon bildirimi açıldı: yeni şube alarmı Telegram\'a da gidecek.'
+            : 'Telefon bildirimi kapatıldı; alarm yine bu ekranda görünür.');
+        } finally { hedef.disabled = false; }
+        return;
+      }
+
       case 'bildirim-ac': {
         // Tarayıcı bildirimi izni yalnız kullanıcı dokunuşuyla istenebilir:
         // alarm şeridindeki düğme tam bu yüzden var (bkz. ihlalBildir).

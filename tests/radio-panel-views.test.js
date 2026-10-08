@@ -1723,6 +1723,70 @@ test('bildirim ekranında arama kutusu şube, IP ve deneme adıyla daraltır', (
   assert.ok(!hic.includes('Şube alarmı yok'), 'eşleşme yokken “alarm yok” denmez');
 });
 
+// ---------- TELEFONA BİLDİRİM (TELEGRAM) ----------
+// Panel içi Bildirimler ekranı yalnız panel açıkken konuşur; bu kart aynı
+// alarmın sunucudan Telegram'a gitmesini kurar. Durum sunucudan (D.telegram)
+// gelir; bot token'ı kullanıcıdan alınır ve kart onu geri yazmaz.
+const TG_ACIK = {
+  ok: true, kurulu: true, acik: true, aralik_dk: 30,
+  token_var: true, bot_id: '8123456789', chat_var: true, chat_id: '90210',
+  son_gonderim_at: iso(-60000),
+  son_yanit: { kod: 200, metin: '{"ok":true}', zaman: iso(-60000) }
+};
+
+test('Telegram kartı kurulum yoksa dosya adını söyler, token kutusu çizmez', () => {
+  const yok = V.telegramKarti(D, ui);
+  assert.ok(yok.includes('TELEFONA BİLDİRİM'), 'kart başlığı çizilmeli');
+  assert.ok(yok.includes('radio-telegram.sql'), 'eksik dosya adıyla söylenmeli');
+  assert.ok(!yok.includes('data-act="tg-kaydet"'), 'kurulum yokken token kutusu çizilmemeli');
+
+  const kurulmamis = V.telegramKarti({ ...D, telegram: { ok: true, kurulu: false, acik: false } }, ui);
+  assert.ok(kurulmamis.includes('radio-telegram.sql'), 'kurulu=false da aynı cümleyi almalı');
+  assert.ok(!kurulmamis.includes('data-tg-token'));
+});
+
+test('Telegram kartı token, sohbet ve aralık durumunu yazar', () => {
+  const html = V.telegramKarti({ ...D, telegram: TG_ACIK }, ui);
+  ['tg-kaydet', 'tg-sohbet', 'tg-test', 'tg-ac'].forEach(act =>
+    assert.ok(html.includes('data-act="' + act + '"'), act + ' düğmesi çizilmeli'));
+  assert.ok(html.includes('data-tg-token'), 'token alanı olmalı');
+  assert.ok(html.includes('type="password"'), 'token ekranda açık yazılmamalı');
+  assert.ok(html.includes('8123456789'), 'hangi bot olduğu görülebilmeli');
+  assert.ok(html.includes('AÇIK') && html.includes('BULUNDU'), 'açık durum ve sohbet yazılmalı');
+  assert.ok(html.includes('30 dk'), 'gürültü aralığı yazılmalı');
+  assert.ok(html.includes("Telegram'a ulaştı"), 'başarılı son deneme yazılmalı');
+  assert.ok(html.includes('BİLDİRİMİ KAPAT'), 'açıkken düğme kapatmaya dönmeli');
+  // Sohbet kimliği ekrana dökülmez; token alana geri yazılmaz.
+  assert.ok(!html.includes('90210'), 'sohbet kimliği gösterilmemeli');
+  assert.ok(!/value="[^"]*:[A-Za-z0-9_-]{10,}"/.test(html), 'kayıtlı token alana geri yazılmamalı');
+});
+
+test('Telegram kartı yarım kurulumu ve başarısız gönderimi dürüstçe söyler', () => {
+  const yarim = V.telegramKarti({
+    ...D,
+    telegram: { ...TG_ACIK, acik: false, token_var: false, bot_id: null, chat_var: false, chat_id: null, son_gonderim_at: null, son_yanit: null }
+  }, ui);
+  assert.ok(yarim.includes('KAPALI'), 'kapalı durum yazılmalı');
+  assert.ok(yarim.includes('BotFather tokenı gerekli'), 'eksik token söylenmeli');
+  assert.ok(yarim.includes('SOHBETİ BUL'), 'eksik sohbette yapılacak iş yazılmalı');
+  assert.ok(yarim.includes('henüz mesaj gönderilmedi'), 'uydurma gönderim yazılmamalı');
+  assert.ok(yarim.includes('BİLDİRİMİ AÇ'), 'kapalıyken düğme açmaya dönmeli');
+
+  const hata = V.telegramKarti({
+    ...D,
+    telegram: { ...TG_ACIK, son_yanit: { kod: 401, metin: 'Unauthorized', zaman: iso(-5000) } }
+  }, ui);
+  assert.ok(hata.includes('Son deneme başarısız'), 'başarısız gönderim saklanmamalı');
+  assert.ok(hata.includes('401') && hata.includes('Unauthorized'), 'Telegram cevabı yazılmalı');
+});
+
+test('Telegram kartı Bildirimler ekranında ve kurulum listesinde durur', () => {
+  const ekran = V.gorunum(durum({ nav: 'bildirim', sub: 'bildirimler' }), { ...D_EV, telegram: TG_ACIK }, ui).html;
+  assert.ok(ekran.includes('TELEFONA BİLDİRİM'), 'kart denemeler listesinin altında olmalı');
+  assert.ok(ekran.includes('data-act="tg-sohbet"'));
+  assert.ok(V.KURULUM.some(x => x.anahtar === 'radio-telegram.sql'), 'dosya kurulum listesinde olmalı');
+});
+
 test('bildirimler menüde kendi satırı, başlığı ve rozetiyle durur', () => {
   const html = V.nav(durum({ nav: 'bildirim', sub: 'bildirimler' }),
     { players: 2, folders: 1, brands: 1, bildirim: 2 }, { ad: 'Derin Record', alt: 'a@b', basHarf: 'DR' });
