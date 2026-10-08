@@ -716,6 +716,8 @@
       </div>
       <div class="uyari-dugmeler">
         ${sirali.slice(0, 3).map(x => `<button class="btn sm" data-act="branch-open" data-id="${esc(x.id)}" type="button">${esc(x.label)} · ${esc(x.ihlal_sayisi)} deneme</button>`).join('')}
+        ${ui.bildirimGerekli && ui.bildirimGerekli()
+          ? '<button class="btn sm" data-act="bildirim-ac" type="button">BİLDİRİMLERİ AÇ</button>' : ''}
         <button class="btn sm danger" data-act="gecmis-ac" type="button">KAYITLARI AÇ</button>
       </div>
     </div>`;

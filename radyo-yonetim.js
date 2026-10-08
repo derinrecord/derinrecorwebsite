@@ -93,7 +93,9 @@
     desteklenenler: () => (Ses ? Ses.desteklenenler() : 'mp3, wav'),
     parcaNotu: () => '45 MB üzeri dosyalar kayıpsız parçalara bölünerek yüklenir',
     now: () => Date.now(),
-    saglikSonuc: id => saglikSonuc[id] || null
+    saglikSonuc: id => saglikSonuc[id] || null,
+    // İzin verilmemişse alarm şeridinde "BİLDİRİMLERİ AÇ" düğmesi çizilir.
+    bildirimGerekli: () => typeof Notification !== 'undefined' && Notification.permission !== 'granted'
   };
 
   function bildir(mesaj, tur) {
@@ -527,6 +529,52 @@
     kutu.hidden = !html;
   }
 
+  // --- Şube alarmı bildirimi -----------------------------------------------
+  // Şerit ve menü rozeti yalnız panel önündeyken işe yarar; yönetici başka bir
+  // sekmedeyken haber sessiz kalırdı. Yeni bir paylaşım girişimi doğduğunda
+  // masaüstü bildirimi de düşer (sohbet bildirimiyle aynı yol; bkz. chat.js).
+  // İlk yüklemede bilerek susarız: panel açılışında dakikalar önceki bir alarm
+  // için pencere açmak, gerçek zamanlı alarmı gürültüye çevirirdi.
+  let ihlalImza = null;
+  const bildirimVar = () => typeof Notification !== 'undefined' && Notification.permission === 'granted';
+
+  // Alarmı tek cümlede özetler: kim, ne yaptı, nereden. bildirim gövdesi kısa
+  // olmalı diye konum ve eşleşen şube aynı satıra sığdırılır.
+  function ihlalOzet(p) {
+    const parcalar = [V.ihlalCumlesi(p)];
+    const k = V.konumBilgi(p.son_ihlal_konum);
+    parcalar.push(k ? k.metin : 'Konum alınamadı (cihaz izin vermedi, IP çözülemedi).');
+    if (p.son_ihlal_ip) parcalar.push('IP: ' + p.son_ihlal_ip);
+    const paylasan = V.paylasanSube(D, p);
+    if (paylasan) parcalar.push('Bu IP ' + paylasan.label + ' şubesinin kayıtlı IP’si!');
+    return p.label + ' · ' + parcalar.join(' · ');
+  }
+
+  function ihlalBildir() {
+    const simdi = {};
+    (D.players || []).forEach(p => {
+      if (!V.ihlalVar(p)) return;
+      simdi[p.id] = Number(p.ihlal_sayisi || 0) + '|' + (p.son_ihlal_at || '');
+    });
+    const onceki = ihlalImza;
+    ihlalImza = simdi;
+    if (!onceki) return;                       // ilk yükleme: sessizce tohumla
+    Object.keys(simdi).forEach(id => {
+      if (onceki[id] === simdi[id]) return;    // bu şubede yeni bir şey yok
+      const p = (D.players || []).find(x => x.id === id);
+      if (!p) return;
+      // Ekranda şerit zaten güncellenir; bildirim onu öne taşır.
+      if (bildirimVar()) {
+        try {
+          new Notification('Derin Record — şube alarmı', {
+            body: ihlalOzet(p),
+            tag: 'radyo-ihlal-' + id
+          });
+        } catch { /* bildirim engellendi: şerit yine görünür */ }
+      }
+    });
+  }
+
   // ---------- Plan takvimi yardımcıları ----------
   // Takvimin gövdesi plan-takvim.js'te; buradakiler yalnızca kaydetme ve
   // yerel hatırlama. Kaydet düğmesi yok, her değişiklik anında gider.
@@ -865,6 +913,10 @@
         D.brands.forEach(b => { b.cover_path = harita.get(b.id) ?? null; });
       }
     } catch { /* kolon yok: marka kapağı kapalı */ }
+
+    // Veri her tazelendiğinde alarm imzası karşılaştırılır: yeni bir paylaşım
+    // girişimi doğduysa haber verilir.
+    ihlalBildir();
   }
 
   // sessiz: yalnızca Canlı durum ekranı kendini tazeler; form girdileriniz
@@ -1424,6 +1476,20 @@
           await navigator.clipboard.writeText(ta.value);
           bildir('SQL kopyalandı; Supabase SQL Editor\'de çalıştırın.');
         } catch { ta.select(); bildir('Otomatik kopyalanamadı; metni elle kopyalayın.', 'err'); }
+        return;
+      }
+      case 'bildirim-ac': {
+        // Tarayıcı bildirimi izni yalnız kullanıcı dokunuşuyla istenebilir:
+        // alarm şeridindeki düğme tam bu yüzden var (bkz. ihlalBildir).
+        if (typeof Notification === 'undefined') {
+          hata('Bu tarayıcı bildirim göstermiyor; alarm yalnız bu ekranda görünür.');
+          return;
+        }
+        const izin = await Notification.requestPermission();
+        seritYaz();
+        bildir(izin === 'granted'
+          ? 'Bildirimler açıldı: yeni şube alarmı masaüstüne düşecek.'
+          : 'Bildirim izni verilmedi; alarm yalnız bu ekranda görünür.', izin === 'granted' ? null : 'err');
         return;
       }
       case 'gecmis-ac': {

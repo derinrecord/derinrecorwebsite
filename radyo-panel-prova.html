@@ -173,7 +173,10 @@
     accept: () => '.mp3,.wav,.flac',
     desteklenenler: () => 'mp3, wav, flac, m4a, ogg',
     parcaNotu: () => '45 MB üzeri dosyalar kayıpsız parçalara bölünerek yüklenir',
-    now: () => Date.now()
+    now: () => Date.now(),
+    // Prova gerçek tarayıcı iznini okumaz: düğmenin nasıl göründüğünü göstermek
+    // için izin verilmemiş sayılır.
+    bildirimGerekli: () => true
   };
 
   const sayimlar = () => ({

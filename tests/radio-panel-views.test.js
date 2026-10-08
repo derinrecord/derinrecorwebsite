@@ -1598,3 +1598,16 @@ test('kurulum durumunda şube kodu dosyası izlenir', () => {
   assert.ok(html.includes('radio-sube-kodu.sql'), 'dosya adı ekranda yazılmalı');
   assert.ok(html.includes('KURULMADI'), 'uygulanmamış dosya işaretlenmeli');
 });
+
+// İzin verilmemişse şeritte bir düğme çıkar: "hemen haber gel" sözü ancak
+// bildirim izniyle tamamlanır. İzin verilmişse düğme hiç çizilmez (iş bitmiş).
+test('şerit bildirim izni düğmesini yalnız izin yokken çizer', () => {
+  const izinYok = { ...ui, bildirimGerekli: () => true };
+  const izinVar = { ...ui, bildirimGerekli: () => false };
+  assert.ok(V.paylasimSeridi(IHLAL_D, izinYok).includes('data-act="bildirim-ac"'),
+    'izin yokken düğme çizilmeli');
+  assert.ok(!V.paylasimSeridi(IHLAL_D, izinVar).includes('data-act="bildirim-ac"'),
+    'izin varken düğme çizilmemeli');
+  // Düğme yoksa da şerit çalışmaya devam eder (eski ui nesnesiyle prova).
+  assert.ok(V.paylasimSeridi(IHLAL_D, ui).includes('PAYLAŞIM GİRİŞİMİ'));
+});

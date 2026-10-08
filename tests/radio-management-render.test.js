@@ -643,3 +643,36 @@ test('panel şube kodunu üretir, yeniler ve alarmı temizler', () => {
     'kod ve ihlal alanları yüklenmeli');
   assert.match(source, /D\.kurulum\['radio-sube-kodu\.sql'\]/, 'kurulum durumu yoklanmalı');
 });
+
+// Alarm yalnız panel önündeyken görünür kalırsa "bana hemen haber gelsin" sözü
+// yarım kalır: yönetici başka bir sekmede çalışırken gelen deneme sessizce
+// birikir. Yeni bir alarm doğduğunda masaüstü bildirimi de düşmelidir.
+test('yeni şube alarmı masaüstü bildirimi olarak da düşer', () => {
+  assert.match(source, /function ihlalBildir\(\)/, 'alarm karşılaştırması tanımlanmalı');
+  assert.ok(source.includes('ihlalBildir();'), 'veri yüklendikten sonra çağrılmalı');
+
+  const blok = source.slice(source.indexOf('function ihlalBildir()'), source.indexOf('// ---------- Plan takvimi yardımcıları'));
+  // İlk yüklemede susmalı: açılışta eski bir alarm için pencere açmak gürültüdür.
+  assert.match(blok, /if \(!onceki\) return/, 'ilk yükleme bildirim göndermemeli');
+  // Aynı alarm tekrar tekrar bildirilmemeli; yalnız sayaç/zaman değişince.
+  assert.match(blok, /onceki\[id\] === simdi\[id\]/, 'yalnız değişen alarm bildirilmeli');
+  assert.match(blok, /new Notification\(/, 'görünür bildirim üretilmeli');
+  assert.match(blok, /tag: 'radyo-ihlal-' \+ id/, 'aynı şube için tek pencere (etiket) kullanılmalı');
+  // Bildirim gövdesi ihlalin türünü ve konumunu taşımalı: "kim, nereden".
+  const ozet = source.slice(source.indexOf('function ihlalOzet(p)'), source.indexOf('function ihlalBildir()'));
+  assert.ok(ozet.includes('V.ihlalCumlesi(p)'), 'tür okunur cümleye çevrilmeli');
+  assert.ok(ozet.includes('V.konumBilgi(p.son_ihlal_konum)'), 'konum bildirime girmeli');
+  assert.ok(ozet.includes('V.paylasanSube(D, p)'), 'IP başka şubeye aitse söylenmeli');
+});
+
+// Bildirim izni yalnız kullanıcı dokunuşuyla istenebilir: izin verilmemişse
+// alarm şeridinde bir düğme çıkar ve izin oradan alınır.
+test('bildirim izni alarm şeridindeki düğmeden istenir', () => {
+  assert.match(source, /case 'bildirim-ac'/, 'izin düğmesi işlenmeli');
+  const blok = source.slice(source.indexOf("case 'bildirim-ac'"), source.indexOf("case 'gecmis-ac'"));
+  assert.match(blok, /Notification\.requestPermission\(\)/, 'izin tarayıcıdan istenmeli');
+  assert.ok(blok.includes('seritYaz()'), 'izin sonrası şerit tazelenmeli (düğme kalksın)');
+  assert.ok(blok.includes('typeof Notification'), 'bildirimi olmayan tarayıcı çökmemeli');
+  // Görünüm katmanı düğmeyi yalnız izin yokken çizmeli.
+  assert.match(source, /bildirimGerekli: \(\) => typeof Notification !== 'undefined' && Notification\.permission !== 'granted'/);
+});
