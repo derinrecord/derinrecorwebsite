@@ -1820,11 +1820,27 @@
       case 'folder-del': {
         const f = D.folders.find(x => x.id === id);
         const parcalar = D.tracks.filter(t => t.folder_id === id);
+        // Bu klasör (ve içindeki listeler) bir şubenin özel yayın kaynağıysa
+        // önce o atamaları kaldırırız. Aksi hâlde veritabanı kaynağı boşaltmaya
+        // çalışır, "şubeye özel yayın" satırı kaynaksız kalır ve tablodaki kural
+        // (klasör ya da liste zorunlu) silmeyi geri alır: klasör silinemez.
+        // Atama kalkınca şube markanın genel yayınına döner.
+        const buKlasordekiListeler = D.playlists.filter(pl => pl.folder_id === id).map(pl => pl.id);
+        const etkilenenAtamalar = (D.playerBroadcast || []).filter(pb =>
+          pb.folder_id === id || (pb.playlist_id && buKlasordekiListeler.includes(pb.playlist_id)));
         if (!await onaySor({
           baslik: 'Klasör silinsin mi?',
-          govde: `“${f ? f.name : 'Klasör'}” ve içindeki ${parcalar.length} parça listeden çıkarılır; ses dosyaları depodan silinir.`,
+          govde: `“${f ? f.name : 'Klasör'}” ve içindeki ${parcalar.length} parça listeden çıkarılır; ses dosyaları depodan silinir.`
+            + (etkilenenAtamalar.length
+              ? ` Bu klasör ${etkilenenAtamalar.length} şubede özel yayın kaynağı; o atamalar kaldırılır ve şubeler markanın genel yayınına döner.`
+              : ''),
           onayMetni: 'KLASÖRÜ SİL'
         })) return;
+        if (etkilenenAtamalar.length) {
+          const atamaHatasi = (await client.from('player_broadcast')
+            .delete().in('player_id', etkilenenAtamalar.map(pb => pb.player_id))).error;
+          if (atamaHatasi) return hata('Şubelerin özel yayın atamaları kaldırılamadı: ' + atamaHatasi.message);
+        }
         if (Ses && parcalar.length) {
           const yollar = parcalar.flatMap(t => Ses.parcalariCoz(t.storage_path).map(p => p.path));
           await window.DerinR2.sil('radio-audio', yollar);
@@ -1836,7 +1852,13 @@
         await client.from('radio_tracks').delete().eq('folder_id', id);
         const silmeSorunu = await yazDogrula(
           client.from('radio_folders').delete().eq('id', id), 'Klasör silinemedi');
-        if (silmeSorunu) return hata(silmeSorunu);
+        if (silmeSorunu) {
+          // Veritabanı kuralı adıyla konuşmasın: yönetici ne yapacağını görsün.
+          if (/player_broadcast_check/.test(silmeSorunu)) {
+            return hata('Klasör silinemedi: bu klasör bir şubenin özel yayın kaynağı. Önce o şubenin yayınını kaldırın (Canlı durum · şube), sonra klasörü silin.');
+          }
+          return hata(silmeSorunu);
+        }
         if (state.openFolder === id) { state.openFolder = null; git('#/klasorler'); }
         await yenile(false); bildir('Klasör silindi.');
         return;
@@ -2174,14 +2196,30 @@
 
       case 'list-del': {
         const pl = D.playlists.find(x => x.id === id);
+        // Klasör silmedeki ile aynı gerekçe: listeyi şubeye özel yayın kaynağı
+        // olarak kullanan şubeler varsa atama önce kaldırılır.
+        const etkilenenAtamalar = (D.playerBroadcast || []).filter(pb => pb.playlist_id === id);
         if (!await onaySor({
           baslik: 'Liste silinsin mi?',
-          govde: `“${pl ? pl.name : 'Liste'}” silinir. Bu listeyi kullanan şubeler yayın bekler duruma geçer.`,
+          govde: `“${pl ? pl.name : 'Liste'}” silinir. Bu listeyi kullanan şubeler yayın bekler duruma geçer.`
+            + (etkilenenAtamalar.length
+              ? ` ${etkilenenAtamalar.length} şubedeki özel yayın ataması kaldırılır.`
+              : ''),
           onayMetni: 'LİSTEYİ SİL'
         })) return;
+        if (etkilenenAtamalar.length) {
+          const atamaHatasi = (await client.from('player_broadcast')
+            .delete().in('player_id', etkilenenAtamalar.map(pb => pb.player_id))).error;
+          if (atamaHatasi) return hata('Şubelerin özel yayın atamaları kaldırılamadı: ' + atamaHatasi.message);
+        }
         const silmeSorunu = await yazDogrula(
           client.from('brand_playlists').delete().eq('id', id), 'Liste silinemedi');
-        if (silmeSorunu) return hata(silmeSorunu);
+        if (silmeSorunu) {
+          if (/player_broadcast_check/.test(silmeSorunu)) {
+            return hata('Liste silinemedi: bu liste bir şubenin özel yayın kaynağı. Önce o şubenin yayınını kaldırın, sonra listeyi silin.');
+          }
+          return hata(silmeSorunu);
+        }
         if (state.openPlaylist === id) { state.openPlaylist = null; git('#/markalar'); }
         await yenile(false); bildir('Liste silindi.');
         return;

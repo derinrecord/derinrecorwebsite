@@ -209,9 +209,12 @@ test('panel kapakları elle yerleştirir ve eskisini depodan temizler', () => {
 test('parça ya da klasör silinince kapak dosyası da temizlenir', () => {
   const parcaSil = source.slice(source.indexOf("case 'track-del'"));
   assert.ok(parcaSil.slice(0, 900).includes('kapakDosyaSil(t.cover_path)'));
-  const klasorSil = source.slice(source.indexOf("case 'folder-del'"));
-  assert.ok(klasorSil.slice(0, 1200).includes('kapakDosyaSil(f && f.cover_path)'));
-  assert.ok(klasorSil.slice(0, 1200).includes('for (const t of parcalar) await kapakDosyaSil(t.cover_path)'));
+  // Sabit karakter penceresi yerine işleyicinin tamamına bakılır: araya yorum
+  // ya da yeni bir adım girmesi bu korumayı düşürmemeli.
+  const klasorBas = source.indexOf("case 'folder-del'");
+  const klasorSil = source.slice(klasorBas, source.indexOf("case '", klasorBas + 10));
+  assert.ok(klasorSil.includes('kapakDosyaSil(f && f.cover_path)'));
+  assert.ok(klasorSil.includes('for (const t of parcalar) await kapakDosyaSil(t.cover_path)'));
 });
 
 test('liste bildirimi kurulumu SQL dosyası olarak depoda', () => {
@@ -543,8 +546,30 @@ test('klasör ve liste silme 0 satır silinmesini sessizce yutmaz', () => {
     const blok = source.slice(bas, source.indexOf("case '", bas + 10));
     assert.match(blok, /yazDogrula\(\s*\n?\s*client\.from\('[a-z_]+'\)\s*\n?\s*\.delete\(\)\.eq\('id', id\)/,
       act + ': silinen satırlar geri istenmeli');
-    assert.ok(/if \(silmeSorunu\) return hata\(silmeSorunu\)/.test(blok),
+    assert.ok(/if \(silmeSorunu\)[\s\S]{0,400}?return hata\(/.test(blok),
       act + ': başarısızlık hata olarak bildirilmeli');
+  });
+});
+
+// Yöneticinin bildirdiği "Klasör silinemedi: ... player_broadcast ..." hatası:
+// klasör/liste bir şubenin özel yayın kaynağıysa veritabanı yabancı anahtarı
+// boşaltır, satır kaynaksız kalır ve kural (folder_id ya da playlist_id
+// zorunlu) silmeyi geri alır. Panel önce atamayı kaldırıp sonra silmeli ve
+// kural adını kullanıcıya ham hâlde göstermemeli.
+test('şubeye özel yayın kaynağı silinmeden önce atamalar kaldırılır', () => {
+  [['folder-del', 'radio_folders'], ['list-del', 'brand_playlists']].forEach(([act, tablo]) => {
+    const bas = source.indexOf("case '" + act + "'");
+    assert.ok(bas > 0, act + ' işlenmeli');
+    const blok = source.slice(bas, source.indexOf("case '", bas + 10));
+    const atamaSil = blok.indexOf("client.from('player_broadcast')");
+    const kaynakSil = blok.indexOf("client.from('" + tablo + "').delete()");
+    assert.ok(atamaSil > 0, act + ': şube yayın ataması kaldırılmalı');
+    assert.ok(kaynakSil > 0, act + ': kaynak satır silinmeli');
+    assert.ok(atamaSil < kaynakSil, act + ': atamalar silmeden ÖNCE kaldırılmalı');
+    assert.match(blok, /player_broadcast_check/, act + ': kural hatası tanınmalı');
+    assert.match(blok, /özel yayın kaynağı/, act + ': kullanıcıya ne yapacağını söyleyen mesaj verilmeli');
+    assert.ok(!/return hata\('Klasör silinemedi: ' \+ silmeSorunu\)/.test(blok),
+      act + ': ham kural adı kullanıcıya gösterilmemeli');
   });
 });
 
