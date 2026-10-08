@@ -1,14 +1,22 @@
 (() => {
   const stamp = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  // Supabase hiçbir satırı etkilemeyen yazmada hata döndürmez: not silinemez,
+  // taşınamaz ama ekran başarılı sanır. Etkilenen satırı geri isteriz.
+  async function tekSatir(zincir, mesaj) {
+    const { data, error } = await zincir.select('id');
+    if (error) throw error;
+    if (!data || !data.length) throw new Error(mesaj || 'Kayıt bulunamadı ya da bu işlem için yetkiniz yok.');
+    return data;
+  }
   async function storage(mode, action) {
     const operation = {}; action({ getAll: () => operation.type = 'all', delete: id => { operation.type = 'delete'; operation.id = id; }, put: note => { operation.type = 'put'; operation.note = note; } });
     const client = window.DerinAuth.client;
     if (operation.type === 'all') { const { data, error } = await client.from('feedback_notes').select('*').order('time_seconds'); if (error) throw error; return data.map(row => ({ ...row, key:row.demo_key, time:Number(row.time_seconds), createdAt:row.created_at, audioPath:row.audio_path, ...(row.fig_context || {}) })); }
-    if (operation.type === 'delete') { const { error } = await client.from('feedback_notes').delete().eq('id', operation.id); if (error) throw error; return; }
+    if (operation.type === 'delete') { await tekSatir(client.from('feedback_notes').delete().eq('id', operation.id), 'Not bulunamadı ya da silme yetkiniz yok.'); return; }
     const note = operation.note, fig = { figAge:note.figAge, figCategory:note.figCategory, figExercise:note.figExercise, contextLabel:note.contextLabel };
     const payload = { id:note.id, demo_key:note.key, time_seconds:note.time, movement:note.movement, message:note.message, fig_context:fig };
     const { data, error } = await client.from('feedback_notes').insert(payload).select().single(); if (error) throw error;
-    if (note.voice) { const path = `${note.key}/${window.DerinAuth.user.id}/${note.id}.webm`; const uploaded = await client.storage.from('feedback-audio').upload(path, note.voice, { contentType:note.voice.type || 'audio/webm', upsert:false }); if (uploaded.error) throw uploaded.error; const updated = await client.from('feedback_notes').update({audio_path:path}).eq('id', note.id); if (updated.error) throw updated.error; note.audioPath = path; }
+    if (note.voice) { const path = `${note.key}/${window.DerinAuth.user.id}/${note.id}.webm`; const uploaded = await client.storage.from('feedback-audio').upload(path, note.voice, { contentType:note.voice.type || 'audio/webm', upsert:false }); if (uploaded.error) throw uploaded.error; await tekSatir(client.from('feedback_notes').update({audio_path:path}).eq('id', note.id), 'Ses kaydı not kaydına bağlanamadı.'); note.audioPath = path; }
     return data;
   }
   let recordingOwner = null;
@@ -204,8 +212,9 @@
               window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end);
               if (!moved) return;
               if (point.saved) {
-                const { error } = await window.DerinAuth.client.from('feedback_notes').update({time_seconds:target.time}).eq('id', target.id);
-                if (error) { status('İşaret taşınamadı. Tekrar dene.'); return; }
+                try {
+                  await tekSatir(window.DerinAuth.client.from('feedback_notes').update({time_seconds:target.time}).eq('id', target.id), 'İşaret taşınamadı.');
+                } catch { status('İşaret taşınamadı. Tekrar dene.'); return; }
                 status(`${stamp(target.time)} noktasındaki kayıt taşındı.`); renderNotes();
               } else { status(`Taslak nokta ${target.number} ${stamp(target.time)} konumuna taşındı.`); renderPoints(); }
             };

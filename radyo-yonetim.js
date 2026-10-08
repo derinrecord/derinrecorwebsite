@@ -105,6 +105,21 @@
   }
   const hata = m => bildir(m, 'err');
 
+  // ---------- Yazma doğrulaması ----------
+  // Supabase, hiçbir satırı etkilemeyen güncelleme/silmede hata döndürmez
+  // (RLS engeli, artık var olmayan kimlik). O zaman panel "kaydedildi" ya da
+  // "silindi" der, kayıt yerinde kalır: sessiz başarısızlık. Tek satırı
+  // hedefleyen yazmalarda etkilenen satırı geri isteyip sayıyı doğrularız.
+  // Dönüş: hata metni; sorun yoksa null.
+  //   const sorun = await yazDogrula(client.from('x').update({...}).eq('id', id), 'Kaydedilemedi');
+  //   if (sorun) return hata(sorun);
+  async function yazDogrula(zincir, mesaj) {
+    const { data, error } = await zincir.select('id');
+    if (error) return mesaj + ': ' + error.message;
+    if (!data || !data.length) return mesaj + ': kayıt bulunamadı ya da bu işlem için yetkiniz yok.';
+    return null;
+  }
+
   // ---------- Tek tip pencere ----------
   function pencere(s) {
     modalOnay = s.onOnay || null;
@@ -548,15 +563,21 @@
         // yazmak (ör. düzenlemede bitti'yi false yapmak) veriyi bozar.
         const degisim = { updated_at: new Date().toISOString() };
         ['bitti', 'marka', 'tutar', 'metin', 'yontem'].forEach(a => { if (a in veri) degisim[a] = veri[a]; });
-        hata = (await depo.update(degisim).eq('id', veri.id)).error || null;
+        const sorun = await yazDogrula(depo.update(degisim).eq('id', veri.id), 'Satır kaydedilemedi');
+        hata = sorun ? { message: sorun } : null;
       } else if (islem === 'sil') {
-        hata = (await depo.delete().eq('id', veri.id)).error || null;
+        const sorun = await yazDogrula(depo.delete().eq('id', veri.id), 'Satır silinemedi');
+        hata = sorun ? { message: sorun } : null;
       } else if (islem === 'not') {
         const mevcut = (D.planItems || []).find(x => x.gun === veri.gun && x.tur === 'not');
-        const sorgu = mevcut
-          ? depo.update({ metin: veri.metin, updated_at: new Date().toISOString() }).eq('id', mevcut.id)
-          : depo.insert({ gun: veri.gun, tur: 'not', metin: veri.metin });
-        hata = (await sorgu).error || null;
+        if (mevcut) {
+          const sorun = await yazDogrula(depo
+            .update({ metin: veri.metin, updated_at: new Date().toISOString() })
+            .eq('id', mevcut.id), 'Not kaydedilemedi');
+          hata = sorun ? { message: sorun } : null;
+        } else {
+          hata = (await depo.insert({ gun: veri.gun, tur: 'not', metin: veri.metin })).error || null;
+        }
       }
     } catch (e) { hata = e; }
     return planHatasi(hata);
@@ -1178,10 +1199,11 @@
 
   async function sirayiKaydet(idlistesi, tur) {
     const tablo = tur === 'playlist' ? 'brand_playlist_tracks' : 'radio_tracks';
-    const guncellemeler = idlistesi.map((id, i) => client.from(tablo).update({ sort_order: i }).eq('id', id));
+    const guncellemeler = idlistesi.map((id, i) => yazDogrula(
+      client.from(tablo).update({ sort_order: i }).eq('id', id), 'Sıra kaydedilemedi'));
     const sonuclar = await Promise.all(guncellemeler);
-    const hataVar = sonuclar.find(s => s.error);
-    if (hataVar) { hata('Sıra kaydedilemedi: ' + hataVar.error.message); return; }
+    const hataVar = sonuclar.find(s => s);
+    if (hataVar) { hata(hataVar); return; }
     // Bellekteki sıra da güncellenir ki yeni çizim doğru sırayı göstersin.
     if (tur === 'playlist') {
       D.playlistTracks.forEach(x => { const i = idlistesi.indexOf(x.id); if (i > -1) x.sort_order = i; });
@@ -1641,8 +1663,9 @@
             govde: `“${b ? b.name : 'Marka'}” aktif edilir ve bütün şubeleri seçili akışı çalmaya başlar.`,
             onayMetni: 'YAYINA AL'
           })) return;
-          const { error } = await client.from('brands').update({ is_active: true }).eq('id', p.brand_id);
-          if (error) return hata('Marka yayına alınamadı: ' + error.message);
+          const sorun = await yazDogrula(
+            client.from('brands').update({ is_active: true }).eq('id', p.brand_id), 'Marka yayına alınamadı');
+          if (sorun) return hata(sorun);
           delete saglikSonuc[p.id];
           await yenile(false); bildir('Marka yayına alındı, satır yenilendi.');
           return;
@@ -1661,10 +1684,10 @@
             govde: `“${p.label}” için yeni bir yayın anahtarı üretilir. Şubeye verilmiş eski bağlantı çalışmayı durdurur; yeni linki kopyalayıp sahaya iletmeniz gerekir.`,
             onayMetni: 'ANAHTARI YENİLE'
           })) return;
-          const { error } = await client.from('brand_players').update({
+          const sorun = await yazDogrula(client.from('brand_players').update({
             player_key: crypto.randomUUID()
-          }).eq('id', p.id);
-          if (error) return hata('Anahtar yenilenemedi: ' + error.message);
+          }).eq('id', p.id), 'Anahtar yenilenemedi');
+          if (sorun) return hata(sorun);
           delete saglikSonuc[p.id];
           await yenile(false); bildir('Yeni yayın anahtarı üretildi; yeni linki kopyalayın.');
           return;
@@ -1747,9 +1770,10 @@
       }
       case 'player-lock':
         if (!await onaySor({ baslik: 'Cihaz kilidi sıfırlansın mı?', govde: 'Bu şubenin linki bir sonraki açılan cihaza yeniden kilitlenecek.', onayMetni: 'KİLİDİ SIFIRLA' })) return;
-        await client.from('brand_players').update({
+        const kilitSorunu = await yazDogrula(client.from('brand_players').update({
           bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null
-        }).eq('id', id);
+        }).eq('id', id), 'Cihaz kilidi sıfırlanamadı');
+        if (kilitSorunu) return hata(kilitSorunu);
         cekmeceKapat(); await yenile(false); bildir('Cihaz kilidi sıfırlandı.');
         return;
       case 'player-del': {
@@ -1759,8 +1783,9 @@
           govde: `“${p ? p.label : 'Şube'}” kaydı silinir ve yayın linki çalışmayı durdurur.`,
           onayMetni: 'ŞUBEYİ SİL'
         })) return;
-        const { error } = await client.from('brand_players').delete().eq('id', id);
-        if (error) return hata('Şube silinemedi: ' + error.message);
+        const sorun = await yazDogrula(
+          client.from('brand_players').delete().eq('id', id), 'Şube silinemedi');
+        if (sorun) return hata(sorun);
         cekmeceKapat(); await yenile(false); bildir('Şube silindi.');
         return;
       }
@@ -1809,16 +1834,9 @@
         await kapakDosyaSil(f && f.cover_path);
         for (const t of parcalar) await kapakDosyaSil(t.cover_path);
         await client.from('radio_tracks').delete().eq('folder_id', id);
-        // Silinen satırlar geri istenir: Supabase, RLS ya da eşleşmeyen kimlik
-        // yüzünden hiçbir satır silinmediğinde de hata döndürmez. O zaman panel
-        // "silindi" deyip kayıt yerinde kalırdı; sayıyı kontrol edip doğru
-        // söyleriz.
-        const { data: silinenler, error } = await client.from('radio_folders')
-          .delete().eq('id', id).select('id');
-        if (error) return hata('Klasör silinemedi: ' + error.message);
-        if (!silinenler || !silinenler.length) {
-          return hata('Klasör silinemedi: kayıt bulunamadı ya da bu işlem için yetkiniz yok.');
-        }
+        const silmeSorunu = await yazDogrula(
+          client.from('radio_folders').delete().eq('id', id), 'Klasör silinemedi');
+        if (silmeSorunu) return hata(silmeSorunu);
         if (state.openFolder === id) { state.openFolder = null; git('#/klasorler'); }
         await yenile(false); bildir('Klasör silindi.');
         return;
@@ -1826,8 +1844,9 @@
       case 'folder-rename': {
         const ad = el('f-name').value.trim();
         if (!ad) return hata('Klasör adı boş olamaz.');
-        const { error } = await client.from('radio_folders').update({ name: ad }).eq('id', state.openFolder);
-        if (error) return hata('Ad güncellenemedi: ' + error.message);
+        const sorun = await yazDogrula(
+          client.from('radio_folders').update({ name: ad }).eq('id', state.openFolder), 'Ad güncellenemedi');
+        if (sorun) return hata(sorun);
         await yenile(false); bildir('Klasör adı güncellendi.');
         return;
       }
@@ -1835,8 +1854,9 @@
         const f = D.folders.find(x => x.id === state.openFolder);
         if (!f) return;
         const yeni = f.shuffle === false;
-        const { error } = await client.from('radio_folders').update({ shuffle: yeni }).eq('id', f.id);
-        if (error) return hata('Kaydedilemedi: ' + error.message);
+        const sorun = await yazDogrula(
+          client.from('radio_folders').update({ shuffle: yeni }).eq('id', f.id), 'Kaydedilemedi');
+        if (sorun) return hata(sorun);
         await yenile(false);
         bildir(yeni ? 'Karışık çalma açık — her tur yeniden karışır.' : 'Sırayla çalma açık.');
         return;
@@ -1852,13 +1872,12 @@
           alt: f.name + ' · ' + D.tracks.filter(t => t.folder_id === f.id).length + ' parça',
           kapak: f.cover_path,
           onEk: 'klasorler',
-          kaydet: async yol => {
-            const { error } = await client.from('radio_folders').update({ cover_path: yol }).eq('id', f.id);
-            return error ? 'Kapak kaydedilemedi: ' + error.message : null;
-          },
+          kaydet: async yol => yazDogrula(
+            client.from('radio_folders').update({ cover_path: yol }).eq('id', f.id), 'Kapak kaydedilemedi'),
           kaldir: f.cover_path ? async () => {
-            const { error } = await client.from('radio_folders').update({ cover_path: null }).eq('id', f.id);
-            if (error) return hata('Kapak kaldırılamadı: ' + error.message);
+            const sorun = await yazDogrula(
+              client.from('radio_folders').update({ cover_path: null }).eq('id', f.id), 'Kapak kaldırılamadı');
+            if (sorun) return hata(sorun);
             await kapakDosyaSil(f.cover_path);
             pencereKapat(); await yenile(false); bildir('Kapak kaldırıldı.');
           } : null
@@ -1891,8 +1910,9 @@
             <input id="soru-deger" value="${esc(V.clean(t.title))}"></div>`
         });
         if (!yeni) return;
-        const { error } = await client.from('radio_tracks').update({ title: yeni }).eq('id', t.id);
-        if (error) return hata('Ad kaydedilemedi: ' + error.message);
+        const sorun = await yazDogrula(
+          client.from('radio_tracks').update({ title: yeni }).eq('id', t.id), 'Ad kaydedilemedi');
+        if (sorun) return hata(sorun);
         await yenile(false); bildir('Parça adı güncellendi.');
         return;
       }
@@ -1905,13 +1925,12 @@
           alt: V.clean(t.title) + (f ? ' · ' + f.name : ''),
           kapak: t.cover_path,
           onEk: 'tracks',
-          kaydet: async yol => {
-            const { error } = await client.from('radio_tracks').update({ cover_path: yol }).eq('id', t.id);
-            return error ? 'Kapak kaydedilemedi: ' + error.message : null;
-          },
+          kaydet: async yol => yazDogrula(
+            client.from('radio_tracks').update({ cover_path: yol }).eq('id', t.id), 'Kapak kaydedilemedi'),
           kaldir: t.cover_path ? async () => {
-            const { error } = await client.from('radio_tracks').update({ cover_path: null }).eq('id', t.id);
-            if (error) return hata('Kapak kaldırılamadı: ' + error.message);
+            const sorun = await yazDogrula(
+              client.from('radio_tracks').update({ cover_path: null }).eq('id', t.id), 'Kapak kaldırılamadı');
+            if (sorun) return hata(sorun);
             await kapakDosyaSil(t.cover_path);
             pencereKapat(); await yenile(false); bildir('Kapak kaldırıldı.');
           } : null
@@ -1964,8 +1983,9 @@
         })) return;
         if (Ses) await window.DerinR2.sil('radio-audio', Ses.parcalariCoz(hedef.dataset.path || (t && t.storage_path)).map(p => p.path));
         if (t && t.cover_path) await kapakDosyaSil(t.cover_path);
-        const { error } = await client.from('radio_tracks').delete().eq('id', id);
-        if (error) return hata('Parça silinemedi: ' + error.message);
+        const sorun = await yazDogrula(
+          client.from('radio_tracks').delete().eq('id', id), 'Parça silinemedi');
+        if (sorun) return hata(sorun);
         await yenile(false); bildir('Parça silindi.');
         return;
       }
@@ -1989,8 +2009,9 @@
       case 'anons-del': {
         if (!await onaySor({ baslik: 'Anons silinsin mi?', govde: 'Kayıt silinir ve şubeler artık çalamaz.', onayMetni: 'ANONSU SİL' })) return;
         await window.DerinR2.sil('radio-announcements', [hedef.dataset.path]);
-        const { error } = await client.from('radio_announcements').delete().eq('id', id);
-        if (error) return hata('Anons silinemedi: ' + error.message);
+        const sorun = await yazDogrula(
+          client.from('radio_announcements').delete().eq('id', id), 'Anons silinemedi');
+        if (sorun) return hata(sorun);
         await yenile(false); bildir('Anons silindi.');
         return;
       }
@@ -2032,8 +2053,9 @@
           govde: `“${b ? b.name : 'Marka'}” pasife alınır: bütün şubelerin yayını kesilir ve yayın linkleri “bu link tanınmadı” der.`,
           onayMetni: 'MARKAYI DURDUR'
         })) return;
-        const { error } = await client.from('brands').update({ is_active: acilacak }).eq('id', id);
-        if (error) return hata('Marka durumu değiştirilemedi: ' + error.message);
+        const sorun = await yazDogrula(
+          client.from('brands').update({ is_active: acilacak }).eq('id', id), 'Marka durumu değiştirilemedi');
+        if (sorun) return hata(sorun);
         await yenile(false);
         bildir(acilacak ? 'Marka yayına alındı.' : 'Marka durduruldu.');
         return;
@@ -2050,8 +2072,12 @@
           govde: `Eski link (coffee/${esc(b.slug)}) çalışmaz olur ve yeni linki markaya iletmeniz gerekir.`,
           onayMetni: 'LİNK ADINI DEĞİŞTİR'
         })) return;
-        const { error } = await client.from('brands').update({ slug: yeni }).eq('id', id);
+        const { data: degisen, error } = await client
+          .from('brands').update({ slug: yeni }).eq('id', id).select('id');
         if (error) return hata(error.code === '23505' ? 'Bu link adı başka bir markada kullanılıyor.' : error.message);
+        if (!degisen || !degisen.length) {
+          return hata('Link adı kaydedilemedi: kayıt bulunamadı ya da bu işlem için yetkiniz yok.');
+        }
         await yenile(false); bildir('Link adı güncellendi: coffee/' + yeni);
         return;
       }
@@ -2064,8 +2090,9 @@
           govde: 'Markanın eski kodu ve linki çalışmaz olur; yeni kodu müşteriye iletmeniz gerekir.',
           onayMetni: 'KODU DEĞİŞTİR'
         })) return;
-        const { error } = await client.from('brands').update({ access_code: kod }).eq('id', id);
-        if (error) return hata('Kod kaydedilemedi: ' + error.message);
+        const sorun = await yazDogrula(
+          client.from('brands').update({ access_code: kod }).eq('id', id), 'Kod kaydedilemedi');
+        if (sorun) return hata(sorun);
         await yenile(false); bildir('Erişim kodu kaydedildi.');
         return;
       }
@@ -2077,8 +2104,8 @@
           onayMetni: 'MARKAYI SİL'
         })) return;
         hedef.disabled = true;
-        const { error } = await client.from('brands').delete().eq('id', id);
-        if (error) { hedef.disabled = false; return hata('Marka silinemedi: ' + error.message); }
+        const sorun = await yazDogrula(client.from('brands').delete().eq('id', id), 'Marka silinemedi');
+        if (sorun) { hedef.disabled = false; return hata(sorun); }
         if (state.openBrand === id) { state.openBrand = null; git('#/markalar'); }
         await yenile(false); bildir('Marka silindi.');
         return;
@@ -2152,14 +2179,9 @@
           govde: `“${pl ? pl.name : 'Liste'}” silinir. Bu listeyi kullanan şubeler yayın bekler duruma geçer.`,
           onayMetni: 'LİSTEYİ SİL'
         })) return;
-        // Klasör silmedeki ile aynı gerekçe: 0 satır silinen bir istek hata
-        // döndürmez, "silindi" demek yanlış olurdu.
-        const { data: silinenler, error } = await client.from('brand_playlists')
-          .delete().eq('id', id).select('id');
-        if (error) return hata('Liste silinemedi: ' + error.message);
-        if (!silinenler || !silinenler.length) {
-          return hata('Liste silinemedi: kayıt bulunamadı ya da bu işlem için yetkiniz yok.');
-        }
+        const silmeSorunu = await yazDogrula(
+          client.from('brand_playlists').delete().eq('id', id), 'Liste silinemedi');
+        if (silmeSorunu) return hata(silmeSorunu);
         if (state.openPlaylist === id) { state.openPlaylist = null; git('#/markalar'); }
         await yenile(false); bildir('Liste silindi.');
         return;
@@ -2173,8 +2195,9 @@
         const ad = (el('pl-name').value || '').trim().replace(/\s+/g, ' ');
         if (!ad) return hata('Liste adı boş olamaz.');
         if (ad === pl.name) return bildir('Ad zaten bu.');
-        const { error } = await client.from('brand_playlists').update({ name: ad }).eq('id', id);
-        if (error) return hata('Ad kaydedilemedi: ' + error.message);
+        const sorun = await yazDogrula(
+          client.from('brand_playlists').update({ name: ad }).eq('id', id), 'Ad kaydedilemedi');
+        if (sorun) return hata(sorun);
         await yenile(false);
         bildir('Liste adı güncellendi. Açık duran oynatıcılar yeni adı birkaç dakika içinde kendiliğinden alır.');
         return;
@@ -2187,13 +2210,12 @@
           alt: b.name,
           kapak: b.cover_path,
           onEk: 'markalar',
-          kaydet: async yol => {
-            const { error } = await client.from('brands').update({ cover_path: yol }).eq('id', b.id);
-            return error ? 'Kapak kaydedilemedi: ' + error.message : null;
-          },
+          kaydet: async yol => yazDogrula(
+            client.from('brands').update({ cover_path: yol }).eq('id', b.id), 'Kapak kaydedilemedi'),
           kaldir: b.cover_path ? async () => {
-            const { error } = await client.from('brands').update({ cover_path: null }).eq('id', b.id);
-            if (error) return hata('Kapak kaldırılamadı: ' + error.message);
+            const sorun = await yazDogrula(
+              client.from('brands').update({ cover_path: null }).eq('id', b.id), 'Kapak kaldırılamadı');
+            if (sorun) return hata(sorun);
             await kapakDosyaSil(b.cover_path);
             pencereKapat(); await yenile(false); bildir('Kapak kaldırıldı.');
           } : null
@@ -2209,13 +2231,12 @@
           alt: pl.name + (b ? ' · ' + b.name : ''),
           kapak: pl.cover_path,
           onEk: 'listeler',
-          kaydet: async yol => {
-            const { error } = await client.from('brand_playlists').update({ cover_path: yol }).eq('id', pl.id);
-            return error ? 'Kapak kaydedilemedi: ' + error.message : null;
-          },
+          kaydet: async yol => yazDogrula(
+            client.from('brand_playlists').update({ cover_path: yol }).eq('id', pl.id), 'Kapak kaydedilemedi'),
           kaldir: pl.cover_path ? async () => {
-            const { error } = await client.from('brand_playlists').update({ cover_path: null }).eq('id', pl.id);
-            if (error) return hata('Kapak kaldırılamadı: ' + error.message);
+            const sorun = await yazDogrula(
+              client.from('brand_playlists').update({ cover_path: null }).eq('id', pl.id), 'Kapak kaldırılamadı');
+            if (sorun) return hata(sorun);
             await kapakDosyaSil(pl.cover_path);
             pencereKapat(); await yenile(false); bildir('Kapak kaldırıldı.');
           } : null
@@ -2279,16 +2300,21 @@
         const i = kayitlar.findIndex(x => x.id === id);
         const karsi = kayitlar[i + yon];
         if (!karsi) return;
-        await Promise.all([
-          client.from('brand_playlist_tracks').update({ sort_order: karsi.sort_order }).eq('id', kayitlar[i].id),
-          client.from('brand_playlist_tracks').update({ sort_order: kayitlar[i].sort_order }).eq('id', karsi.id)
+        const sonuclar = await Promise.all([
+          yazDogrula(client.from('brand_playlist_tracks')
+            .update({ sort_order: karsi.sort_order }).eq('id', kayitlar[i].id), 'Sıra kaydedilemedi'),
+          yazDogrula(client.from('brand_playlist_tracks')
+            .update({ sort_order: kayitlar[i].sort_order }).eq('id', karsi.id), 'Sıra kaydedilemedi')
         ]);
+        const siralaHatasi = sonuclar.find(s => s);
+        if (siralaHatasi) return hata(siralaHatasi);
         await yenile(false);
         return;
       }
       case 'ptrack-del': {
-        const { error } = await client.from('brand_playlist_tracks').delete().eq('id', id);
-        if (error) return hata('Çıkarılamadı: ' + error.message);
+        const sorun = await yazDogrula(
+          client.from('brand_playlist_tracks').delete().eq('id', id), 'Çıkarılamadı');
+        if (sorun) return hata(sorun);
         await yenile(false); bildir('Parça listeden çıkarıldı.');
         return;
       }
@@ -2360,7 +2386,9 @@
           .insert({ name: r.company, slug: bosSlug(slugify(r.company)), contact: r.email || null })
           .select('id').single();
         if (error) return hata('Marka oluşturulamadı: ' + error.message);
-        await client.from('coffee_requests').update({ status: 'contacted' }).eq('id', id);
+        const isaretSorunu = await yazDogrula(
+          client.from('coffee_requests').update({ status: 'contacted' }).eq('id', id), 'Başvuru işaretlenemedi');
+        if (isaretSorunu) return hata(isaretSorunu);
         await talepleriYukle();
         await yenile(false); bildir('Marka oluşturuldu, başvuru işaretlendi.');
         git('#/markalar/' + data.id);
@@ -2369,8 +2397,9 @@
       case 'req-del':
         if (!await onaySor({ baslik: 'Talep silinsin mi?', govde: 'Başvuru kaydı kalıcı olarak silinir.', onayMetni: 'TALEBİ SİL' })) return;
         {
-          const { error } = await client.from('coffee_requests').delete().eq('id', id);
-          if (error) return hata('Silinemedi: ' + error.message);
+          const sorun = await yazDogrula(
+            client.from('coffee_requests').delete().eq('id', id), 'Silinemedi');
+          if (sorun) return hata(sorun);
           await talepleriYukle(); ciz();
           bildir('Talep silindi.');
         }
@@ -2416,6 +2445,8 @@
   document.addEventListener('change', async e => {
     if (!client) return;
     const hedef = e.target;
+    // Beklenmeyen hata sessizce yutulmasın (bkz. tıklama dinleyicisi).
+    try {
 
     if (hedef.id === 'track-file') {
       const kutu = el('track-drop');
@@ -2453,8 +2484,9 @@
     }
 
     if (act === 'req-status') {
-      const { error } = await client.from('coffee_requests').update({ status: hedef.value }).eq('id', hedef.dataset.id);
-      if (error) return hata('Durum güncellenemedi: ' + error.message);
+      const sorun = await yazDogrula(
+        client.from('coffee_requests').update({ status: hedef.value }).eq('id', hedef.dataset.id), 'Durum güncellenemedi');
+      if (sorun) return hata(sorun);
       const kayit = (D.requests || []).find(r => r.id === hedef.dataset.id);
       if (kayit) kayit.status = hedef.value;
       bildir('Talep durumu güncellendi.');
@@ -2463,13 +2495,16 @@
 
     if (hedef.dataset && hedef.dataset.hours) {
       const alan = hedef.dataset.hours === 'open' ? 'open_time' : 'close_time';
-      const { error } = await client.from('brand_players')
-        .update({ [alan]: hedef.value || null }).eq('id', hedef.dataset.player);
-      if (error) return hata('Saat güncellenemedi: ' + error.message);
+      const sorun = await yazDogrula(client.from('brand_players')
+        .update({ [alan]: hedef.value || null }).eq('id', hedef.dataset.player), 'Saat güncellenemedi');
+      if (sorun) return hata(sorun);
       const kayit = D.players.find(p => p.id === hedef.dataset.player);
       if (kayit) kayit[alan] = hedef.value || null;
       bildir('Yayın saati güncellendi.');
       return;
+    }
+    } catch (err) {
+      hata('İşlem yapılamadı: ' + ((err && err.message) || err));
     }
   });
 

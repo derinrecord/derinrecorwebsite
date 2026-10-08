@@ -846,7 +846,14 @@
         const yollar = sesHazir() ? Ses.parcalariCoz(t.audio_path).map(p => p.path) : [t.audio_path];
         await djDepo().remove(yollar);
       }
-      await client.from('dj_tracks').delete().eq('id', el.dataset.del);
+      // Supabase hiçbir satırı etkilemeyen silmede hata döndürmez: kayıt
+      // yerinde kalırken ekran silinmiş sanırdı. Silinen satırı geri isteriz.
+      const { data: silinen, error: silmeHatasi } = await client.from('dj_tracks')
+        .delete().eq('id', el.dataset.del).select('id');
+      if (silmeHatasi || !silinen || !silinen.length) {
+        byId('hm-status').textContent = 'Parça silinemedi: kayıt bulunamadı ya da yetkiniz yok.';
+        return;
+      }
       set = set.filter(x => x.id !== el.dataset.del);
       if (selected?.id === el.dataset.del) selected = null;
       await load();
@@ -945,9 +952,12 @@
         energy: byId('hm-en').value ? Number(byId('hm-en').value) : null,
         duration_sec: byId('hm-dur').value ? Number(byId('hm-dur').value) : null
       };
-      const { error } = await client.from('dj_tracks').update(body).eq('id', selected.id);
-      byId('hm-status').textContent = error ? error.message : 'Güncellendi.';
-      if (!error) { Object.assign(selected, body); await load(); }
+      const { data: guncellenen, error } = await client.from('dj_tracks')
+        .update(body).eq('id', selected.id).select('id');
+      const sorun = error ? error.message
+        : (!guncellenen || !guncellenen.length ? 'Kayıt bulunamadı ya da bu işlem için yetkiniz yok.' : null);
+      byId('hm-status').textContent = sorun || 'Güncellendi.';
+      if (!sorun) { Object.assign(selected, body); await load(); }
     };
   }
 

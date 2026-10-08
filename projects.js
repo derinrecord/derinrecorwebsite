@@ -19,6 +19,16 @@
   const katliKaydet=()=>{ try{ localStorage.setItem('derin:katli-projeler',JSON.stringify(katliProjeler)); }catch{} };
   const newLocalId=()=>'local-'+(++localSeq);
 
+  // Supabase, hiçbir satırı etkilemeyen güncelleme/silmede hata döndürmez:
+  // işlem sessizce boşa düşer, ekran "oldu" der. Etkilenen satırı geri
+  // isteyip doğrularız; yoksa hata fırlatır.
+  async function tekSatir(zincir,mesaj){
+    const {data,error}=await zincir.select('id');
+    if(error)throw error;
+    if(!data||!data.length)throw new Error(mesaj||'Kayıt bulunamadı ya da bu işlem için yetkiniz yok.');
+    return data;
+  }
+
   async function boot(){
     await window.DerinAuth.ready;
     const a=window.DerinAuth; client=a.client;
@@ -697,8 +707,7 @@
       if(!confirm('Bu parça ve ses dosyası silinsin mi?'))return;
       button.disabled=true;
       try{
-        const removed=await client.from('project_tracks').delete().eq('id',button.dataset.trackdel);
-        if(removed.error)throw removed.error;
+        await tekSatir(client.from('project_tracks').delete().eq('id',button.dataset.trackdel),'Parça bulunamadı ya da silme yetkiniz yok.');
         await client.storage.from('project-audio').remove(Ses.parcalariCoz(button.dataset.path).map(p=>p.path));
         bildir('Parça silindi.','ok');
         openTrackId=null; detail={};
@@ -834,8 +843,10 @@
           if(created){
             // Yarım kalan klasörü geri al: kullanıcı listede içi boş, kullanılamayan
             // bir proje görmesin (eski hatada tam olarak bu oluyordu).
-            const geri=await client.from('music_projects').delete().eq('id',projectId);
-            if(!geri.error){
+            let geriSilindi=true;
+            try{ await tekSatir(client.from('music_projects').delete().eq('id',projectId),'Yarım klasör geri alınamadı.'); }
+            catch{ geriSilindi=false; }
+            if(geriSilindi){
               nfError(`${stage} aşamasında hata: ${reason}`);
               nfNote(file?'Dosya seçili kaldı — ✓ düğmesiyle tekrar deneyebilirsin.':'');
               bildir(`${stage} aşamasında hata: ${reason}`,'hata');
@@ -880,14 +891,18 @@
 
     list.querySelectorAll('[data-stage]').forEach(s=>s.onchange=async()=>{
       s.disabled=true;
-      const {error}=await client.from('music_projects').update({status:s.value,updated_at:new Date().toISOString()}).eq('id',s.dataset.stage);
-      bildir(error?'Kaydedilemedi: '+error.message:'Aşama güncellendi.',error?'hata':'ok');
+      try{
+        await tekSatir(client.from('music_projects').update({status:s.value,updated_at:new Date().toISOString()}).eq('id',s.dataset.stage),'Aşama kaydedilemedi: kayıt bulunamadı ya da yetkiniz yok.');
+        bildir('Aşama güncellendi.','ok');
+      }catch(error){ bildir('Kaydedilemedi: '+error.message,'hata'); }
       s.disabled=false;load();
     });
     list.querySelectorAll('[data-dlallow]').forEach(b=>b.onclick=async()=>{
       const yeni = b.dataset.on!=='1';
-      const {error}=await client.from('music_projects').update({download_allowed:yeni}).eq('id',b.dataset.dlallow);
-      bildir(error?error.message:(yeni?'İndirme izni verildi.':'İndirme izni kaldırıldı.'), error?'hata':'ok');
+      try{
+        await tekSatir(client.from('music_projects').update({download_allowed:yeni}).eq('id',b.dataset.dlallow),'İndirme izni kaydedilemedi.');
+        bildir(yeni?'İndirme izni verildi.':'İndirme izni kaldırıldı.','ok');
+      }catch(error){ bildir('İndirme izni kaydedilemedi: '+error.message,'hata'); }
       load();
     });
 
@@ -910,7 +925,9 @@
     });
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Proje silinecek. Emin misiniz?'))return;
-      await client.from('music_projects').delete().eq('id',b.dataset.del);load();
+      try{ await tekSatir(client.from('music_projects').delete().eq('id',b.dataset.del),'Proje bulunamadı ya da silme yetkiniz yok.'); bildir('Proje silindi.','ok'); }
+      catch(error){ bildir('Proje silinemedi: '+error.message,'hata'); }
+      load();
     });
 
     list.querySelectorAll('[data-addtrack]').forEach(inp=>inp.onchange=async()=>{
@@ -937,8 +954,7 @@
       if(!confirm('Bu parça ve ses dosyası silinsin mi?'))return;
       button.disabled=true;
       try{
-        const removed=await client.from('project_tracks').delete().eq('id',button.dataset.trackdel);
-        if(removed.error)throw removed.error;
+        await tekSatir(client.from('project_tracks').delete().eq('id',button.dataset.trackdel),'Parça bulunamadı ya da silme yetkiniz yok.');
         // Parçalı dosyada tüm parçaları sil.
         await client.storage.from('project-audio').remove(Ses.parcalariCoz(button.dataset.path).map(p=>p.path));
         bildir('Parça silindi.','ok'); load();
@@ -957,7 +973,8 @@
       const up=await yukleSesParcali(`${proj.coach_id}/${tid}-${Date.now()}`,file,
         (i,n)=>{ bildir(`Varyasyon yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`,'bilgi'); });
       if(up.error){bildir('Yükleme hatası: '+up.error.message,'hata');return;}
-      await client.from('project_tracks').update({audio_path:up.path,version:(tr.version||1)+1}).eq('id',tid);
+      try{ await tekSatir(client.from('project_tracks').update({audio_path:up.path,version:(tr.version||1)+1}).eq('id',tid),'Varyasyon kaydedilemedi.'); }
+      catch(error){ bildir('Varyasyon kaydedilemedi: '+error.message,'hata'); return; }
       // Yeni sürüm yazıldıktan sonra eski dosyayı (ve parçalarını) temizle.
       if(eskiParcalar.length){ try{ await client.storage.from('project-audio').remove(eskiParcalar); }catch{} }
       await client.from('project_feedback').insert({project_id:proj.id,author_id:me,kind:'system',

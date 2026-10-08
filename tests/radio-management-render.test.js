@@ -541,11 +541,29 @@ test('klasör ve liste silme 0 satır silinmesini sessizce yutmaz', () => {
     const bas = source.indexOf("case '" + act + "'");
     assert.ok(bas > 0, act + ' işlenmeli');
     const blok = source.slice(bas, source.indexOf("case '", bas + 10));
-    assert.match(blok, /\.delete\(\)\.eq\('id', id\)\s*\n?\s*\.select\('id'\)/,
+    assert.match(blok, /yazDogrula\(\s*\n?\s*client\.from\('[a-z_]+'\)\s*\n?\s*\.delete\(\)\.eq\('id', id\)/,
       act + ': silinen satırlar geri istenmeli');
-    assert.ok(/!silinenler\.length/.test(blok), act + ': 0 satır silinirse kullanıcıya söylenmeli');
-    assert.ok(/return hata\(/.test(blok), act + ': başarısızlık hata olarak bildirilmeli');
+    assert.ok(/if \(silmeSorunu\) return hata\(silmeSorunu\)/.test(blok),
+      act + ': başarısızlık hata olarak bildirilmeli');
   });
+});
+
+// Aynı sınıfın panelin tamamında kapandığını korur: tek satırı hedefleyen her
+// güncelleme/silme yazDogrula() ile sarılmalı, yoksa RLS engelinde panel
+// "kaydedildi/silindi" der, kayıt değişmez. Toplu silmeler (ör. şubenin bütün
+// geçmişi: .eq('player_id', ...)) kapsam dışıdır; orada 0 satır normaldir.
+test('tek satırı hedefleyen yazmaların hepsi doğrulanır', () => {
+  const satirlar = source.split('\n');
+  const kapsamDisi = [];
+  satirlar.forEach((satir, i) => {
+    if (!/\.(delete|update)\(/.test(satir)) return;
+    // Aynı satırda ya da bir sonraki satırda .eq('id', ...) ile tek satır hedeflenir.
+    if (!/\.eq\('id',/.test(satir + '\n' + (satirlar[i + 1] || ''))) return;
+    const pencere = satirlar.slice(Math.max(0, i - 2), i + 3).join('\n');
+    if (!/yazDogrula\(|\.select\('id'\)/.test(pencere)) kapsamDisi.push(i + 1);
+  });
+  assert.deepEqual(kapsamDisi, [], 'doğrulanmayan tek satır yazması kaldı: satırlar ' + kapsamDisi.join(', '));
+  assert.match(source, /if \(!data \|\| !data\.length\)/, 'yazDogrula 0 satırı hata saymalı');
 });
 
 // Düğme tıklaması işlenirken beklenmeyen bir hata sessizce yutulmamalı:

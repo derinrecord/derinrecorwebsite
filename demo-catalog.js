@@ -31,7 +31,7 @@
       if (listError) { list.textContent = tableHint(listError.message); return; }
       render(current || []);
       list.innerHTML = (current || []).map(item => `<div><span>${safe(item.branch)} — ${safe(item.title)}</span><button type="button" data-remove="${item.id}">KALDIR</button></div>`).join('') || 'Henüz demo yok.';
-      list.querySelectorAll('[data-remove]').forEach(button => button.onclick = async () => { if (!confirm('Bu demo kaseti kaldırılsın mı?')) return; const { error: removeError } = await client.from('demo_catalog').delete().eq('id', button.dataset.remove); if (removeError) { list.textContent = removeError.message; return; } refresh(); });
+      list.querySelectorAll('[data-remove]').forEach(button => button.onclick = async () => { if (!confirm('Bu demo kaseti kaldırılsın mı?')) return; const { data: silinen, error: removeError } = await client.from('demo_catalog').delete().eq('id', button.dataset.remove).select('id'); if (removeError) { list.textContent = removeError.message; return; } if (!silinen || !silinen.length) { list.textContent = 'Kaset kaldırılamadı: kayıt bulunamadı ya da yetkiniz yok.'; return; } refresh(); });
     };
     panel.querySelector('form').onsubmit = async event => {
       event.preventDefault();
