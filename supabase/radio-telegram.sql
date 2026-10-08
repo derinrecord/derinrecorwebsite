@@ -42,6 +42,9 @@ create table if not exists public.radio_bildirim_ayari (
   aralik_dk       int not null default 30 check (aralik_dk between 1 and 1440),
   son_gonderim_at timestamptz,
   son_istek_id    bigint,
+  -- Sohbet aramasının istek kimliği. Gönderim kimliğinden ayrı tutulur ki
+  -- kartta "son mesaj" satırı, sohbet aramasının cevabını mesaj sanmasın.
+  son_arama_id    bigint,
   updated_at      timestamptz not null default now()
 );
 
@@ -49,6 +52,10 @@ comment on table public.radio_bildirim_ayari is
   'Telegram bildirim ayarı; tek satır (id=1). Token yalnız burada durur, RLS ile dışarı kapalıdır.';
 comment on column public.radio_bildirim_ayari.aralik_dk is
   'Aynı şube için iki mesaj arasındaki en kısa süre (dakika): ısrar eden cihaz telefonu boğmasın.';
+
+-- Kolon sonradan eklendi: mevcut kurulumlar için de hazır olsun.
+alter table public.radio_bildirim_ayari
+  add column if not exists son_arama_id bigint;
 
 -- Tek satırlık tablo: ayar yoksa da boş bir satır hazır dursun, panel
 -- "kaydet" dediğinde insert/update ayrımıyla uğraşmasın.
@@ -368,13 +375,14 @@ begin
   return jsonb_build_object('ok', true, 'istek', v_id);
 end $$;
 
--- Sohbet kimliğini Telegram'dan bulur: kullanıcı bota bir kez yazdıktan sonra
--- bu fonksiyon getUpdates'e bakar ve son sohbeti kaydeder. Kullanıcıdan JSON
--- okumasını istemek yerine burada çözeriz.
+-- Sohbet kimliğini Telegram'dan bulur. İki adımdır ve bu bilerek böyledir:
+-- pg_net isteği kuyruğa girer, işlem BİTTİKTEN SONRA gönderilir. Yani isteği
+-- atan çağrı, cevabı aynı işlem içinde asla göremez. Birinci adım isteği
+-- atar (getUpdates, offset=-1: en son güncelleme), ikinci adım — ayrı bir
+-- çağrıda — net._http_response'tan cevabı okuyup sohbeti kaydeder.
 --
--- Neden bekliyor: pg_net isteği asenkron yürütür; cevabı öğrenmek için kısa
--- aralıklarla net._http_response yoklanır. Bu nadir bir kurulum düğmesidir,
--- bu yüzden bağlantıyı birkaç saniye tutması kabul edilebilir.
+-- Panel bu iki adımı arka arkaya çağırır ve "hazır değil" cevabını görürse
+-- kısa aralıklarla tekrarlar; kullanıcıya yapacak bir şey kalmaz.
 create or replace function public.radio_telegram_sohbet_bul()
 returns jsonb
 language plpgsql
@@ -382,13 +390,8 @@ security definer
 set search_path to 'public'
 as $$
 declare
-  v_token  text;
-  v_istek  bigint;
-  v_govde  text;
-  v_chat   jsonb;
-  v_id     text;
-  v_ad     text;
-  i        int;
+  v_token text;
+  v_istek bigint;
 begin
   if not public.is_admin() then
     return jsonb_build_object('ok', false, 'hata', 'Bu işlem için yönetici olmanız gerekiyor.');
@@ -399,34 +402,59 @@ begin
     return jsonb_build_object('ok', false, 'hata', 'Önce bot token''ını kaydedin.');
   end if;
 
-  -- offset = -1: son güncellemeyi verir, bütün geçmişi çekmez.
   v_istek := net.http_get(
     url := 'https://api.telegram.org/bot' || v_token || '/getUpdates?offset=-1&limit=1',
     timeout_milliseconds := 8000
   );
 
-  for i in 1..12 loop
-    perform pg_sleep(0.5);
-    select r.content into v_govde from net._http_response r where r.id = v_istek;
-    exit when v_govde is not null;
-  end loop;
+  update public.radio_bildirim_ayari
+     set son_arama_id = v_istek, updated_at = now() where id = 1;
 
+  return jsonb_build_object('ok', true, 'istek', v_istek);
+end $$;
+
+-- İkinci adım: atılan aramanın cevabını okur. "hazir" alanı panelin yeniden
+-- denemesi için vardır: cevap henüz düşmediyse hazir=false döner, kesin bir
+-- hata varsa (token, mesaj yok) hazir=true ile sebep söylenir.
+create or replace function public.radio_telegram_sohbet_oku()
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+declare
+  v_istek bigint;
+  v_govde text;
+  v_chat  jsonb;
+  v_id    text;
+  v_ad    text;
+begin
+  if not public.is_admin() then
+    return jsonb_build_object('ok', false, 'hata', 'Bu işlem için yönetici olmanız gerekiyor.');
+  end if;
+
+  select son_arama_id into v_istek from public.radio_bildirim_ayari where id = 1;
+  if v_istek is null then
+    return jsonb_build_object('ok', false, 'hazir', true, 'hata', 'Önce SOHBETİ BUL''a basın.');
+  end if;
+
+  select r.content into v_govde from net._http_response r where r.id = v_istek;
   if v_govde is null then
-    return jsonb_build_object('ok', false, 'hata', 'Telegram yanıt vermedi; birkaç saniye sonra tekrar deneyin.');
+    return jsonb_build_object('ok', false, 'hazir', false);
   end if;
 
   begin
     if (v_govde::jsonb ->> 'ok') <> 'true' then
-      return jsonb_build_object('ok', false, 'hata',
+      return jsonb_build_object('ok', false, 'hazir', true, 'hata',
         'Telegram token''ı reddetti: ' || left(coalesce(v_govde::jsonb ->> 'description', ''), 160));
     end if;
     v_chat := v_govde::jsonb -> 'result' -> 0 -> 'message' -> 'chat';
   exception when others then
-    return jsonb_build_object('ok', false, 'hata', 'Telegram cevabı okunamadı.');
+    return jsonb_build_object('ok', false, 'hazir', true, 'hata', 'Telegram cevabı okunamadı.');
   end;
 
   if v_chat is null or (v_chat ->> 'id') is null then
-    return jsonb_build_object('ok', false,
+    return jsonb_build_object('ok', false, 'hazir', true,
       'hata', 'Telegram''da bota henüz mesaj yazılmamış. Bota "merhaba" yazıp tekrar deneyin.');
   end if;
 
@@ -438,7 +466,7 @@ begin
   update public.radio_bildirim_ayari
      set chat_id = v_id, updated_at = now() where id = 1;
 
-  return jsonb_build_object('ok', true, 'chat_id', v_id, 'ad', btrim(v_ad));
+  return jsonb_build_object('ok', true, 'hazir', true, 'chat_id', v_id, 'ad', btrim(v_ad));
 end $$;
 
 -- PostgREST fonksiyon imzalarını önbelleğe alır: yeni fonksiyonlar hemen görünsün.
@@ -452,6 +480,8 @@ notify pgrst, 'reload schema';
 --      → tek satır (id=1) olmalı; token panelden yazılana kadar boş.
 -- 2) Panel → Bildirimler → TELEGRAM bölümü: token'ı kaydet, bota "merhaba"
 --    yaz, SOHBETİ BUL, sonra TEST MESAJI GÖNDER. Telefona mesaj düşmeli.
+--    SOHBETİ BUL iki adımdır (istek atılır, cevap ayrı çağrıda okunur);
+--    panel bunu kendisi sırayla yapar, kullanıcı beklemez.
 -- 3) Gerçek sınama: bağlı bir şubenin linkini başka tarayıcıda açın; hem
 --    panelde alarm çıkmalı hem telefona mesaj düşmeli.
 -- 4) Son Telegram cevabı:

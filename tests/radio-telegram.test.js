@@ -17,8 +17,13 @@ test('panel Telegram ayarını sunucudaki yönetici fonksiyonlarına bağlar', (
     assert.ok(yonetim.includes("'" + act + "'"), act + ' işi dinlenmeli'));
 
   ['radio_telegram_durum', 'radio_telegram_kaydet', 'radio_telegram_sohbet_bul',
-    'radio_telegram_test', 'radio_telegram_ac'].forEach(fn =>
+    'radio_telegram_sohbet_oku', 'radio_telegram_test', 'radio_telegram_ac'].forEach(fn =>
     assert.ok(yonetim.includes("'" + fn + "'"), fn + ' çağrılmalı'));
+
+  // Sohbet araması iki adımdır: panel cevabı birkaç kez yoklamalı, yoksa
+  // "Telegram yanıt vermedi" der ve kullanıcı bir daha dener.
+  assert.match(yonetim, /sonuc\.hazir !== true|sonuc && sonuc\.hazir/,
+    'panel "hazır değil" cevabını görüp tekrar denemeli');
 
   assert.ok(yonetim.includes('[data-tg-token]'), 'token alanı kabloya bağlanmalı');
   assert.ok(yonetim.includes("D.kurulum['radio-telegram.sql']"), 'kurulum durumu yoklanmalı');
@@ -65,6 +70,25 @@ test('durum fonksiyonu atanmamış record okumaz', () => {
   assert.ok(!/v_yanit\s+record/.test(blok), 'record değişkeni kullanılmamalı');
   assert.match(blok, /v_yanit_var\s+boolean\s*:=\s*false/, 'yanıt var/yok bayrağı olmalı');
   assert.match(blok, /v_yanit_var\s*:=\s*found/, 'satır bulunamazsa bayrak düşmeli');
+});
+
+// Bir kez yaşandı: sohbet araması, pg_net cevabını AYNI işlem içinde bekliyordu.
+// pg_net isteği işlem bittikten sonra gönderdiği için cevap hiçbir zaman
+// gelmiyordu ve kullanıcı "Telegram yanıt vermedi" görüyordu. Arama iki adım
+// olmalı: istek atılır, cevap ayrı bir çağrıda okunur.
+test('sohbet araması isteği atıp cevabı ayrı çağrıda okur', () => {
+  const bul = sql.slice(
+    sql.indexOf('function public.radio_telegram_sohbet_bul'),
+    sql.indexOf('function public.radio_telegram_sohbet_oku'));
+  assert.ok(bul.length > 100, 'arama fonksiyonu bulunmalı');
+  assert.match(bul, /net\.http_get/, 'arama isteği atılmalı');
+  assert.ok(!bul.includes('pg_sleep'), 'istek atan adım cevap beklememeli');
+  assert.ok(!bul.includes('_http_response'), 'aynı işlemde cevap okunamaz');
+
+  const oku = sql.slice(sql.indexOf('function public.radio_telegram_sohbet_oku'));
+  assert.match(oku, /net\._http_response/, 'cevap ayrı çağrıda okunmalı');
+  assert.match(oku, /'hazir', false/, 'cevap düşmemişse hazir=false dönmeli');
+  assert.match(oku, /son_arama_id/, 'cevap doğru isteğe bağlanmalı');
 });
 
 test('yönetici fonksiyonlarının hepsi is_admin ile korunur', () => {

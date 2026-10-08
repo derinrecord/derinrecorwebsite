@@ -1579,18 +1579,34 @@
       }
 
       // Sohbet kimliğini Telegram'dan bulur: kullanıcı bota bir kez yazdıktan
-      // sonra sunucu getUpdates'e bakıp son sohbeti kaydeder. Bu çağrı sunucuda
-      // birkaç saniye bekler (Telegram cevabı bekleniyor): düğme kilitli kalır.
+      // sonra sunucu getUpdates'e bakar ve son sohbeti kaydeder.
+      //
+      // İki adımdır çünkü sunucu isteği işlem bittikten sonra gönderiyor:
+      // isteği atan çağrı kendi cevabını hiçbir zaman göremez. Bu yüzden önce
+      // arama atılır, sonra cevap ayrı çağrılarla yoklanır.
       case 'tg-sohbet': {
         hedef.disabled = true;
         const eskiMetin = hedef.textContent;
         hedef.textContent = 'ARANIYOR…';
         try {
-          const { data, error } = await client.rpc('radio_telegram_sohbet_bul');
-          if (error) return hata(kurulumUyarisi(error, 'radio-telegram.sql') || 'Sohbet bulunamadı: ' + error.message);
-          if (!data || data.ok !== true) return hata((data && data.hata) || 'Sohbet bulunamadı.');
+          const arama = await client.rpc('radio_telegram_sohbet_bul');
+          if (arama.error) return hata(kurulumUyarisi(arama.error, 'radio-telegram.sql') || 'Sohbet bulunamadı: ' + arama.error.message);
+          if (!arama.data || arama.data.ok !== true) return hata((arama.data && arama.data.hata) || 'Sohbet bulunamadı.');
+
+          let sonuc = null;
+          for (let deneme = 0; deneme < 5; deneme++) {
+            await new Promise(r => setTimeout(r, 1200));
+            const okuma = await client.rpc('radio_telegram_sohbet_oku');
+            if (okuma.error) return hata(kurulumUyarisi(okuma.error, 'radio-telegram.sql') || 'Telegram cevabı okunamadı: ' + okuma.error.message);
+            sonuc = okuma.data || null;
+            if (sonuc && sonuc.hazir) break;
+          }
+          if (!sonuc || sonuc.hazir !== true) {
+            return hata('Telegram cevabı gelmedi; birkaç saniye sonra SOHBETİ BUL\'a tekrar basın.');
+          }
+          if (sonuc.ok !== true) return hata(sonuc.hata || 'Sohbet bulunamadı.');
           await yenile(false);
-          bildir('Sohbet bulundu: ' + (data.ad || data.chat_id) + '. Şimdi BİLDİRİMİ AÇ\'a basın.');
+          bildir('Sohbet bulundu: ' + (sonuc.ad || sonuc.chat_id) + '. Şimdi BİLDİRİMİ AÇ\'a basın.');
         } finally { hedef.disabled = false; hedef.textContent = eskiMetin; }
         return;
       }
