@@ -307,6 +307,14 @@ function ciz(brand, plist) {
   ].filter(Boolean);
 
   app.innerHTML = `
+<div class="mk-arka" aria-hidden="true">
+  <img src="/assets/kaset-filigran.png" alt="" class="k1">
+  <img src="/assets/kaset-filigran.png" alt="" class="k2">
+  <img src="/assets/kaset-filigran.png" alt="" class="k3">
+  <img src="/assets/kaset-filigran.png" alt="" class="k4">
+  <img src="/assets/kaset-filigran.png" alt="" class="k5">
+</div>
+
 <section class="mk-hero mk-shell">
   <div class="mk-hero-logo" aria-hidden="true"><img src="/assets/kaset-filigran.png" alt=""></div>
   <p class="mk-eyebrow" id="mk-selam">DERİN RECORD</p>

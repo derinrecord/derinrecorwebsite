@@ -95,47 +95,43 @@ body:has(.mk-root) .noise{opacity:.11}
   gap:clamp(18px,3vw,34px);align-items:start;margin-top:26px}
 /* Sağ sütun: sahne ve parça listesi alt alta. Sert gölgeler komşu sütuna
    taşmasın diye sütunun kendi içinde nefes payı bırakılır. */
-.mk-sag{min-width:0;padding-right:14px}
+.mk-sag{min-width:0}
 
 /* ---------- Liste seçici ---------- */
-.mk-tabs{display:flex;flex-direction:column;gap:10px;padding:0 8px 0 0}
-.mk-tab{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px 11px 11px;cursor:pointer;
+.mk-tabs{display:flex;flex-direction:column;gap:0;padding:0}
+.mk-tab{display:flex;align-items:center;gap:13px;width:100%;padding:13px 10px 13px 0;cursor:pointer;
   border-radius:0;font:inherit;color:inherit;text-align:left;
-  border:1px solid var(--mk-line);background:rgba(255,255,255,.04);
-  transition:transform .18s ease,border-color .18s,background .18s,box-shadow .18s}
-.mk-tab:hover{transform:translate(-2px,-2px);border-color:rgba(255,255,255,.4);
-  box-shadow:4px 4px 0 var(--mk-pink)}
-/* Seçili liste: markanın rengiyle çerçevelenir ve sert gölgeyle öne çıkar. */
-.mk-tab[aria-pressed="true"]{border-color:var(--mk-accent);background:rgba(232,209,90,.12);
-  box-shadow:6px 6px 0 var(--mk-pink)}
-.mk-tab img,.mk-tab .ph{width:46px;height:46px;border-radius:0;object-fit:cover;flex:0 0 auto;
+  border:0;border-bottom:1px solid rgba(255,255,255,.09);background:none;
+  opacity:.62;transition:opacity .2s,padding-left .2s}
+.mk-tab:hover{opacity:.9}
+/* Seçili liste: kutu ya da gölge değil — tam opaklık ve ince bir renk şeridi. */
+.mk-tab[aria-pressed="true"]{opacity:1;padding-left:12px;
+  box-shadow:inset 3px 0 0 var(--mk-accent)}
+.mk-tab img,.mk-tab .ph{width:42px;height:42px;border-radius:0;object-fit:cover;flex:0 0 auto;
   display:flex;align-items:center;justify-content:center;font-size:16px;opacity:.75;
-  border:1px solid rgba(0,0,0,.5);background:rgba(255,255,255,.08)}
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06)}
 .mk-tab b{display:block;font-size:13px;font-weight:900;letter-spacing:-.01em}
 .mk-tab small{display:block;margin-top:3px;font-size:11px;opacity:.55}
 
 /* ---------- Sahne ---------- */
 /* Sahne: cam panel yerine düz blok. Köşeler keskin, gölge kaymış ve bulanıksız
    — baskı işi gibi. Nokta tramı sağ alttan taşar. */
-.mk-stage{position:relative;overflow:hidden;
-  display:grid;grid-template-columns:minmax(180px,250px) 1fr;gap:clamp(20px,4vw,44px);
-  align-items:center;padding:clamp(22px,3.6vw,36px);border-radius:0;
-  background:#16151a;border:1px solid rgba(255,255,255,.1);
-  box-shadow:12px 12px 0 var(--mk-pink)}
-.mk-stage::after{content:"";position:absolute;width:320px;height:320px;right:-110px;bottom:-230px;
-  border-radius:50%;background-image:radial-gradient(circle,var(--mk-pink) 2px,transparent 3px);
-  background-size:15px 15px;opacity:.65;pointer-events:none}
+.mk-stage{position:relative;
+  display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:clamp(26px,5vw,56px);
+  align-items:center;padding:0;border-radius:0;
+  background:none;border:0;box-shadow:none}
+
 /* Kapak kasetin kendisi gibi: kalın siyah çerçeve, içeride ince çizgi. */
 .mk-art{position:relative;z-index:1;aspect-ratio:1;border-radius:0;overflow:hidden;flex:0 0 auto;
-  border:6px solid #030303;
-  background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.16),rgba(255,255,255,.03));
-  box-shadow:inset 0 0 0 2px var(--mk-ink),10px 10px 0 var(--mk-accent)}
+  border:1px solid rgba(255,255,255,.14);
+  background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.12),rgba(255,255,255,.02));
+  box-shadow:0 30px 70px rgba(0,0,0,.6)}
 .mk-art img{width:100%;height:100%;object-fit:cover;display:block}
 .mk-art .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   font-size:52px;opacity:.3}
 .mk-art{transition:box-shadow .5s ease}
 /* Ses akarken kapak altın bir hâleyle nefes alır: "çalıyor" tek bakışta belli. */
-.mk-stage.caliyor .mk-art{box-shadow:inset 0 0 0 2px var(--mk-ink),10px 10px 0 var(--mk-red)}
+.mk-stage.caliyor .mk-art{border-color:rgba(255,255,255,.3);box-shadow:0 30px 70px rgba(0,0,0,.6)}
 
 .mk-live{position:absolute;left:14px;top:14px;z-index:2;display:flex;align-items:center;gap:7px;
   padding:6px 12px;border-radius:0;font-size:10px;font-weight:900;letter-spacing:.18em;
@@ -154,19 +150,20 @@ body:has(.mk-root) .noise{opacity:.11}
 
 .mk-prog{display:flex;align-items:center;gap:12px;margin-top:22px;font-size:11px;opacity:.65;
   font-variant-numeric:tabular-nums}
-.mk-prog input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:5px;border-radius:99px;
+.mk-prog input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:2px;border-radius:0;
   background:rgba(255,255,255,.18);cursor:pointer}
 .mk-prog input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
   border-radius:50%;background:var(--mk-accent);box-shadow:0 2px 8px rgba(0,0,0,.5)}
 .mk-prog input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;
   background:var(--mk-accent)}
 
-.mk-cmds{display:flex;align-items:center;gap:clamp(12px,3vw,22px);margin-top:18px;flex-wrap:wrap}
+.mk-cmds{display:flex;align-items:center;gap:clamp(16px,3.4vw,28px);margin-top:24px;flex-wrap:wrap}
 .mk-cmds button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:17px;opacity:.72;
   transition:opacity .2s,transform .2s}
 .mk-cmds button:hover{opacity:1;transform:scale(1.12)}
-.mk-cmds .mk-main{width:58px;height:58px;border-radius:50%;opacity:1;font-size:19px;color:#131313;
-  background:linear-gradient(145deg,#e9d364,#bfa32c);box-shadow:0 14px 32px rgba(0,0,0,.5)}
+.mk-cmds .mk-main{width:56px;height:56px;border-radius:50%;opacity:1;font-size:20px;
+  color:var(--mk-cream);background:none;border:1px solid rgba(255,255,255,.3);box-shadow:none}
+.mk-cmds .mk-main:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.55)}
 /* Karışık çal: diğer kontrol gibi soluk durur, açıkken altın çerçeveyle belirginleşir. */
 .mk-cmds .mk-shuffle{display:inline-flex;align-items:center;justify-content:center;
   width:42px;height:42px;padding:0;border-radius:50%;
@@ -189,9 +186,8 @@ body:has(.mk-root) .noise{opacity:.11}
 .mk-stage.gizle .mk-art,.mk-stage.gizle .mk-icerik{opacity:0;transform:translateY(7px) scale(.985)}
 
 /* ---------- Parça listesi ---------- */
-.mk-panel{margin-top:26px;padding:clamp(20px,2.8vw,30px);border-radius:0;
-  color:var(--mk-cream);background:var(--mk-pink);border:0;
-  box-shadow:12px 12px 0 var(--mk-yellow)}
+.mk-panel{margin-top:clamp(34px,5vw,56px);padding:clamp(24px,3vw,34px) 0 0;border-radius:0;
+  background:none;border:0;border-top:1px solid rgba(255,255,255,.12);box-shadow:none}
 .mk-panel h3{margin:0 0 18px;font-size:11.5px;font-weight:900;letter-spacing:.2em;opacity:.75;
   display:flex;justify-content:space-between;gap:12px}
 .mk-panel h3 span{letter-spacing:.06em;opacity:.7}
@@ -317,3 +313,34 @@ body:has(.mk-root) .header.mk-top .home{border-radius:0}
 .mk-panel .mk-item .no,.mk-panel .mk-item .sure{opacity:1;color:rgba(255,255,255,.78)}
 .mk-panel .mk-bos{opacity:1;color:rgba(255,255,255,.82)}
 .mk-panel .mk-item .ttl img,.mk-panel .mk-item .ttl .ph{border-color:rgba(0,0,0,.35)}
+
+/* ---------- Arka plan: dağınık kasetler ----------
+   Sayfanın arkasında, Derin Record'un kendi kaset görselinden kurulmuş
+   dağınık bir alan. Griye çevrilip çok soluk bırakılır: hissedilir ama
+   okumayı bozmaz. Sabit durur, içerik üstünden akar.
+   pointer-events yok; aria-hidden olduğu için ekran okuyucuya da görünmez. */
+.mk-arka{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.mk-arka img{position:absolute;display:block;
+  /* Pembe kaset griye çevrilir: arka plan renk taşımaz, doku taşır. */
+  filter:grayscale(1) contrast(1.15) brightness(1.9);
+  opacity:.09;mix-blend-mode:screen}
+/* Dağınık yerleşim: farklı boy, açı ve konum — ızgara hissi olmasın. */
+.mk-arka .k1{width:min(520px,46vw);top:-4%;left:-8%;transform:rotate(-14deg)}
+.mk-arka .k2{width:min(380px,34vw);top:26%;right:-6%;transform:rotate(9deg);opacity:.07}
+.mk-arka .k3{width:min(300px,28vw);top:58%;left:4%;transform:rotate(22deg);opacity:.06}
+.mk-arka .k4{width:min(440px,40vw);bottom:-6%;right:8%;transform:rotate(-7deg);opacity:.08}
+.mk-arka .k5{width:min(240px,24vw);top:44%;left:46%;transform:rotate(-31deg);opacity:.05}
+/* İçerik arka planın üstünde kalmalı. */
+.mk-root .mk-shell,.mk-root .mk-govde{position:relative;z-index:1}
+
+@media(max-width:700px){
+  /* Telefonda büyük kasetler metnin arkasını kalabalıklaştırıyor: ikisi kalır. */
+  .mk-arka .k3,.mk-arka .k5{display:none}
+  .mk-arka img{opacity:.09}
+}
+
+/* Hero filigranı da griye çekilir: arka plandaki kasetlerle aynı tonda olsun,
+   pembe yalnızca arayüz bloklarında kalsın. Referanslardaki tek renkli,
+   yıpranmış his böyle korunur. */
+body:has(.mk-root) .mk-hero-logo img{filter:grayscale(1) contrast(1.1) brightness(1.5)}
+body:has(.mk-root) .mk-hero-logo{opacity:.09}
