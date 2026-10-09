@@ -83,10 +83,12 @@ body:has(.mk-root) .noise{opacity:.11}
 .mk-notes{position:relative;display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
 .mk-note{padding:7px 15px;border-radius:0;font-size:11.5px;font-weight:900;letter-spacing:.06em;
   color:var(--mk-ink);background:var(--mk-accent)}
-.mk-stats{position:relative;display:flex;flex-wrap:wrap;gap:clamp(18px,4vw,44px);margin-top:18px;
-  padding-top:16px;border-top:1px solid var(--mk-line)}
-.mk-stat b{display:block;font-size:clamp(21px,2.8vw,30px);font-weight:900;letter-spacing:-.05em;color:var(--mk-accent)}
-.mk-stat span{display:block;margin-top:4px;font-size:10.5px;letter-spacing:.2em;opacity:.55}
+.mk-stats{position:relative;display:flex;flex-wrap:wrap;align-items:baseline;
+  gap:10px clamp(16px,3vw,32px);margin-top:14px;padding-top:12px;
+  border-top:1px solid var(--mk-line)}
+.mk-stat{display:flex;align-items:baseline;gap:7px}
+.mk-stat b{font-size:clamp(18px,2.2vw,24px);font-weight:900;letter-spacing:-.04em;color:var(--mk-accent)}
+.mk-stat span{font-size:10px;letter-spacing:.18em;opacity:.5}
 
 /* ---------- Gövde: solda listeler, sağda sahne ----------
    Listeler yatay sekme yerine sol sütunda alt alta durur: kaç liste olursa
@@ -98,7 +100,8 @@ body:has(.mk-root) .noise{opacity:.11}
 .mk-sag{min-width:0}
 
 /* ---------- Liste seçici ---------- */
-.mk-tabs{display:flex;flex-direction:column;gap:0;padding:0}
+.mk-tabs{display:flex;flex-direction:column;gap:0;padding:0 22px 0 0;
+  align-self:stretch;border-right:1px solid rgba(255,255,255,.14)}
 .mk-tab{display:flex;align-items:center;gap:13px;width:100%;padding:13px 10px 13px 0;cursor:pointer;
   border-radius:0;font:inherit;color:inherit;text-align:left;
   border:0;border-bottom:1px solid rgba(255,255,255,.09);background:none;
@@ -269,7 +272,7 @@ body:has(.mk-root) .noise{opacity:.11}
 @media(max-width:900px){
   /* Dar ekranda sol sütuna yer yok: listeler yine üstte, yatay kayar. */
   .mk-govde{grid-template-columns:1fr;gap:18px}
-  .mk-tabs{flex-direction:row;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+  .mk-tabs{flex-direction:row;overflow-x:auto;padding:0 0 6px;align-self:auto;border-right:0;scrollbar-width:thin}
   .mk-tab{width:auto;flex:0 0 auto}
   .mk-tab:hover,.mk-tab[aria-pressed="true"]{transform:none;box-shadow:4px 4px 0 var(--mk-pink)}
   /* Sert gölgeler dar ekranda taşmasın diye incelir. */

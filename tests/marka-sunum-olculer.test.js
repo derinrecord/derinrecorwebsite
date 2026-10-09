@@ -276,3 +276,20 @@ test('güven şeridi lisans garantisi vermiyor', () => {
     assert.ok(!k.test(serit), 'şeritte hukuki taahhüt olmamalı: ' + k));
 });
 
+
+// ---------- Dikey ayraç ve sıkıştırılmış kahraman ----------
+// Sunumda çalan parçanın dizüstü ekranda görünür kalması bir tasarım kararı:
+// kahraman bölümü ve istatistikler bilinçli olarak dar tutuldu. Bu ölçüler
+// kazara büyüyüp oynatıcıyı tekrar ekran dışına itmesin diye sabitlenir.
+test('yayın listesi sütununda dikey ayraç var', () => {
+  assert.match(deger('.mk-tabs', 'border-right'), /1px solid/, 'sütunu ayıran çizgi olmalı');
+  assert.equal(deger('.mk-tabs', 'align-self'), 'stretch',
+    'çizgi liste bitince kesilmemeli, gövde boyunca inmeli');
+});
+
+test('istatistikler tek satır: rakam ve etiket yan yana', () => {
+  assert.equal(deger('.mk-stats', 'align-items'), 'baseline');
+  assert.equal(deger('.mk-stat', 'display'), 'flex', 'rakam ve etiket yan yana olmalı');
+  // Etiket rakamın ALTINA düşerse blok iki katına çıkar ve oynatıcı aşağı iner.
+  assert.ok(!/display:block/.test(kural('.mk-stat span') || ''), 'etiket blok olmamalı');
+});
