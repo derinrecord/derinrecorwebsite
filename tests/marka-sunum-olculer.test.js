@@ -254,3 +254,24 @@ test('arka plan: dağınık kasetler, soluk ve griye çevrilmiş', () => {
   // Soluk kalmalı: metnin okunurluğunu bozacak kadar belirgin olmamalı.
   assert.ok(parseFloat(deger('.mk-arka img', 'opacity')) <= 0.12, 'arka plan soluk kalmalı');
 });
+
+// ---------- Güven şeridi ----------
+// Markanın anlaşmadan önce sorduğu soruların cevabı sayfada durmalı. Metin
+// bilinçli olarak ölçülü: telif/lisans garantisi verilmez, kapsam sözleşmeye
+// bırakılır. Bu testler hem şeridin varlığını hem de o sınırı korur.
+test('güven şeridi üç maddeyle basılıyor', () => {
+  const js = require('node:fs').readFileSync(require.resolve('../coffee-marka.js'), 'utf8');
+  assert.match(js, /class="mk-guven"/, 'şerit sayfada olmalı');
+  ['KENDİ ÜRETİMİMİZ', 'MARKAYA ÖZEL', 'KULLANIM KAPSAMI']
+    .forEach(b => assert.ok(js.includes(b), b + ' maddesi olmalı'));
+  assert.equal(deger('.mk-guven', 'grid-template-columns'), 'repeat(3,1fr)');
+});
+
+test('güven şeridi lisans garantisi vermiyor', () => {
+  // "lisanslıdır" gibi bir ifade sözleşmeyle tutarlı olmak zorunda; sayfa
+  // kendi başına böyle bir taahhüt kurmamalı.
+  const js = require('node:fs').readFileSync(require.resolve('../coffee-marka.js'), 'utf8');
+  const serit = js.slice(js.indexOf('class="mk-guven"'), js.indexOf('class="mk-foot"'));
+  [/lisansl[ıi]/i, /telif/i, /garanti/i].forEach(k =>
+    assert.ok(!k.test(serit), 'şeritte hukuki taahhüt olmamalı: ' + k));
+});
