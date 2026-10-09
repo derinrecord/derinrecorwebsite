@@ -125,14 +125,19 @@ test('kahraman ölçüleri sabit: kolon hizası ve filigran', () => {
   assert.ok(logo, 'filigran kuralı okunmalı');
   assert.equal(deger('.mk-hero-logo img', 'width'), '100%');
 
-  // Başlık ve şeritler.
-  assert.equal(deger('.mk-hero h1', 'font-size'), 'clamp(36px,8vw,84px)');
+  // Başlık ve şeritler. Zine diline geçişte başlık ana sayfadaki h1 ile aynı
+  // ağırlığa çekildi: daha büyük, daha sıkışık.
+  assert.equal(deger('.mk-hero h1', 'font-size'), 'clamp(44px,9vw,104px)');
+  assert.equal(deger('.mk-hero h1', 'letter-spacing'), '-.065em', 'ana sayfadaki h1 ile aynı sıkışıklık');
+  assert.equal(deger('.mk-hero h1', 'line-height'), '.78');
   assert.equal(deger('.mk-tag', 'max-width'), '620px');
 });
 
 // ---------- 3) Sahne ölçüleri ----------
 test('sahne ölçüleri sabit: kolon oranı, kapak ve kumandalar', () => {
-  assert.equal(deger('.mk-stage', 'grid-template-columns'), 'minmax(200px,290px) 1fr',
+  // Listeler sol sütuna taşındığı için sahneye daha az yer kaldı: kapak kolonu
+  // bir miktar daraltıldı ki bilgi kolonu sıkışmasın.
+  assert.equal(deger('.mk-stage', 'grid-template-columns'), 'minmax(180px,250px) 1fr',
     'kapak sabit, bilgi kolonu esnek olmalı');
   assert.equal(deger('.mk-stage', 'gap'), 'clamp(20px,4vw,44px)');
   assert.equal(deger('.mk-stage', 'align-items'), 'center');
@@ -216,4 +221,30 @@ test('filigran solukluk sınırı içinde kalır', () => {
     const o = Number(deger('.mk-hero-logo', 'opacity', medya));
     assert.ok(o > 0.1 && o <= 0.2, `${medya || 'ana'} opaklık sınır dışı: ${o}`);
   }
+});
+
+// ---------- Zine dili ----------
+// Sunum, Derin Record'un ana sayfasındaki baskı dilini taşır: köşeler keskin,
+// gölgeler kaymış ve bulanıksız, listeler sol sütunda alt alta. Bu değerler
+// kazara cam/yuvarlak düzene geri dönmesin diye sabitlenir.
+test('zine dili: sol sütun, keskin köşe, sert gölge', () => {
+  assert.equal(deger('.mk-govde', 'grid-template-columns'), '260px minmax(0,1fr)',
+    'listeler solda sabit sütunda durmalı');
+  assert.equal(deger('.mk-tabs', 'flex-direction'), 'column', 'listeler alt alta');
+  assert.equal(deger('.mk-tab', 'border-radius'), '0', 'köşeler keskin');
+  assert.equal(deger('.mk-stage', 'border-radius'), '0');
+  assert.equal(deger('.mk-panel', 'border-radius'), '0');
+  // Sert gölge: tek değer, bulanıklık yarıçapı yok (üçüncü sayı 0).
+  assert.equal(deger('.mk-stage', 'box-shadow'), '12px 12px 0 var(--mk-pink)');
+  assert.equal(deger('.mk-panel', 'box-shadow'), '12px 12px 0 var(--mk-yellow)');
+  assert.equal(deger('.mk-tab[aria-pressed="true"]', 'box-shadow'), '6px 6px 0 var(--mk-pink)');
+});
+
+test('Derin Record renkleri tanımlı ve kullanılıyor', () => {
+  assert.equal(deger('.mk-root', '--mk-pink'), '#cb2468');
+  assert.equal(deger('.mk-root', '--mk-yellow'), '#d8bb2c');
+  assert.equal(deger('.mk-root', '--mk-cream'), '#f4f1e9');
+  // Parça listesi bloğu markanın altınında değil, Derin Record'un pembesinde.
+  assert.equal(deger('.mk-panel', 'background'), 'var(--mk-pink)');
+  assert.equal(deger('.mk-panel', 'color'), 'var(--mk-cream)');
 });
