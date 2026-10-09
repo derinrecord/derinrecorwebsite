@@ -1316,7 +1316,7 @@
           <td class="tight">${esc(hhmm(p.open_time) || '—')}–${esc(hhmm(p.close_time) || '—')}</td>
           <td class="tight">${kilitChip(p)}</td>
           <td><div class="row-actions">
-            <button class="btn sm" data-act="player-copy" data-id="${esc(p.id)}" type="button">LİNK</button>
+            <button class="btn sm" data-act="player-copy" data-id="${esc(p.id)}" type="button">CİHAZ LİNKİ</button>
             <button class="btn sm" data-act="branch-open" data-id="${esc(p.id)}" type="button">YÖNET ›</button>
           </div></td>
         </tr>`;
@@ -1483,7 +1483,7 @@
             : '<span class="sub">denenmedi</span>'}</td>
           <td><div class="row-actions">
             <button class="btn sm" data-act="player-check" data-id="${esc(p.id)}" type="button">SINA</button>
-            <button class="btn sm" data-act="player-copy" data-id="${esc(p.id)}" type="button">LİNK</button>
+            <button class="btn sm" data-act="player-copy" data-id="${esc(p.id)}" type="button">CİHAZ LİNKİ</button>
             <button class="btn sm" data-act="branch-open" data-id="${esc(p.id)}" type="button">YÖNET ›</button>
           </div></td>
         </tr>`;
@@ -1955,7 +1955,7 @@
         <td class="tight">${p.last_seen_at ? esc(tarih(p.last_seen_at)) : 'hiç bağlanmadı'}</td>
         <td class="tight">${kilitChip(p)}</td>
         <td><div class="row-actions">
-          <button class="btn sm" data-act="player-copy" data-id="${esc(p.id)}" type="button">LİNK</button>
+          <button class="btn sm" data-act="player-copy" data-id="${esc(p.id)}" type="button">CİHAZ LİNKİ</button>
           <button class="btn sm" data-act="branch-open" data-id="${esc(p.id)}" type="button">YÖNET ›</button>
         </div></td>
       </tr>`;
