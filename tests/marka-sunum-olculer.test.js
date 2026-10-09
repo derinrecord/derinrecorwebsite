@@ -125,21 +125,21 @@ test('kahraman ölçüleri sabit: kolon hizası ve filigran', () => {
   assert.ok(logo, 'filigran kuralı okunmalı');
   assert.equal(deger('.mk-hero-logo img', 'width'), '100%');
 
-  // Başlık ve şeritler. Zine diline geçişte başlık ana sayfadaki h1 ile aynı
-  // ağırlığa çekildi: daha büyük, daha sıkışık.
-  assert.equal(deger('.mk-hero h1', 'font-size'), 'clamp(44px,9vw,104px)');
+  // Başlık ana sayfadaki h1 ile aynı ağırlıkta, ama kahraman bölümü
+  // dizüstü ekranda kumandaları aşağı ittiği için ölçü küçültüldü.
+  assert.equal(deger('.mk-hero h1', 'font-size'), 'clamp(38px,6.6vw,76px)');
   assert.equal(deger('.mk-hero h1', 'letter-spacing'), '-.065em', 'ana sayfadaki h1 ile aynı sıkışıklık');
-  assert.equal(deger('.mk-hero h1', 'line-height'), '.78');
+  assert.equal(deger('.mk-hero h1', 'line-height'), '.8');
   assert.equal(deger('.mk-tag', 'max-width'), '620px');
 });
 
 // ---------- 3) Sahne ölçüleri ----------
 test('sahne ölçüleri sabit: kolon oranı, kapak ve kumandalar', () => {
-  // Kapak sayfanın ana görseli: kutular kalkınca büyütüldü.
-  assert.equal(deger('.mk-stage', 'grid-template-columns'), 'minmax(220px,320px) 1fr',
+  // Kapak kare olduğu için genişliği sahnenin yüksekliğini de belirliyor:
+  // 1366x625 dizüstünde kumandalar ekranda kalsın diye kolon daraltıldı.
+  assert.equal(deger('.mk-stage', 'grid-template-columns'), 'minmax(190px,268px) 1fr',
     'kapak sabit, bilgi kolonu esnek olmalı');
-  // Kutular kalkınca ayrımı boşluk taşıyor: aralık açıldı.
-  assert.equal(deger('.mk-stage', 'gap'), 'clamp(26px,5vw,56px)');
+  assert.equal(deger('.mk-stage', 'gap'), 'clamp(24px,4vw,46px)');
   assert.equal(deger('.mk-stage', 'align-items'), 'center');
   assert.equal(deger('.mk-art', 'aspect-ratio'), '1', 'kapak kare kalmalı');
   assert.equal(deger('.mk-meta', 'max-width'), '620px');
@@ -276,22 +276,3 @@ test('güven şeridi lisans garantisi vermiyor', () => {
     assert.ok(!k.test(serit), 'şeritte hukuki taahhüt olmamalı: ' + k));
 });
 
-// ---------- Kolaj işareti ----------
-// Tek bir kolaj öğesi: kesilmiş kulaklık, "şimdi çalıyor" etiketinin üstünde.
-// İki tuzak var: (1) #mk-tur'un metni textContent ile yeniden yazılıyor, işaret
-// onun içine konursa ilk parça değişiminde silinir; (2) önizleme üreteci
-// görselleri gömmezse tasarım file:// altında eksik görünür.
-test('kolaj işareti etiketin içinde değil, kardeşi', () => {
-  const js = require('node:fs').readFileSync(require.resolve('../coffee-marka.js'), 'utf8');
-  assert.match(js, /class="mk-isaret"/, 'işaret sayfada olmalı');
-  const etiket = js.slice(js.indexOf('id="mk-tur"'), js.indexOf('id="mk-tur"') + 120);
-  assert.ok(!/mk-isaret/.test(etiket), 'işaret #mk-tur içine konmamalı: textContent siler');
-});
-
-test('kolaj görseli var ve önizlemeye gömülüyor', () => {
-  const fs = require('node:fs'), path = require('node:path');
-  const kok = path.dirname(require.resolve('../coffee-marka.js'));
-  assert.ok(fs.existsSync(path.join(kok, 'assets/kulaklik-kolaj.png')), 'görsel diskte olmalı');
-  const uretec = fs.readFileSync(path.join(kok, 'tests/onizleme-olustur.js'), 'utf8');
-  assert.match(uretec, /kulaklik-kolaj\.png/, 'önizleme bu görseli de gömmeli');
-});

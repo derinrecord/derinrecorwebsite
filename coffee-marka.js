@@ -334,10 +334,6 @@ function ciz(brand, plist) {
       <span class="mk-live"><i></i>CANLI</span></div>
     <div class="mk-meta">
       <div class="mk-icerik">
-        <!-- Kolaj işareti: dinleme anını imzalayan tek öğe. #mk-tur'un metni
-             parça değiştikçe textContent ile yeniden yazıldığı için işaret
-             etiketin İÇİNDE değil, kardeşi olarak durur. -->
-        <img class="mk-isaret" src="/assets/kulaklik-kolaj.png" alt="" aria-hidden="true">
         <p class="mk-lbl" id="mk-tur">HAZIR</p>
         <h2 id="mk-baslik">Bir liste seçin</h2>
         <p class="mk-sub" id="mk-alt">Listeyi seçtiğinizde parçalar akmaya başlar.</p>
