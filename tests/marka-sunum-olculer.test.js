@@ -275,3 +275,23 @@ test('güven şeridi lisans garantisi vermiyor', () => {
   [/lisansl[ıi]/i, /telif/i, /garanti/i].forEach(k =>
     assert.ok(!k.test(serit), 'şeritte hukuki taahhüt olmamalı: ' + k));
 });
+
+// ---------- Kolaj işareti ----------
+// Tek bir kolaj öğesi: kesilmiş kulaklık, "şimdi çalıyor" etiketinin üstünde.
+// İki tuzak var: (1) #mk-tur'un metni textContent ile yeniden yazılıyor, işaret
+// onun içine konursa ilk parça değişiminde silinir; (2) önizleme üreteci
+// görselleri gömmezse tasarım file:// altında eksik görünür.
+test('kolaj işareti etiketin içinde değil, kardeşi', () => {
+  const js = require('node:fs').readFileSync(require.resolve('../coffee-marka.js'), 'utf8');
+  assert.match(js, /class="mk-isaret"/, 'işaret sayfada olmalı');
+  const etiket = js.slice(js.indexOf('id="mk-tur"'), js.indexOf('id="mk-tur"') + 120);
+  assert.ok(!/mk-isaret/.test(etiket), 'işaret #mk-tur içine konmamalı: textContent siler');
+});
+
+test('kolaj görseli var ve önizlemeye gömülüyor', () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const kok = path.dirname(require.resolve('../coffee-marka.js'));
+  assert.ok(fs.existsSync(path.join(kok, 'assets/kulaklik-kolaj.png')), 'görsel diskte olmalı');
+  const uretec = fs.readFileSync(path.join(kok, 'tests/onizleme-olustur.js'), 'utf8');
+  assert.match(uretec, /kulaklik-kolaj\.png/, 'önizleme bu görseli de gömmeli');
+});
