@@ -317,8 +317,10 @@ function ciz(brand, plist) {
 </section>
 
 <section class="mk-shell">
+ <div class="mk-govde">
   <div class="mk-tabs" id="mk-tabs"></div>
 
+  <div class="mk-sag">
   <div class="mk-stage" id="mk-stage">
     <div class="mk-art" id="mk-art"><div class="ph">♪</div>
       <span class="mk-live"><i></i>CANLI</span></div>
@@ -356,6 +358,8 @@ function ciz(brand, plist) {
     <h3 id="mk-liste-baslik"></h3>
     <div id="mk-liste"></div>
   </div>
+  </div>
+ </div>
 
 
   <div class="mk-foot">
