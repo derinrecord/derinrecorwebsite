@@ -135,16 +135,16 @@ test('kahraman ölçüleri sabit: kolon hizası ve filigran', () => {
 
 // ---------- 3) Sahne ölçüleri ----------
 test('sahne ölçüleri sabit: kolon oranı, kapak ve kumandalar', () => {
-  // Listeler sol sütuna taşındığı için sahneye daha az yer kaldı: kapak kolonu
-  // bir miktar daraltıldı ki bilgi kolonu sıkışmasın.
-  assert.equal(deger('.mk-stage', 'grid-template-columns'), 'minmax(180px,250px) 1fr',
+  // Kapak sayfanın ana görseli: kutular kalkınca büyütüldü.
+  assert.equal(deger('.mk-stage', 'grid-template-columns'), 'minmax(220px,320px) 1fr',
     'kapak sabit, bilgi kolonu esnek olmalı');
-  assert.equal(deger('.mk-stage', 'gap'), 'clamp(20px,4vw,44px)');
+  // Kutular kalkınca ayrımı boşluk taşıyor: aralık açıldı.
+  assert.equal(deger('.mk-stage', 'gap'), 'clamp(26px,5vw,56px)');
   assert.equal(deger('.mk-stage', 'align-items'), 'center');
   assert.equal(deger('.mk-art', 'aspect-ratio'), '1', 'kapak kare kalmalı');
   assert.equal(deger('.mk-meta', 'max-width'), '620px');
-  assert.equal(deger('.mk-cmds .mk-main', 'width'), '58px', 'ana oynat düğmesi');
-  assert.equal(deger('.mk-cmds .mk-main', 'height'), '58px');
+  assert.equal(deger('.mk-cmds .mk-main', 'width'), '56px', 'ana oynat düğmesi');
+  assert.equal(deger('.mk-cmds .mk-main', 'height'), '56px');
   assert.equal(deger('.mk-cmds .mk-shuffle', 'width'), '42px', 'karışık çal düğmesi');
 });
 
@@ -223,28 +223,34 @@ test('filigran solukluk sınırı içinde kalır', () => {
   }
 });
 
-// ---------- Zine dili ----------
-// Sunum, Derin Record'un ana sayfasındaki baskı dilini taşır: köşeler keskin,
-// gölgeler kaymış ve bulanıksız, listeler sol sütunda alt alta. Bu değerler
-// kazara cam/yuvarlak düzene geri dönmesin diye sabitlenir.
-test('zine dili: sol sütun, keskin köşe, sert gölge', () => {
+// ---------- Sade dil ----------
+// Sunum koyu, dokulu ve çıplak: kutu, çerçeve ve sert gölge yok. Ağırlığı
+// büyük kapak, ince çizgiler ve boşluk taşıyor. Bu değerler kazara kutulu
+// düzene geri dönmesin diye sabitlenir.
+test('sade dil: kutusuz bloklar, ince çizgi, sol sütun', () => {
   assert.equal(deger('.mk-govde', 'grid-template-columns'), '260px minmax(0,1fr)',
     'listeler solda sabit sütunda durmalı');
   assert.equal(deger('.mk-tabs', 'flex-direction'), 'column', 'listeler alt alta');
-  assert.equal(deger('.mk-tab', 'border-radius'), '0', 'köşeler keskin');
-  assert.equal(deger('.mk-stage', 'border-radius'), '0');
-  assert.equal(deger('.mk-panel', 'border-radius'), '0');
-  // Sert gölge: tek değer, bulanıklık yarıçapı yok (üçüncü sayı 0).
-  assert.equal(deger('.mk-stage', 'box-shadow'), '12px 12px 0 var(--mk-pink)');
-  assert.equal(deger('.mk-panel', 'box-shadow'), '12px 12px 0 var(--mk-yellow)');
-  assert.equal(deger('.mk-tab[aria-pressed="true"]', 'box-shadow'), '6px 6px 0 var(--mk-pink)');
+  assert.equal(deger('.mk-stage', 'box-shadow'), 'none', 'sahne kutu olmamalı');
+  assert.equal(deger('.mk-stage', 'background'), 'none');
+  assert.equal(deger('.mk-panel', 'box-shadow'), 'none', 'parça listesi kutu olmamalı');
+  assert.equal(deger('.mk-panel', 'background'), 'none');
+  // Seçili liste: kutu değil, ince renk şeridi.
+  assert.equal(deger('.mk-tab[aria-pressed="true"]', 'box-shadow'), 'inset 3px 0 0 var(--mk-accent)');
+  // Ana kumanda dolu altın daire değil, ince çerçeveli sade düğme.
+  assert.equal(deger('.mk-cmds .mk-main', 'background'), 'none');
 });
 
-test('Derin Record renkleri tanımlı ve kullanılıyor', () => {
+test('Derin Record renkleri tanımlı', () => {
   assert.equal(deger('.mk-root', '--mk-pink'), '#cb2468');
   assert.equal(deger('.mk-root', '--mk-yellow'), '#d8bb2c');
   assert.equal(deger('.mk-root', '--mk-cream'), '#f4f1e9');
-  // Parça listesi bloğu markanın altınında değil, Derin Record'un pembesinde.
-  assert.equal(deger('.mk-panel', 'background'), 'var(--mk-pink)');
-  assert.equal(deger('.mk-panel', 'color'), 'var(--mk-cream)');
+});
+
+test('arka plan: dağınık kasetler, soluk ve griye çevrilmiş', () => {
+  assert.equal(deger('.mk-arka', 'position'), 'fixed');
+  assert.equal(deger('.mk-arka', 'pointer-events'), 'none', 'tıklamayı engellememelı');
+  assert.match(deger('.mk-arka img', 'filter'), /grayscale\(1\)/, 'arka plan renk taşımamalı');
+  // Soluk kalmalı: metnin okunurluğunu bozacak kadar belirgin olmamalı.
+  assert.ok(parseFloat(deger('.mk-arka img', 'opacity')) <= 0.12, 'arka plan soluk kalmalı');
 });
