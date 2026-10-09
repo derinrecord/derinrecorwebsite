@@ -370,6 +370,25 @@ function ciz(brand, plist) {
  </div>
 
 
+  <!-- Güven şeridi: markanın anlaşmadan önce sorduğu soruların cevabı.
+       Metin bilinçli olarak ölçülü: Derin Record'un kendi üretimi ve kullanım
+       kapsamı belirtilir, telif/lisans hakkında garanti cümlesi kurulmaz —
+       o ifadenin sözleşmeyle tutarlı olması gerekir. -->
+  <div class="mk-guven">
+    <div>
+      <b>KENDİ ÜRETİMİMİZ</b>
+      <p>Bu sunumdaki parçalar Derin Record stüdyosunda üretildi. Hazır katalogdan seçilmedi.</p>
+    </div>
+    <div>
+      <b>MARKAYA ÖZEL</b>
+      <p>Listeler bu marka için hazırlanır; başka bir mekânda aynısı yayınlanmaz.</p>
+    </div>
+    <div>
+      <b>KULLANIM KAPSAMI</b>
+      <p>Yayın, anlaşmalı marka ve şubeleriyle sınırlıdır. Koşullar sözleşmede tanımlanır.</p>
+    </div>
+  </div>
+
   <div class="mk-foot">
     <span>DERİN RECORD · ÖZEL SUNUM</span>
     <span>${new Date().getFullYear()}</span>
