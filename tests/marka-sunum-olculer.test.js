@@ -104,7 +104,10 @@ test('kahraman, sahne ve mini oynatıcı iskeleti yerinde', () => {
 // ---------- 2) Kahraman ölçüleri ----------
 test('kahraman ölçüleri sabit: kolon hizası ve filigran', () => {
   // Kolon, cam başlıkla aynı genişlikte; admin sınırı kaldırılmış olmalı.
-  assert.equal(deger('.mk-shell', 'width'), 'min(1180px,94vw)', 'kahraman kolonu');
+  // Kabuk artık ekranı doldurur: sabit üst sınır yok, yanlarda yalnız kenar payı.
+  assert.equal(deger('.mk-shell', 'width'), '100%', 'kahraman kolonu ekrani doldurmali');
+  assert.equal(deger('.mk-shell', 'max-width'), 'none', 'ust sinir olmamali');
+  assert.match(deger('.mk-shell', 'padding'), /clamp\(16px,2\.2vw,46px\)/, 'kenar payi kalmali');
   assert.equal(deger('.mk-root', 'max-width'), 'none', 'admin sınırı kaldırılmalı');
   assert.equal(deger('.mk-root', 'padding-left'), '0');
   assert.equal(deger('.mk-root', 'padding-right'), '0');
@@ -130,7 +133,8 @@ test('kahraman ölçüleri sabit: kolon hizası ve filigran', () => {
   assert.equal(deger('.mk-hero h1', 'font-size'), 'clamp(38px,6.6vw,76px)');
   assert.equal(deger('.mk-hero h1', 'letter-spacing'), '-.065em', 'ana sayfadaki h1 ile aynı sıkışıklık');
   assert.equal(deger('.mk-hero h1', 'line-height'), '.8');
-  assert.equal(deger('.mk-tag', 'max-width'), '620px');
+  // Orta sütun genişledi: tanıtım metni de buna göre açıldı.
+  assert.equal(deger('.mk-tag', 'max-width'), '760px');
 });
 
 // ---------- 3) Sahne ölçüleri ----------
@@ -142,7 +146,7 @@ test('sahne ölçüleri sabit: kolon oranı, kapak ve kumandalar', () => {
   assert.equal(deger('.mk-stage', 'gap'), 'clamp(24px,4vw,46px)');
   assert.equal(deger('.mk-stage', 'align-items'), 'center');
   assert.equal(deger('.mk-art', 'aspect-ratio'), '1', 'kapak kare kalmalı');
-  assert.equal(deger('.mk-meta', 'max-width'), '620px');
+  assert.equal(deger('.mk-meta', 'max-width'), 'none', 'bilgi kolonu kolonu doldurmali');
   assert.equal(deger('.mk-cmds .mk-main', 'width'), '56px', 'ana oynat düğmesi');
   assert.equal(deger('.mk-cmds .mk-main', 'height'), '56px');
   assert.equal(deger('.mk-cmds .mk-shuffle', 'width'), '42px', 'karışık çal düğmesi');
@@ -184,19 +188,15 @@ test('duyarlı kırılımlar sabit: sahne tek kolon, filigran küçülür/silini
 
 // ---------- 6) Hesaplanan görünüm ----------
 test('hesaplanan genişlikler ekrana sığar ve hizayı bozmaz', () => {
-  const kabuk = deger('.mk-shell', 'width');
   const cubuk = deger('.mk-dock', 'width');
   const sahneBosluk = deger('.mk-stage', 'gap');
   const logo = deger('.mk-hero-logo', 'width');
 
   for (const vw of [390, 480, 768, 1024, 1280, 1440]) {
-    const K = minPx(kabuk, vw);
     const C = minPx(cubuk, vw);
     const L = minPx(logo, vw);
 
-    assert.ok(K <= vw + 0.01, `kahraman kolonu ekrandan geniş: ${K} > ${vw}`);
     assert.ok(C <= vw + 0.01, `mini oynatıcı ekrandan geniş: ${C} > ${vw}`);
-    assert.ok(C <= K + 0.01, `mini oynatıcı kolondan geniş: ${C} > ${K}`);
     // Çubuk 46px kapak + metin + 40px ana düğme taşır: en dar ekranda da
     // kırpılmasın diye genişliği bu üçünün altına inmemeli.
     assert.ok(C >= 220, `mini oynatıcı çok dar: ${C}`);
@@ -206,9 +206,7 @@ test('hesaplanan genişlikler ekrana sığar ve hizayı bozmaz', () => {
     assert.ok(clampPx(sahneBosluk, vw) >= 20 - 0.01, `sahne boşluğu çok dar @ ${vw}`);
   }
 
-  // Sabit değerler: büyük ekranda üst sınıra, telefonda vw sınırına oturur.
-  assert.ok(YAKIN(minPx(kabuk, 1280), 1180), 'kabuk 1180px üst sınırı');
-  assert.ok(YAKIN(minPx(kabuk, 390), 366.6), 'kabuk 94vw (390)');
+  // Sabit değerler: mini oynatıcı hâlâ sınırlı, kabuk artık değil.
   assert.ok(YAKIN(minPx(cubuk, 1280), 680), 'çubuk 680px üst sınırı');
   assert.ok(YAKIN(minPx(cubuk, 390), 358.8), 'çubuk 92vw (390)');
 });
@@ -228,8 +226,11 @@ test('filigran solukluk sınırı içinde kalır', () => {
 // büyük kapak, ince çizgiler ve boşluk taşıyor. Bu değerler kazara kutulu
 // düzene geri dönmesin diye sabitlenir.
 test('sade dil: kutusuz bloklar, ince çizgi, sol sütun', () => {
-  assert.equal(deger('.mk-govde', 'grid-template-columns'), '260px minmax(0,1fr)',
-    'listeler solda sabit sütunda durmalı');
+  // Üç sütun: listeler · çalan + parçalar · bilgi. Orta sütun esner, yanlar
+  // sınırlı kalır ki geniş ekranda okuma satırı aşırı uzamasın.
+  assert.equal(deger('.mk-govde', 'grid-template-columns'),
+    'minmax(220px,268px) minmax(0,1fr) minmax(240px,310px)',
+    'listeler solda, bilgi sağda sabit sütunda durmalı');
   assert.equal(deger('.mk-tabs', 'flex-direction'), 'column', 'listeler alt alta');
   assert.equal(deger('.mk-stage', 'box-shadow'), 'none', 'sahne kutu olmamalı');
   assert.equal(deger('.mk-stage', 'background'), 'none');

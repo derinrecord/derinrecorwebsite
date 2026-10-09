@@ -108,12 +108,18 @@ test('başlık yalnız marka adını gösterir', () => {
   assert.ok(!/\.mk-hero h1 span/.test(css), 'kullanılmayan başlık stili kalmamalı');
 });
 
-// Sunum kolonu, cam başlıkla (`min(1180px,94vw)`) aynı genişlikte ortalanmalı.
-// admin-main'in 70rem sınırı bırakılırsa .mk-shell kapsayıcısından taşar: dar
-// masaüstü genişliklerinde yatay kaydırma çubuğu çıkar ve içerik sağa yaslanır.
-test('sunum kolonu kapsayıcıdan taşmaz, cam başlıkla hizalanır', () => {
-  assert.match(css, /\.mk-shell\{[^}]*width:min\(1180px,94vw\)/,
-    'kolon genişliği başlıkla aynı olmalı');
+// Sunum kolonu ekranı doldurur (tam genişlik + kenar payı) ve üst şerit onunla
+// aynı hizada başlar: şerit tam genişlikte bir bant, ama içindeki yazıların
+// dolgusu kabuğun kenar payından hesaplanır. admin-main'in 70rem sınırı
+// bırakılırsa .mk-shell kapsayıcısından taşar: dar masaüstü genişliklerinde
+// yatay kaydırma çubuğu çıkar ve içerik sağa yaslanır.
+test('sunum kolonu kapsayıcıdan taşmaz, üst şeritle hizalanır', () => {
+  assert.match(css, /\.mk-shell\{[^}]*width:100%[^}]*max-width:none/,
+    'kolon ekranı doldurmalı');
+  const pay = /clamp\(16px,2\.2vw,46px\)/;
+  assert.match(css.match(/\.mk-shell\{[^}]*\}/)[0], pay, 'kabuğun kenar payı');
+  assert.match(css.match(/\.header\.mk-top\{[^}]*\}/)[0], pay,
+    'şeridin dolgusu kabuğun kenar payıyla aynı olmalı');
   const mkRoot = css.slice(css.indexOf('.mk-root{'), css.indexOf('.mk-lock{'));
   assert.match(mkRoot, /max-width:none/, 'admin-main sınırı kaldırılmalı');
   assert.match(mkRoot, /padding-left:0/, 'sol dolgu sıfırlanmalı');

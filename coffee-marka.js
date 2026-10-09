@@ -321,7 +321,6 @@ function ciz(brand, plist) {
   <h1>${safe(brand.name)}</h1>
   ${brand.tagline ? `<p class="mk-tag">${safe(brand.tagline)}</p>` : ''}
   ${notlar.length ? `<div class="mk-notes">${notlar.map(n => `<span class="mk-note">${safe(n)}</span>`).join('')}</div>` : ''}
-  <div class="mk-stats" id="mk-stats"></div>
 </section>
 
 <section class="mk-shell">
@@ -367,27 +366,29 @@ function ciz(brand, plist) {
     <div id="mk-liste"></div>
   </div>
   </div>
+
+  <!-- Sağ sütun: markanın karar verirken ihtiyaç duyduğu bilgi. Sayılar
+       üstte, güven maddeleri altta. Kahramandan buraya taşındı: ekranın
+       sağı boş duruyordu, çalan parça da aşağı iniyordu. -->
+  <aside class="mk-bilgi">
+    <div class="mk-stats" id="mk-stats"></div>
+    <div class="mk-guven">
+      <div>
+        <b>KENDİ ÜRETİMİMİZ</b>
+        <p>Bu sunumdaki parçalar Derin Record stüdyosunda üretildi. Hazır katalogdan seçilmedi.</p>
+      </div>
+      <div>
+        <b>MARKAYA ÖZEL</b>
+        <p>Listeler bu marka için hazırlanır; başka bir mekânda aynısı yayınlanmaz.</p>
+      </div>
+      <div>
+        <b>KULLANIM KAPSAMI</b>
+        <p>Yayın, anlaşmalı marka ve şubeleriyle sınırlıdır. Koşullar sözleşmede tanımlanır.</p>
+      </div>
+    </div>
+  </aside>
  </div>
 
-
-  <!-- Güven şeridi: markanın anlaşmadan önce sorduğu soruların cevabı.
-       Metin bilinçli olarak ölçülü: Derin Record'un kendi üretimi ve kullanım
-       kapsamı belirtilir, telif/lisans hakkında garanti cümlesi kurulmaz —
-       o ifadenin sözleşmeyle tutarlı olması gerekir. -->
-  <div class="mk-guven">
-    <div>
-      <b>KENDİ ÜRETİMİMİZ</b>
-      <p>Bu sunumdaki parçalar Derin Record stüdyosunda üretildi. Hazır katalogdan seçilmedi.</p>
-    </div>
-    <div>
-      <b>MARKAYA ÖZEL</b>
-      <p>Listeler bu marka için hazırlanır; başka bir mekânda aynısı yayınlanmaz.</p>
-    </div>
-    <div>
-      <b>KULLANIM KAPSAMI</b>
-      <p>Yayın, anlaşmalı marka ve şubeleriyle sınırlıdır. Koşullar sözleşmede tanımlanır.</p>
-    </div>
-  </div>
 
   <div class="mk-foot">
     <span>DERİN RECORD · ÖZEL SUNUM</span>
