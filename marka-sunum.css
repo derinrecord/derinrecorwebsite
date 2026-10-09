@@ -52,11 +52,16 @@
    koruyor, böylece dar ekranda içerik kenara yapışmıyor. */
 .mk-shell{width:100%;max-width:none;margin:0;padding:0 clamp(16px,2.2vw,46px)}
 
-/* ---------- Kağıt dokusu ----------
-   Sayfada branch.css'ten gelen .noise katmanı zaten var (opaklık .06). İkinci
-   bir katman eklemek yerine onu burada koyulaştırıyoruz: baskılı kağıt greni
-   zine dilinde görünür olmalı, sezilir olmamalı. */
-body:has(.mk-root) .noise{opacity:.11}
+/* ---------- Arka plan dokusu: halftone nokta tramı ----------
+   branch.css'in gren katmanı (fractalNoise) burada nokta tramına çevrilir:
+   doku dijital bir gürültü değil, basılı bir tram olsun. .noise .mk-root'un
+   kardeşi olduğu için değişkenler oraya ulaşmaz; pembe doğrudan yazılır.
+   Kenarlarda yoğun, ortada seyrek: metnin arkası sakin kalsın. */
+body:has(.mk-root) .noise{z-index:0;opacity:.38;
+  background-image:radial-gradient(circle,#cb2468 1.4px,transparent 2.1px);
+  background-size:17px 17px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 42%,transparent 34%,#000 88%);
+  mask-image:radial-gradient(ellipse at 50% 42%,transparent 34%,#000 88%)}
 
 /* ---------- Kahraman ---------- */
 .mk-hero{position:relative;padding-top:clamp(18px,3vw,34px);padding-bottom:18px}
@@ -70,13 +75,6 @@ body:has(.mk-root) .noise{opacity:.11}
   -webkit-mask-image:linear-gradient(104deg,transparent 0%,#000 44%);
   mask-image:linear-gradient(104deg,transparent 0%,#000 44%)}
 .mk-hero-logo img{display:block;width:100%;height:auto}
-/* Halftone tram: ana sayfadaki nokta alanının aynısı (17px ızgara, pembe).
-   Bulanık hâle yerine basılı nokta dokusu — zine dilinin imzası. */
-.mk-hero::before{content:"";position:absolute;left:-26%;top:-46%;width:min(520px,60vw);height:min(520px,60vw);
-  border-radius:50%;background-image:radial-gradient(circle,var(--mk-pink) 2px,transparent 3px);
-  background-size:17px 17px;opacity:.34;pointer-events:none;
-  -webkit-mask-image:radial-gradient(circle,#000 42%,transparent 72%);
-  mask-image:radial-gradient(circle,#000 42%,transparent 72%)}
 .mk-eyebrow{position:relative;margin:0;font-size:11px;letter-spacing:.28em;opacity:.6;
   color:var(--mk-accent);font-weight:900}
 /* Ana sayfadaki h1 ile aynı ağırlık ve sıkışıklık: 900, -.065em, .78 satır. */
@@ -245,7 +243,7 @@ body:has(.mk-root) .noise{opacity:.11}
 /* ---------- Alt bilgi ---------- */
 .mk-foot{margin-top:34px;padding-top:22px;border-top:1px solid var(--mk-line);
   display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
-  font-size:11px;letter-spacing:.14em;opacity:.42}
+  font-size:11px;letter-spacing:.14em;opacity:.62}
 
 /* ---------- Alt mini oynatıcı ---------- */
 /* Sahne ekrandan çıkınca alt köşede belirir; kumandalar sahneyle aynıdır. */
