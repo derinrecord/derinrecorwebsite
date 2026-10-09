@@ -1810,3 +1810,13 @@ test('bildirimler menüde kendi satırı, başlığı ve rozetiyle durur', () =>
   assert.ok(sakin.includes('data-nav="bildirim"'), 'rozetsizken de satır kalmalı');
   assert.ok(!sakin.includes('say uyari'), 'okunmamış yokken rozet çizilmemeli');
 });
+
+// Şube linki ile marka sunumu linki birbirine karışıyordu: düğmede yalnızca
+// "LİNK" yazdığı için markaya gönderilecek bir şey gibi duruyordu. Oysa bu
+// link kafedeki cihaza kurulur. Etiket üç ekranda da aynı olmalı.
+test('şube linki düğmesi kime ait olduğunu söylüyor', () => {
+  const kaynak = require('node:fs').readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
+  const dugmeler = kaynak.match(/data-act="player-copy"[^>]*>([^<]*)</g) || [];
+  assert.equal(dugmeler.length, 3, 'üç ekranda da link düğmesi var');
+  dugmeler.forEach(d => assert.match(d, /CİHAZ LİNKİ</, 'düğme "CİHAZ LİNKİ" demeli'));
+});
