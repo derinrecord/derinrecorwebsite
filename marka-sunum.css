@@ -386,3 +386,23 @@ body:has(.mk-root) .mk-hero-logo{opacity:.09}
 @media(max-width:820px){
   .mk-bilgi .mk-guven{grid-template-columns:1fr}
 }
+
+/* ---------- Başlık ızgarada (11 Ekim 2026) ----------
+   Marka başlığı sol sütunda, çalma listelerinin üstünde durur; çalan parça ve
+   bilgi sütunu başlıkla aynı hizadan başlar. Orta genişlikte başlık yine en
+   üstte tam genişliktir; dar ekranda her şey alt alta. */
+.mk-govde{grid-template-areas:"hero sag bilgi" "tabs sag bilgi";grid-template-rows:auto 1fr}
+.mk-govde > .mk-hero{grid-area:hero;padding-left:0;padding-right:0;padding-top:0;min-width:0}
+.mk-govde > .mk-hero h1{font-size:clamp(38px,3.9vw,66px);overflow-wrap:break-word}
+.mk-govde > .mk-hero-logo,.mk-govde > .mk-hero .mk-hero-logo{right:auto;left:0;width:min(300px,24vw)}
+.mk-govde > .mk-tabs{grid-area:tabs}
+.mk-govde > .mk-sag{grid-area:sag}
+.mk-govde > .mk-bilgi{grid-area:bilgi}
+@media(max-width:1180px){
+  .mk-govde{grid-template-areas:"hero hero" "tabs sag" "bilgi bilgi";grid-template-rows:auto}
+  .mk-govde > .mk-hero h1{font-size:clamp(38px,6.6vw,76px)}
+  .mk-govde > .mk-hero .mk-hero-logo{left:auto;right:0;width:min(440px,44vw)}
+}
+@media(max-width:900px){
+  .mk-govde{grid-template-areas:"hero" "tabs" "sag" "bilgi"}
+}

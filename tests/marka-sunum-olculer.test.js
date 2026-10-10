@@ -294,3 +294,21 @@ test('istatistikler tek satır: rakam ve etiket yan yana', () => {
   // Etiket rakamın ALTINA düşerse blok iki katına çıkar ve oynatıcı aşağı iner.
   assert.ok(!/display:block/.test(kural('.mk-stat span') || ''), 'etiket blok olmamalı');
 });
+
+// Bilgisayarda çalan parça bölümü, marka başlığıyla ("Brew Lab") aynı hizadan
+// başlar: başlık sol sütuna, çalma listelerinin üstüne yerleşir (11 Ekim 2026).
+test('masaüstü: başlık govde ızgarasının içinde, çalan parça onunla aynı satırda', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'coffee-marka.js'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'marka-sunum.css'), 'utf8');
+  const govde = js.indexOf('<div class="mk-govde">');
+  const hero = js.indexOf('<section class="mk-hero mk-shell">');
+  const tabs = js.indexOf('<div class="mk-tabs" id="mk-tabs">');
+  assert.ok(govde > -1 && hero > govde && tabs > hero, 'başlık ızgaranın içinde, listelerden önce olmalı');
+  assert.match(css, /grid-template-areas:\s*"hero sag bilgi"\s*"tabs sag bilgi"/, 'masaüstünde başlık ile çalan parça aynı satırda');
+  assert.match(css, /grid-template-areas:\s*"hero hero"\s*"tabs sag"\s*"bilgi bilgi"/, 'orta genişlikte başlık üstte tam genişlik');
+  // grid-column:auto, grid-area'nın sütun kısmını ezer ve bilgi sütununu dar
+  // sol sütuna sıkıştırır (1024px'te görüldü).
+  assert.ok(!/\.mk-govde > \.mk-bilgi\{grid-column:auto\}/.test(css), 'bilgi alanı grid-column ile ezilmemeli');
+});
