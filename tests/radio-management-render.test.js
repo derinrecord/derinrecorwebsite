@@ -725,3 +725,29 @@ test('bildirimler bölümü kendi adresi, rozeti ve okundu damgasıyla bağlanı
   // Damga yalnız bu bölüm açıkken yazılmalı: başka ekranı gezmek okundu saymaz.
   assert.match(ciz, /if \(state\.nav === 'bildirim'\) \{/);
 });
+
+// ---------- Satış takibi (docs/superpowers/specs/2026-10-10-satis-takibi-design.md) ----------
+test('satış: #/satis adresi talepler ekranına gider', () => {
+  assert.match(source, /satis: \{ nav: 'musteri', sub: 'talepler' \}/);
+});
+
+test('satış: talepler yeni kolonlarla okunur', () => {
+  const bas = source.indexOf('async function talepleriYukle');
+  const blok = source.slice(bas, source.indexOf('}', source.indexOf('.select(', bas)));
+  ['source', 'plan_id', 'next_step', 'next_step_date', 'notes', 'brand_id'].forEach(k =>
+    assert.ok(blok.includes(k), k + ' okunmalı'));
+});
+
+test('satış: firma ekleme ve düzenleme eylemleri dinlenir', () => {
+  ["case 'req-add'", "case 'req-edit'", "case 'req-save'", "case 'sales-filter'"].forEach(c =>
+    assert.ok(source.includes(c), c + ' olmalı'));
+  const ekle = source.slice(source.indexOf("case 'req-add'"), source.indexOf("case 'req-edit'"));
+  assert.match(ekle, /source: 'manual'/);
+});
+
+test('satış: panel sayfası satis-takibi.js modülünü takvimden önce yükler', () => {
+  const html = fs.readFileSync(require.resolve('../radyo-yonetim.html'), 'utf8');
+  const satis = html.indexOf('satis-takibi.js');
+  assert.ok(satis > -1, 'satis-takibi.js yüklenmeli');
+  assert.ok(satis < html.indexOf('plan-takvim.js'));
+});

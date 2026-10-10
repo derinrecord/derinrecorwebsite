@@ -93,6 +93,9 @@
     desteklenenler: () => (Ses ? Ses.desteklenenler() : 'mp3, wav'),
     parcaNotu: () => '45 MB üzeri dosyalar kayıpsız parçalara bölünerek yüklenir',
     now: () => Date.now(),
+    // Satış ekranı: "bugün" yerel (İstanbul) takvim günü; süzgeç seçimi.
+    bugunIso: () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
+    satisAsama: 'tumu',
     saglikSonuc: id => saglikSonuc[id] || null,
     // İzin verilmemişse alarm şeridinde "BİLDİRİMLERİ AÇ" düğmesi çizilir.
     bildirimGerekli: () => typeof Notification !== 'undefined' && Notification.permission !== 'granted',
@@ -484,6 +487,7 @@
     markalar: { nav: 'musteri', sub: 'markalar' },
     abonelikler: { nav: 'musteri', sub: 'abonelikler' },
     talepler: { nav: 'musteri', sub: 'talepler' },
+    satis: { nav: 'musteri', sub: 'talepler' },
     kurulum: { nav: 'kurulum', sub: 'kurulum' },
     plan: { nav: 'plan', sub: 'takvim' },
     bildirimler: { nav: 'bildirim', sub: 'bildirimler' }
@@ -528,7 +532,7 @@
     }
     if (state.nav === 'icerik') return state.sub === 'anonslar' ? '#/anons' : '#/klasorler';
     if (state.sub === 'abonelikler') return '#/abonelikler';
-    if (state.sub === 'talepler') return '#/talepler';
+    if (state.sub === 'talepler') return '#/satis';
     if (state.nav === 'bildirim') return '#/bildirimler';
     if (state.nav === 'kurulum') return '#/kurulum';
     if (state.nav === 'plan') return '#/plan/takvim';
@@ -1019,7 +1023,7 @@
 
   async function talepleriYukle() {
     const { data, error } = await client.from('coffee_requests')
-      .select('id,company,contact_name,email,phone,branch_count,message,status,created_at')
+      .select('id,company,contact_name,email,phone,branch_count,message,status,created_at,source,plan_id,next_step,next_step_date,notes,brand_id,updated_at')
       .order('created_at', { ascending: false });
     if (error) { hata('Talepler okunamadı: ' + error.message); D.requests = []; return; }
     D.requests = data || [];
@@ -2738,6 +2742,46 @@
         }
         return;
 
+      // --- satış (talepler) ---
+      case 'sales-filter':
+        ui.satisAsama = hedef.dataset.asama || 'tumu';
+        ciz();
+        return;
+      case 'req-add':
+        pencere({
+          baslik: 'Firma ekle',
+          onayMetni: 'EKLE',
+          govde: talepFormu(null),
+          onOnay: async () => {
+            const alanlar = talepFormuOku();
+            if (!alanlar.company) return hata('Firma adı gerekli.');
+            const sorun = await yazDogrula(
+              client.from('coffee_requests').insert({ ...alanlar, source: 'manual', status: 'new' }), 'Firma eklenemedi');
+            if (sorun) return hata(sorun);
+            await talepleriYukle(); ciz();
+            bildir('Firma eklendi.');
+          }
+        });
+        return;
+      case 'req-edit': {
+        const t = (D.requests || []).find(x => x.id === id);
+        if (!t) return;
+        cekmeceAc(`<h3>${esc(t.company)}</h3>${talepFormu(t)}
+          <div class="modal-actions"><button class="btn primary" data-act="req-save" data-id="${esc(t.id)}" type="button">KAYDET</button></div>`);
+        return;
+      }
+      case 'req-save': {
+        const alanlar = talepFormuOku();
+        if (!alanlar.company) return hata('Firma adı gerekli.');
+        const sorun = await yazDogrula(
+          client.from('coffee_requests').update(alanlar).eq('id', id), 'Kaydedilemedi');
+        if (sorun) return hata(sorun);
+        cekmeceKapat();
+        await talepleriYukle(); ciz();
+        bildir('Firma güncellendi.');
+        return;
+      }
+
       // --- talepler ---
       case 'req-convert': {
         const r = (D.requests || []).find(x => x.id === id);
@@ -2854,7 +2898,7 @@
       if (sorun) return hata(sorun);
       const kayit = (D.requests || []).find(r => r.id === hedef.dataset.id);
       if (kayit) kayit.status = hedef.value;
-      bildir('Talep durumu güncellendi.');
+      bildir('Aşama güncellendi.');
       return;
     }
 
@@ -3067,6 +3111,43 @@
   }
 
   // Paket ve süre seçtirip aboneliği başlatır (yayın sağlığı düzeltmesi).
+  // ---------- Satış: firma formu ----------
+  // Tasarım: docs/superpowers/specs/2026-10-10-satis-takibi-design.md
+  function talepFormu(t) {
+    const v = k => esc((t && t[k] != null) ? t[k] : '');
+    const planlar = (D.plans || []).map(pl =>
+      `<option value="${esc(pl.id)}"${t && t.plan_id === pl.id ? ' selected' : ''}>${esc(pl.name)}</option>`).join('');
+    return `
+      <div class="form-grid">
+        <div class="field"><label for="sf-company">FİRMA</label><input id="sf-company" value="${v('company')}" autocomplete="off"></div>
+        <div class="field"><label for="sf-name">YETKİLİ</label><input id="sf-name" value="${v('contact_name')}" autocomplete="off"></div>
+        <div class="field"><label for="sf-phone">TELEFON</label><input id="sf-phone" type="tel" value="${v('phone')}" autocomplete="off"></div>
+        <div class="field"><label for="sf-email">E-POSTA</label><input id="sf-email" type="email" value="${v('email')}" autocomplete="off"></div>
+        <div class="field"><label for="sf-branch">ŞUBE SAYISI</label><input id="sf-branch" type="number" min="1" value="${v('branch_count')}"></div>
+        <div class="field"><label for="sf-plan">DÜŞÜNÜLEN PAKET</label>
+          <select id="sf-plan"><option value="">—</option>${planlar}</select></div>
+        <div class="field"><label for="sf-next">SONRAKİ ADIM</label><input id="sf-next" value="${v('next_step')}" placeholder="ör. Pazartesi ara" autocomplete="off"></div>
+        <div class="field"><label for="sf-next-date">TARİHİ</label><input id="sf-next-date" type="date" value="${t && t.next_step_date ? esc(String(t.next_step_date).slice(0, 10)) : ''}"></div>
+      </div>
+      <div class="field"><label for="sf-notes">NOTLAR</label><textarea id="sf-notes" rows="4">${v('notes')}</textarea></div>`;
+  }
+
+  function talepFormuOku() {
+    const al = id => { const x = el(id); const s = x ? String(x.value).trim() : ''; return s || null; };
+    const sube = al('sf-branch');
+    return {
+      company: al('sf-company'),
+      contact_name: al('sf-name') || '',
+      email: al('sf-email') || '',
+      phone: al('sf-phone'),
+      branch_count: sube ? Math.max(1, Number(sube) || 1) : null,
+      plan_id: al('sf-plan'),
+      next_step: al('sf-next'),
+      next_step_date: al('sf-next-date'),
+      notes: al('sf-notes')
+    };
+  }
+
   function abonelikBaslat(brandId) {
     const b = marka(brandId);
     if (!b) return;
