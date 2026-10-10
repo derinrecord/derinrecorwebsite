@@ -1,3 +1,10 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — satış önizleme</title>
+<style>
 /* Radyo Yönetim Paneli — görsel dil.
  *
  * NEDEN TEK DOSYA: eski panelde stillerin bir kısmı JavaScript içine satır içi
@@ -645,3 +652,102 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 }
 
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+body{background:#0b0b0d;padding:22px;display:block}
+.onizleme{max-width:1080px;margin:0 auto}
+</style>
+</head>
+<body><div class="onizleme"><div class="tabs"><button type="button" data-sub="markalar" class="">Markalar</button><button type="button" data-sub="abonelikler" class="">Abonelikler</button><button type="button" data-sub="talepler" class="active">Satış</button></div>
+      <div class="panel bugun-panel">
+        <h3>Bugün yapılacaklar (2)</h3>
+        <ul class="bugun-liste"><li class="gecikti"><button class="link" type="button" data-act="req-edit" data-id="r1"><b>Mola Kafe</b></button>
+            <span>Pazartesi ara, fiyatı konuş</span> <span class="sub">08.10.2026 · gecikti</span></li><li class=""><button class="link" type="button" data-act="req-edit" data-id="r2"><b>Kahve Durağı</b></button>
+            <span>Teklife dönüş bekleniyor</span> <span class="sub">10.10.2026</span></li></ul>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>FİRMALAR (5)</h3>
+          <button class="btn primary sm" data-act="req-add" type="button">+ FİRMA EKLE</button></div>
+        <p class="panel-sub">Siteden gelen başvurular ve elle eklediğin firmalar. Anlaşınca “MARKAYA ÇEVİR”.</p>
+        <div class="asama-cipleri"><button class="chip-btn active" type="button" data-act="sales-filter" data-asama="tumu">Tümü <b>5</b></button><button class="chip-btn" type="button" data-act="sales-filter" data-asama="new">Yeni <b>1</b></button><button class="chip-btn" type="button" data-act="sales-filter" data-asama="contacted">Görüşüldü <b>1</b></button><button class="chip-btn" type="button" data-act="sales-filter" data-asama="offer">Teklif gönderildi <b>1</b></button><button class="chip-btn" type="button" data-act="sales-filter" data-asama="trial">Denemede <b>1</b></button><button class="chip-btn" type="button" data-act="sales-filter" data-asama="won">Anlaştı <b>1</b></button><button class="chip-btn" type="button" data-act="sales-filter" data-asama="lost">Olmadı <b>0</b></button></div>
+        <table class="satis-tablo">
+          <thead><tr><th>FİRMA</th><th>AŞAMA</th><th>SONRAKİ ADIM</th><th>KAYNAK</th><th></th></tr></thead>
+          <tbody><tr>
+      <td><div class="cell-main"><span class="cover">📩</span><span><b>Mola Kafe</b>
+        <span class="sub">Ayşe K. · ayse@mola.example · 0555 111 22 33</span>
+        <span class="sub">1 şube</span>
+        </span></div></td>
+      <td class="tight" data-etiket="Aşama"><select data-act="req-status" data-id="r1" aria-label="Aşama"><option value="new">Yeni</option><option value="contacted" selected>Görüşüldü</option><option value="offer">Teklif gönderildi</option><option value="trial">Denemede</option><option value="won">Anlaştı</option><option value="lost">Olmadı</option></select></td>
+      <td data-etiket="Sonraki adım">Pazartesi ara, fiyatı konuş <span class="sub">08.10.2026</span></td>
+      <td class="tight" data-etiket="Kaynak">Elle</td>
+      <td><div class="row-actions">
+        <button class="btn sm" data-act="req-edit" data-id="r1" type="button">DÜZENLE</button>
+        <button class="btn sm" data-act="req-convert" data-id="r1" type="button">MARKAYA ÇEVİR</button>
+        <button class="btn sm danger" data-act="req-del" data-id="r1" type="button">SİL</button>
+      </div></td>
+    </tr><tr>
+      <td><div class="cell-main"><span class="cover">📩</span><span><b>Kahve Durağı</b>
+        <span class="sub">Can D. · can@durak.example</span>
+        <span class="sub">6 şube</span>
+        <span class="sub">“Altı şubemiz var.”</span></span></div></td>
+      <td class="tight" data-etiket="Aşama"><select data-act="req-status" data-id="r2" aria-label="Aşama"><option value="new">Yeni</option><option value="contacted">Görüşüldü</option><option value="offer" selected>Teklif gönderildi</option><option value="trial">Denemede</option><option value="won">Anlaştı</option><option value="lost">Olmadı</option></select></td>
+      <td data-etiket="Sonraki adım">Teklife dönüş bekleniyor <span class="sub">10.10.2026</span></td>
+      <td class="tight" data-etiket="Kaynak">Site</td>
+      <td><div class="row-actions">
+        <button class="btn sm" data-act="req-edit" data-id="r2" type="button">DÜZENLE</button>
+        <button class="btn sm" data-act="req-convert" data-id="r2" type="button">MARKAYA ÇEVİR</button>
+        <button class="btn sm danger" data-act="req-del" data-id="r2" type="button">SİL</button>
+      </div></td>
+    </tr><tr>
+      <td><div class="cell-main"><span class="cover">📩</span><span><b>Bahçe Roastery</b>
+        <span class="sub">—</span>
+        
+        </span></div></td>
+      <td class="tight" data-etiket="Aşama"><select data-act="req-status" data-id="r3" aria-label="Aşama"><option value="new">Yeni</option><option value="contacted">Görüşüldü</option><option value="offer">Teklif gönderildi</option><option value="trial" selected>Denemede</option><option value="won">Anlaştı</option><option value="lost">Olmadı</option></select></td>
+      <td data-etiket="Sonraki adım">Deneme bitiyor, sözleşme gönder <span class="sub">14.10.2026</span></td>
+      <td class="tight" data-etiket="Kaynak">Elle</td>
+      <td><div class="row-actions">
+        <button class="btn sm" data-act="req-edit" data-id="r3" type="button">DÜZENLE</button>
+        <button class="btn sm" data-act="req-convert" data-id="r3" type="button">MARKAYA ÇEVİR</button>
+        <button class="btn sm danger" data-act="req-del" data-id="r3" type="button">SİL</button>
+      </div></td>
+    </tr><tr>
+      <td><div class="cell-main"><span class="cover">📩</span><span><b>Starbucks (örnek)</b>
+        <span class="sub">—</span>
+        
+        </span></div></td>
+      <td class="tight" data-etiket="Aşama"><select data-act="req-status" data-id="r4" aria-label="Aşama"><option value="new" selected>Yeni</option><option value="contacted">Görüşüldü</option><option value="offer">Teklif gönderildi</option><option value="trial">Denemede</option><option value="won">Anlaştı</option><option value="lost">Olmadı</option></select></td>
+      <td data-etiket="Sonraki adım"><span class="sub">—</span></td>
+      <td class="tight" data-etiket="Kaynak">Elle</td>
+      <td><div class="row-actions">
+        <button class="btn sm" data-act="req-edit" data-id="r4" type="button">DÜZENLE</button>
+        <button class="btn sm" data-act="req-convert" data-id="r4" type="button">MARKAYA ÇEVİR</button>
+        <button class="btn sm danger" data-act="req-del" data-id="r4" type="button">SİL</button>
+      </div></td>
+    </tr><tr>
+      <td><div class="cell-main"><span class="cover">📩</span><span><b>Chemex</b>
+        <span class="sub">Mert Yılmaz · mert@chemex.example</span>
+        
+        </span></div></td>
+      <td class="tight" data-etiket="Aşama"><select data-act="req-status" data-id="r5" aria-label="Aşama"><option value="new">Yeni</option><option value="contacted">Görüşüldü</option><option value="offer">Teklif gönderildi</option><option value="trial">Denemede</option><option value="won" selected>Anlaştı</option><option value="lost">Olmadı</option></select></td>
+      <td data-etiket="Sonraki adım"><span class="sub">—</span></td>
+      <td class="tight" data-etiket="Kaynak">Site</td>
+      <td><div class="row-actions">
+        <button class="btn sm" data-act="req-edit" data-id="r5" type="button">DÜZENLE</button>
+        <button class="btn sm" data-act="req-goto-brand" data-id="b1" type="button">MARKAYA GİT</button>
+        <button class="btn sm danger" data-act="req-del" data-id="r5" type="button">SİL</button>
+      </div></td>
+    </tr></tbody>
+        </table>
+      </div><hr style="margin:40px 0;border-color:#333"><div class="panel iletisim-karti" style="margin-bottom:18px">
+        <div class="panel-head"><h3>İLETİŞİM</h3>
+          <button class="btn sm" data-act="brand-contact-edit" data-id="b1" type="button">DÜZENLE</button></div>
+        <dl class="iletisim">
+          <dt>Yetkili</dt><dd>Mert Yılmaz</dd>
+          <dt>Telefon</dt><dd><a href="tel:05320000000">0532 000 00 00</a></dd>
+          <dt>E-posta</dt><dd><a href="mailto:mert@chemex.example">mert@chemex.example</a></dd>
+          <dt>Not</dt><dd>Selçuk şubesi ilk bağlanan.</dd>
+        </dl>
+      </div>
+
+     </div></body>
+</html>

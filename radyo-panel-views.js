@@ -2436,9 +2436,9 @@
         <span class="sub">${iletisim}</span>
         ${r.branch_count ? `<span class="sub">${esc(r.branch_count + ' şube')}</span>` : ''}
         ${r.message ? `<span class="sub">“${esc(r.message)}”</span>` : ''}</span></div></td>
-      <td class="tight"><select data-act="req-status" data-id="${esc(r.id)}" aria-label="Aşama">${secenekler}</select></td>
-      <td>${sonraki}</td>
-      <td class="tight">${esc(S.KAYNAK_ETIKET[r.source] || S.KAYNAK_ETIKET.form)}</td>
+      <td class="tight" data-etiket="Aşama"><select data-act="req-status" data-id="${esc(r.id)}" aria-label="Aşama">${secenekler}</select></td>
+      <td data-etiket="Sonraki adım">${sonraki}</td>
+      <td class="tight" data-etiket="Kaynak">${esc(S.KAYNAK_ETIKET[r.source] || S.KAYNAK_ETIKET.form)}</td>
       <td><div class="row-actions">
         <button class="btn sm" data-act="req-edit" data-id="${esc(r.id)}" type="button">DÜZENLE</button>
         ${markaDugme}
@@ -2453,7 +2453,7 @@
           <button class="btn primary sm" data-act="req-add" type="button">+ FİRMA EKLE</button></div>
         <p class="panel-sub">Siteden gelen başvurular ve elle eklediğin firmalar. Anlaşınca “MARKAYA ÇEVİR”.</p>
         ${cipler}
-        <table>
+        <table class="satis-tablo">
           <thead><tr><th>FİRMA</th><th>AŞAMA</th><th>SONRAKİ ADIM</th><th>KAYNAK</th><th></th></tr></thead>
           <tbody>${satirlar || bos(5, hepsi.length ? 'Bu süzgeçle eşleşen firma yok.' : 'Henüz talep yok. “+ FİRMA EKLE” ile ilk firmayı ekle.')}</tbody>
         </table>

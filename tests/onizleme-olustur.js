@@ -17,6 +17,56 @@ const senaryo = process.argv[2] || 'zincir-kopuk';
 const cikti = process.argv[3] || path.join('tests', 'onizleme.html');
 const ciktiYolu = path.resolve(kok, cikti);
 
+// "satis" modu Müşteriler → Satış ekranını ve marka iletişim kartını örnek
+// verilerle önizler (docs/superpowers/specs/2026-10-10-satis-takibi-design.md).
+if (senaryo === 'satis') {
+  global.window = { DerinSatis: require(path.join(kok, 'satis-takibi.js')) };
+  const V = require(path.join(kok, 'radyo-panel-views.js'));
+  delete global.window;
+  const gun = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  const D = {
+    brands: [{ id: 'b1', name: 'Chemex', slug: 'chemex', is_active: true, access_code: 'KOD',
+      contact_name: 'Mert Yılmaz', contact_phone: '0532 000 00 00', contact_email: 'mert@chemex.example', notes: 'Selçuk şubesi ilk bağlanan.' }],
+    folders: [], tracks: [], players: [], broadcast: [], playerBroadcast: [], announcements: [], playlists: [], playlistTracks: [],
+    coffeeAttempts: [], subscriptions: [], plans: [{ id: 'p1', name: 'Zincir', monthly_price: 1300, per_branch: true }], planItems: [], olaylar: [],
+    requests: [
+      { id: 'r1', company: 'Mola Kafe', contact_name: 'Ayşe K.', email: 'ayse@mola.example', phone: '0555 111 22 33', branch_count: 1,
+        status: 'contacted', source: 'manual', next_step: 'Pazartesi ara, fiyatı konuş', next_step_date: gun(-2), created_at: new Date().toISOString() },
+      { id: 'r2', company: 'Kahve Durağı', contact_name: 'Can D.', email: 'can@durak.example', phone: null, branch_count: 6,
+        status: 'offer', source: 'form', next_step: 'Teklife dönüş bekleniyor', next_step_date: gun(0), message: 'Altı şubemiz var.', created_at: new Date().toISOString() },
+      { id: 'r3', company: 'Bahçe Roastery', contact_name: '', email: '', phone: null, status: 'trial', source: 'manual',
+        next_step: 'Deneme bitiyor, sözleşme gönder', next_step_date: gun(4), created_at: new Date().toISOString() },
+      { id: 'r4', company: 'Starbucks (örnek)', contact_name: '', email: '', status: 'new', source: 'manual', next_step: null, next_step_date: null, created_at: new Date().toISOString() },
+      { id: 'r5', company: 'Chemex', contact_name: 'Mert Yılmaz', email: 'mert@chemex.example', status: 'won', brand_id: 'b1', source: 'form', created_at: new Date().toISOString() }
+    ]
+  };
+  const ui = {
+    cover: p => p, ses: p => p, anons: p => p, playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s, accept: () => '.mp3', desteklenenler: () => 'mp3', parcaNotu: () => '',
+    now: () => Date.now(), saglikSonuc: () => null, bugunIso: () => gun(0), satisAsama: 'tumu'
+  };
+  const durum = ek => Object.assign({ nav: 'musteri', sub: 'talepler', openFolder: null, openBrand: null, openPlaylist: null, q: '' }, ek);
+  const satis = V.gorunum(durum({}), D, ui).html;
+  const marka = V.gorunum(durum({ sub: 'markalar', openBrand: 'b1' }), D, ui).html;
+  const sayfa = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — satış önizleme</title>
+<style>
+${oku('radyo-panel.css')}
+body{background:#0b0b0d;padding:22px;display:block}
+.onizleme{max-width:1080px;margin:0 auto}
+</style>
+</head>
+<body><div class="onizleme">${satis}<hr style="margin:40px 0;border-color:#333">${marka.slice(marka.indexOf('<div class="panel iletisim-karti"'), marka.indexOf('MÜŞTERİ SUNUMU') - 60)}</div></body>
+</html>`;
+  fs.writeFileSync(ciktiYolu, sayfa);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · satış');
+  return;
+}
+
 // "canli" modu Canlı durum ekranını örnek verilerle önizler: üç şube yan yana
 // gelsin ki "çalıyor / duraklatıldı / çevrimdışı" ve tazelik yazısı gözle
 // doğrulanabilsin.

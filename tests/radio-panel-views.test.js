@@ -1923,3 +1923,10 @@ test('yeni marka formu iletişimi üç alana böler', () => {
   ['brand-contact-name', 'brand-contact-phone', 'brand-contact-email'].forEach(i => assert.ok(html.includes(`id="${i}"`), i));
   assert.ok(!html.includes('id="brand-contact"'));
 });
+
+test('satış tablosu telefonda kart olabilmesi için kendi sınıfını ve sütun etiketlerini taşır', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'talepler' }), satisD, satisUi);
+  assert.ok(html.includes('<table class="satis-tablo">'));
+  assert.ok(html.includes('data-etiket="Aşama"'));
+  assert.ok(html.includes('data-etiket="Sonraki adım"'));
+});
