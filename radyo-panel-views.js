@@ -1907,8 +1907,11 @@
     const dolu = v => v != null && String(v).trim() !== '';
     const tel = dolu(b.contact_phone)
       ? `<a href="tel:${esc(String(b.contact_phone).replace(/[^0-9+]/g, ''))}">${esc(b.contact_phone)}</a>` : '—';
-    const posta = dolu(b.contact_email)
-      ? `<a href="mailto:${esc(String(b.contact_email).trim())}">${esc(b.contact_email)}</a>` : '—';
+    // Yalnız düz bir adres bağlantı olur; "?bcc=…" gibi ek taşıyan değer
+    // e-posta programına gizli alıcı ekleyebileceği için düz metin kalır.
+    const postaTemiz = dolu(b.contact_email) && /^[^\s?&#:/]+@[^\s?&#:/]+$/.test(String(b.contact_email).trim());
+    const posta = postaTemiz
+      ? `<a href="mailto:${esc(String(b.contact_email).trim())}">${esc(b.contact_email)}</a>` : (dolu(b.contact_email) ? esc(b.contact_email) : '—');
     return `
       <div class="panel iletisim-karti" style="margin-bottom:18px">
         <div class="panel-head"><h3>İLETİŞİM</h3>

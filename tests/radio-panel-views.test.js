@@ -1930,3 +1930,10 @@ test('satış tablosu telefonda kart olabilmesi için kendi sınıfını ve süt
   assert.ok(html.includes('data-etiket="Aşama"'));
   assert.ok(html.includes('data-etiket="Sonraki adım"'));
 });
+
+test('iletişim kartı parametreli e-postaya mailto bağlantısı vermez', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }),
+    markaIle({ contact_email: 'a@b.co?bcc=x@kotu.co&body=merhaba' }), ui);
+  assert.ok(!html.includes('href="mailto:'), 'şüpheli adres bağlantı olmamalı');
+  assert.ok(html.includes('a@b.co?bcc=x@kotu.co&amp;body=merhaba'), 'adres düz metin görünmeli');
+});

@@ -2774,22 +2774,26 @@
         ui.satisAsama = hedef.dataset.asama || 'tumu';
         ciz();
         return;
-      case 'req-add':
-        pencere({
+      case 'req-add': {
+        // Firma adı boş bırakılırsa pencere yazılanlarla yeniden açılır:
+        // onay düğmesi pencereyi kapattığı için aksi hâlde her şey kaybolurdu.
+        const firmaEklePenceresi = t => pencere({
           baslik: 'Firma ekle',
           onayMetni: 'EKLE',
-          govde: talepFormu(null),
+          govde: talepFormu(t),
           onOnay: async () => {
             const alanlar = talepFormuOku();
-            if (!alanlar.company) return hata('Firma adı gerekli.');
+            if (!alanlar.company) { firmaEklePenceresi(alanlar); return hata('Firma adı gerekli.'); }
             const sorun = await yazDogrula(
               client.from('coffee_requests').insert({ ...alanlar, source: 'manual', status: 'new' }), 'Firma eklenemedi');
-            if (sorun) return hata(sorun);
+            if (sorun) { firmaEklePenceresi(alanlar); return hata(sorun); }
             await talepleriYukle(); ciz();
             bildir('Firma eklendi.');
           }
         });
+        firmaEklePenceresi(null);
         return;
+      }
       case 'req-edit': {
         const t = (D.requests || []).find(x => x.id === id);
         if (!t) return;
@@ -2828,17 +2832,21 @@
             if (error) return hata('Marka oluşturulamadı: ' + error.message);
             const isaretSorunu = await yazDogrula(
               client.from('coffee_requests').update({ status: 'won', brand_id: data.id }).eq('id', id), 'Talep işaretlenemedi');
-            if (isaretSorunu) hata('Marka açıldı ama talep işaretlenemedi. ' + isaretSorunu);
+            let denemeTamam = false;
+            let denemeSorunu = null;
             if (denemeIste) {
-              if (!D.plans.length) hata('Önce Abonelikler ekranından bir paket oluşturun.');
-              else {
-                const denemeSorunu = await denemeBaslat(data.id, r.plan_id || D.plans[0].id, r.branch_count || 1);
-                if (denemeSorunu) hata(denemeSorunu);
-              }
+              denemeSorunu = !D.plans.length
+                ? 'Önce Abonelikler ekranından bir paket oluşturun.'
+                : await denemeBaslat(data.id, r.plan_id || D.plans[0].id, r.branch_count || 1);
+              denemeTamam = !denemeSorunu;
             }
             await talepleriYukle();
             await yenile(false);
-            if (!isaretSorunu) bildir(denemeIste ? 'Marka oluşturuldu, deneme başlatıldı.' : 'Marka oluşturuldu.');
+            // Tek bildirim alanı var: önce gelen hata sonraki başarı mesajıyla
+            // ezilmesin diye sonuç en sonda, bir kez yazılır.
+            if (isaretSorunu) hata('Marka açıldı ama talep işaretlenemedi. ' + isaretSorunu);
+            else if (denemeSorunu) hata('Marka oluşturuldu ama deneme başlamadı: ' + denemeSorunu);
+            else bildir(denemeTamam ? 'Marka oluşturuldu, deneme başlatıldı.' : 'Marka oluşturuldu.');
             git('#/markalar/' + data.id);
           }
         });

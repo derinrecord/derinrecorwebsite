@@ -784,3 +784,18 @@ test('marka iletişim kartı düzenlenir ve marka listesi iletişim alanlarını
   const marka = source.slice(bas, source.indexOf("order('name')", bas));
   ['contact_name', 'contact_phone', 'contact_email', 'notes'].forEach(k => assert.ok(marka.includes(k), k));
 });
+
+// Son inceleme düzeltmeleri
+test('markaya çevir: deneme başlamadıysa "deneme başlatıldı" denmez', () => {
+  const bas = source.indexOf("case 'req-convert'");
+  const blok = source.slice(bas, source.indexOf("case 'req-goto-brand'", bas));
+  assert.ok(blok.includes('denemeTamam'), 'başarı mesajı denemenin gerçekten başladığına bağlı olmalı');
+  assert.ok(!/bildir\(denemeIste \?/.test(blok), 'mesaj yalnız istenip istenmediğine bakmamalı');
+});
+
+test('firma ekle: firma adı boşsa form yeniden açılır, yazılanlar kaybolmaz', () => {
+  const bas = source.indexOf("case 'req-add'");
+  const blok = source.slice(bas, source.indexOf("case 'req-edit'", bas));
+  assert.match(blok, /function firmaEklePenceresi|firmaEklePenceresi\(/);
+  assert.match(blok, /talepFormu\(alanlar\)|firmaEklePenceresi\(alanlar\)/);
+});
