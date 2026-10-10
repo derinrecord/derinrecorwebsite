@@ -16,7 +16,7 @@
 
 -- ---------- 1. coffee_requests: satış alanları ----------
 alter table public.coffee_requests add column if not exists source text not null default 'form';
-alter table public.coffee_requests add column if not exists plan_id uuid references public.plans(id) on delete set null;
+alter table public.coffee_requests add column if not exists plan_id text references public.plans(id) on delete set null;
 alter table public.coffee_requests add column if not exists next_step text;
 alter table public.coffee_requests add column if not exists next_step_date date;
 alter table public.coffee_requests add column if not exists notes text;

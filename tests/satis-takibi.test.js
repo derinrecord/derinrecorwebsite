@@ -65,3 +65,10 @@ test('markaya aktarılacak alanlar kırpılır, boşlar null olur', () => {
     S.markayaAktarilacak({ company: ' X Kafe ', contact_name: '', phone: ' 0555 ', email: 'a@b.co' }),
     { name: 'X Kafe', contact_name: null, contact_phone: '0555', contact_email: 'a@b.co' });
 });
+
+// Canlı şemada plans.id metin (text): yabancı anahtar aynı türde olmalı,
+// yoksa SQL "incompatible types: uuid and text" ile durur (10 Ekim 2026).
+test('satış SQL: plan_id plans.id ile aynı türde (text)', () => {
+  const sql = require('fs').readFileSync(require('path').join(__dirname, '..', 'supabase', 'satis-takibi.sql'), 'utf8');
+  assert.match(sql, /add column if not exists plan_id text references public\.plans\(id\)/);
+});
