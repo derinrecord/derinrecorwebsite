@@ -1891,3 +1891,35 @@ test('şube linki düğmesi kime ait olduğunu söylüyor', () => {
   assert.equal(dugmeler.length, 3, 'üç ekranda da link düğmesi var');
   dugmeler.forEach(d => assert.match(d, /CİHAZ LİNKİ</, 'düğme "CİHAZ LİNKİ" demeli'));
 });
+
+// ---------- Marka iletişim kartı ----------
+const markaIle = ek => Object.assign({}, D, { brands: [Object.assign({}, D.brands[0], ek)] });
+
+test('marka iletişim kartı telefon ve e-posta bağlantısı verir', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }),
+    markaIle({ contact_name: 'Ayşe', contact_phone: '0555 111', contact_email: 'a@b.co' }), ui);
+  assert.ok(html.includes('İLETİŞİM'));
+  assert.ok(html.includes('href="tel:0555111"'));
+  assert.ok(html.includes('href="mailto:a@b.co"'));
+  assert.ok(html.includes('data-act="brand-contact-edit" data-id="b1"'));
+});
+
+test('iletişimi olmayan markada kırık bağlantı üretilmez', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), markaIle({}), ui);
+  const kart = html.slice(html.indexOf('İLETİŞİM'), html.indexOf('</div>', html.indexOf('İLETİŞİM')) + 400);
+  assert.ok(!html.includes('href="tel:'));
+  assert.ok(!html.includes('href="mailto:'));
+  assert.ok(kart.includes('—'));
+});
+
+test('marka notu kaçışlı basılır', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), markaIle({ notes: '<i>x</i>' }), ui);
+  assert.ok(!html.includes('<i>x</i>'));
+  assert.ok(html.includes('&lt;i&gt;x&lt;/i&gt;'));
+});
+
+test('yeni marka formu iletişimi üç alana böler', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar' }), D, ui);
+  ['brand-contact-name', 'brand-contact-phone', 'brand-contact-email'].forEach(i => assert.ok(html.includes(`id="${i}"`), i));
+  assert.ok(!html.includes('id="brand-contact"'));
+});

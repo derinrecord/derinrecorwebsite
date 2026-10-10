@@ -839,7 +839,7 @@
 
   async function veriYukle() {
     const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans, planItems] = await Promise.all([
-      client.from('brands').select('id,name,slug,is_active,access_code').order('name'),
+      client.from('brands').select('id,name,slug,is_active,access_code,contact_name,contact_phone,contact_email,notes').order('name'),
       client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec,cover_path').order('sort_order'),
       // player_code ve ihlal_* alanları supabase/radio-sube-kodu.sql ile gelir.
@@ -2379,7 +2379,7 @@
         // panelde marka oluştururken bu alanı boş bırakırsak şube linki
         // “bu link tanınmadı” der.
         const { data, error } = await client.from('brands').insert({
-          name: ad, slug, is_active: true, contact: el('brand-contact').value.trim() || null
+          name: ad, slug, is_active: true, ...iletisimOku('brand')
         }).select('id').single();
         if (error) return hata('Marka oluşturulamadı: ' + error.message);
         await yenile(false); bildir('Marka oluşturuldu.');
@@ -2390,7 +2390,7 @@
         const ad = el('ab-brand-name').value.trim();
         if (!ad) return hata('Marka adı gerekli.');
         const { error } = await client.from('brands').insert({
-          name: ad, slug: bosSlug(slugify(ad)), is_active: true, contact: el('ab-brand-contact').value.trim() || null
+          name: ad, slug: bosSlug(slugify(ad)), is_active: true, ...iletisimOku('ab-brand')
         });
         if (error) return hata('Marka oluşturulamadı: ' + error.message);
         await yenile(false); bildir('Marka oluşturuldu.');
@@ -2741,6 +2741,33 @@
           await yenile(false); bildir('Abonelik iptal edildi.');
         }
         return;
+
+      // --- marka iletişim kartı ---
+      case 'brand-contact-edit': {
+        const b = marka(id);
+        if (!b) return;
+        const v = k => esc(b[k] || '');
+        cekmeceAc(`<h3>${esc(b.name)} — iletişim</h3>
+          <div class="form-grid">
+            <div class="field"><label for="bc-name">YETKİLİ</label><input id="bc-name" value="${v('contact_name')}" autocomplete="off"></div>
+            <div class="field"><label for="bc-phone">TELEFON</label><input id="bc-phone" type="tel" value="${v('contact_phone')}" autocomplete="off"></div>
+            <div class="field"><label for="bc-email">E-POSTA</label><input id="bc-email" type="email" value="${v('contact_email')}" autocomplete="off"></div>
+          </div>
+          <div class="field"><label for="bc-notes">NOT</label><textarea id="bc-notes" rows="4">${v('notes')}</textarea></div>
+          <div class="modal-actions"><button class="btn primary" data-act="brand-contact-save" data-id="${esc(b.id)}" type="button">KAYDET</button></div>`);
+        return;
+      }
+      case 'brand-contact-save': {
+        const al = k => { const v = String(el(k).value).trim(); return v || null; };
+        const sorun = await yazDogrula(client.from('brands').update({
+          contact_name: al('bc-name'), contact_phone: al('bc-phone'), contact_email: al('bc-email'), notes: al('bc-notes')
+        }).eq('id', id), 'İletişim kaydedilemedi');
+        if (sorun) return hata(sorun);
+        cekmeceKapat();
+        await yenile(false);
+        bildir('İletişim kaydedildi.');
+        return;
+      }
 
       // --- satış (talepler) ---
       case 'sales-filter':
@@ -3163,6 +3190,12 @@
       next_step_date: al('sf-next-date'),
       notes: al('sf-notes')
     };
+  }
+
+  // Marka oluşturma formlarının iletişim alanları (önek: 'brand' | 'ab-brand').
+  function iletisimOku(onek) {
+    const al = k => { const x = el(onek + '-contact-' + k); const v = x ? String(x.value).trim() : ''; return v || null; };
+    return { contact_name: al('name'), contact_phone: al('phone'), contact_email: al('email') };
   }
 
   // 7 günlük deneme. Dönüş: hata metni; sorun yoksa null.

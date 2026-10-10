@@ -1805,8 +1805,12 @@
         <div class="form-grid">
           <div class="field"><label for="brand-name">MARKA ADI</label>
             <input id="brand-name" placeholder="Örn. Kahve Dünyası" autocomplete="off"></div>
-          <div class="field"><label for="brand-contact">İLETİŞİM</label>
-            <input id="brand-contact" placeholder="İsteğe bağlı" autocomplete="off"></div>
+          <div class="field"><label for="brand-contact-name">YETKİLİ</label>
+            <input id="brand-contact-name" placeholder="İsteğe bağlı" autocomplete="off"></div>
+          <div class="field"><label for="brand-contact-phone">TELEFON</label>
+            <input id="brand-contact-phone" type="tel" placeholder="İsteğe bağlı" autocomplete="off"></div>
+          <div class="field"><label for="brand-contact-email">E-POSTA</label>
+            <input id="brand-contact-email" type="email" placeholder="İsteğe bağlı" autocomplete="off"></div>
           <button class="btn primary" data-act="brand-add" type="button">MARKA OLUŞTUR</button>
         </div>
         <span class="sub" id="brand-msg"></span>
@@ -1896,6 +1900,27 @@
   // Marka kapağı, supabase/marka-kapagi.sql kuruluysa kullanılabilir. Kolon
   // yokken bölüm hiç çizilmez: kaydedilemeyecek bir düğme göstermeyiz.
   const markaKapagiVar = D => !!(((D && D.kurulum) || {})['marka-kapagi.sql']);
+
+  // Marka iletişim kartı (docs/superpowers/specs/2026-10-10-satis-takibi-design.md §5.3).
+  // Boş alan "—" yazılır; boş telefon/e-posta için bağlantı üretilmez.
+  function iletisimKarti(b) {
+    const dolu = v => v != null && String(v).trim() !== '';
+    const tel = dolu(b.contact_phone)
+      ? `<a href="tel:${esc(String(b.contact_phone).replace(/[^0-9+]/g, ''))}">${esc(b.contact_phone)}</a>` : '—';
+    const posta = dolu(b.contact_email)
+      ? `<a href="mailto:${esc(String(b.contact_email).trim())}">${esc(b.contact_email)}</a>` : '—';
+    return `
+      <div class="panel iletisim-karti" style="margin-bottom:18px">
+        <div class="panel-head"><h3>İLETİŞİM</h3>
+          <button class="btn sm" data-act="brand-contact-edit" data-id="${esc(b.id)}" type="button">DÜZENLE</button></div>
+        <dl class="iletisim">
+          <dt>Yetkili</dt><dd>${dolu(b.contact_name) ? esc(b.contact_name) : '—'}</dd>
+          <dt>Telefon</dt><dd>${tel}</dd>
+          <dt>E-posta</dt><dd>${posta}</dd>
+          <dt>Not</dt><dd>${dolu(b.notes) ? esc(b.notes) : '—'}</dd>
+        </dl>
+      </div>`;
+  }
 
   function markaDetay(state, D, ui) {
     const b = D.brands.find(x => x.id === state.openBrand);
@@ -2023,6 +2048,8 @@
         </div>
         <span class="sub" id="live-msg"></span>
       </div>
+
+      ${iletisimKarti(b)}
 
       <div class="panel" style="margin-bottom:18px">
         <h3>MÜŞTERİ SUNUMU — LİNK VE ERİŞİM KODU</h3>
@@ -2341,8 +2368,12 @@
         <div class="form-grid">
           <div class="field"><label for="ab-brand-name">MARKA ADI</label>
             <input id="ab-brand-name" placeholder="Örn. Roast & Co." autocomplete="off"></div>
-          <div class="field"><label for="ab-brand-contact">İLETİŞİM</label>
-            <input id="ab-brand-contact" placeholder="İsteğe bağlı" autocomplete="off"></div>
+          <div class="field"><label for="ab-brand-contact-name">YETKİLİ</label>
+            <input id="ab-brand-contact-name" placeholder="İsteğe bağlı" autocomplete="off"></div>
+          <div class="field"><label for="ab-brand-contact-phone">TELEFON</label>
+            <input id="ab-brand-contact-phone" type="tel" placeholder="İsteğe bağlı" autocomplete="off"></div>
+          <div class="field"><label for="ab-brand-contact-email">E-POSTA</label>
+            <input id="ab-brand-contact-email" type="email" placeholder="İsteğe bağlı" autocomplete="off"></div>
           <button class="btn primary" data-act="ab-brand-add" type="button">MARKA OLUŞTUR</button>
         </div>
         <span class="sub" id="ab-brand-msg"></span>

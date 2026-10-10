@@ -776,3 +776,11 @@ test('satış: markası olan firmadan markaya gidilir', () => {
   assert.ok(bas > -1);
   assert.ok(source.slice(bas, bas + 200).includes("git('#/markalar/'"));
 });
+
+test('marka iletişim kartı düzenlenir ve marka listesi iletişim alanlarını okur', () => {
+  assert.ok(source.includes("case 'brand-contact-edit'"));
+  assert.ok(source.includes("case 'brand-contact-save'"));
+  const bas = source.indexOf('async function veriYukle');
+  const marka = source.slice(bas, source.indexOf("order('name')", bas));
+  ['contact_name', 'contact_phone', 'contact_email', 'notes'].forEach(k => assert.ok(marka.includes(k), k));
+});
