@@ -20,7 +20,11 @@ test('AJANLAR sayfası arama motorlarına kapalı ve ajanları anlatır', () => 
   assert.match(html, /<meta name="robots" content="noindex,nofollow">/);
   ['Haftalık Instagram planı', 'Satış takibi', 'Marka iletişim kartı', 'Storyboard', 'Satış ajanı', 'Haftalık özet'].forEach(m =>
     assert.ok(html.includes(m), m));
-  assert.ok(html.includes('href="radyo-yonetim.html#/satis"'), 'satış ekranına bağlantı');
+  assert.ok(html.includes("'radyo-yonetim.html#/satis'"), 'satış ekranına bağlantı');
+  assert.ok(html.includes('id="beyin"'), 'ortada beyin olmalı');
+  ['Sosyal medya', 'Satış', 'Müşteri & yayın', 'Finans & rapor', 'Web & güvenlik', 'Prodüksiyon'].forEach(d =>
+    assert.ok(html.includes(`ad: '${d}'`), d + ' departmanı'));
+  assert.ok(html.includes('esc(m.not)') && html.includes('esc(d.ad)'), 'metinler kaçışlı basılmalı');
   assert.ok(html.includes('auth.js'), 'ortak hesap kabuğu yüklenmeli');
 });
 

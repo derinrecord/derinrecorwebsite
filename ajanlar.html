@@ -9,112 +9,104 @@
 <link rel="stylesheet" href="auth.css">
 <link rel="stylesheet" href="glass.css?v=2" />
 <style>
-/* Derin Record ajan sistemi — tanıtım sayfası (canlı veri yok; yeni ajan eklendikçe elle güncellenir). */
-.ajan-main{max-width:1080px;margin:0 auto;padding:56px 6vw 110px}
-.ajan-main h1{margin:0;font-size:clamp(44px,8vw,96px);line-height:.85;letter-spacing:-.06em;font-weight:900}
-.ajan-giris{max-width:620px;margin:22px 0 0;color:#c7c3be;line-height:1.55}
-.ajan-bolum{margin-top:52px}
-.ajan-bolum > h2{margin:0 0 6px;font-size:12px;letter-spacing:2px;color:var(--yellow)}
-.ajan-bolum > p{margin:0 0 18px;color:var(--muted);font-size:14px;line-height:1.5}
-.ajan-izgara{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
-.ajan-kart{position:relative;padding:22px;border:1px solid var(--glass-line,#3f3d40);border-radius:22px;background:var(--glass-bg,#16151a);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
-.ajan-kart h3{margin:10px 0 8px;font-size:19px;letter-spacing:-.02em}
-.ajan-kart p{margin:0;color:#c7c3be;font-size:14px;line-height:1.5}
-.ajan-kart .zaman{display:block;margin-top:12px;color:var(--cream);font-size:13px;font-weight:700}
-.ajan-kart a.git{display:inline-block;margin-top:14px;padding:9px 14px;border-radius:12px;background:var(--yellow);color:var(--ink);font-size:12px;font-weight:900;letter-spacing:.06em}
-.etiket{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.06em}
-.etiket.aktif{background:rgba(126,231,143,.16);color:#7ee78f}
-.etiket.aktif:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
-.etiket.arac{background:rgba(216,187,44,.16);color:var(--yellow)}
+/* Derin Record ajan ofisi: ortada beyin, etrafında departmanlar, üstte bağlantılar.
+   Canlı veri yok; yeni ajan eklendikçe aşağıdaki DEPARTMANLAR listesi elle güncellenir. */
+.ofis-main{max-width:1180px;margin:0 auto;padding:44px 5vw 110px}
+.ofis-main h1{margin:0;font-size:clamp(40px,7vw,84px);line-height:.85;letter-spacing:-.06em;font-weight:900}
+.ofis-giris{max-width:640px;margin:18px 0 0;color:#c7c3be;line-height:1.55}
+.ofis-kilit{margin-top:36px;color:var(--muted)}
+
+.ofis{position:relative;margin-top:34px;border:1px solid #2c2a30;border-radius:28px;padding:18px 18px 26px;
+  background:radial-gradient(circle at 50% 55%,rgba(216,187,44,.10),transparent 42%),
+             linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px) 0 0/34px 34px,
+             linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px) 0 0/34px 34px,#0d0c10;overflow:hidden}
+.ofis-ust{position:relative;z-index:3;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.ofis-ust .baslik{font-size:11px;font-weight:900;letter-spacing:2px;color:var(--muted);margin-right:4px}
+.ofis-ust .baslik b{color:#7ee78f}
+.bag{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;background:#17161b;border:1px solid #34323a;font-size:12.5px;font-weight:800;transition:border-color .2s,box-shadow .2s}
+.bag i{width:7px;height:7px;border-radius:50%;background:#7ee78f;box-shadow:0 0 8px #7ee78f}
+.bag.isik{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(216,187,44,.18)}
+
+.sahne{position:relative;height:760px;margin-top:6px}
+.kablolar{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible}
+.kablolar path{fill:none;stroke-width:1.4;stroke-linecap:round}
+.kablolar .ana{stroke:rgba(216,187,44,.55);stroke-dasharray:2 7;animation:akis 2.4s linear infinite}
+.kablolar .yan{stroke:rgba(255,255,255,.16);stroke-dasharray:1 6}
+.kablolar .yan.isik{stroke:rgba(216,187,44,.75);stroke-dasharray:3 6;animation:akis 1.4s linear infinite}
+@keyframes akis{to{stroke-dashoffset:-36}}
+
+.beyin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;width:190px;height:190px;border-radius:50%;
+  display:grid;place-items:center;text-align:center;
+  background:radial-gradient(circle,rgba(216,187,44,.32),rgba(216,187,44,.06) 58%,transparent 70%)}
+.beyin:before{content:"";position:absolute;inset:26px;border-radius:50%;border:1px solid rgba(216,187,44,.5);
+  background-image:radial-gradient(circle,rgba(244,212,62,.85) 1.3px,transparent 2px);background-size:12px 12px;opacity:.8;
+  animation:nabiz 3.2s ease-in-out infinite}
+.beyin:after{content:"";position:absolute;left:50%;top:-70px;width:2px;height:96px;transform:translateX(-50%);
+  background:linear-gradient(transparent,rgba(244,212,62,.9));filter:blur(.5px)}
+.beyin span{position:relative;z-index:1;padding:8px 12px;border-radius:12px;background:rgba(13,12,16,.82);font-size:11px;font-weight:900;letter-spacing:2px;color:var(--cream)}
+.beyin small{display:block;margin-top:4px;font-size:10.5px;letter-spacing:.5px;color:#e8dc9a;font-weight:700}
+@keyframes nabiz{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.05);opacity:1}}
+
+.ada{position:absolute;z-index:2;width:220px;transform:translate(-50%,-50%);text-align:left;cursor:pointer;
+  padding:14px 14px 12px;border-radius:18px;border:1px solid #34323a;background:rgba(20,19,24,.92);color:var(--cream);font:inherit;
+  box-shadow:0 18px 0 -8px var(--renk,#444),0 22px 40px rgba(0,0,0,.45);transition:transform .2s,border-color .2s}
+.ada:hover,.ada.secili{border-color:var(--renk);transform:translate(-50%,-50%) translateY(-4px)}
+.ada .ust{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:900;letter-spacing:1.6px;color:var(--renk)}
+.ada .ust i{width:9px;height:9px;border-radius:3px;background:var(--renk)}
+.ada h3{margin:8px 0 8px;font-size:16px;letter-spacing:-.01em}
+.masalar{display:flex;flex-wrap:wrap;gap:5px}
+.masa{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:8px;background:#222027;font-size:11px;font-weight:700;color:#d9d5cf}
+.masa.aktif:before{content:"";width:6px;height:6px;border-radius:50%;background:#7ee78f;box-shadow:0 0 6px #7ee78f}
+.masa.plan{opacity:.55;border:1px dashed #555}
+.ada .say{display:block;margin-top:9px;font-size:11px;color:var(--muted)}
+
+.detay{position:relative;z-index:3;margin:8px auto 0;max-width:760px;padding:20px 22px;border-radius:20px;border:1px solid var(--renk,#34323a);background:#141318}
+.detay h2{margin:0 0 4px;font-size:20px}
+.detay > p{margin:0 0 14px;color:var(--muted);font-size:14px}
+.detay ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.detay li{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:#1b1a20}
+.detay li b{font-size:14.5px}
+.detay li p{grid-column:2/3;margin:2px 0 0;color:#bdb8b1;font-size:13px;line-height:1.45}
+.detay li a{grid-row:1/3;grid-column:3;padding:8px 12px;border-radius:10px;background:var(--yellow);color:var(--ink);font-size:11.5px;font-weight:900;letter-spacing:.05em;white-space:nowrap}
+.etiket{grid-row:1/3;align-self:start;padding:4px 9px;border-radius:999px;font-size:10.5px;font-weight:900;letter-spacing:.06em;white-space:nowrap}
+.etiket.ajan{background:rgba(126,231,143,.16);color:#7ee78f}
+.etiket.ekran{background:rgba(216,187,44,.16);color:var(--yellow)}
+.etiket.beceri{background:rgba(168,85,247,.18);color:#d8b9ff}
 .etiket.plan{background:rgba(255,255,255,.08);color:var(--muted)}
-.ajan-kart.planli{opacity:.72;border-style:dashed}
-.liste{display:grid;gap:10px;margin:0;padding:0;list-style:none}
-.liste li{padding:14px 18px;border:1px solid var(--glass-line,#3f3d40);border-radius:16px;background:rgba(255,255,255,.03);line-height:1.45}
-.liste b{display:block;font-size:15px}
-.liste span{color:var(--muted);font-size:13.5px}
-.baglantilar{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
-.baglantilar li{padding:8px 14px;border:1px solid var(--glass-line,#3f3d40);border-radius:999px;font-size:13px;font-weight:700}
-.ajan-kilit{margin-top:40px;color:var(--muted)}
-@media(max-width:700px){.ajan-main{padding:40px 7vw 90px}.ajan-izgara{grid-template-columns:1fr}}
+.etiket.mac{background:rgba(90,170,255,.16);color:#9cc9ff}
+.ipucu{margin:14px 0 0;text-align:center;color:var(--muted);font-size:12.5px}
+
+@media(max-width:900px){
+  .sahne{height:auto;display:grid;gap:26px;padding-top:6px;padding-bottom:14px}
+  .kablolar,.beyin:after{display:none}
+  .beyin{position:relative;left:auto;top:auto;transform:none;margin:4px auto 6px;width:150px;height:150px}
+  .ada{position:relative;left:auto!important;top:auto!important;transform:none;width:100%}
+  .ada:hover,.ada.secili{transform:none}
+  .detay li{grid-template-columns:1fr}
+  .detay li .etiket,.detay li a{grid-row:auto;grid-column:auto;justify-self:start}
+  .detay li p{grid-column:auto}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
 <div class="noise"></div>
 <header class="header"><a class="home" href="index.html"><span>←</span> SİTEYE DÖN</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
-<main class="ajan-main">
+<main class="ofis-main">
   <p class="eyebrow">YÖNETİCİ ALANI</p>
   <h1>AJANLAR.</h1>
-  <p class="ajan-giris">Derin Record'un dijital ofisi. Ajanlar senin yerine düzenli işleri yapar; beceriler onlara “bu iş Derin Record'da nasıl yapılır” bilgisini verir; bağlantılar da kullandıkları araçlardır.</p>
-
-  <p class="ajan-kilit" id="ajan-kilit">Hesap kontrol ediliyor…</p>
+  <p class="ofis-giris">Derin Record'un dijital ofisi. Ortadaki beyin işi doğru departmana verir; departmanlardaki ajanlar senin yerine düzenli işleri yapar, üstteki bağlantıları araç olarak kullanır.</p>
+  <p class="ofis-kilit" id="ajan-kilit">Hesap kontrol ediliyor…</p>
 
   <div id="ajan-icerik" hidden>
-    <section class="ajan-bolum">
-      <h2>ÇALIŞAN AJANLAR</h2>
-      <p>Kendi başına, belli bir saatte çalışır; işi bitince sana haber verir.</p>
-      <div class="ajan-izgara">
-        <article class="ajan-kart">
-          <span class="etiket aktif">AKTİF</span>
-          <h3>Haftalık Instagram planı</h3>
-          <p>Haftanın 4 içeriğini planlar: cimnastik müzikleri, film müziği ve kafe müziği arasında dengeli. Her içerik için kare kare storyboard, açıklama metni ve hashtag hazırlar; planı tek sayfa olarak yayınlar.</p>
-          <span class="zaman">Her pazartesi 08:52 · telefona bildirim</span>
-        </article>
+    <section class="ofis" id="ofis" aria-label="Ajan ofisi haritası">
+      <div class="ofis-ust" id="baglar"><span class="baslik"><b>●</b> BAĞLI</span></div>
+      <div class="sahne" id="sahne">
+        <svg class="kablolar" id="kablolar" aria-hidden="true"></svg>
+        <div class="beyin" id="beyin"><span>DERİN RECORD<br>BEYNİ<small>Claude · hafıza · notlar</small></span></div>
       </div>
-    </section>
-
-    <section class="ajan-bolum">
-      <h2>ARAÇLAR</h2>
-      <p>Senin kullandığın ekranlar. Ajanlar ileride buradaki veriyi de okuyacak.</p>
-      <div class="ajan-izgara">
-        <article class="ajan-kart">
-          <span class="etiket arac">EKRAN</span>
-          <h3>Satış takibi</h3>
-          <p>Teklif götürdüğün firmalar: Yeni → Görüşüldü → Teklif → Denemede → Anlaştı. “Bugün yapılacaklar” listesi ve tek tıkla markaya çevirme.</p>
-          <a class="git" href="radyo-yonetim.html#/satis">SATIŞA GİT</a>
-        </article>
-        <article class="ajan-kart">
-          <span class="etiket arac">EKRAN</span>
-          <h3>Marka iletişim kartı</h3>
-          <p>Her markanın yetkilisi, telefonu, e-postası ve notu. Telefona dokununca arar, e-postaya dokununca mail açar.</p>
-          <a class="git" href="radyo-yonetim.html#/markalar">MARKALARA GİT</a>
-        </article>
-      </div>
-    </section>
-
-    <section class="ajan-bolum">
-      <h2>BECERİLER</h2>
-      <p>Ajanların Derin Record'a özel bilgisi.</p>
-      <ul class="liste">
-        <li><b>Storyboard</b><span>Instagram gönderisi, carousel, Reels ve Story için kare kare plan; telefon oranlı görsel sayfa.</span></li>
-        <li><b>Web tasarımı</b><span>Sitenin sayfaları, katalog bölümleri ve görsel düzeni.</span></li>
-        <li><b>Güvenlik denetimi</b><span>Site, Supabase ve Vercel ayarlarının savunma amaçlı kontrolü.</span></li>
-        <li><b>Skill bulma</b><span>İhtiyaç olduğunda hazır becerileri arar ve önerir.</span></li>
-      </ul>
-    </section>
-
-    <section class="ajan-bolum">
-      <h2>BAĞLANTILAR</h2>
-      <p>Ajanların kullandığı uygulamalar.</p>
-      <ul class="baglantilar">
-        <li>Gmail</li><li>Google Drive</li><li>Canva</li><li>Motion</li><li>Supabase</li><li>Vercel</li>
-      </ul>
-    </section>
-
-    <section class="ajan-bolum">
-      <h2>YAKINDA</h2>
-      <p>Sıradaki ajanlar.</p>
-      <div class="ajan-izgara">
-        <article class="ajan-kart planli">
-          <span class="etiket plan">PLANLANDI</span>
-          <h3>Satış ajanı</h3>
-          <p>Her sabah “Bugün yapılacaklar” listesine bakıp kimi arayacağını söyler; istersen teklif e-postası taslağını hazırlar.</p>
-        </article>
-        <article class="ajan-kart planli">
-          <span class="etiket plan">PLANLANDI</span>
-          <h3>Haftalık özet ajanı</h3>
-          <p>Cuma günleri satış, ödeme ve yayın durumunu tek sayfada özetler.</p>
-        </article>
-      </div>
+      <div class="detay" id="detay" aria-live="polite"></div>
+      <p class="ipucu">Bir departmana dokun: içindeki ajanlar, ekranlar ve beceriler açılır.</p>
     </section>
   </div>
 </main>
@@ -122,17 +114,131 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="auth.js?v=20261010"></script>
 <script>
-// Sayfa yalnız yöneticiye açılır; menü bağlantısı da yalnız yöneticide görünür (auth.js).
 (() => {
-  const kilit = document.getElementById('ajan-kilit');
-  const icerik = document.getElementById('ajan-icerik');
+  'use strict';
+  // ---- Ofisin içeriği. Yeni ajan/ekran eklenince yalnız burası güncellenir. ----
+  // tur: ajan (çalışıyor) · plan (planlandı) · ekran · beceri · mac (MacBook'ta kurulu)
+  const BAGLANTILAR = ['Gmail', 'Google Drive', 'Canva', 'Motion', 'Supabase', 'Vercel'];
+  const DEPARTMANLAR = [
+    { id: 'sosyal', ad: 'Sosyal medya', renk: '#ff2f96', aci: -90, bag: ['Canva', 'Motion', 'Google Drive'],
+      ozet: 'Instagram içerikleri: plan, storyboard, video.',
+      masalar: [
+        { tur: 'ajan', ad: 'Haftalık Instagram planı', not: 'Her pazartesi 08:52 haftanın 4 içeriğini planlar; kare kare storyboard, açıklama ve hashtag hazırlar, telefona bildirim gönderir.' },
+        { tur: 'beceri', ad: 'Storyboard', not: 'Gönderi, carousel, Reels ve Story için telefon oranlı kare kare plan.' }
+      ] },
+    { id: 'satis', ad: 'Satış', renk: '#d8bb2c', aci: -30, bag: ['Gmail', 'Supabase'],
+      ozet: 'Teklif götürülen kafe ve zincirler.',
+      masalar: [
+        { tur: 'ekran', ad: 'Satış takibi', not: 'Yeni → Görüşüldü → Teklif → Denemede → Anlaştı; “Bugün yapılacaklar” ve markaya çevirme.', link: 'radyo-yonetim.html#/satis', linkAd: 'SATIŞA GİT' },
+        { tur: 'plan', ad: 'Satış ajanı', not: 'Her sabah kimi arayacağını söyler, istersen teklif e-postası taslağı hazırlar.' }
+      ] },
+    { id: 'musteri', ad: 'Müşteri & yayın', renk: '#22c98a', aci: 30, bag: ['Supabase'],
+      ozet: 'Markalar, şubeler ve mağaza yayını.',
+      masalar: [
+        { tur: 'ekran', ad: 'Markalar ve yayın', not: 'Chemex ve şubeleri, çalma listeleri, canlı yayın.', link: 'radyo-yonetim.html#/markalar', linkAd: 'MARKALARA GİT' },
+        { tur: 'ekran', ad: 'Marka iletişim kartı', not: 'Yetkili, telefon, e-posta ve not; dokununca arar ya da mail açar.', link: 'radyo-yonetim.html#/markalar', linkAd: 'AÇ' }
+      ] },
+    { id: 'finans', ad: 'Finans & rapor', renk: '#5aaaff', aci: 90, bag: ['Supabase'],
+      ozet: 'Ödemeler, aidatlar ve özetler.',
+      masalar: [
+        { tur: 'ekran', ad: 'Abonelik ödemeleri', not: 'Plan takviminde yaklaşan marka ödemeleri, ödendi işareti.', link: 'radyo-yonetim.html#/plan/takvim', linkAd: 'TAKVİME GİT' },
+        { tur: 'ekran', ad: 'Öğrenci Takvimi', not: 'Sporcuların yoklaması, ödemesi ve toplu aylık aidatı (Masaüstündeki ayrı uygulama).' },
+        { tur: 'plan', ad: 'Haftalık özet ajanı', not: 'Cuma günleri satış, ödeme ve yayın durumunu tek sayfada özetler.' }
+      ] },
+    { id: 'web', ad: 'Web & güvenlik', renk: '#a855f7', aci: 150, bag: ['Vercel', 'Supabase'],
+      ozet: 'derinrecord.com ve altyapısı.',
+      masalar: [
+        { tur: 'beceri', ad: 'Web tasarımı', not: 'Sayfalar, katalog bölümleri, görsel düzen.' },
+        { tur: 'beceri', ad: 'Güvenlik denetimi', not: 'Site, Supabase ve Vercel ayarlarının savunma amaçlı kontrolü.' },
+        { tur: 'beceri', ad: 'Skill bulma', not: 'Gerektiğinde hazır becerileri arar ve önerir.' }
+      ] },
+    { id: 'produksiyon', ad: 'Prodüksiyon', renk: '#ff7a3d', aci: 210, bag: ['Motion', 'Google Drive'],
+      ozet: 'Müzik, tanıtım videosu, film müziği.',
+      masalar: [
+        { tur: 'mac', ad: 'HyperFrames video', not: 'Şarkıdan ritme oturan tanıtım videosu (music-to-video, product-launch-video).' },
+        { tur: 'mac', ad: 'Agents Office · gstack', not: 'MacBook\'ta kurulu ek araçlar; “Ofisi Başlat” ile açılır.' }
+      ] }
+  ];
+  const ETIKET = { ajan: 'ÇALIŞIYOR', plan: 'PLANLANDI', ekran: 'EKRAN', beceri: 'BECERİ', mac: 'MACBOOK' };
+
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const el = id => document.getElementById(id);
+  let secili = 'sosyal';
+
+  function ciz() {
+    el('baglar').insertAdjacentHTML('beforeend', BAGLANTILAR.map(b => `<span class="bag" data-bag="${esc(b)}"><i></i>${esc(b)}</span>`).join(''));
+    el('sahne').insertAdjacentHTML('beforeend', DEPARTMANLAR.map(d => {
+      const r = d.aci * Math.PI / 180;
+      const x = 50 + 37 * Math.cos(r), y = 50 + 37 * Math.sin(r);
+      const calisan = d.masalar.filter(m => m.tur === 'ajan').length;
+      return `<button class="ada" type="button" data-dep="${d.id}" style="--renk:${d.renk};left:${x.toFixed(1)}%;top:${y.toFixed(1)}%">
+        <span class="ust"><i></i>${esc(d.ad.toLocaleUpperCase('tr'))}</span>
+        <h3>${esc(d.ozet)}</h3>
+        <span class="masalar">${d.masalar.map(m => `<span class="masa ${m.tur === 'ajan' ? 'aktif' : (m.tur === 'plan' ? 'plan' : '')}">${esc(m.ad)}</span>`).join('')}</span>
+        <span class="say">${d.masalar.length} masa${calisan ? ' · ' + calisan + ' ajan çalışıyor' : ''}</span>
+      </button>`;
+    }).join(''));
+    detayYaz();
+    kabloCiz();
+  }
+
+  function detayYaz() {
+    const d = DEPARTMANLAR.find(x => x.id === secili);
+    document.querySelectorAll('.ada').forEach(a => a.classList.toggle('secili', a.dataset.dep === secili));
+    document.querySelectorAll('.bag').forEach(b => b.classList.toggle('isik', d.bag.includes(b.dataset.bag)));
+    const k = el('detay');
+    k.style.setProperty('--renk', d.renk);
+    k.innerHTML = `<h2>${esc(d.ad)}</h2><p>${esc(d.ozet)} Bağlantılar: ${esc(d.bag.join(', '))}.</p>
+      <ul>${d.masalar.map(m => `<li><span class="etiket ${m.tur}">${ETIKET[m.tur]}</span><b>${esc(m.ad)}</b>
+        <p>${esc(m.not)}</p>${m.link ? `<a href="${esc(m.link)}">${esc(m.linkAd || 'AÇ')}</a>` : ''}</li>`).join('')}</ul>`;
+    kabloCiz();
+  }
+
+  // Kablolar: beyinden her departmana (ana), seçili departmanın bağlantılarından ona (ışıklı).
+  function kabloCiz() {
+    const svg = el('kablolar'), sahne = el('sahne');
+    if (!svg || getComputedStyle(svg).display === 'none') return;
+    const s = sahne.getBoundingClientRect();
+    const merkez = r => ({ x: r.left + r.width / 2 - s.left, y: r.top + r.height / 2 - s.top });
+    const b = merkez(el('beyin').getBoundingClientRect());
+    let yol = '';
+    document.querySelectorAll('.ada').forEach(a => {
+      const p = merkez(a.getBoundingClientRect());
+      const mx = (b.x + p.x) / 2, my = (b.y + p.y) / 2 - 18;
+      yol += `<path class="ana" d="M${b.x},${b.y} Q${mx},${my} ${p.x},${p.y}"/>`;
+    });
+    const d = DEPARTMANLAR.find(x => x.id === secili);
+    const hedef = merkez(document.querySelector(`.ada[data-dep="${secili}"]`).getBoundingClientRect());
+    document.querySelectorAll('.bag').forEach(g => {
+      const r = g.getBoundingClientRect();
+      const p = { x: r.left + r.width / 2 - s.left, y: r.bottom - s.top };
+      const isik = d.bag.includes(g.dataset.bag);
+      yol += `<path class="yan${isik ? ' isik' : ''}" d="M${p.x},${p.y} C${p.x},${p.y + 120} ${hedef.x},${hedef.y - 140} ${hedef.x},${hedef.y - 40}"/>`;
+    });
+    svg.setAttribute('viewBox', `0 0 ${s.width} ${s.height}`);
+    svg.innerHTML = yol;
+  }
+
+  document.addEventListener('click', e => {
+    const a = e.target.closest('.ada');
+    if (!a) return;
+    secili = a.dataset.dep;
+    detayYaz();
+    if (window.matchMedia('(max-width:900px)').matches) el('detay').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  window.addEventListener('resize', kabloCiz);
+
+  // Sayfa yalnız yöneticiye açılır; menü bağlantısı da yalnız yöneticide görünür (auth.js).
+  let cizildi = false;
   const guncelle = () => {
     const A = window.DerinAuth || {};
     const yonetici = !!(A.profile && A.profile.role === 'admin');
-    icerik.hidden = !yonetici;
-    kilit.hidden = yonetici;
-    if (!yonetici) kilit.textContent = A.user ? 'Bu sayfa yalnız yönetici içindir.' : 'Görmek için yönetici hesabınla giriş yap.';
+    el('ajan-icerik').hidden = !yonetici;
+    el('ajan-kilit').hidden = yonetici;
+    if (!yonetici) el('ajan-kilit').textContent = A.user ? 'Bu sayfa yalnız yönetici içindir.' : 'Görmek için yönetici hesabınla giriş yap.';
+    if (yonetici && !cizildi) { cizildi = true; ciz(); }
   };
+  window.DerinOfis = { ciz: () => { if (!cizildi) { cizildi = true; ciz(); } } };
   window.addEventListener('derin:authchange', guncelle);
   if (window.DerinAuth && window.DerinAuth.ready) window.DerinAuth.ready.then(guncelle, guncelle);
 })();
