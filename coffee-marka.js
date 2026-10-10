@@ -315,16 +315,18 @@ function ciz(brand, plist) {
   <img src="/assets/kaset-filigran.png" alt="" class="k5">
 </div>
 
-<section class="mk-hero mk-shell">
-  <div class="mk-hero-logo" aria-hidden="true"><img src="/assets/kaset-filigran.png" alt=""></div>
-  <p class="mk-eyebrow" id="mk-selam">DERİN RECORD</p>
-  <h1>${safe(brand.name)}</h1>
-  ${brand.tagline ? `<p class="mk-tag">${safe(brand.tagline)}</p>` : ''}
-  ${notlar.length ? `<div class="mk-notes">${notlar.map(n => `<span class="mk-note">${safe(n)}</span>`).join('')}</div>` : ''}
-</section>
+
 
 <section class="mk-shell">
  <div class="mk-govde">
+  <section class="mk-hero mk-shell">
+    <div class="mk-hero-logo" aria-hidden="true"><img src="/assets/kaset-filigran.png" alt=""></div>
+    <p class="mk-eyebrow" id="mk-selam">DERİN RECORD</p>
+    <h1>${safe(brand.name)}</h1>
+    ${brand.tagline ? `<p class="mk-tag">${safe(brand.tagline)}</p>` : ''}
+    ${notlar.length ? `<div class="mk-notes">${notlar.map(n => `<span class="mk-note">${safe(n)}</span>`).join('')}</div>` : ''}
+  </section>
+
   <div class="mk-tabs" id="mk-tabs"></div>
 
   <div class="mk-sag">
