@@ -2786,23 +2786,40 @@
       case 'req-convert': {
         const r = (D.requests || []).find(x => x.id === id);
         if (!r) return;
-        if (!await onaySor({
+        const S = window.DerinSatis;
+        pencere({
           baslik: 'Markaya çevrilsin mi?',
-          govde: `“${esc(r.company)}” için marka kaydı açılacak ve başvuru “iletişime geçildi” olarak işaretlenecek.`,
-          onayMetni: 'MARKA OLUŞTUR'
-        })) return;
-        const { data, error } = await client.from('brands')
-          .insert({ name: r.company, slug: bosSlug(slugify(r.company)), contact: r.email || null })
-          .select('id').single();
-        if (error) return hata('Marka oluşturulamadı: ' + error.message);
-        const isaretSorunu = await yazDogrula(
-          client.from('coffee_requests').update({ status: 'contacted' }).eq('id', id), 'Başvuru işaretlenemedi');
-        if (isaretSorunu) return hata(isaretSorunu);
-        await talepleriYukle();
-        await yenile(false); bildir('Marka oluşturuldu, başvuru işaretlendi.');
-        git('#/markalar/' + data.id);
+          onayMetni: 'MARKA OLUŞTUR',
+          govde: `<p>“${esc(r.company)}” için marka kaydı açılacak, iletişim bilgileri markaya taşınacak ve firma “Anlaştı” olarak işaretlenecek.</p>
+            <label class="check-row"><input type="checkbox" id="sc-deneme"${r.status === 'trial' ? ' checked' : ''}> 7 günlük deneme de başlasın</label>`,
+          onOnay: async () => {
+            const denemeIste = !!(el('sc-deneme') && el('sc-deneme').checked);
+            const alanlar = S.markayaAktarilacak(r);
+            const { data, error } = await client.from('brands')
+              .insert({ ...alanlar, slug: bosSlug(slugify(alanlar.name)), is_active: true })
+              .select('id').single();
+            if (error) return hata('Marka oluşturulamadı: ' + error.message);
+            const isaretSorunu = await yazDogrula(
+              client.from('coffee_requests').update({ status: 'won', brand_id: data.id }).eq('id', id), 'Talep işaretlenemedi');
+            if (isaretSorunu) hata('Marka açıldı ama talep işaretlenemedi. ' + isaretSorunu);
+            if (denemeIste) {
+              if (!D.plans.length) hata('Önce Abonelikler ekranından bir paket oluşturun.');
+              else {
+                const denemeSorunu = await denemeBaslat(data.id, r.plan_id || D.plans[0].id, r.branch_count || 1);
+                if (denemeSorunu) hata(denemeSorunu);
+              }
+            }
+            await talepleriYukle();
+            await yenile(false);
+            if (!isaretSorunu) bildir(denemeIste ? 'Marka oluşturuldu, deneme başlatıldı.' : 'Marka oluşturuldu.');
+            git('#/markalar/' + data.id);
+          }
+        });
         return;
       }
+      case 'req-goto-brand':
+        git('#/markalar/' + id);
+        return;
       case 'req-del':
         if (!await onaySor({ baslik: 'Talep silinsin mi?', govde: 'Başvuru kaydı kalıcı olarak silinir.', onayMetni: 'TALEBİ SİL' })) return;
         {
@@ -3146,6 +3163,22 @@
       next_step_date: al('sf-next-date'),
       notes: al('sf-notes')
     };
+  }
+
+  // 7 günlük deneme. Dönüş: hata metni; sorun yoksa null.
+  async function denemeBaslat(brandId, planId, subeSayisi) {
+    const simdi = new Date();
+    const { error } = await client.from('subscriptions').upsert({
+      brand_id: brandId,
+      plan_id: planId,
+      branch_count: Math.max(1, Number(subeSayisi) || 1),
+      status: 'trial',
+      trial_ends_at: new Date(simdi.getTime() + 7 * 86400000).toISOString(),
+      current_start: simdi.toISOString(),
+      current_end: null,
+      updated_at: simdi.toISOString()
+    }, { onConflict: 'brand_id' });
+    return error ? 'Deneme başlatılamadı: ' + error.message : null;
   }
 
   function abonelikBaslat(brandId) {

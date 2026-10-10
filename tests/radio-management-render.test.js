@@ -751,3 +751,28 @@ test('satış: panel sayfası satis-takibi.js modülünü takvimden önce yükle
   assert.ok(satis > -1, 'satis-takibi.js yüklenmeli');
   assert.ok(satis < html.indexOf('plan-takvim.js'));
 });
+
+test('satış: markaya çevir iletişimi aktarır, talebi anlaştı yapar, isteğe bağlı deneme başlatır', () => {
+  const bas = source.indexOf("case 'req-convert'");
+  const blok = source.slice(bas, source.indexOf("case 'req-del'", bas));
+  assert.ok(blok.includes('markayaAktarilacak'), 'iletişim alanları markaya aktarılmalı');
+  assert.ok(blok.includes('denemeBaslat('), 'deneme seçeneği olmalı');
+  assert.match(blok, /status: 'won'/);
+  assert.match(blok, /brand_id:/);
+  assert.ok(blok.includes('sc-deneme'), 'deneme onay kutusu olmalı');
+});
+
+test('satış: deneme 7 gün ve trial olarak yazılır', () => {
+  const bas = source.indexOf('async function denemeBaslat');
+  assert.ok(bas > -1, 'denemeBaslat tanımlı olmalı');
+  const blok = source.slice(bas, source.indexOf('\n  }\n', bas));
+  assert.match(blok, /status: 'trial'/);
+  assert.match(blok, /7 \* 86400000/);
+  assert.match(blok, /onConflict: 'brand_id'/);
+});
+
+test('satış: markası olan firmadan markaya gidilir', () => {
+  const bas = source.indexOf("case 'req-goto-brand'");
+  assert.ok(bas > -1);
+  assert.ok(source.slice(bas, bas + 200).includes("git('#/markalar/'"));
+});
