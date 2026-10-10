@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Ajanlar — Derin Record</title>
+<link rel="stylesheet" href="branch.css">
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="glass.css?v=2" />
+<style>
+/* Derin Record ajan sistemi — tanıtım sayfası (canlı veri yok; yeni ajan eklendikçe elle güncellenir). */
+.ajan-main{max-width:1080px;margin:0 auto;padding:56px 6vw 110px}
+.ajan-main h1{margin:0;font-size:clamp(44px,8vw,96px);line-height:.85;letter-spacing:-.06em;font-weight:900}
+.ajan-giris{max-width:620px;margin:22px 0 0;color:#c7c3be;line-height:1.55}
+.ajan-bolum{margin-top:52px}
+.ajan-bolum > h2{margin:0 0 6px;font-size:12px;letter-spacing:2px;color:var(--yellow)}
+.ajan-bolum > p{margin:0 0 18px;color:var(--muted);font-size:14px;line-height:1.5}
+.ajan-izgara{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.ajan-kart{position:relative;padding:22px;border:1px solid var(--glass-line,#3f3d40);border-radius:22px;background:var(--glass-bg,#16151a);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
+.ajan-kart h3{margin:10px 0 8px;font-size:19px;letter-spacing:-.02em}
+.ajan-kart p{margin:0;color:#c7c3be;font-size:14px;line-height:1.5}
+.ajan-kart .zaman{display:block;margin-top:12px;color:var(--cream);font-size:13px;font-weight:700}
+.ajan-kart a.git{display:inline-block;margin-top:14px;padding:9px 14px;border-radius:12px;background:var(--yellow);color:var(--ink);font-size:12px;font-weight:900;letter-spacing:.06em}
+.etiket{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.06em}
+.etiket.aktif{background:rgba(126,231,143,.16);color:#7ee78f}
+.etiket.aktif:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.etiket.arac{background:rgba(216,187,44,.16);color:var(--yellow)}
+.etiket.plan{background:rgba(255,255,255,.08);color:var(--muted)}
+.ajan-kart.planli{opacity:.72;border-style:dashed}
+.liste{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.liste li{padding:14px 18px;border:1px solid var(--glass-line,#3f3d40);border-radius:16px;background:rgba(255,255,255,.03);line-height:1.45}
+.liste b{display:block;font-size:15px}
+.liste span{color:var(--muted);font-size:13.5px}
+.baglantilar{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.baglantilar li{padding:8px 14px;border:1px solid var(--glass-line,#3f3d40);border-radius:999px;font-size:13px;font-weight:700}
+.ajan-kilit{margin-top:40px;color:var(--muted)}
+@media(max-width:700px){.ajan-main{padding:40px 7vw 90px}.ajan-izgara{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<header class="header"><a class="home" href="index.html"><span>←</span> SİTEYE DÖN</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
+<main class="ajan-main">
+  <p class="eyebrow">YÖNETİCİ ALANI</p>
+  <h1>AJANLAR.</h1>
+  <p class="ajan-giris">Derin Record'un dijital ofisi. Ajanlar senin yerine düzenli işleri yapar; beceriler onlara “bu iş Derin Record'da nasıl yapılır” bilgisini verir; bağlantılar da kullandıkları araçlardır.</p>
+
+  <p class="ajan-kilit" id="ajan-kilit">Hesap kontrol ediliyor…</p>
+
+  <div id="ajan-icerik" hidden>
+    <section class="ajan-bolum">
+      <h2>ÇALIŞAN AJANLAR</h2>
+      <p>Kendi başına, belli bir saatte çalışır; işi bitince sana haber verir.</p>
+      <div class="ajan-izgara">
+        <article class="ajan-kart">
+          <span class="etiket aktif">AKTİF</span>
+          <h3>Haftalık Instagram planı</h3>
+          <p>Haftanın 4 içeriğini planlar: cimnastik müzikleri, film müziği ve kafe müziği arasında dengeli. Her içerik için kare kare storyboard, açıklama metni ve hashtag hazırlar; planı tek sayfa olarak yayınlar.</p>
+          <span class="zaman">Her pazartesi 08:52 · telefona bildirim</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="ajan-bolum">
+      <h2>ARAÇLAR</h2>
+      <p>Senin kullandığın ekranlar. Ajanlar ileride buradaki veriyi de okuyacak.</p>
+      <div class="ajan-izgara">
+        <article class="ajan-kart">
+          <span class="etiket arac">EKRAN</span>
+          <h3>Satış takibi</h3>
+          <p>Teklif götürdüğün firmalar: Yeni → Görüşüldü → Teklif → Denemede → Anlaştı. “Bugün yapılacaklar” listesi ve tek tıkla markaya çevirme.</p>
+          <a class="git" href="radyo-yonetim.html#/satis">SATIŞA GİT</a>
+        </article>
+        <article class="ajan-kart">
+          <span class="etiket arac">EKRAN</span>
+          <h3>Marka iletişim kartı</h3>
+          <p>Her markanın yetkilisi, telefonu, e-postası ve notu. Telefona dokununca arar, e-postaya dokununca mail açar.</p>
+          <a class="git" href="radyo-yonetim.html#/markalar">MARKALARA GİT</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="ajan-bolum">
+      <h2>BECERİLER</h2>
+      <p>Ajanların Derin Record'a özel bilgisi.</p>
+      <ul class="liste">
+        <li><b>Storyboard</b><span>Instagram gönderisi, carousel, Reels ve Story için kare kare plan; telefon oranlı görsel sayfa.</span></li>
+        <li><b>Web tasarımı</b><span>Sitenin sayfaları, katalog bölümleri ve görsel düzeni.</span></li>
+        <li><b>Güvenlik denetimi</b><span>Site, Supabase ve Vercel ayarlarının savunma amaçlı kontrolü.</span></li>
+        <li><b>Skill bulma</b><span>İhtiyaç olduğunda hazır becerileri arar ve önerir.</span></li>
+      </ul>
+    </section>
+
+    <section class="ajan-bolum">
+      <h2>BAĞLANTILAR</h2>
+      <p>Ajanların kullandığı uygulamalar.</p>
+      <ul class="baglantilar">
+        <li>Gmail</li><li>Google Drive</li><li>Canva</li><li>Motion</li><li>Supabase</li><li>Vercel</li>
+      </ul>
+    </section>
+
+    <section class="ajan-bolum">
+      <h2>YAKINDA</h2>
+      <p>Sıradaki ajanlar.</p>
+      <div class="ajan-izgara">
+        <article class="ajan-kart planli">
+          <span class="etiket plan">PLANLANDI</span>
+          <h3>Satış ajanı</h3>
+          <p>Her sabah “Bugün yapılacaklar” listesine bakıp kimi arayacağını söyler; istersen teklif e-postası taslağını hazırlar.</p>
+        </article>
+        <article class="ajan-kart planli">
+          <span class="etiket plan">PLANLANDI</span>
+          <h3>Haftalık özet ajanı</h3>
+          <p>Cuma günleri satış, ödeme ve yayın durumunu tek sayfada özetler.</p>
+        </article>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+<script src="auth.js?v=20261010"></script>
+<script>
+// Sayfa yalnız yöneticiye açılır; menü bağlantısı da yalnız yöneticide görünür (auth.js).
+(() => {
+  const kilit = document.getElementById('ajan-kilit');
+  const icerik = document.getElementById('ajan-icerik');
+  const guncelle = () => {
+    const A = window.DerinAuth || {};
+    const yonetici = !!(A.profile && A.profile.role === 'admin');
+    icerik.hidden = !yonetici;
+    kilit.hidden = yonetici;
+    if (!yonetici) kilit.textContent = A.user ? 'Bu sayfa yalnız yönetici içindir.' : 'Görmek için yönetici hesabınla giriş yap.';
+  };
+  window.addEventListener('derin:authchange', guncelle);
+  if (window.DerinAuth && window.DerinAuth.ready) window.DerinAuth.ready.then(guncelle, guncelle);
+})();
+</script>
+</body>
+</html>
