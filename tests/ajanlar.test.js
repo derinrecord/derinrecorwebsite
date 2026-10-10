@@ -18,7 +18,7 @@ test('AJANLAR bağlantısı yalnız yönetici menüsünde', () => {
 test('AJANLAR sayfası arama motorlarına kapalı ve ajanları anlatır', () => {
   const html = oku('ajanlar.html');
   assert.match(html, /<meta name="robots" content="noindex,nofollow">/);
-  ['Haftalık Instagram planı', 'Satış takibi', 'Marka iletişim kartı', 'Storyboard', 'Satış ajanı', 'Haftalık özet'].forEach(m =>
+  ['Haftalık Instagram planı', 'Site bakım ajanı', 'Satış takibi', 'Marka iletişim kartı', 'Storyboard', 'Satış ajanı', 'Haftalık özet'].forEach(m =>
     assert.ok(html.includes(m), m));
   assert.ok(html.includes("'radyo-yonetim.html#/satis'"), 'satış ekranına bağlantı');
   assert.ok(html.includes('id="beyin"'), 'ortada beyin olmalı');
