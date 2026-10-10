@@ -310,8 +310,79 @@ test('talep ekranı durum seçeneklerini ve başvuru bilgisini gösterir', () =>
   assert.ok(html.includes('Roast &amp; Co'));
   assert.ok(html.includes('ali@roast.co'));
   assert.ok(html.includes('4 şube'));
-  ['new', 'contacted', 'closed'].forEach(s => assert.ok(html.includes(`value="${s}"`), `${s} durumu olmalı`));
+  ['new', 'contacted', 'offer', 'trial', 'won', 'lost'].forEach(s => assert.ok(html.includes(`value="${s}"`), `${s} durumu olmalı`));
+  assert.ok(!html.includes('value="closed"'), 'eski Kapandı aşaması kalmamalı');
   assert.ok(html.includes('MARKAYA ÇEVİR'));
+});
+
+// ---------- Satış takibi (docs/superpowers/specs/2026-10-10-satis-takibi-design.md) ----------
+const satisUi = Object.assign({}, ui, { bugunIso: () => '2026-10-10' });
+const satisD = Object.assign({}, D, {
+  requests: [
+    { id: 's1', company: 'Mola Kafe', contact_name: 'Ayşe', email: 'a@mola.co', phone: '0555 111', status: 'contacted',
+      source: 'manual', next_step: 'Pazartesi ara', next_step_date: '2026-10-08', created_at: iso(-3 * GUN) },
+    { id: 's2', company: 'Kahve Zinciri', contact_name: 'Can', email: 'c@z.co', status: 'won', brand_id: 'b1',
+      source: 'form', next_step: null, next_step_date: null, created_at: iso(-9 * GUN) },
+    { id: 's3', company: '<b>"Kafe"</b>', contact_name: '', email: '', status: 'new', source: 'manual',
+      next_step: 'Teklif yaz', next_step_date: '2026-10-20', created_at: iso(-1 * GUN) }
+  ]
+});
+
+test('satış: bugün yapılacaklar paneli tarihi gelmiş açık firmayı gösterir', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'talepler' }), satisD, satisUi);
+  assert.ok(html.includes('Bugün yapılacaklar'));
+  const panel = html.slice(html.indexOf('Bugün yapılacaklar'), html.indexOf('</div>', html.indexOf('Bugün yapılacaklar')) + 200);
+  assert.ok(panel.includes('Pazartesi ara'));
+  assert.ok(panel.includes('gecikti'), 'geçmiş tarih gecikti olarak işaretlenmeli');
+});
+
+test('satış: bugün yapılacak yoksa panel hiç basılmaz', () => {
+  const d = Object.assign({}, satisD, { requests: [satisD.requests[2]] });
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'talepler' }), d, satisUi);
+  assert.ok(!html.includes('Bugün yapılacaklar'));
+});
+
+test('satış: altı aşama etiketi ve süzgeç çipleri sayılarıyla', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'talepler' }), satisD, satisUi);
+  ['Yeni', 'Görüşüldü', 'Teklif gönderildi', 'Denemede', 'Anlaştı', 'Olmadı'].forEach(e => assert.ok(html.includes(e), e));
+  assert.ok(!html.includes('Kapandı'));
+  assert.ok(html.includes('data-act="req-add"'));
+  assert.match(html, /data-act="sales-filter" data-asama="won"[^>]*>[^<]*Anlaştı[^<]*<b>1<\/b>/);
+});
+
+test('satış: anlaşmış ve markası olan firma markaya gider, yeniden çevrilmez', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'talepler' }), satisD, satisUi);
+  const satir = html.slice(html.indexOf('Kahve Zinciri'), html.indexOf('</tr>', html.indexOf('Kahve Zinciri')));
+  assert.ok(satir.includes('data-act="req-goto-brand"'));
+  assert.ok(!satir.includes('data-act="req-convert"'));
+});
+
+test('satış: firma adı kaçışlı basılır', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'talepler' }), satisD, satisUi);
+  assert.ok(!html.includes('<b>"Kafe"</b>'));
+  assert.ok(html.includes('&lt;b&gt;'));
+});
+
+test('satış: kaynak etiketi ve düzenle düğmesi', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'talepler' }), satisD, satisUi);
+  assert.ok(html.includes('Elle') && html.includes('Site'));
+  assert.ok(html.includes('data-act="req-edit" data-id="s1"'));
+});
+
+test('satış: aşama süzgeci seçiliyken diğer aşamalar tabloda görünmez', () => {
+  const u = Object.assign({}, satisUi, { satisAsama: 'won' });
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'talepler' }), satisD, u);
+  const tablo = html.slice(html.indexOf('<table'));
+  assert.ok(tablo.includes('Kahve Zinciri'));
+  assert.ok(!tablo.includes('Mola Kafe'));
+});
+
+test('satış: menü ve sekme etiketi Satış, iç anahtar talepler', () => {
+  const html = V.nav(durum({ nav: 'musteri', sub: 'talepler' }), { players: 0, folders: 0, announcements: 0, brands: 1, playlists: 0, requests: 3, olaySorun: 0 },
+    { ad: 'Derin Record', alt: 'x', basHarf: 'DR' });
+  assert.ok(html.includes('data-sub="talepler"'));
+  assert.ok(html.includes('Satış'));
+  assert.ok(html.includes('Teklif ve görüşme takibi'));
 });
 
 test('çalma listesi detayı sıra düğmelerini uçlarda kapatır', () => {

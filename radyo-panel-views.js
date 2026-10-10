@@ -1245,7 +1245,7 @@
         <div class="nav-title">MÜŞTERİ</div>
         ${oge('musteri', 'markalar', 'Markalar', 'Şubeler, listeler ve yayın', counts.brands, ikonlar.marka)}
         ${oge('musteri', 'abonelikler', 'Abonelikler', 'Paket ve süreler', null, ikonlar.abonelik)}
-        ${oge('musteri', 'talepler', 'Talepler', 'Gelen başvurular', counts.requests, ikonlar.talep)}
+        ${oge('musteri', 'talepler', 'Satış', 'Teklif ve görüşme takibi', counts.requests, ikonlar.talep)}
 
         <div class="nav-title">PLAN</div>
         ${oge('plan', 'takvim', 'Takvim', 'Günlük plan, notlar, ödemeler', null, ikonlar.plan)}
@@ -1270,7 +1270,7 @@
     'icerik/anonslar': ['Anonslar', 'Mikrofonla kaydedilen duyurular'],
     'musteri/markalar': ['Markalar', 'Şubeler, yayın linkleri ve çalma listeleri'],
     'musteri/abonelikler': ['Abonelikler', 'Paketler, deneme ve lisans süreleri'],
-    'musteri/talepler': ['Talepler', 'Kahve markalarından gelen başvurular'],
+    'musteri/talepler': ['Satış', 'Teklif ve görüşme takibi'],
     'plan/takvim': ['Takvim', 'Günlük planlar, notlar ve yaklaşan ödemeler'],
     'kurulum/kurulum': ['Kurulum durumu', 'Panelin hangi özellikleri açık; eksik SQL dosyaları tek ekranda'],
     'bildirim/bildirimler': ['Bildirimler', 'Şube kodu ve link başka bir yerde kullanılmaya çalışıldığında buraya düşer']
@@ -2358,36 +2358,73 @@
       </div>`;
   }
 
-  // ---------- TALEPLER ----------
-  const TALEP_DURUM = { new: 'Yeni', contacted: 'İletişime geçildi', closed: 'Kapandı' };
+  // ---------- SATIŞ (iç anahtar: talepler) ----------
+  // Tasarım: docs/superpowers/specs/2026-10-10-satis-takibi-design.md
+  // Hesaplar satis-takibi.js'te (window.DerinSatis); burada yalnız HTML.
+  const satisModulu = () => (typeof window !== 'undefined' && window.DerinSatis)
+    || (typeof require === 'function' ? require('./satis-takibi.js') : null);
 
   function talepListesi(state, D, ui) {
+    const S = satisModulu();
+    if (!S) return '<p class="bos">Satış modülü yüklenemedi (satis-takibi.js).</p>';
+    const bugun = ui.bugunIso ? ui.bugunIso() : new Date().toISOString().slice(0, 10);
+    const secili = ui.satisAsama || 'tumu';
     const q = norm(state.q);
-    const list = (D.requests || []).filter(r => hit(q, r.company, r.contact_name, r.email, r.phone));
-    const satirlar = list.map(r => `<tr>
+    const hepsi = D.requests || [];
+    const sayi = S.asamaSayilari(hepsi);
+    const gunYaz = v => (v ? esc(tarihKisa(String(v).slice(0, 10) + 'T12:00:00')) : '');
+
+    const bugunler = S.bugunYapilacaklar(hepsi, bugun);
+    const bugunPanel = !bugunler.length ? '' : `
+      <div class="panel bugun-panel">
+        <h3>Bugün yapılacaklar (${bugunler.length})</h3>
+        <ul class="bugun-liste">${bugunler.map(t => {
+          const gec = String(t.next_step_date).slice(0, 10) < bugun;
+          return `<li class="${gec ? 'gecikti' : ''}"><button class="link" type="button" data-act="req-edit" data-id="${esc(t.id)}"><b>${esc(t.company)}</b></button>
+            <span>${esc(t.next_step || 'Sonraki adım yazılmamış')}</span> <span class="sub">${gunYaz(t.next_step_date)}${gec ? ' · gecikti' : ''}</span></li>`;
+        }).join('')}</ul>
+      </div>`;
+
+    const cip = (kod, etiket) => `<button class="chip-btn${secili === kod ? ' active' : ''}" type="button" data-act="sales-filter" data-asama="${kod}">${esc(etiket)} <b>${sayi[kod] || 0}</b></button>`;
+    const cipler = `<div class="asama-cipleri">${cip('tumu', 'Tümü')}${S.ASAMALAR.map(a => cip(a.kod, a.etiket)).join('')}</div>`;
+
+    const list = S.sirala(hepsi)
+      .filter(r => secili === 'tumu' || r.status === secili)
+      .filter(r => hit(q, r.company, r.contact_name, r.email, r.phone, r.next_step, r.notes));
+    const satirlar = list.map(r => {
+      const secenekler = S.ASAMALAR.map(a => `<option value="${a.kod}"${r.status === a.kod ? ' selected' : ''}>${esc(a.etiket)}</option>`).join('');
+      const iletisim = [r.contact_name, r.email, r.phone].filter(x => x && String(x).trim()).map(esc).join(' · ') || '—';
+      const sonraki = r.next_step || r.next_step_date
+        ? `${esc(r.next_step || '')}${r.next_step_date ? ` <span class="sub">${gunYaz(r.next_step_date)}</span>` : ''}`
+        : '<span class="sub">—</span>';
+      const markaDugme = r.brand_id
+        ? `<button class="btn sm" data-act="req-goto-brand" data-id="${esc(r.brand_id)}" type="button">MARKAYA GİT</button>`
+        : `<button class="btn sm" data-act="req-convert" data-id="${esc(r.id)}" type="button">MARKAYA ÇEVİR</button>`;
+      return `<tr>
       <td><div class="cell-main"><span class="cover">📩</span><span><b>${esc(r.company)}</b>
-        <span class="sub">${esc(r.contact_name || '—')} · ${esc(r.email || '—')}${r.phone ? ' · ' + esc(r.phone) : ''}</span></span></div></td>
-      <td>${r.branch_count ? esc(r.branch_count + ' şube') : '<span class="sub">—</span>'}
-        ${r.message ? `<span class="sub">“${esc(r.message)}”</span>` : ''}</td>
-      <td class="tight">${esc(tarih(r.created_at))}</td>
-      <td class="tight">
-        <select data-act="req-status" data-id="${esc(r.id)}" aria-label="Durum">
-          ${Object.keys(TALEP_DURUM).map(s => `<option value="${s}"${r.status === s ? ' selected' : ''}>${TALEP_DURUM[s]}</option>`).join('')}
-        </select>
-      </td>
+        <span class="sub">${iletisim}</span>
+        ${r.branch_count ? `<span class="sub">${esc(r.branch_count + ' şube')}</span>` : ''}
+        ${r.message ? `<span class="sub">“${esc(r.message)}”</span>` : ''}</span></div></td>
+      <td class="tight"><select data-act="req-status" data-id="${esc(r.id)}" aria-label="Aşama">${secenekler}</select></td>
+      <td>${sonraki}</td>
+      <td class="tight">${esc(S.KAYNAK_ETIKET[r.source] || S.KAYNAK_ETIKET.form)}</td>
       <td><div class="row-actions">
-        <button class="btn sm" data-act="req-convert" data-id="${esc(r.id)}" type="button">MARKAYA ÇEVİR</button>
+        <button class="btn sm" data-act="req-edit" data-id="${esc(r.id)}" type="button">DÜZENLE</button>
+        ${markaDugme}
         <button class="btn sm danger" data-act="req-del" data-id="${esc(r.id)}" type="button">SİL</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
 
-    return `
+    return `${bugunPanel}
       <div class="panel">
-        <h3>TEKLİF TALEPLERİ (${(D.requests || []).length})</h3>
-        <p class="panel-sub">Kahve markalarından gelen başvurular. “MARKAYA ÇEVİR” başvuruyu marka kaydına dönüştürür.</p>
+        <div class="panel-head"><h3>FİRMALAR (${hepsi.length})</h3>
+          <button class="btn primary sm" data-act="req-add" type="button">+ FİRMA EKLE</button></div>
+        <p class="panel-sub">Siteden gelen başvurular ve elle eklediğin firmalar. Anlaşınca “MARKAYA ÇEVİR”.</p>
+        ${cipler}
         <table>
-          <thead><tr><th>TALEP</th><th>NOT</th><th>GELDİĞİ ZAMAN</th><th>DURUM</th><th></th></tr></thead>
-          <tbody>${satirlar || bos(5, (D.requests || []).length ? 'Aramayla eşleşen talep yok.' : 'Henüz talep yok.')}</tbody>
+          <thead><tr><th>FİRMA</th><th>AŞAMA</th><th>SONRAKİ ADIM</th><th>KAYNAK</th><th></th></tr></thead>
+          <tbody>${satirlar || bos(5, hepsi.length ? 'Bu süzgeçle eşleşen firma yok.' : 'Henüz talep yok. “+ FİRMA EKLE” ile ilk firmayı ekle.')}</tbody>
         </table>
       </div>`;
   }
@@ -2397,7 +2434,7 @@
     // bağlantı geçmişi onun alt sekmeleridir.
     canli: [['subeler', 'Şubeler'], ['yayin', 'Yayın başlat'], ['saglik', 'Yayın sağlığı'], ['gecmis', 'Bağlantı geçmişi']],
     icerik: [['klasorler', 'Yayın klasörleri'], ['anonslar', 'Anonslar']],
-    musteri: [['markalar', 'Markalar'], ['abonelikler', 'Abonelikler'], ['talepler', 'Talepler']]
+    musteri: [['markalar', 'Markalar'], ['abonelikler', 'Abonelikler'], ['talepler', 'Satış']]
   };
 
   // Canlı durum sekmelerinin başlığına, o sekmenin aciliyeti yazılır: kaç
