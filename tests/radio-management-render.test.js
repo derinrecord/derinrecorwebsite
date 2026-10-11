@@ -133,7 +133,7 @@ test('şube eklerken anahtar açıkça üretilir ve bozuk anahtar kopyalanmaz', 
 
   // Bozuk anahtar şubeyi silmeyi gerektirmez: kayıt yerinde kalır, anahtar tazelenir.
   const yenile = source.slice(source.indexOf("if (tip === 'anahtar')"), source.indexOf("case 'saglik-denetle'"));
-  assert.ok(yenile.includes('player_key: crypto.randomUUID()'), 'yeni anahtar üretilmeli');
+  assert.ok(yenile.includes('V.linkYenileAlanlari(crypto.randomUUID())'), 'yeni anahtar üretilmeli');
   assert.ok(yenile.includes(".update("), 'anahtar yerinde güncellenmeli');
 });
 
