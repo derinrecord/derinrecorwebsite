@@ -312,3 +312,49 @@ test('masaüstü: başlık govde ızgarasının içinde, çalan parça onunla ay
   // sol sütuna sıkıştırır (1024px'te görüldü).
   assert.ok(!/\.mk-govde > \.mk-bilgi\{grid-column:auto\}/.test(css), 'bilgi alanı grid-column ile ezilmemeli');
 });
+
+// Belirli bir ekran genişliğinde bir özelliğin SON geçerli değerini bulur:
+// kurallar kaynak sırasıyla gezilir, uymayan max-width medyaları atlanır.
+function gecerli(secici, ozellik, genislik) {
+  let son = null;
+  const desen = new RegExp('(?:^|;)\\s*' + ozellik + '\\s*:([^;]+)', 'g');
+  kurallar.forEach(k => {
+    if (k.secici !== secici) return;
+    const mx = k.medya.match(/max-width:\s*(\d+)px/);
+    if (k.medya && (!mx || genislik > Number(mx[1]))) return;
+    let m;
+    while ((m = desen.exec(k.govde))) son = m[1].trim();
+  });
+  return son;
+}
+
+// Telefonda (≤900px) her şey alt alta tek sütundur. Orta genişlik kuralı
+// (≤1180px, iki sütun) kaynakta sonra geldiği için telefonda da geçerli
+// kalıyordu: içerik 250px'lik dar sütuna sıkışıyor, listeler kesiliyordu.
+test('telefon: gövde tek sütun, içerik tam genişlik', () => {
+  [390, 600, 900].forEach(w => {
+    const kol = gecerli('.mk-govde', 'grid-template-columns', w);
+    assert.ok(!/\s/.test(kol.replace(/minmax\([^)]*\)/g, 'X')), `${w}px'te tek sütun olmalı, bulunan: ${kol}`);
+  });
+  assert.match(gecerli('.mk-govde', 'grid-template-columns', 1024), /minmax\(200px,250px\) minmax\(0,1fr\)/,
+    'orta genişlikte iki sütun kalmalı');
+  // Liste başlığı ("2 parça · 6 dk") satırlarla aynı iç boşlukta: sağdaki
+  // sarı gölge çizgisine yapışmasın.
+  assert.equal(gecerli('.mk-panel h3', 'padding', 390), '0 14px');
+});
+
+// Seçili olmayan listeler soluk ama okunur olmalı: sekme × alt yazı opaklığı.
+test('pasif çalma listesi sekmeleri okunur', () => {
+  const sekme = Number(gecerli('.mk-tab', 'opacity', 1280));
+  const alt = Number(gecerli('.mk-tab small', 'opacity', 1280));
+  assert.ok(sekme >= 0.75, 'pasif sekme opaklığı en az .75, bulunan ' + sekme);
+  assert.ok(sekme * alt >= 0.5, 'pasif sekmenin alt yazısı en az .5 görünür, bulunan ' + (sekme * alt).toFixed(2));
+});
+
+// Kapak yoksa sahnede yalnız nota işareti değil, markanın adı görünür.
+test('kapaksız sahne markanın adını gösterir', () => {
+  assert.match(kaynak, /function bosKapak\(/, 'boş kapak tek yerden üretilmeli');
+  assert.ok(!/art\.innerHTML = '<div class="ph">♪<\/div>'/.test(kaynak), 'sahnede çıplak ♪ kalmamalı');
+  assert.match(kaynak, /class="ph-ad"/, 'marka adı yazılmalı');
+  assert.match(css, /\.mk-art \.ph-ad\{/, 'marka adının stili olmalı');
+});

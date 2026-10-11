@@ -44,6 +44,7 @@ let acikListe = null;
 // Markaya özel kapak (supabase/marka-kapagi.sql): kendi kapağı olmayan liste
 // ve parçalar için varsayılan görsel. Fonksiyon yoksa null kalır.
 let markaKapak = null;
+let markaAdi = '';
 let seviye = 1;
 let gecisVar = false;
 let fadeZaman = null;
@@ -200,13 +201,19 @@ function sahneYaz(t) {
   }).catch(() => {});
 }
 
+// Kapak yoksa sahnede boş bir kare yerine markanın adı yazılır.
+function bosKapak() {
+  return '<div class="ph"><span aria-hidden="true">♪</span>' +
+    (markaAdi ? '<b class="ph-ad">' + safe(markaAdi) + '</b>' : '') + '</div>';
+}
+
 function doldur(t) {
   dockYaz(t);
   const stage = byId('mk-stage');
   if (!stage) return;
   const art = byId('mk-art');
   if (!t) {
-    art.innerHTML = '<div class="ph">♪</div>';
+    art.innerHTML = bosKapak();
     byId('mk-tur').textContent = 'HAZIR';
     byId('mk-baslik').textContent = 'Yayın bekleniyor';
     byId('mk-alt').textContent = 'Bu listede henüz parça yok.';
@@ -217,7 +224,7 @@ function doldur(t) {
   const kapakPath = t.cover_path || t._playlistCover || markaKapak;
   art.innerHTML = kapak(kapakPath)
     ? `<img src="${safe(kapak(kapakPath))}" alt="">`
-    : '<div class="ph">♪</div>';
+    : bosKapak();
   byId('mk-tur').textContent = 'ŞİMDİ ÇALIYOR';
   byId('mk-baslik').textContent = clean(t.title);
   byId('mk-alt').textContent = t._playlistName || '';
@@ -295,6 +302,7 @@ function istatistikCiz(brand) {
 }
 
 function ciz(brand, plist) {
+  markaAdi = String(brand.name || '');
   byId('mk-lock').hidden = true;
   const app = byId('mk-app');
   app.hidden = false;
@@ -331,7 +339,7 @@ function ciz(brand, plist) {
 
   <div class="mk-sag">
   <div class="mk-stage" id="mk-stage">
-    <div class="mk-art" id="mk-art"><div class="ph">♪</div>
+    <div class="mk-art" id="mk-art">${bosKapak()}
       <span class="mk-live"><i></i>CANLI</span></div>
     <div class="mk-meta">
       <div class="mk-icerik">
