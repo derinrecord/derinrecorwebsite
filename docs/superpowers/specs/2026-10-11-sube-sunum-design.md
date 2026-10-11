@@ -43,9 +43,11 @@ sunucu fonksiyonlarıyla aynen çalışır. Güvenlik baştan yazılmaz, yeniden
 - **`DAVETİ KOPYALA`**: link + kod tek mesaj (bugün var, korunur).
 - Markadaki "MÜŞTERİ SUNUMU — LİNK VE ERİŞİM KODU" bölümü kaldırılır (marka linki artık yok).
 
-### 4. Eski ekranlar
-- `radyo.html?key=…` → yeni şube sunum linkine yönlenir (dosya silinmez).
-- `/coffee/<slug>` marka linki → "Bu link artık kullanılmıyor" sayfası (dosya silinmez).
+### 4. Eski ekranlar (Derin'in kararı: en sonda silinir)
+- Sonunda yalnız müşteri sunumu kalır. Kafe oynatıcı (`radyo.html`, `radyo.js`) **son adımda silinir**:
+  yeni ekran denenip Derin "canlıya al" dedikten sonra. Önce silinmez ki güvenlik parçaları ortada kalmasın.
+- Silmeden sonra `radyo.html?key=…` → yeni şube linkine yönlenir (vercel.json yönlendirmesi).
+- `/coffee/<slug>` marka linki → "Bu link artık kullanılmıyor" sayfası.
 
 ## Hata durumları
 - Kod yanlış → "Kod doğru değil" + deneme kaydı. Link tanınmıyor → "Bu link tanınmadı".
@@ -58,7 +60,7 @@ sunucu fonksiyonlarıyla aynen çalışır. Güvenlik baştan yazılmaz, yeniden
 - Prova sayfası + 390px / 1280px ekran görüntüleri Derin'e gönderilir.
 
 ## Yapılmayacaklar
-- Veritabanında onaysız değişiklik yok; marka/şube silinmez; `chat-crypto.js`, `config.js`, RLS'e dokunulmaz.
+- Veritabanında onaysız değişiklik yok; marka/şube silinmez (Chemex, starbucks deneme verisi); `chat-crypto.js`, `config.js`, RLS'e dokunulmaz.
 - Canlıya alma yalnız Derin "canlıya al" dedikten sonra.
 
 ## Sıra
@@ -66,4 +68,5 @@ sunucu fonksiyonlarıyla aynen çalışır. Güvenlik baştan yazılmaz, yeniden
 2. Panel: YENİ LİNK ÜRET / YENİ KOD ÜRET düğmeleri.
 3. (Onayla) kapak/süre okuma fonksiyonu.
 4. Sunum ekranının şube hâli.
-5. Eski linklerin yönlendirilmesi, marka sunum bölümünün kaldırılması.
+5. Marka sunum bölümünün kaldırılması, eski linklerin yönlendirilmesi.
+6. Derin onaylayınca kafe oynatıcının silinmesi.
