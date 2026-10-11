@@ -1979,9 +1979,9 @@
         <td><b>${esc(p.label)}</b><span class="sub">${esc(p.player_key)}</span>${ozel.tip
           ? `<span class="sub">özel yayın: <b>${esc(ozel.ad)}</b></span>` : ''}${farkli
           ? `<span class="sub">çalıyor: <b>${esc(farkli.ad)}</b></span>` : ''}</td>
-        <td class="tight">${bagliChip(p, now)}${ozel.tip ? chip('gold', 'ÖZEL YAYIN', true) : ''}${farkli ? chip('gold', 'FARKLI LİSTE', true) : ''}${ihlalVar(p) ? chip('danger', 'PAYLAŞIM GİRİŞİMİ') : ''}</td>
-        <td class="tight">${p.last_seen_at ? esc(tarih(p.last_seen_at)) : 'hiç bağlanmadı'}</td>
-        <td class="tight">${kilitChip(p)}</td>
+        <td class="tight" data-etiket="Durum">${bagliChip(p, now)}${ozel.tip ? chip('gold', 'ÖZEL YAYIN', true) : ''}${farkli ? chip('gold', 'FARKLI LİSTE', true) : ''}${ihlalVar(p) ? chip('danger', 'PAYLAŞIM GİRİŞİMİ') : ''}</td>
+        <td class="tight" data-etiket="Son bağlantı">${p.last_seen_at ? esc(tarih(p.last_seen_at)) : 'hiç bağlanmadı'}</td>
+        <td class="tight" data-etiket="Cihaz">${kilitChip(p)}</td>
         <td><div class="row-actions">
           <button class="btn sm" data-act="player-copy" data-id="${esc(p.id)}" type="button">CİHAZ LİNKİ</button>
           <button class="btn sm" data-act="branch-open" data-id="${esc(p.id)}" type="button">YÖNET ›</button>
@@ -2093,7 +2093,7 @@
 
       <div class="panel" style="margin-bottom:18px">
         <h3>ŞUBELER (${subeler.length})</h3>
-        <table>
+        <table class="kart-tablo">
           <thead><tr><th>ŞUBE</th><th>DURUM</th><th>SON BAĞLANTI</th><th>CİHAZ</th><th></th></tr></thead>
           <tbody>${subeSatirlari || bos(5, subeler.length ? 'Aramayla eşleşen şube yok.' : 'Bu markanın henüz şubesi yok.')}</tbody>
         </table>

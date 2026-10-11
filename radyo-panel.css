@@ -656,6 +656,15 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
   .satis-tablo td.tight{white-space:normal}
   .satis-tablo select{width:100%}
   .satis-tablo .row-actions{justify-content:flex-start;flex-wrap:wrap}
+  /* Marka sayfasının şube tablosu da telefonda kart olur: CİHAZ LİNKİ ve
+     YÖNET düğmeleri yana kaydırmadan görünür. */
+  table.kart-tablo{min-width:0}
+  .kart-tablo thead{display:none}
+  .kart-tablo tbody tr{display:block;padding:14px 0;border-bottom:1px solid var(--line)}
+  .kart-tablo tbody td{display:block;padding:4px 0;border:0;min-width:0}
+  .kart-tablo td[data-etiket]::before{content:attr(data-etiket);display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);margin-bottom:2px}
+  .kart-tablo td.tight{white-space:normal}
+  .kart-tablo .row-actions{justify-content:flex-start;flex-wrap:wrap}
   .asama-cipleri{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
   .chip-btn{flex:0 0 auto}
   .iletisim{grid-template-columns:1fr;gap:2px}
