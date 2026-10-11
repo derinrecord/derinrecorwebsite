@@ -70,11 +70,11 @@
   const karar = document.getElementById('karar');
   const denetimler = document.getElementById('denetimler');
 
-  // Panelin ürettiği linkin aynısı: siteRoot() + 'radyo.html?key=' + player_key.
+  // Panelin ürettiği linkin aynısı: siteRoot() + 'coffee/s/' + player_key.
   // Gerçek bir şube anahtarı biçiminde (uuid) prova anahtarı kullanılır.
   const PROVA_ANAHTAR = '3653e570-f85e-4f44-859d-6083d2486f42';
   const PROVA_KOD = 'G5LV-S8VD';
-  const link = location.origin + '/radyo.html?key=' + PROVA_ANAHTAR;
+  const link = location.origin + '/coffee/s/' + PROVA_ANAHTAR;
 
   const yaz = (sinif, metin) => { karar.className = 'karar ' + sinif; karar.textContent = metin; };
   const denetim = (metin, gecti) => {

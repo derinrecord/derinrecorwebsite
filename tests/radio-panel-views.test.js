@@ -47,7 +47,7 @@ const ui = {
   cover: p => '/kapak/' + p,
   ses: p => '/ses/' + p,
   anons: p => '/anons/' + p,
-  playerBase: () => 'https://ornek.test/radyo.html?key=',
+  playerBase: () => 'https://ornek.test/coffee/s/',
   brandUrl: slug => 'https://ornek.test/coffee/' + slug,
   accept: () => '.mp3,.wav',
   desteklenenler: () => 'mp3, wav',
@@ -493,7 +493,7 @@ test('boş veri dostça karşılanır', () => {
 
 test('şube çekmecesi yayın linkini ve bakım düğmelerini taşır', () => {
   const html = V.subeCekmecesi('p1', D, ui);
-  assert.ok(html.includes('https://ornek.test/radyo.html?key=' + ANAHTAR_NISANTASI));
+  assert.ok(html.includes('https://ornek.test/coffee/s/' + ANAHTAR_NISANTASI));
   assert.ok(html.includes('data-act="player-check"'), 'bağlantı sınaması düğmesi olmalı');
   assert.ok(html.includes('KİLİDİ SIFIRLA'));
   assert.ok(html.includes('ŞUBEYİ SİL'));
@@ -572,7 +572,7 @@ test('bozuk anahtar boş anahtar gibi yakalanır ve yenilenmesi önerilir', () =
 // Cihazı dokunuşsuz çalıştırma ayarı panelden verilir: komut şubenin gerçek
 // linkiyle hazır gelmeli ki kimse elle birleştirmesin.
 test('dokunuşsuz kurulum komutu şubenin linkiyle hazır verilir', () => {
-  const link = 'https://ornek.test/radyo.html?key=' + ANAHTAR_NISANTASI;
+  const link = 'https://ornek.test/coffee/s/' + ANAHTAR_NISANTASI;
   const html = V.kioskKurulum(link);
   assert.ok(html.includes(link), 'komut şubenin linkini içermeli');
   assert.ok(html.includes('--autoplay-policy=no-user-gesture-required'));
@@ -584,7 +584,7 @@ test('dokunuşsuz kurulum komutu şubenin linkiyle hazır verilir', () => {
   assert.ok(html.includes('YAYINI BAŞLAT'));
 
   // Link HTML'e gömülürken kaçış yapılmalı, yoksa data-copy bozulur.
-  assert.ok(V.kioskKurulum('https://x/radyo.html?key=a"b').includes('&quot;'));
+  assert.ok(V.kioskKurulum('https://x/coffee/s/a"b').includes('&quot;'));
 });
 
 // Şube çekmecesinde kurulum düğmesi bulunmalı, yoksa özellik görünmez.
@@ -1639,7 +1639,7 @@ test('şube çekmecesi kodu, davet metnini ve alarm kanıtını gösterir', () =
   assert.ok(cekmece.includes('ihlal-temizle'), 'alarm temizlenebilmeli');
   assert.ok(cekmece.includes('5.6.7.8') && cekmece.includes('IP: İzmir, Türkiye'), 'kanıt yazılmalı');
   // Kopyalanacak davet metni; link, kod ve kurulum cümlesini birlikte taşır.
-  const davet = V.davetMetni(KODLU_P, 'https://ornek.test/radyo.html?key=' + ANAHTAR_ALSANCAK);
+  const davet = V.davetMetni(KODLU_P, 'https://ornek.test/coffee/s/' + ANAHTAR_ALSANCAK);
   assert.ok(davet.includes('K7M2-4QPD') && davet.includes('Yayın linki'));
   assert.ok(davet.includes('başka bir cihazda açılırsa yayın çalışmaz'));
 });
@@ -1648,7 +1648,7 @@ test('kodu olmayan şubede çekmece kod üretmeyi teklif eder, alarm çizilmez',
   const cekmece = V.subeCekmecesi('p1', D, ui);
   assert.ok(cekmece.includes('KOD ÜRET'), 'kodsuz şubede üretme düğmesi olmalı');
   assert.ok(!cekmece.includes('PAYLAŞIM GİRİŞİMİ'), 'kayıt yokken alarm bölümü çizilmemeli');
-  assert.equal(V.davetMetni(D.players[0], 'https://x/radyo.html?key=' + ANAHTAR_NISANTASI).includes('Şube kodu'), false);
+  assert.equal(V.davetMetni(D.players[0], 'https://x/coffee/s/' + ANAHTAR_NISANTASI).includes('Şube kodu'), false);
 });
 
 test('paylaşım girişimi menüde kırmızı rozet olarak okunur', () => {
@@ -1686,7 +1686,7 @@ test('şerit bildirim izni düğmesini yalnız izin yokken çizer', () => {
 // QR görseli: kodlayıcı tarayıcıda CDN'den gelir, testte sahtesi verilir.
 // Görünüm katmanı DOM'a dokunmadığı için dönen şey yalnızca bir data URL'dir.
 test('QR görseli kodlayıcıya metni aynen verir, yoksa/bozuksa null döner', () => {
-  const link = 'https://ornek.test/radyo.html?key=3653e570-f85e-4f44-859d-6083d2486f42';
+  const link = 'https://ornek.test/coffee/s/3653e570-f85e-4f44-859d-6083d2486f42';
   assert.equal(V.qrGorsel(link, null), null, 'kodlayıcı yoksa görsel üretilmemeli');
   assert.equal(V.qrGorsel('', () => ({ addData() {}, make() {}, createDataURL: () => 'data:x' })), null,
     'boş metin kodlanmamalı');
