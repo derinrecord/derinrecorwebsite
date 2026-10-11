@@ -143,8 +143,12 @@
   .kod input:focus{outline:none;border-color:var(--yellow);box-shadow:0 0 0 3px rgba(216,187,44,.25)}
   .kod button{margin-top:0;padding:14px 22px;font-size:12px}
   .liste label{font-size:12px;letter-spacing:.18em;font-weight:900;color:var(--yellow)}
-  .liste select{appearance:none;-webkit-appearance:none;padding:13px 18px;font:inherit;font-size:14px;
-        color:var(--cream);cursor:pointer;max-width:100%;background:var(--ink);
+  /* appearance:none tarayıcının okunu siler; kutu düz bir etikete benzemesin
+     diye sarı ok kendimiz çiziliyor, yazı oka binmesin diye sağda boşluk. */
+  .liste select{appearance:none;-webkit-appearance:none;padding:13px 46px 13px 18px;font:inherit;font-size:14px;
+        color:var(--cream);cursor:pointer;max-width:100%;background-color:var(--ink);
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23d8bb2c' stroke-width='2.2'/%3E%3C/svg%3E");
+        background-repeat:no-repeat;background-position:right 18px center;background-size:12px 8px;
         border:2px solid var(--line-2)}
   .liste select:focus{outline:none;border-color:var(--yellow);box-shadow:0 0 0 3px rgba(216,187,44,.25)}
   option{background:#141014;color:var(--cream)}
