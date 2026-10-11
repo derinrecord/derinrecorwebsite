@@ -42,7 +42,7 @@ if (senaryo === 'satis') {
   };
   const ui = {
     cover: p => p, ses: p => p, anons: p => p, playerBase: () => 'https://www.derinrecord.com/coffee/s/',
-    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s, accept: () => '.mp3', desteklenenler: () => 'mp3', parcaNotu: () => '',
+    accept: () => '.mp3', desteklenenler: () => 'mp3', parcaNotu: () => '',
     now: () => Date.now(), saglikSonuc: () => null, bugunIso: () => gun(0), satisAsama: 'tumu'
   };
   const durum = ek => Object.assign({ nav: 'musteri', sub: 'talepler', openFolder: null, openBrand: null, openPlaylist: null, q: '' }, ek);
@@ -107,7 +107,6 @@ if (senaryo === 'canli') {
   const ui = {
     cover: p => p, ses: p => p, anons: p => p,
     playerBase: () => 'https://www.derinrecord.com/coffee/s/',
-    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
     now: () => simdi, saglikSonuc: () => null
   };
@@ -192,7 +191,6 @@ if (senaryo === 'sube') {
   const ui = {
     cover: p => p, ses: p => p, anons: p => p,
     playerBase: () => 'https://www.derinrecord.com/coffee/s/',
-    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
     now: () => simdi, saglikSonuc: () => null
   };
@@ -255,7 +253,6 @@ if (senaryo === 'yayin') {
   const ui = {
     cover: p => p, ses: p => p, anons: p => p,
     playerBase: () => 'https://www.derinrecord.com/coffee/s/',
-    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
     now: () => simdi, saglikSonuc: () => null
   };
@@ -355,7 +352,6 @@ if (senaryo === 'gecmis') {
   const ui = {
     cover: () => null, ses: p => p, anons: p => p,
     playerBase: () => 'https://www.derinrecord.com/coffee/s/',
-    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
     now: () => simdi, saglikSonuc: () => null
   };
@@ -416,7 +412,6 @@ if (senaryo === 'kapaklar') {
     cover: p => (/^data:/.test(p) ? p : sahteKapak(p.includes('listeler') ? '#c98b3b' : '#3b6bc9')),
     ses: p => p, anons: p => p,
     playerBase: () => 'https://www.derinrecord.com/coffee/s/',
-    brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
     now: () => simdi, saglikSonuc: () => null
   };

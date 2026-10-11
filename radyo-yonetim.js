@@ -88,7 +88,6 @@
     ses: p => window.DerinR2.adres('radio-audio', p),
     anons: p => window.DerinR2.adres('radio-announcements', p),
     playerBase: () => siteRoot() + 'coffee/s/',
-    brandUrl: slug => siteRoot() + 'coffee/' + encodeURIComponent(slug || ''),
     accept: () => (Ses ? Ses.accept() : 'audio/*'),
     desteklenenler: () => (Ses ? Ses.desteklenenler() : 'mp3, wav'),
     parcaNotu: () => '45 MB üzeri dosyalar kayıpsız parçalara bölünerek yüklenir',
@@ -2430,42 +2429,6 @@
         if (sorun) return hata(sorun);
         await yenile(false);
         bildir(acilacak ? 'Marka yayına alındı.' : 'Marka durduruldu.');
-        return;
-      }
-      case 'brand-slug-set': {
-        const b = marka(id);
-        const ham = el('brand-slug').value.trim();
-        if (!ham) return hata('Link adı gerekli.');
-        const yeni = slugify(ham);
-        if (!yeni) return hata('Geçerli bir link adı girin (harf, rakam, tire).');
-        if (b && yeni === b.slug) return bildir('Link adı zaten bu.');
-        if (b && b.slug && !await onaySor({
-          baslik: 'Link adı değiştirilsin mi?',
-          govde: `Eski link (coffee/${esc(b.slug)}) çalışmaz olur ve yeni linki markaya iletmeniz gerekir.`,
-          onayMetni: 'LİNK ADINI DEĞİŞTİR'
-        })) return;
-        const { data: degisen, error } = await client
-          .from('brands').update({ slug: yeni }).eq('id', id).select('id');
-        if (error) return hata(error.code === '23505' ? 'Bu link adı başka bir markada kullanılıyor.' : error.message);
-        if (!degisen || !degisen.length) {
-          return hata('Link adı kaydedilemedi: kayıt bulunamadı ya da bu işlem için yetkiniz yok.');
-        }
-        await yenile(false); bildir('Link adı güncellendi: coffee/' + yeni);
-        return;
-      }
-      case 'brand-code-set': {
-        const b = marka(id);
-        const kod = el('brand-code').value.trim();
-        if (!kod) return hata('Erişim kodu gerekli.');
-        if (b && b.access_code && kod !== b.access_code && !await onaySor({
-          baslik: 'Erişim kodu değiştirilsin mi?',
-          govde: 'Markanın eski kodu ve linki çalışmaz olur; yeni kodu müşteriye iletmeniz gerekir.',
-          onayMetni: 'KODU DEĞİŞTİR'
-        })) return;
-        const sorun = await yazDogrula(
-          client.from('brands').update({ access_code: kod }).eq('id', id), 'Kod kaydedilemedi');
-        if (sorun) return hata(sorun);
-        await yenile(false); bildir('Erişim kodu kaydedildi.');
         return;
       }
       case 'brand-del': {

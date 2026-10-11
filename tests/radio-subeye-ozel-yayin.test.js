@@ -51,7 +51,6 @@ const ui = {
   ses: p => '/ses/' + p,
   anons: p => '/anons/' + p,
   playerBase: () => 'https://ornek.test/coffee/s/',
-  brandUrl: slug => 'https://ornek.test/coffee/' + slug,
   accept: () => '.mp3,.wav',
   desteklenenler: () => 'mp3, wav',
   parcaNotu: () => '45 MB üzeri parçalara bölünür',

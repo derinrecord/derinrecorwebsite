@@ -179,7 +179,6 @@
     ses: p => 'assets/' + p,
     anons: p => 'assets/' + p,
     playerBase: () => location.origin + '/coffee/s/',
-    brandUrl: slug => location.origin + '/coffee/' + slug,
     accept: () => '.mp3,.wav,.flac',
     desteklenenler: () => 'mp3, wav, flac, m4a, ogg',
     parcaNotu: () => '45 MB üzeri dosyalar kayıpsız parçalara bölünerek yüklenir',
@@ -425,7 +424,7 @@
     }
     if (act === 'folder-add' || act === 'brand-add' || act === 'ab-brand-add' || act === 'playlist-add'
       || act === 'player-add' || act === 'folder-rename'
-      || act === 'brand-slug-set' || act === 'brand-code-set' || act === 'folder-shuffle'
+      || act === 'folder-shuffle'
       || act === 'track-upload' || act === 'cover-open' || act === 'track-rename' || act === 'track-img'
       || act === 'list-img' || act === 'list-rename' || act === 'kapak-sil'
       || act === 'player-lock' || act === 'ab-cancel' || act === 'track-move') {
