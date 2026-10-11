@@ -1947,9 +1947,9 @@
             govde: `“${p.label}” için yeni bir yayın anahtarı üretilir. Şubeye verilmiş eski bağlantı çalışmayı durdurur; yeni linki kopyalayıp sahaya iletmeniz gerekir.`,
             onayMetni: 'ANAHTARI YENİLE'
           })) return;
-          const sorun = await yazDogrula(client.from('brand_players').update({
-            player_key: crypto.randomUUID()
-          }).eq('id', p.id), 'Anahtar yenilenemedi');
+          const sorun = await yazDogrula(client.from('brand_players').update(
+            V.linkYenileAlanlari(crypto.randomUUID())
+          ).eq('id', p.id), 'Anahtar yenilenemedi');
           if (sorun) return hata(sorun);
           delete saglikSonuc[p.id];
           await yenile(false); bildir('Yeni yayın anahtarı üretildi; yeni linki kopyalayın.');
@@ -2015,7 +2015,7 @@
           govde: p.bound_device_id
             ? `${p.label} şubesi zaten bir cihaza bağlı: o cihaz kodu sormaz. Yeni kod, cihaz kilidi sıfırlandığında ya da cihaz değiştiğinde istenir.`
             : `${p.label} şubesinde yayın ilk kez açılırken bu kod sorulacak. Eski kod varsa anında geçersiz olur; kodu şubeye yeniden iletin.`,
-          onayMetni: p.player_code ? 'KODU YENİLE' : 'KOD ÜRET'
+          onayMetni: p.player_code ? 'YENİ KOD ÜRET' : 'KOD ÜRET'
         })) return;
         // Kod panelde üretilir; aynı kodun başka şubede olması ihtimaline karşı
         // veritabanı benzersizliği çakışma derse yeni kodla tekrar denenir.
@@ -2031,6 +2031,25 @@
         if (sorun) return hata(sorun);
         await yenile(false);
         return kodPenceresi(p, yeni);
+      }
+      case 'player-link-yenile': {
+        if (!kullanici.adminMi) return hata('Yeni link üretmek yönetici yetkisi ister.');
+        const p = D.players.find(x => x.id === id);
+        if (!p) return hata('Şube bulunamadı.');
+        if (!await onaySor({
+          baslik: 'Yeni link üretilsin mi?',
+          govde: `“${p.label}” için rastgele yeni bir link üretilir. Eski link hemen çalışmaz olur ve cihaz kilidi sıfırlanır; yeni linki şubeye iletin.`,
+          onayMetni: 'YENİ LİNK ÜRET'
+        })) return;
+        const sorun = await yazDogrula(
+          client.from('brand_players').update(V.linkYenileAlanlari(crypto.randomUUID())).eq('id', p.id),
+          'Yeni link üretilemedi');
+        if (sorun) return hata(sorun);
+        delete saglikSonuc[p.id];
+        await yenile(false);
+        cekmeceAc(V.subeCekmecesi(p.id, D, ui));
+        bildir('Yeni link üretildi; LİNKİ KOPYALA ile şubeye iletin.');
+        return;
       }
       case 'player-kod-kaldir': {
         if (!kullanici.adminMi) return hata('Şube kodunu kaldırmak yönetici yetkisi ister.');

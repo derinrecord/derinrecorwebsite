@@ -622,6 +622,11 @@
   // kaynaktan (crypto.getRandomValues); çakışma olasılığına karşı benzersizlik
   // veritabanında kilitli (bkz. supabase/radio-sube-kodu.sql).
   const KOD_ALFABE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  // Yeni link: anahtar değişir ve eski linke bağlı cihaz kilidi/IP kaydı da sıfırlanır.
+  function linkYenileAlanlari(uuid) {
+    return { player_key: uuid, bound_device_id: null, bound_at: null, first_ip: null, last_ip: null, last_ip_at: null };
+  }
+
   function kodUret(rastgele) {
     const n = new Uint8Array(8);
     if (rastgele) rastgele(n);
@@ -2739,6 +2744,7 @@
         <div class="key">${esc(link)}</div>
         <div class="row" style="margin-top:12px">
           <button class="btn sm" data-act="copy" data-copy="${esc(link)}" type="button">LİNKİ KOPYALA</button>
+          <button class="btn sm" data-act="player-link-yenile" data-id="${esc(p.id)}" type="button">YENİ LİNK ÜRET</button>
           <button class="btn sm" data-act="player-check" data-id="${esc(p.id)}" type="button">BAĞLANTIYI SINA</button>
           <button class="btn sm" data-act="player-kiosk" data-id="${esc(p.id)}" type="button">DOKUNUŞSUZ KURULUM</button>
         </div>
@@ -2753,13 +2759,13 @@
       <div class="block"><h4>ŞUBE KODU</h4>
         <p class="sub">Linki ele geçiren biri yayını açamaz: cihaz ilk kez bağlanırken bu kod da sorulur.
           Kodu şubeye linkle birlikte gönderin; cihaz bir kez kilitlendikten sonra kod her açılışta sorulmaz.
-          Kodu dağıtılan bir sürüm sızarsa <b>KODU YENİLE</b> ile eski kodu geçersiz kılın.</p>
+          Kodu dağıtılan bir sürüm sızarsa <b>YENİ KOD ÜRET</b> ile eski kodu geçersiz kılın.</p>
         ${p.player_code
           ? `<div class="key">${esc(p.player_code)}</div>
             <div class="row" style="margin-top:12px">
               <button class="btn sm primary" data-act="copy" data-copy="${esc(davetMetni(p, link))}" type="button">DAVETİ KOPYALA</button>
               <button class="btn sm" data-act="copy" data-copy="${esc(p.player_code)}" type="button">KODU KOPYALA</button>
-              <button class="btn sm" data-act="player-kod-yenile" data-id="${esc(p.id)}" type="button">KODU YENİLE</button>
+              <button class="btn sm" data-act="player-kod-yenile" data-id="${esc(p.id)}" type="button">YENİ KOD ÜRET</button>
               <button class="btn sm danger" data-act="player-kod-kaldir" data-id="${esc(p.id)}" type="button">KODU KALDIR</button>
             </div>
             <p class="sub" style="margin-top:10px">DAVETİ KOPYALA, link ve kodu tek mesaj hâlinde panoya alır; şubeye olduğu gibi iletebilirsiniz.</p>`
@@ -2940,6 +2946,7 @@
     // Şube kodu / paylaşım girişimi (supabase/radio-sube-kodu.sql): kod üretimi,
     // alarm şeridi, konum çözümü, davet metni ve "hangi şube dağıttı" eşleşmesi.
     kodUret: kodUret,
+    linkYenileAlanlari: linkYenileAlanlari,
     ihlalVar: ihlalVar,
     ihlalCumlesi: ihlalCumlesi,
     IHLAL_TUR: IHLAL_TUR,
