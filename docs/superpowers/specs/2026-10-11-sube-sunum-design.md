@@ -70,3 +70,36 @@ sunucu fonksiyonlarıyla aynen çalışır. Güvenlik baştan yazılmaz, yeniden
 4. Sunum ekranının şube hâli.
 5. Marka sunum bölümünün kaldırılması, eski linklerin yönlendirilmesi.
 6. Derin onaylayınca kafe oynatıcının silinmesi.
+
+---
+
+## REVİZYON 2026-10-11 (Derin: "BU GÖRÜNÜM KALACAK")
+İlk uygulama (sunum.html, kafe motoru üstüne sade görünüm) yanlıştı: Derin'in istediği **mevcut müşteri
+sunumu görünümünün birebir** kalmasıydı. Geçerli tasarım bu bölümdür; üstteki "Ekran" ve "Arka plan"
+maddelerinin yerine geçer.
+
+### Kararlar (Derin)
+- Görünüm: `coffee-marka.html` + `coffee-marka.js` + `marka-sunum.css` olduğu gibi kalır (parça kapakları,
+  süreler, ilerleme çubuğu, geri/oynat/ileri/karışık, ses, istatistikler, KENDİ ÜRETİMİMİZ yazıları).
+- Kafedeki personel de düğmeleri kullanabilir (sunumdaki gibi serbest).
+- Açılış: marka linki+kodu yerine **şube linki (`/coffee/s/<anahtar>`) + şube kodu**.
+
+### Nasıl
+- `coffee-marka.js` şube moduna geçer: anahtar yoldan okunur; kilit kartı (`mk-lock`) "ŞUBE KODU" ister.
+  Kod `radio_ping(p_kod)` ile doğrulanır (bugünkü kafe oynatıcının yaptığı gibi; yanlış kod/başka cihaz
+  kaydı ve Telegram alarmı sunucuda aynen çalışır). Kod cihazda saklanır, sonraki açılışta sorulmaz.
+- Cihaz kimliği aynı `localStorage` anahtarı (`derin_record_device_id`): kafede kilitli cihazlar yeniden
+  kod sormaz.
+- Güvenlik/yayın işleri küçük bir ortak dosyada: `sube-guvenlik.js` (`window.DerinSubeGuvenlik`):
+  cihaz kimliği, kod kapısı, düzenli `radio_ping` (canlı durum), `radio_log_event` (geçmiş),
+  `radio_now_report` (çalan parça), yayın saatleri (açık/kapalı), kilit/abonelik durumunda sunumu kapatma.
+- Veri: şube anahtarı + cihaz kimliğiyle çalışan **yeni okuma fonksiyonları** (`supabase/sube-sunum.sql`):
+  `sube_sunum_marka`, `sube_sunum_liste`, `sube_sunum_kapak` — coffee_brand_* ile aynı sütunlar;
+  kapı: marka aktif + abonelik geçerli + `radio_cihaz_uygun`. Şubeye atanmış liste varsa onlar, yoksa
+  markanın listeleri. Yalnız okur; tablo/RLS değişmez. **Derin onaylamadan çalıştırılmaz.**
+- Anonslar: kafe oynatıcıdaki anons yoklaması (`radio_anonslar`) da taşınır.
+
+### Silinecekler (son adım, Derin "canlıya al" + deneme sonrası)
+- Kafe oynatıcı: `radyo.html`, `radyo.js` ve yalnız onu sınayan testler (yerine `sube-guvenlik.js` testleri).
+- İlk yanlış deneme: `sunum.html`, `sube-sunum.css` (canlıya hiç çıkmadı).
+- Marka slug/kod yolu (`coffee_brand_auth` çağrısı) `coffee-marka.js`'ten çıkar.
