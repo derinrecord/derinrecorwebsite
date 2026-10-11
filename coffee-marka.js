@@ -235,6 +235,11 @@ function doldur(t) {
     ? `<img src="${safe(kapak(kapakPath))}" alt="">`
     : bosKapak();
   byId('mk-tur').textContent = 'ŞİMDİ ÇALIYOR';
+  // Yeni parça: süre baştan, toplam süre kayıttan (çalmadan önce 0:00 / 0:00 görünmesin).
+  byId('mk-cur').textContent = '0:00';
+  byId('mk-dur').textContent = fmt(t.duration_sec);
+  byId('mk-seek').value = 0;
+  const cizgi = byId('mk-dock-bar'); if (cizgi) cizgi.style.width = '0%';
   byId('mk-baslik').textContent = clean(t.title);
   byId('mk-alt').textContent = t._playlistName || '';
   byId('mk-album').textContent = t._album || '';

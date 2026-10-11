@@ -406,3 +406,16 @@ test('telefon: mini oynatıcı ekrana yapışık, ince ilerleme çizgili', () =>
   assert.equal(deger('.mk-dock', 'width', TEL), 'calc(100vw - 16px)');
   assert.equal(deger('#mk-dock-geri', 'display', TEL), 'none', 'mini oynatıcıda yalnız oynat ve sonraki');
 });
+
+// Küçük pürüzler (11 Ekim 2026): çalmadan önce süre "0:00 / 0:00" değil,
+// parçanın gerçek süresi görünür; geniş ekranda kumandalar dağılmaz.
+test('sahne parça değişince süreyi baştan ve gerçek süreyle yazar', () => {
+  const govde = kaynak.slice(kaynak.indexOf('function doldur(t)'), kaynak.indexOf('function doldur(t)') + 1400);
+  assert.match(govde, /byId\('mk-dur'\)\.textContent = fmt\(t\.duration_sec\)/, 'toplam süre parçanın kaydından gelmeli');
+  assert.match(govde, /byId\('mk-cur'\)\.textContent = '0:00'/, 'geçen süre sıfırlanmalı');
+  assert.match(govde, /byId\('mk-seek'\)\.value = 0/, 'çubuk başa dönmeli');
+});
+
+test('geniş ekranda oynatıcı kumandaları bir arada kalır', () => {
+  assert.equal(deger('.mk-meta', 'max-width', '@media(min-width:821px)'), '620px');
+});

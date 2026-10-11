@@ -492,3 +492,9 @@ body:has(.mk-root) .mk-hero-logo{opacity:.09}
   .mk-dock-cmds button{width:40px;height:40px}
   .mk-dock-cmds .mk-dock-main{background:var(--mk-accent);box-shadow:none}
 }
+
+/* Geniş ekranda (1920px gibi) ilerleme çubuğu uzayıp ses düğmesi en sağa
+   kaçıyordu: kumandalar bir arada kalsın diye sağ sütun sınırlanır. */
+@media(min-width:821px){
+  .mk-meta{max-width:620px}
+}
