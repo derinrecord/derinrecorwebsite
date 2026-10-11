@@ -1937,3 +1937,16 @@ test('iletişim kartı parametreli e-postaya mailto bağlantısı vermez', () =>
   assert.ok(!html.includes('href="mailto:'), 'şüpheli adres bağlantı olmamalı');
   assert.ok(html.includes('a@b.co?bcc=x@kotu.co&amp;body=merhaba'), 'adres düz metin görünmeli');
 });
+
+// Marka sayfasındaki şube tablosu telefonda yana kaymasın: CİHAZ LİNKİ ve
+// YÖNET düğmeleri ekranın dışında kalıyordu. Satış tablosu gibi kart olur.
+test('marka sayfasının şube tablosu telefonda kart olabilmesi için sınıf ve sütun etiketleri taşır', () => {
+  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), D, ui);
+  assert.ok(html.includes('<table class="kart-tablo">'), 'şube tablosu kart-tablo sınıfını taşımalı');
+  ['Durum', 'Son bağlantı', 'Cihaz'].forEach(e => assert.ok(html.includes(`data-etiket="${e}"`), e));
+  const css = require('node:fs').readFileSync(require.resolve('../radyo-panel.css'), 'utf8');
+  const tel = css.slice(css.lastIndexOf('@media(max-width:620px)'));
+  assert.match(tel, /table\.kart-tablo\{min-width:0\}/, 'telefonda tablo genişliği zorlanmamalı');
+  assert.match(tel, /\.kart-tablo thead\{display:none\}/);
+  assert.match(tel, /\.kart-tablo td\[data-etiket\]::before/);
+});
