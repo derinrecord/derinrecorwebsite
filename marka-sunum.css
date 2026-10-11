@@ -155,9 +155,16 @@ body:has(.mk-root) .noise{z-index:0;opacity:.38;
 
 .mk-prog{display:flex;align-items:center;gap:12px;margin-top:16px;font-size:11px;opacity:.65;
   font-variant-numeric:tabular-nums}
-.mk-prog input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:2px;border-radius:0;
-  background:rgba(255,255,255,.18);cursor:pointer}
-.mk-prog input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+/* Dokunma alanı 40px (telefonda parmakla tutulur); görünen çizgi 2px kalır,
+   onu track kuralları çizer. glass.css'in genel input kutusu buraya sızmaz. */
+.mk-prog input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:40px;margin:-12px 0;padding:0;position:relative;z-index:1;
+  cursor:pointer;border:0!important;border-radius:0!important;background:transparent!important;
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.mk-prog input[type=range]:focus{box-shadow:none!important}
+.mk-prog input[type=range]:focus-visible::-webkit-slider-thumb{outline:3px solid var(--mk-accent);outline-offset:2px}
+.mk-prog input[type=range]::-webkit-slider-runnable-track{height:2px;background:rgba(255,255,255,.18)}
+.mk-prog input[type=range]::-moz-range-track{height:2px;background:rgba(255,255,255,.18)}
+.mk-prog input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;margin-top:-6px;width:14px;height:14px;
   border-radius:50%;background:var(--mk-accent);box-shadow:0 2px 8px rgba(0,0,0,.5)}
 .mk-prog input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;
   background:var(--mk-accent)}
