@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0b0d">
+<!-- Şube sunum ekranı: /coffee/s/<anahtar> adresinde açılır (vercel.json).
+     Adres yayın anahtarını taşır: dış kaynaklara (CDN, ölçüm) ve arama
+     motorlarına sızmasın. Kendi alan adımıza referrer gerekmez. -->
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow">
+<title>Derin Record — Şube Yayını</title>
+<!-- Sayfa /coffee/s/... altında açıldığı için bütün yollar köktendir. -->
+<link rel="stylesheet" href="/branch.css">
+<link rel="stylesheet" href="/glass.css?v=3">
+<link rel="stylesheet" href="/marka-sunum.css?v=20">
+<link rel="stylesheet" href="/sube-sunum.css?v=1">
+</head>
+<body class="sn-body">
+<div class="noise"></div>
+<header class="header mk-top sn-top">
+  <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+  <span class="sn-rozet">ŞUBE YAYINI</span>
+</header>
+<!-- Görünüm marka sunumunun dilinde; bütün mantık radyo.js'te. Motor yalnız
+     kimlikli öğelere yazar (brand, branch, now, folder, cover, playlist, start,
+     state, tani, hours, kod-kap, kod-gir, liste-kap, liste-sec, audio).
+     Hâller (kod kapısı, çalıyor, boş liste) sube-sunum.css'te :has() ile
+     bu öğelerin içeriğinden okunur; ek betik yoktur. -->
+<main class="mk-root sn-root" id="sn-root">
+  <div class="mk-arka" aria-hidden="true">
+    <img src="/assets/kaset-filigran.png" alt="" class="k1">
+    <img src="/assets/kaset-filigran.png" alt="" class="k2">
+    <img src="/assets/kaset-filigran.png" alt="" class="k3">
+    <img src="/assets/kaset-filigran.png" alt="" class="k4">
+    <img src="/assets/kaset-filigran.png" alt="" class="k5">
+  </div>
+
+  <section class="mk-hero mk-shell sn-hero">
+    <div class="mk-hero-logo" aria-hidden="true"><img src="/assets/kaset-filigran.png" alt=""></div>
+    <p class="mk-eyebrow">DERİN RECORD</p>
+    <h1 id="brand">Bağlanıyor…</h1>
+    <p class="sn-sube" id="branch"></p>
+  </section>
+
+  <section class="mk-shell sn-shell">
+    <form class="sn-kod" id="kod-kap" hidden autocomplete="off">
+      <p class="mk-eyebrow">ŞUBE KURULUMU</p>
+      <h2>Bu ekran şubeye özeldir.</h2>
+      <p>Derin Record'un size ilettiği şube kodunu girin. Kod bu cihazda bir kez sorulur.</p>
+      <div class="sn-kod-alan">
+        <label for="kod-gir">ŞUBE KODU</label>
+        <input id="kod-gir" name="kod" spellcheck="false" autocapitalize="characters"
+               maxlength="12" placeholder="XXXX-XXXX">
+        <button id="kod-gonder" type="submit">DOĞRULA</button>
+      </div>
+    </form>
+
+    <div class="sn-govde">
+      <div class="sn-sahne">
+        <div class="sn-art">
+          <img class="sn-cover" id="cover" alt="">
+          <span class="sn-canli" aria-hidden="true"><i></i>CANLI</span>
+        </div>
+        <div class="sn-meta">
+          <p class="sn-lbl"><span class="sn-lbl-calan">ŞİMDİ ÇALIYOR</span><span class="sn-lbl-durum">YAYIN</span></p>
+          <h2 class="sn-now" id="now"></h2>
+          <p class="sn-folder" id="folder"></p>
+          <div class="sn-dalga" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <button class="sn-start" id="start" type="button" hidden>YAYINI BAŞLAT</button>
+          <p class="sn-state" id="state" role="status"></p>
+          <div class="sn-tani" id="tani" hidden></div>
+          <p class="sn-hours" id="hours"></p>
+          <div class="sn-liste" id="liste-kap" hidden>
+            <label for="liste-sec">ÇALMA LİSTESİ</label>
+            <select id="liste-sec"></select>
+          </div>
+        </div>
+      </div>
+
+      <aside class="sn-panel" aria-label="Çalma listesi">
+        <h3>SIRADAKİLER</h3>
+        <ol class="sn-list" id="playlist"></ol>
+      </aside>
+    </div>
+
+    <div class="mk-foot">
+      <span>DERİN RECORD · ŞUBE YAYINI</span>
+      <span>KENDİ ÜRETİMİMİZ</span>
+    </div>
+  </section>
+  <audio id="audio"></audio>
+</main>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+<script src="/radio-playlist-queue.js?v=20260926a"></script>
+<script src="/r2-depo.js?v=1"></script>
+<script src="/radyo.js?v=20261011a"></script>
+</body>
+</html>
