@@ -6,7 +6,7 @@ const path = require('path');
 const kok = path.join(__dirname, '..');
 const oku = f => fs.readFileSync(path.join(kok, f), 'utf8');
 
-// AJANLAR sayfası: Derin Record'un ajan sisteminin tanıtım sayfası (canlı veri yok).
+// AJANLAR sayfası: Derin Record'un ajan ofisi; son durumlar ajan_durumu tablosundan.
 test('AJANLAR bağlantısı yalnız yönetici menüsünde', () => {
   const auth = oku('auth.js');
   const satir = auth.split('\n').find(s => s.includes("account-menu-links').innerHTML"));
@@ -18,7 +18,7 @@ test('AJANLAR bağlantısı yalnız yönetici menüsünde', () => {
 test('AJANLAR sayfası arama motorlarına kapalı ve ajanları anlatır', () => {
   const html = oku('ajanlar.html');
   assert.match(html, /<meta name="robots" content="noindex,nofollow">/);
-  ['Haftalık Instagram planı', 'Site bakım ajanı', 'Arayüz ajanı', 'Satış takibi', 'Marka iletişim kartı', 'Storyboard', 'Satış ajanı', 'Haftalık özet'].forEach(m =>
+  ['Haftalık Instagram planı', 'Site bakım ajanı', 'Arayüz ajanı', 'Satış takibi', 'Marka iletişim kartı', 'Storyboard', 'Kafe satış ajanı', 'Haftalık özet'].forEach(m =>
     assert.ok(html.includes(m), m));
   assert.ok(html.includes("'radyo-yonetim.html#/satis'"), 'satış ekranına bağlantı');
   assert.ok(html.includes('id="beyin"'), 'ortada beyin olmalı');

@@ -10,7 +10,9 @@
 <link rel="stylesheet" href="glass.css?v=2" />
 <style>
 /* Derin Record ajan ofisi: ortada beyin, etrafında departmanlar, üstte bağlantılar.
-   Canlı veri yok; yeni ajan eklendikçe aşağıdaki DEPARTMANLAR listesi elle güncellenir. */
+   Ajanların listesi aşağıdaki DEPARTMANLAR'da elle tutulur; son durumları canlıdır:
+   her ajan çalışmasının sonunda public.ajan_durumu tablosuna bir satır yazar
+   (supabase/ajan-durumu.sql), sayfa onu okur. */
 .ofis-main{max-width:1180px;margin:0 auto;padding:44px 5vw 110px}
 .ofis-main h1{margin:0;font-size:clamp(40px,7vw,84px);line-height:.85;letter-spacing:-.06em;font-weight:900}
 .ofis-giris{max-width:640px;margin:18px 0 0;color:#c7c3be;line-height:1.55}
@@ -27,7 +29,7 @@
 .bag i{width:7px;height:7px;border-radius:50%;background:#7ee78f;box-shadow:0 0 8px #7ee78f}
 .bag.isik{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(216,187,44,.18)}
 
-.sahne{position:relative;height:760px;margin-top:6px}
+.sahne{position:relative;height:820px;margin-top:6px}
 .kablolar{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible}
 .kablolar path{fill:none;stroke-width:1.4;stroke-linecap:round}
 .kablolar .ana{stroke:rgba(216,187,44,.55);stroke-dasharray:2 7;animation:akis 2.4s linear infinite}
@@ -76,6 +78,31 @@
 .etiket.mac{background:rgba(90,170,255,.16);color:#9cc9ff}
 .ipucu{margin:14px 0 0;text-align:center;color:var(--muted);font-size:12.5px}
 
+/* ---- Canlı durum ---- */
+.durum{margin-top:28px;padding:18px 20px;border-radius:20px;border:1px solid #2c2a30;background:#121116}
+.durum-ust{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px}
+.durum-ust .baslik{font-size:11px;font-weight:900;letter-spacing:2px;color:var(--muted)}
+.durum-ust .sayi{font-size:14px;color:#d9d5cf}
+.durum-ust .sayi b{font-size:20px;color:var(--cream);margin-right:4px}
+.durum-ust .sayi.onay b{color:var(--yellow)}
+.durum-ust .sayi.hata b{color:#ff6b6b}
+.durum-not{margin:8px 0 0;color:var(--muted);font-size:13px}
+.onaylar{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}
+.onaylar li{padding:12px 14px;border-radius:14px;background:rgba(216,187,44,.08);border:1px solid rgba(216,187,44,.35)}
+.onaylar b{font-size:14px}
+.onaylar code{display:inline-block;margin-top:3px;font-size:12px;color:var(--yellow);word-break:break-all}
+.onaylar p{margin:4px 0 0;color:#bdb8b1;font-size:13px;line-height:1.45}
+.onaylar small{color:var(--muted)}
+.masa.d-onay:before,.masa.d-hata:before{content:"";width:6px;height:6px;border-radius:50%}
+.masa.d-onay:before{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+.masa.d-hata:before{background:#ff6b6b;box-shadow:0 0 6px #ff6b6b}
+.son{grid-column:2/3;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:6px;font-size:12.5px;color:#d9d5cf}
+.rozet{padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:900;letter-spacing:.04em}
+.rozet.iyi{background:rgba(126,231,143,.16);color:#7ee78f}
+.rozet.onay{background:rgba(216,187,44,.18);color:var(--yellow)}
+.rozet.hata{background:rgba(255,107,107,.16);color:#ff8f8f}
+.detay li .program{grid-column:2/3;margin-top:4px;font-size:12px;color:var(--muted)}
+
 @media(max-width:900px){
   .sahne{height:auto;display:grid;gap:26px;padding-top:6px;padding-bottom:14px}
   .kablolar,.beyin:after{display:none}
@@ -84,7 +111,7 @@
   .ada:hover,.ada.secili{transform:none}
   .detay li{grid-template-columns:1fr}
   .detay li .etiket,.detay li a{grid-row:auto;grid-column:auto;justify-self:start}
-  .detay li p{grid-column:auto}
+  .detay li p,.son,.detay li .program{grid-column:auto}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
@@ -99,11 +126,12 @@
   <p class="ofis-kilit" id="ajan-kilit">Hesap kontrol ediliyor…</p>
 
   <div id="ajan-icerik" hidden>
+    <section class="durum" id="durum" aria-live="polite"><p class="durum-not">Ajanların durumu yükleniyor…</p></section>
     <section class="ofis" id="ofis" aria-label="Ajan ofisi haritası">
       <div class="ofis-ust" id="baglar"><span class="baslik"><b>●</b> BAĞLI</span></div>
       <div class="sahne" id="sahne">
         <svg class="kablolar" id="kablolar" aria-hidden="true"></svg>
-        <div class="beyin" id="beyin"><span>DERİN RECORD<br>BEYNİ<small>Claude · hafıza · notlar</small></span></div>
+        <div class="beyin" id="beyin"><span>DERİN RECORD<br>BEYNİ<small>Claude · hafıza · koordinatör</small></span></div>
       </div>
       <div class="detay" id="detay" aria-live="polite"></div>
       <p class="ipucu">Bir departmana dokun: içindeki ajanlar, ekranlar ve beceriler açılır.</p>
@@ -113,28 +141,33 @@
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="auth.js?v=20261010"></script>
+<script src="ajan-durumu.js?v=1"></script>
 <script>
 (() => {
   'use strict';
   // ---- Ofisin içeriği. Yeni ajan/ekran eklenince yalnız burası güncellenir. ----
   // tur: ajan (çalışıyor) · plan (planlandı) · ekran · beceri · mac (MacBook'ta kurulu)
   const BAGLANTILAR = ['Gmail', 'Google Drive', 'Canva', 'Motion', 'Supabase', 'Vercel'];
+  // kod: ajan_durumu tablosundaki ajan kodu (canlı durum bununla eşleşir).
   const DEPARTMANLAR = [
     { id: 'sosyal', ad: 'Sosyal medya', renk: '#ff2f96', aci: -90, bag: ['Canva', 'Motion', 'Google Drive'],
-      ozet: 'Instagram içerikleri: plan, storyboard, video.',
+      ozet: 'Instagram içerikleri, yarışma duyuruları, video.',
       masalar: [
-        { tur: 'ajan', ad: 'Haftalık Instagram planı', not: 'Her pazartesi 08:52 haftanın 4 içeriğini planlar; kare kare storyboard, açıklama ve hashtag hazırlar, telefona bildirim gönderir.' },
+        { tur: 'ajan', kod: 'instagram', ad: 'Haftalık Instagram planı', program: 'Pazartesi 08:52', not: 'Haftanın 4 içeriğini planlar; kare kare storyboard, açıklama ve hashtag hazırlar.' },
+        { tur: 'ajan', kod: 'yarisma', ad: 'Yarışma takvimi ajanı', program: 'Salı 11:22', not: 'Önümüzdeki 10 haftanın cimnastik yarışmalarını resmi takvimlerden bulur; antrenörlere duyuru ve haber taslağı hazırlar.' },
         { tur: 'beceri', ad: 'Storyboard', not: 'Gönderi, carousel, Reels ve Story için telefon oranlı kare kare plan.' }
       ] },
     { id: 'satis', ad: 'Satış', renk: '#d8bb2c', aci: -30, bag: ['Gmail', 'Supabase'],
-      ozet: 'Teklif götürülen kafe ve zincirler.',
+      ozet: 'Teklif götürülen kafe ve zincirler, gelen talepler.',
       masalar: [
         { tur: 'ekran', ad: 'Satış takibi', not: 'Yeni → Görüşüldü → Teklif → Denemede → Anlaştı; “Bugün yapılacaklar” ve markaya çevirme.', link: 'radyo-yonetim.html#/satis', linkAd: 'SATIŞA GİT' },
-        { tur: 'plan', ad: 'Satış ajanı', not: 'Her sabah kimi arayacağını söyler, istersen teklif e-postası taslağı hazırlar.' }
+        { tur: 'ajan', kod: 'kafe-satis', ad: 'Kafe satış ajanı', program: 'Salı ve Perşembe 15:22', not: 'Selçuk, Kuşadası, Aydın ve İzmir\'de uygun kafeleri bulur; her biri için Gmail\'e teklif taslağı yazar, göndermez.' },
+        { tur: 'ajan', kod: 'talep', ad: 'Talep ve mesaj ajanı', program: 'Her gün 07:52', not: 'Gmail\'de ve sitede cevap bekleyen talepleri bulur; e-postalara cevap taslağı hazırlar, göndermez.' }
       ] },
     { id: 'musteri', ad: 'Müşteri & yayın', renk: '#22c98a', aci: 30, bag: ['Supabase'],
       ozet: 'Markalar, şubeler ve mağaza yayını.',
       masalar: [
+        { tur: 'ajan', kod: 'radyo', ad: 'Radyo yayın ajanı', program: 'Her gün 10:22', not: 'Şubelerde radyonun çalıp çalmadığını, sessiz kalan cihazı ve boş listeyi kontrol eder; sorun varsa haber verir.' },
         { tur: 'ekran', ad: 'Markalar ve yayın', not: 'Chemex ve şubeleri, çalma listeleri, canlı yayın.', link: 'radyo-yonetim.html#/markalar', linkAd: 'MARKALARA GİT' },
         { tur: 'ekran', ad: 'Marka iletişim kartı', not: 'Yetkili, telefon, e-posta ve not; dokununca arar ya da mail açar.', link: 'radyo-yonetim.html#/markalar', linkAd: 'AÇ' }
       ] },
@@ -148,10 +181,10 @@
     { id: 'web', ad: 'Web & güvenlik', renk: '#a855f7', aci: 150, bag: ['Vercel', 'Supabase'],
       ozet: 'derinrecord.com ve altyapısı.',
       masalar: [
-        { tur: 'ajan', ad: 'Site bakım ajanı', not: 'Her gün 07:45 siteyi, Vercel yayınını, Supabase uyarılarını ve testleri kontrol eder; sorun bulursa taslakta düzeltip onayına sunar. Onaysız canlıya almaz, veritabanına dokunmaz.' },
-        { tur: 'ajan', ad: 'Arayüz ajanı', not: 'Pazartesi–cumartesi 10:40, her gün bir ekranı telefon ve bilgisayar gözüyle gezer: Pzt radyo paneli, Sal projelerim, Çar sohbet, Per müşteri sunum ekranı, Cum site tasarımı (güncel referanslarla), Cmt haftalık tur. En önemli tek sorunu taslakta düzeltir, önce/sonra görüntüleriyle onayına sunar.' },
+        { tur: 'ajan', kod: 'site-bakim', ad: 'Site bakım ajanı', program: 'Her gün 07:45', not: 'Siteyi, Vercel yayınını, Supabase uyarılarını ve testleri kontrol eder; sorun bulursa taslakta düzeltip onayına sunar. Onaysız canlıya almaz.' },
+        { tur: 'ajan', kod: 'arayuz', ad: 'Arayüz ajanı', program: 'Her gün 09:52–16:52, saat başı', not: 'Radyo panelinin bir bölümünü (saat 14\'te müşteri sunum ekranını) telefon ve bilgisayar gözüyle gezer; tek sorunu taslakta düzeltip önce/sonra görüntüleriyle onayına sunar.' },
+        { tur: 'ajan', kod: 'guvenlik', ad: 'Güvenlik ajanı', program: 'Çarşamba 06:52', not: 'Site, Supabase ve Vercel ayarlarını savunma amaçlı denetler; yalnız okur, sorun varsa haber verir.' },
         { tur: 'beceri', ad: 'Web tasarımı', not: 'Sayfalar, katalog bölümleri, görsel düzen.' },
-        { tur: 'beceri', ad: 'Güvenlik denetimi', not: 'Site, Supabase ve Vercel ayarlarının savunma amaçlı kontrolü.' },
         { tur: 'beceri', ad: 'Skill bulma', not: 'Gerektiğinde hazır becerileri arar ve önerir.' }
       ] },
     { id: 'produksiyon', ad: 'Prodüksiyon', renk: '#ff7a3d', aci: 210, bag: ['Motion', 'Google Drive'],
@@ -161,22 +194,40 @@
         { tur: 'mac', ad: 'Agents Office · gstack', not: 'MacBook\'ta kurulu ek araçlar; “Ofisi Başlat” ile açılır.' }
       ] }
   ];
+  // Koordinatör bir departmana ait değil: beynin kendisi. Durum şeridinde görünür.
+  const KOORDINATOR = { kod: 'koordinator', ad: 'Ajan koordinatörü', program: 'Pazar 19:52' };
   const ETIKET = { ajan: 'ÇALIŞIYOR', plan: 'PLANLANDI', ekran: 'EKRAN', beceri: 'BECERİ', mac: 'MACBOOK' };
 
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const el = id => document.getElementById(id);
   let secili = 'sosyal';
+  const DD = window.DerinAjanDurumu;
+  let kayitlar = [];
+  let durumlar = {};
+  const ajanAdi = kod => {
+    if (kod === KOORDINATOR.kod) return KOORDINATOR.ad;
+    for (const d of DEPARTMANLAR) for (const m of d.masalar) if (m.kod === kod) return m.ad;
+    return kod;
+  };
+  const masaSinifi = m => {
+    if (m.tur !== 'ajan') return m.tur === 'plan' ? 'plan' : '';
+    const k = durumlar[m.kod];
+    if (k && k.sonuc === 'onay_bekliyor') return 'd-onay';
+    if (k && k.sonuc === 'hata') return 'd-hata';
+    return 'aktif';
+  };
 
   function ciz() {
     el('baglar').insertAdjacentHTML('beforeend', BAGLANTILAR.map(b => `<span class="bag" data-bag="${esc(b)}"><i></i>${esc(b)}</span>`).join(''));
     el('sahne').insertAdjacentHTML('beforeend', DEPARTMANLAR.map(d => {
       const r = d.aci * Math.PI / 180;
-      const x = 50 + 37 * Math.cos(r), y = 50 + 37 * Math.sin(r);
+      // Dikeyde biraz daha içeride: kartlar 3 masayla uzayınca üst bağlantılara değmesin.
+      const x = 50 + 37 * Math.cos(r), y = 50 + 34 * Math.sin(r);
       const calisan = d.masalar.filter(m => m.tur === 'ajan').length;
       return `<button class="ada" type="button" data-dep="${d.id}" style="--renk:${d.renk};left:${x.toFixed(1)}%;top:${y.toFixed(1)}%">
         <span class="ust"><i></i>${esc(d.ad.toLocaleUpperCase('tr'))}</span>
         <h3>${esc(d.ozet)}</h3>
-        <span class="masalar">${d.masalar.map(m => `<span class="masa ${m.tur === 'ajan' ? 'aktif' : (m.tur === 'plan' ? 'plan' : '')}">${esc(m.ad)}</span>`).join('')}</span>
+        <span class="masalar">${d.masalar.map(m => `<span class="masa ${masaSinifi(m)}" data-kod="${esc(m.kod || '')}">${esc(m.ad)}</span>`).join('')}</span>
         <span class="say">${d.masalar.length} masa${calisan ? ' · ' + calisan + ' ajan çalışıyor' : ''}</span>
       </button>`;
     }).join(''));
@@ -192,8 +243,53 @@
     k.style.setProperty('--renk', d.renk);
     k.innerHTML = `<h2>${esc(d.ad)}</h2><p>${esc(d.ozet)} Bağlantılar: ${esc(d.bag.join(', '))}.</p>
       <ul>${d.masalar.map(m => `<li><span class="etiket ${m.tur}">${ETIKET[m.tur]}</span><b>${esc(m.ad)}</b>
-        <p>${esc(m.not)}</p>${m.link ? `<a href="${esc(m.link)}">${esc(m.linkAd || 'AÇ')}</a>` : ''}</li>`).join('')}</ul>`;
+        <p>${esc(m.not)}</p>${m.program ? `<span class="program">Program: ${esc(m.program)}</span>` : ''}${sonSatir(m)}${m.link ? `<a href="${esc(m.link)}">${esc(m.linkAd || 'AÇ')}</a>` : ''}</li>`).join('')}</ul>`;
     kabloCiz();
+  }
+
+  // Bir ajanın son çalışması: zaman, sonuç rozeti, özet ve varsa bekleyen dal.
+  function sonSatir(m) {
+    if (m.tur !== 'ajan') return '';
+    const kayit = durumlar[m.kod];
+    if (!kayit) return `<span class="son">Henüz durum kaydı yok</span>`;
+    const s = DD.SONUC[kayit.sonuc] || { ad: kayit.sonuc, sinif: '' };
+    return `<span class="son">Son çalışma: ${esc(DD.goreliZaman(kayit.created_at))}
+      <span class="rozet ${s.sinif}">${esc(s.ad)}</span>${kayit.ozet ? ' ' + esc(kayit.ozet) : ''}${kayit.dal ? ` <code>${esc(kayit.dal)}</code>` : ''}</span>`;
+  }
+
+  function durumCiz(hata) {
+    const k = el('durum');
+    if (hata) { k.innerHTML = `<p class="durum-not">Durum bilgisi okunamadı. Ajanlar ilk kayıtlarını yazınca burada görünür.</p>`; return; }
+    if (!kayitlar.length) { k.innerHTML = `<p class="durum-not">Henüz durum kaydı yok. Ajanlar her çalışmanın sonunda buraya bir satır yazar.</p>`; return; }
+    const s = DD.ozetSayilar(kayitlar);
+    const onaylar = DD.onayBekleyenler(kayitlar);
+    const koor = durumlar[KOORDINATOR.kod];
+    k.innerHTML = `<div class="durum-ust"><span class="baslik">SON 24 SAAT</span>
+        <span class="sayi"><b>${s.son24}</b>çalışma</span>
+        <span class="sayi onay"><b>${s.onay}</b>iş onayını bekliyor</span>
+        <span class="sayi hata"><b>${s.hata}</b>tamamlanamadı</span></div>
+      ${onaylar.length ? `<ul class="onaylar">${onaylar.map(o => `<li><b>${esc(ajanAdi(o.ajan))}</b> <small>${esc(DD.goreliZaman(o.created_at))}</small><br>
+        <code>${esc(o.dal)}</code>${o.ozet ? `<p>${esc(o.ozet)}</p>` : ''}</li>`).join('')}</ul>
+        <p class="durum-not">Canlıya almak için ilgili ajanın sohbetinde “canlıya al” yaz.</p>` : ''}
+      ${koor ? `<p class="durum-not">${esc(KOORDINATOR.ad)}: ${esc(DD.goreliZaman(koor.created_at))} · ${esc(koor.ozet || (DD.SONUC[koor.sonuc] || {}).ad || '')}</p>` : ''}`;
+  }
+
+  async function durumYukle() {
+    const client = window.DerinAuth && window.DerinAuth.client;
+    if (!client || !DD) { durumCiz(true); return; }
+    const { data, error } = await client.from('ajan_durumu')
+      .select('ajan,sonuc,ozet,dal,created_at').order('created_at', { ascending: false }).limit(400);
+    if (error) { durumCiz(true); return; }
+    kayitlar = data || [];
+    durumlar = DD.sonDurumlar(kayitlar);
+    durumCiz(false);
+    document.querySelectorAll('.masa[data-kod]').forEach(x => {
+      const m = { tur: x.dataset.kod ? 'ajan' : '', kod: x.dataset.kod };
+      if (!m.kod) return;
+      x.classList.remove('aktif', 'd-onay', 'd-hata');
+      x.classList.add(masaSinifi(m));
+    });
+    detayYaz();
   }
 
   // Kablolar: beyinden her departmana (ana), seçili departmanın bağlantılarından ona (ışıklı).
@@ -238,9 +334,9 @@
     el('ajan-icerik').hidden = !yonetici;
     el('ajan-kilit').hidden = yonetici;
     if (!yonetici) el('ajan-kilit').textContent = A.user ? 'Bu sayfa yalnız yönetici içindir.' : 'Görmek için yönetici hesabınla giriş yap.';
-    if (yonetici && !cizildi) { cizildi = true; ciz(); }
+    if (yonetici && !cizildi) { cizildi = true; ciz(); durumYukle().catch(() => durumCiz(true)); setInterval(() => durumYukle().catch(() => {}), 60000); }
   };
-  window.DerinOfis = { ciz: () => { if (!cizildi) { cizildi = true; ciz(); } } };
+  window.DerinOfis = { ciz: () => { if (!cizildi) { cizildi = true; ciz(); } }, durumYukle };
   window.addEventListener('derin:authchange', guncelle);
   if (window.DerinAuth && window.DerinAuth.ready) window.DerinAuth.ready.then(guncelle, guncelle);
 })();
