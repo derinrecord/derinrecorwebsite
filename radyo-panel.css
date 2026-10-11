@@ -366,6 +366,16 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
   .player{left:18px;right:18px;bottom:14px;flex-wrap:wrap;gap:10px}
   .player .p-vol{display:none}
 }
+@media(max-width:620px){
+  /* Bağlantı geçmişi: ŞU AN ve olay tabloları telefonda kart olur; yana
+     kaydırmadan "çalıyor mu, ne oldu, kimin tarafında" ilk bakışta görünür. */
+  table.gecmis-kart{min-width:0}
+  .gecmis-kart thead{display:none}
+  .gecmis-kart tbody tr{display:block;padding:14px 0;border-bottom:1px solid var(--line)}
+  .gecmis-kart tbody td{display:block;padding:4px 0;border:0;min-width:0}
+  .gecmis-kart td[data-etiket]::before{content:attr(data-etiket);display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);margin-bottom:2px}
+  .gecmis-kart td.tight{white-space:normal}
+}
 /* Şubeye liste yükleme penceresi: markanın listeleri onay kutularıyla sunulur.
    Satırın tamamı tıklanabilir olsun (küçük kutuyu nişan almak zorunda kalma). */
 .sube-liste-kutu{display:grid;gap:8px;margin-top:4px;max-height:52vh;overflow:auto}

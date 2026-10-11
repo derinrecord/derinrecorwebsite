@@ -212,11 +212,11 @@
       .slice(0, limit || 20)
       .map(s => `<tr>
         ${ayar.yer ? `<td><b>${esc(s.yer)}</b></td>` : ''}
-        <td><b>${esc(s.o.ad)}</b>${s.o.ek ? `<span class="sub">${esc(s.o.ek)}</span>` : ''}</td>
-        <td class="tight">${s.o.taraf
+        <td data-etiket="Olay"><b>${esc(s.o.ad)}</b>${s.o.ek ? `<span class="sub">${esc(s.o.ek)}</span>` : ''}</td>
+        <td class="tight" data-etiket="Taraf">${s.o.taraf
           ? chip(OLAY_TARAF[s.o.taraf], s.o.taraf === 'kafe' ? 'KAFE TARAFI' : 'BİZİM TARAF')
           : '<span class="sub">—</span>'}</td>
-        <td class="tight"><span class="sub">${esc(s.zaman)}</span><span class="sub">${esc(s.goreli)}</span></td>
+        <td class="tight" data-etiket="Zaman"><span class="sub">${esc(s.zaman)}</span><span class="sub">${esc(s.goreli)}</span></td>
       </tr>`).join('');
   }
 
@@ -538,12 +538,12 @@
         const o = durma ? olayBilgi(durma) : null;
         return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
           <td><b>${esc(p.label)}</b><span class="sub">${esc(b ? b.name : '—')}</span></td>
-          <td>${suan}</td>
-          <td class="tight">${o ? `${o.taraf
+          <td data-etiket="Şu an">${suan}</td>
+          <td class="tight" data-etiket="Son durma">${o ? `${o.taraf
             ? chip(OLAY_TARAF[o.taraf], o.taraf === 'kafe' ? 'KAFE TARAFI' : 'BİZİM TARAF') : ''}
             <span class="sub">${esc(o.ad)} · ${esc(goreli(durma.at, now))}</span>`
             : '<span class="sub">kayıtlı durma yok</span>'}</td>
-          <td class="tight"><span class="sub">${p.last_seen_at ? esc(goreli(p.last_seen_at, now)) : 'hiç bağlanmadı'}</span></td>
+          <td class="tight" data-etiket="Son bağlantı"><span class="sub">${p.last_seen_at ? esc(goreli(p.last_seen_at, now)) : 'hiç bağlanmadı'}</span></td>
         </tr>`;
       }).join('');
   }
@@ -1054,7 +1054,7 @@
         state: state, anahtar: 'gecmis:suan', varsayilanAcik: true,
         baslik: 'ŞU AN', baslikEk: ` <span>${D.players.length} şube</span>`,
         ozet: 'Yayın gerçekten çalıyor mu, durduysa kimin tarafında durdu? Durma sebebi cihazın bıraktığı geçmişten okunur; kayıt yoksa taraf iddia edilmez.',
-        icerik: `<table>
+        icerik: `<table class="gecmis-kart">
           <thead><tr><th>ŞUBE</th><th>ŞU AN</th><th>SON DURMA</th><th>SON BAĞLANTI</th></tr></thead>
           <tbody>${subeler}</tbody>
         </table>`
@@ -1087,7 +1087,7 @@
         ozet: 'Kafe sunumunda kod girildiğinde, oynatıcı açıldığında, personel liste değiştirdiğinde ve yayın '
           + 'durduğunda buraya bir satır düşer. Geçmiş tablosu henüz kurulmadıysa '
           + '(supabase/radio-baglanti-gecmisi.sql) yalnızca kod girişleri görünür.',
-        icerik: `<table>
+        icerik: `<table class="gecmis-kart">
           <thead><tr><th>KAFE / ŞUBE</th><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>
           <tbody>${satirlar || bos(4, 'Kayıtlı olay yok.')}</tbody>
         </table>`
