@@ -323,6 +323,7 @@ function gecerli(secici, ozellik, genislik) {
     const mx = k.medya.match(/max-width:\s*(\d+)px/);
     if (k.medya && (!mx || genislik > Number(mx[1]))) return;
     let m;
+    desen.lastIndex = 0;
     while ((m = desen.exec(k.govde))) son = m[1].trim();
   });
   return son;
@@ -339,8 +340,9 @@ test('telefon: gövde tek sütun, içerik tam genişlik', () => {
   assert.match(gecerli('.mk-govde', 'grid-template-columns', 1024), /minmax\(200px,250px\) minmax\(0,1fr\)/,
     'orta genişlikte iki sütun kalmalı');
   // Liste başlığı ("2 parça · 6 dk") satırlarla aynı iç boşlukta: sağdaki
-  // sarı gölge çizgisine yapışmasın.
-  assert.equal(gecerli('.mk-panel h3', 'padding', 390), '0 14px');
+  // sarı gölge çizgisine yapışmasın. Telefonda gölge yok, başlık kenara yaslı.
+  assert.equal(gecerli('.mk-panel h3', 'padding', 700), '0 14px');
+  assert.equal(gecerli('.mk-panel h3', 'padding', 390), '0');
 });
 
 // Seçili olmayan listeler soluk ama okunur olmalı: sekme × alt yazı opaklığı.
@@ -357,4 +359,50 @@ test('kapaksız sahne markanın adını gösterir', () => {
   assert.ok(!/art\.innerHTML = '<div class="ph">♪<\/div>'/.test(kaynak), 'sahnede çıplak ♪ kalmamalı');
   assert.match(kaynak, /class="ph-ad"/, 'marka adı yazılmalı');
   assert.match(css, /\.mk-art \.ph-ad\{/, 'marka adının stili olmalı');
+});
+
+// ---------- Telefon: uygulama düzeni (Spotify iskeleti, Derin Record dili) ----------
+// Telefonda sunum bir müzik uygulaması gibi okunur: listeler kapaklı raf,
+// büyük kapak, solda başlık, çubuğun altında süreler, ortada dolu oynat
+// düğmesi, satırlarda kapak + başlık + alt yazı, altta ince ilerleme çizgili
+// mini oynatıcı. Renkler, keskin köşeler ve tipografi bizim (11 Ekim 2026).
+const TEL = '@media(max-width:560px)';
+test('kumandalar emoji değil çizim ikon: her telefonda aynı görünür', () => {
+  assert.match(kaynak, /const IKON = \{/, 'ikonlar tek yerde tanımlı olmalı');
+  ['onceki', 'sonraki', 'oynat', 'durdur'].forEach(ad =>
+    assert.match(kaynak, new RegExp(ad + ":\\s*'<svg"), ad + ' ikonu svg olmalı'));
+  assert.ok(!/>[⏮⏭▶]<\/button>/.test(kaynak), 'düğmelerde emoji karakter kalmamalı');
+  assert.ok(!/textContent = im/.test(kaynak), 'oynat ikonu svg olarak yazılmalı');
+});
+
+test('telefon: listeler kapaklı raf, seçili liste vurgu renginde', () => {
+  assert.equal(deger('.mk-tab', 'flex-direction', TEL), 'column');
+  assert.match(deger('.mk-tab img,.mk-tab .ph', 'width', TEL), /^1[2-4]\dpx$/, 'raf kapağı büyük kare');
+  assert.match(deger('.mk-tab[aria-pressed="true"] b', 'color', TEL), /--mk-accent/);
+  assert.equal(deger('.mk-tab', 'box-shadow', TEL), 'none', 'pembe kutu gölgesi rafta olmaz');
+});
+
+test('telefon: oynatıcı uygulama gibi', () => {
+  assert.equal(deger('.mk-stage', 'text-align', TEL), 'left', 'başlık sola yaslı');
+  assert.equal(deger('.mk-art', 'width', TEL), '100%', 'kapak tam genişlik');
+  assert.equal(deger('.mk-prog input[type=range]', 'order', TEL), '-1', 'süreler çubuğun altında');
+  assert.equal(deger('.mk-cmds', 'justify-content', TEL), 'space-between');
+  assert.match(deger('.mk-cmds .mk-main', 'background', TEL), /--mk-accent/, 'oynat düğmesi dolu vurgu rengi');
+  assert.equal(deger('.mk-vol', 'display', TEL), 'none', 'telefonda ses tuşları var, kaydırıcı gizli');
+  assert.equal(deger('.mk-stage,.mk-panel', 'box-shadow', TEL), 'none');
+});
+
+test('telefon: parça satırı kapak + başlık + alt yazı', () => {
+  assert.match(kaynak, /<small class="alt">/, 'satırda alt yazı olmalı');
+  assert.equal(deger('.mk-item .alt', 'display'), 'none', 'masaüstünde alt yazı gizli');
+  assert.equal(deger('.mk-item .alt', 'display', TEL), 'block');
+  assert.equal(deger('.mk-list-head', 'display', TEL), 'none', 'tablo başlığı telefonda yok');
+  assert.equal(deger('.mk-item .no', 'display', TEL), 'none', 'sıra numarası telefonda yok');
+});
+
+test('telefon: mini oynatıcı ekrana yapışık, ince ilerleme çizgili', () => {
+  assert.match(kaynak, /id="mk-dock-bar"/, 'mini oynatıcıda ilerleme çizgisi olmalı');
+  assert.match(kaynak, /mk-dock-bar'\)[^\n]*style\.width/, 'çizgi çalarken ilerlemeli');
+  assert.equal(deger('.mk-dock', 'width', TEL), 'calc(100vw - 16px)');
+  assert.equal(deger('#mk-dock-geri', 'display', TEL), 'none', 'mini oynatıcıda yalnız oynat ve sonraki');
 });

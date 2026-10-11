@@ -410,3 +410,85 @@ body:has(.mk-root) .mk-hero-logo{opacity:.09}
   /* Orta genişliğin iki sütunlu kuralı burada geçersiz: telefonda tek sütun. */
   .mk-govde{grid-template-columns:minmax(0,1fr);grid-template-areas:"hero" "tabs" "sag" "bilgi"}
 }
+
+/* ---------- Kumanda ikonları (11 Ekim 2026) ----------
+   Emoji yerine tek renkli çizim: her telefonda aynı görünür. */
+.mk-cmds button,.mk-dock-cmds button{display:inline-flex;align-items:center;justify-content:center}
+.mk-cmds button svg{width:20px;height:20px}
+.mk-cmds .mk-main svg{width:22px;height:22px}
+.mk-dock-cmds button svg{width:18px;height:18px}
+.mk-dock-cmds .mk-dock-main svg{width:16px;height:16px}
+.mk-item .alt{display:none}
+.mk-dock{overflow:hidden}
+.mk-dock-bar{position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--mk-accent);
+  transition:width .25s linear}
+
+/* ---------- Telefon: uygulama düzeni ----------
+   İskelet Spotify'dan tanıdık: kapaklı liste rafı, büyük kapak, solda başlık,
+   çubuğun altında süreler, ortada dolu oynat düğmesi, kapaklı parça satırları,
+   altta yapışık mini oynatıcı. Renk, keskin köşe ve yazı dili Derin Record. */
+@media(max-width:560px){
+  .mk-root{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .mk-govde{gap:22px}
+
+  /* Liste rafı */
+  .mk-tabs{gap:14px;padding:0 0 4px;border-bottom:0;scroll-snap-type:x mandatory;scrollbar-width:none}
+  .mk-tabs::-webkit-scrollbar{display:none}
+  .mk-tab{flex-direction:column;align-items:flex-start;gap:8px;width:128px;flex:0 0 128px;padding:0;
+    border:0;opacity:.85;box-shadow:none;scroll-snap-align:start}
+  .mk-tab:hover,.mk-tab[aria-pressed="true"]{transform:none;box-shadow:none;padding-left:0}
+  .mk-tab[aria-pressed="true"]{opacity:1}
+  .mk-tab img,.mk-tab .ph{width:128px;height:128px;font-size:30px;opacity:1}
+  .mk-tab[aria-pressed="true"] img,.mk-tab[aria-pressed="true"] .ph{outline:2px solid var(--mk-accent);outline-offset:-2px}
+  .mk-tab > span{width:100%;min-width:0}
+  .mk-tab b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mk-tab[aria-pressed="true"] b{color:var(--mk-accent)}
+  .mk-tab small{display:block;opacity:.6}
+
+  /* Oynatıcı */
+  .mk-stage,.mk-panel{box-shadow:none}
+  .mk-stage{text-align:left;gap:20px}
+  .mk-art{width:100%;margin:0}
+  .mk-art .ph-ad{font-size:18px}
+  .mk-meta .mk-icerik h2,#mk-baslik{font-size:24px;line-height:1.15}
+  .mk-lbl{margin-bottom:6px}
+  .mk-prog{flex-wrap:wrap;gap:6px 0;margin-top:18px}
+  .mk-prog input[type=range]{order:-1;flex:1 1 100%}
+  .mk-prog span{flex:1}
+  .mk-prog #mk-dur{text-align:right}
+  .mk-cmds{justify-content:space-between;gap:0;margin-top:10px;flex-wrap:nowrap}
+  .mk-cmds button{width:44px;height:44px;opacity:.9}
+  .mk-cmds button svg{width:26px;height:26px}
+  .mk-cmds .mk-shuffle{order:-1;border:0}
+  .mk-cmds .mk-shuffle svg{width:20px;height:20px}
+  .mk-cmds::after{content:"";width:44px;flex:0 0 44px}
+  .mk-cmds .mk-main{width:64px;height:64px;border:0;color:#131313;background:var(--mk-accent)}
+  .mk-cmds .mk-main:hover{background:var(--mk-accent)}
+  .mk-cmds .mk-main svg{width:26px;height:26px}
+  .mk-vol{display:none}
+  #mk-durum:empty{display:none}
+
+  /* Parça listesi */
+  .mk-panel{margin-top:30px;padding-top:22px}
+  .mk-panel h3{padding:0;font-size:17px;letter-spacing:-.01em;opacity:1;text-transform:none}
+  .mk-panel h3 span + span{font-size:11px;letter-spacing:.06em;align-self:flex-end}
+  .mk-list-head{display:none}
+  .mk-list-head,.mk-item{grid-template-columns:minmax(0,1fr) auto;gap:12px}
+  .mk-item{padding:7px 0;border-bottom:0}
+  .mk-item:hover{background:none}
+  .mk-item.calisiyor{background:none;box-shadow:none}
+  .mk-item .no{display:none}
+  .mk-item .ttl{display:grid;grid-template-columns:48px minmax(0,1fr);column-gap:12px;align-items:center}
+  .mk-item .ttl img,.mk-item .ttl .ph{width:48px;height:48px;grid-row:1 / 3}
+  .mk-item .ttl .ad{font-size:15px;align-self:end}
+  .mk-item .alt{display:block;font-size:12px;opacity:.55;align-self:start;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mk-item.calisiyor .ad{color:var(--mk-accent)}
+
+  /* Mini oynatıcı: ekranın altına yapışık */
+  .mk-dock{width:calc(100vw - 16px);bottom:calc(8px + env(safe-area-inset-bottom));gap:12px;padding:8px 10px 8px 8px}
+  .mk-dock-art{width:42px;height:42px}
+  #mk-dock-geri{display:none}
+  .mk-dock-cmds button{width:40px;height:40px}
+  .mk-dock-cmds .mk-dock-main{background:var(--mk-accent);box-shadow:none}
+}

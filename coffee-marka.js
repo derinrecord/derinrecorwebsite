@@ -13,6 +13,14 @@ const sureMetni = s => {
   return t >= 60 ? Math.floor(t / 60) + ' dk' : t + ' sn';
 };
 const es = (a, b) => String(a) === String(b);
+// Kumanda ikonları: emoji karakterleri telefondan telefona farklı (bazen renkli)
+// çizildiği için ikonlar tek renkli çizimdir, düğmenin yazı rengini alır.
+const IKON = {
+  onceki: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>',
+  sonraki: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>',
+  oynat: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15L19.5 12z"/></svg>',
+  durdur: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/></svg>'
+};
 const bekle = ms => new Promise(done => setTimeout(done, ms));
 
 const client = window.supabase.createClient(
@@ -149,6 +157,7 @@ audio.addEventListener('timeupdate', () => {
     byId('mk-cur').textContent = fmt(audio.currentTime);
     byId('mk-dur').textContent = fmt(d);
     if (!surukluyor) byId('mk-seek').value = Math.round((audio.currentTime / d) * 1000);
+    const cizgi = byId('mk-dock-bar'); if (cizgi) cizgi.style.width = (audio.currentTime / d * 100).toFixed(2) + '%';
   }
   if (gecisVar || audio.paused || !kuyruk.length) return;
   if (!isFinite(d) || d < EN_KISA) return;
@@ -286,7 +295,7 @@ function listeCiz() {
         <span class="ttl">${kapak(t.cover_path)
           ? `<img src="${safe(kapak(t.cover_path))}" alt="">`
           : '<span class="ph" aria-hidden="true">♪</span>'}
-          <span class="ad">${safe(clean(t.title))}</span></span>
+          <span class="ad">${safe(clean(t.title))}</span><small class="alt">${safe(t._album || 'Derin Record')}</small></span>
         <span class="sure">${fmt(t.duration_sec)}</span>
       </li>`).join('')}</ol>`;
 }
@@ -354,9 +363,9 @@ function ciz(brand, plist) {
         <span id="mk-dur">0:00</span>
       </div>
       <div class="mk-cmds">
-        <button id="mk-geri" type="button" aria-label="Önceki">⏮</button>
-        <button class="mk-main" id="mk-oyna" type="button" aria-label="Oynat">▶</button>
-        <button id="mk-ileri" type="button" aria-label="Sonraki">⏭</button>
+        <button id="mk-geri" type="button" aria-label="Önceki">${IKON.onceki}</button>
+        <button class="mk-main" id="mk-oyna" type="button" aria-label="Oynat">${IKON.oynat}</button>
+        <button id="mk-ileri" type="button" aria-label="Sonraki">${IKON.sonraki}</button>
         <button class="mk-shuffle" id="mk-karisik" type="button" aria-pressed="${karisik}"
           aria-label="Karışık çal" title="Karışık çal">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -409,10 +418,11 @@ function ciz(brand, plist) {
     <span class="mk-dock-art" id="mk-dock-art"><span class="ph" aria-hidden="true">♪</span></span>
     <span class="mk-dock-meta"><b id="mk-dock-baslik">—</b><span id="mk-dock-alt"></span></span>
     <span class="mk-dock-cmds">
-      <button id="mk-dock-geri" type="button" aria-label="Önceki">⏮</button>
-      <button class="mk-dock-main" id="mk-dock-oyna" type="button" aria-label="Oynat">▶</button>
-      <button id="mk-dock-ileri" type="button" aria-label="Sonraki">⏭</button>
+      <button id="mk-dock-geri" type="button" aria-label="Önceki">${IKON.onceki}</button>
+      <button class="mk-dock-main" id="mk-dock-oyna" type="button" aria-label="Oynat">${IKON.oynat}</button>
+      <button id="mk-dock-ileri" type="button" aria-label="Sonraki">${IKON.sonraki}</button>
     </span>
+    <i class="mk-dock-bar" id="mk-dock-bar" aria-hidden="true"></i>
   </div>
 </section>`;
 
@@ -466,10 +476,12 @@ function bagla() {
   };
   // Oynat/duraklat ikonu iki kumandada da (sahne + alt çubuk) aynı kalsın.
   const oynaIkon = () => {
-    const im = audio.paused ? '▶' : '⏸';
-    byId('mk-oyna').textContent = im;
-    const d = byId('mk-dock-oyna');
-    if (d) d.textContent = im;
+    const im = audio.paused ? IKON.oynat : IKON.durdur;
+    const etiket = audio.paused ? 'Oynat' : 'Duraklat';
+    ['mk-oyna', 'mk-dock-oyna'].forEach(id => {
+      const b = byId(id);
+      if (b) { b.innerHTML = im; b.setAttribute('aria-label', etiket); }
+    });
   };
   audio.addEventListener('play', oynaIkon);
   audio.addEventListener('pause', oynaIkon);
