@@ -50,7 +50,6 @@ const D = {
 const ui = {
   cover: p => p, ses: p => p, anons: p => p,
   playerBase: () => 'https://ornek.test/coffee/s/',
-  brandUrl: s => 'https://ornek.test/coffee/' + s,
   accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
   now: () => simdi
 };

@@ -48,7 +48,6 @@ const ui = {
   ses: p => '/ses/' + p,
   anons: p => '/anons/' + p,
   playerBase: () => 'https://ornek.test/coffee/s/',
-  brandUrl: slug => 'https://ornek.test/coffee/' + slug,
   accept: () => '.mp3,.wav',
   desteklenenler: () => 'mp3, wav',
   parcaNotu: () => '45 MB üzeri parçalara bölünür',
@@ -418,15 +417,6 @@ test('çalma listesi satırları sürüklenebilir ve başlığı sıra kolonunu 
   const bas = html.slice(html.indexOf('<thead>'), html.indexOf('</thead>'));
   assert.equal((bas.match(/<th>/g) || []).length, 6, 'başlık sıra kolonu için boş hücreyi taşımalı');
   assert.ok(html.includes('↑ ↓ düğmeleriyle değiştirebilirsin'), 'sürükleme ipucu yazılmalı');
-});
-
-// Link adı (slug) olmayan eski markada `/coffee/` boş link üretip kırık sunum
-// sayfasına götürmek yerine yöneticiyi link adı kaydetmeye yönlendiririz.
-test('link adı olmayan markada sunum linki yerine uyarı çıkar', () => {
-  const slugsuz = { ...D, brands: [{ ...D.brands[0], slug: null }] };
-  const { html } = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), slugsuz, ui);
-  assert.ok(!html.includes('coffee/'), 'slug\'sız markada kırık link üretilmemeli');
-  assert.ok(html.includes('link adı'), 'yönetici link adı kaydetmeye yönlendirilmeli');
 });
 
 // Kapaklar elle yerleştirilir: yönetim indirdiği görseli kendi seçer. Pencerede

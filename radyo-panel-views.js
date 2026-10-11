@@ -2059,31 +2059,6 @@
 
       ${iletisimKarti(b)}
 
-      <div class="panel" style="margin-bottom:18px">
-        <h3>MÜŞTERİ SUNUMU — LİNK VE ERİŞİM KODU</h3>
-        <p class="panel-sub">Markaya verdiğin link ve kod ile sunum sayfasını yalnızca müşteri açabilir.</p>
-        <div class="form-grid">
-          <div class="field"><label for="brand-slug">LİNK ADI</label>
-            <input id="brand-slug" value="${esc(b.slug || '')}" placeholder="link-adi" autocomplete="off"></div>
-          <button class="btn" data-act="brand-slug-set" data-id="${esc(b.id)}" type="button">LİNK ADINI KAYDET</button>
-          <div class="field"><label for="brand-code">ERİŞİM KODU</label>
-            <input id="brand-code" value="${esc(b.access_code || '')}" placeholder="Örn. KAHVE2026" autocomplete="off"></div>
-          <button class="btn" data-act="brand-code-set" data-id="${esc(b.id)}" type="button">${b.access_code ? 'KODU GÜNCELLE' : 'KODU KAYDET'}</button>
-        </div>
-        <span class="sub" id="brand-slug-msg">${b.access_code
-          ? 'Kodu değiştirirsen markanın eski kodu ve linki çalışmaz olur.'
-          : 'Bu markanın henüz erişim kodu yok.'}</span>
-        <hr class="divider">
-        <div class="row">
-          ${b.slug
-            ? `<span class="key">${esc(ui.brandUrl(b.slug))}</span>
-              <button class="btn sm" data-act="copy" data-copy="${esc(ui.brandUrl(b.slug))}" type="button">LİNKİ KOPYALA</button>
-              <a class="btn sm" href="${esc(ui.brandUrl(b.slug))}" target="_blank" rel="noopener">SUNUMU AÇ ↗</a>`
-            : '<span class="sub">Sunum linki için önce yukarıdan bir <b>link adı</b> kaydedin.</span>'}
-          ${b.access_code ? `<button class="btn sm" data-act="copy" data-copy="${esc(b.access_code)}" type="button">KODU KOPYALA</button>` : ''}
-        </div>
-      </div>
-
       ${markaKapagiVar(D) ? `
       <div class="panel" style="margin-bottom:18px">
         <h3>MARKA KAPAĞI</h3>

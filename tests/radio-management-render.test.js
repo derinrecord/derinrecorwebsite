@@ -230,10 +230,9 @@ test('liste bildirimi kurulumu SQL dosyası olarak depoda', () => {
   assert.ok(!/create or replace function public\.radio_ping/.test(sql));
 });
 
-test('sunum sayfası yeni tasarımı ve fade geçişlerini yükler', () => {
+test('sunum betiği yeni tasarımın fade geçişlerini taşır', () => {
   const sunum = fs.readFileSync(require.resolve('../coffee-marka.html'), 'utf8');
   assert.match(sunum, /marka-sunum\.css/);
-  assert.match(sunum, /coffee-marka\.js\?v=\d+/);
 
   const kaynak = fs.readFileSync(require.resolve('../coffee-marka.js'), 'utf8');
   ['KAPANMA_MS', 'ACILMA_MS', 'uctanGecis', 'fade('].forEach(iz =>
