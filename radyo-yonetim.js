@@ -1939,11 +1939,12 @@
         if (tip === 'cekmece') { cekmeceAc(V.subeCekmecesi(p.id, D, ui)); return; }
 
         // Boş/bozuk anahtar, şubeyi silip yeniden eklemeyi gerektirmiyor: kaydı
-        // yerinde tutup yalnızca anahtarı tazeleriz, geçmiş ve cihaz kaydı kalır.
+        // yerinde tutup yalnızca anahtarı tazeleriz; geçmiş kalır, cihaz kilidi
+        // sıfırlanır ve yeni link ilk açıldığı cihaza kilitlenir.
         if (tip === 'anahtar') {
           if (!await onaySor({
             baslik: 'Yayın anahtarı yenilensin mi?',
-            govde: `“${p.label}” için yeni bir yayın anahtarı üretilir. Şubeye verilmiş eski bağlantı çalışmayı durdurur; yeni linki kopyalayıp sahaya iletmeniz gerekir.`,
+            govde: `“${p.label}” için yeni bir yayın anahtarı üretilir. Şubeye verilmiş eski bağlantı çalışmayı durdurur; yeni linki kopyalayıp sahaya iletmeniz gerekir. Cihaz kilidi de sıfırlanır; yeni link ilk açıldığı cihaza kilitlenir.`,
             onayMetni: 'ANAHTARI YENİLE'
           })) return;
           const sorun = await yazDogrula(client.from('brand_players').update(
@@ -2037,7 +2038,7 @@
         if (!p) return hata('Şube bulunamadı.');
         if (!await onaySor({
           baslik: 'Yeni link üretilsin mi?',
-          govde: `“${p.label}” için rastgele yeni bir link üretilir. Eski link hemen çalışmaz olur ve cihaz kilidi sıfırlanır; yeni linki şubeye iletin.`,
+          govde: `“${esc(p.label)}” için rastgele yeni bir link üretilir. Eski link hemen çalışmaz olur ve cihaz kilidi sıfırlanır; yeni linki şubeye iletin.`,
           onayMetni: 'YENİ LİNK ÜRET'
         })) return;
         const sorun = await yazDogrula(
