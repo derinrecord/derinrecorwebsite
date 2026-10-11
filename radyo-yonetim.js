@@ -87,7 +87,7 @@
     cover: p => window.DerinR2.adres('radio-covers', p),
     ses: p => window.DerinR2.adres('radio-audio', p),
     anons: p => window.DerinR2.adres('radio-announcements', p),
-    playerBase: () => siteRoot() + 'radyo.html?key=',
+    playerBase: () => siteRoot() + 'coffee/s/',
     brandUrl: slug => siteRoot() + 'coffee/' + encodeURIComponent(slug || ''),
     accept: () => (Ses ? Ses.accept() : 'audio/*'),
     desteklenenler: () => (Ses ? Ses.desteklenenler() : 'mp3, wav'),

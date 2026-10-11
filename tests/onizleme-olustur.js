@@ -41,7 +41,7 @@ if (senaryo === 'satis') {
     ]
   };
   const ui = {
-    cover: p => p, ses: p => p, anons: p => p, playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    cover: p => p, ses: p => p, anons: p => p, playerBase: () => 'https://www.derinrecord.com/coffee/s/',
     brandUrl: s => 'https://www.derinrecord.com/coffee/' + s, accept: () => '.mp3', desteklenenler: () => 'mp3', parcaNotu: () => '',
     now: () => Date.now(), saglikSonuc: () => null, bugunIso: () => gun(0), satisAsama: 'tumu'
   };
@@ -106,7 +106,7 @@ if (senaryo === 'canli') {
   };
   const ui = {
     cover: p => p, ses: p => p, anons: p => p,
-    playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    playerBase: () => 'https://www.derinrecord.com/coffee/s/',
     brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
     now: () => simdi, saglikSonuc: () => null
@@ -135,7 +135,7 @@ body{background:#0b0b0d;padding:22px;display:block}
 // tek dosya sunduğu için panel CSS'ini de satır içine alırız.
 if (senaryo === 'pencere') {
   const V = require(path.join(kok, 'radyo-panel-views.js'));
-  const link = 'https://www.derinrecord.com/radyo.html?key=a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa';
+  const link = 'https://www.derinrecord.com/coffee/s/a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa';
   const pencereli = `<!doctype html>
 <html lang="tr">
 <head>
@@ -191,7 +191,7 @@ if (senaryo === 'sube') {
   };
   const ui = {
     cover: p => p, ses: p => p, anons: p => p,
-    playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    playerBase: () => 'https://www.derinrecord.com/coffee/s/',
     brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
     now: () => simdi, saglikSonuc: () => null
@@ -254,7 +254,7 @@ if (senaryo === 'yayin') {
   };
   const ui = {
     cover: p => p, ses: p => p, anons: p => p,
-    playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    playerBase: () => 'https://www.derinrecord.com/coffee/s/',
     brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
     now: () => simdi, saglikSonuc: () => null
@@ -354,7 +354,7 @@ if (senaryo === 'gecmis') {
   };
   const ui = {
     cover: () => null, ses: p => p, anons: p => p,
-    playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    playerBase: () => 'https://www.derinrecord.com/coffee/s/',
     brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
     now: () => simdi, saglikSonuc: () => null
@@ -415,7 +415,7 @@ if (senaryo === 'kapaklar') {
   const ui = {
     cover: p => (/^data:/.test(p) ? p : sahteKapak(p.includes('listeler') ? '#c98b3b' : '#3b6bc9')),
     ses: p => p, anons: p => p,
-    playerBase: () => 'https://www.derinrecord.com/radyo.html?key=',
+    playerBase: () => 'https://www.derinrecord.com/coffee/s/',
     brandUrl: s => 'https://www.derinrecord.com/coffee/' + s,
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '',
     now: () => simdi, saglikSonuc: () => null

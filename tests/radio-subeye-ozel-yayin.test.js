@@ -50,7 +50,7 @@ const ui = {
   cover: p => '/kapak/' + p,
   ses: p => '/ses/' + p,
   anons: p => '/anons/' + p,
-  playerBase: () => 'https://ornek.test/radyo.html?key=',
+  playerBase: () => 'https://ornek.test/coffee/s/',
   brandUrl: slug => 'https://ornek.test/coffee/' + slug,
   accept: () => '.mp3,.wav',
   desteklenenler: () => 'mp3, wav',

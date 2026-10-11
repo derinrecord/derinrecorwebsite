@@ -8,7 +8,7 @@ const V = require('../radyo-panel-views.js');
 const ANAHTAR = n => 'a1b2c3d4-e5f6-4a7b-8c9d-' + String(n).padStart(12, '0');
 const ui = {
   cover: p => '/kapak/' + p, ses: p => '/ses/' + p, anons: p => '/anons/' + p,
-  playerBase: () => 'https://ornek.test/radyo.html?key=',
+  playerBase: () => 'https://ornek.test/coffee/s/',
   brandUrl: slug => 'https://ornek.test/coffee/' + slug,
   accept: () => '.mp3', desteklenenler: () => 'mp3', parcaNotu: () => '',
   now: () => Date.now()
@@ -48,4 +48,14 @@ test('yönetim yeni link vakasını yazar', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'radyo-yonetim.js'), 'utf8');
   assert.ok(src.includes("case 'player-link-yenile'"));
   assert.ok(src.includes('V.linkYenileAlanlari(crypto.randomUUID())'));
+});
+
+test('yönetim linki yeni biçimde', () => {
+  const kaynak = fs.readFileSync(path.join(__dirname, '..', 'radyo-yonetim.js'), 'utf8');
+  assert.ok(kaynak.includes("playerBase: () => siteRoot() + 'coffee/s/'"));
+  assert.ok(!kaynak.includes('radyo.html?key='));
+  const link = 'https://ornek.test/coffee/s/' + ANAHTAR(1);
+  const kiosk = V.kioskKurulum(link);
+  assert.ok(kiosk.includes(link + '?kiosk=1'));
+  assert.ok(!kiosk.includes('&kiosk=1'));
 });
