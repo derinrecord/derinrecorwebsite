@@ -841,3 +841,20 @@ test('panel yöntemi yazıyor ve eksik kolonu anlaşılır söylüyor', () => {
   const tekrar = panelKaynak.match(/case 'plan-tekrar'[\s\S]*?\n      \}/);
   assert.ok(tekrar && /yontem: satir\.yontem/.test(tekrar[0]), 'tekrar denemede yöntem taşınmalı');
 });
+
+// ---------- Telefon görünümü: ay ızgarası ekrandan taşmaz ----------
+// Sütunlar düz "1fr" olursa en küçük genişlik içeriğe göre hesaplanır; hücredeki
+// tek satırlık not ("Chemex faturasını gönder") sütunu genişletip 390px
+// telefonda takvimi ~1000px'e çıkarıyordu. minmax(0,1fr) + min-width:0 ile
+// yedi sütun her zaman ekrana sığar, uzun not "…" ile kesilir.
+test('ay ızgarası sütunları içeriğe göre genişlemez (telefonda taşma yok)', () => {
+  const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'radyo-panel.css'), 'utf8');
+  const kural = sec => (css.match(new RegExp('(?:^|\\n)' + sec.replace('.', '\\.') + '\\{([^}]*)\\}')) || [])[1] || '';
+  assert.match(kural('.plan-izgara'), /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
+  assert.match(kural('.plan-hafta'), /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
+  assert.match(kural('.plan-hucre'), /min-width:0/);
+  // Telefonda (≤620px) not gizlenir, tutar altın noktaya döner: kare uzamaz.
+  const tel = css.slice(css.indexOf('@media(max-width:620px)'));
+  assert.match(tel, /\.plan-hucre \.h-not\{display:none\}/);
+  assert.match(tel, /\.plan-hucre \.h-tutar::before\{/);
+});

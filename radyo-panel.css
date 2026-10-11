@@ -423,11 +423,11 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
   background:var(--surface);border:1px solid var(--line);border-radius:50%;cursor:pointer}
 .plan-ay-bas button:hover{border-color:var(--gold);color:var(--gold)}
 
-.plan-hafta{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
+.plan-hafta{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:6px}
 .plan-hafta span{text-align:center;font-size:10.5px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
 
-.plan-izgara{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-.plan-hucre{position:relative;aspect-ratio:1/.82;display:flex;flex-direction:column;align-items:flex-start;
+.plan-izgara{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.plan-hucre{position:relative;min-width:0;aspect-ratio:1/.82;display:flex;flex-direction:column;align-items:flex-start;
   justify-content:space-between;padding:7px 8px;color:var(--txt);background:var(--surface);
   border:1px solid var(--line);border-radius:var(--r-sm);cursor:pointer;text-align:left}
 .plan-hucre:hover{border-color:rgba(255,255,255,.3)}
@@ -633,7 +633,17 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 @media(max-width:620px){
   .plan-izgara,.plan-hafta{gap:4px}
   .plan-hucre{padding:5px;aspect-ratio:1/1}
-  .plan-hucre .rozet{font-size:9px;padding:2px 4px}
+  .plan-hucre{overflow:hidden}
+  .plan-hucre .hucre-ust{flex-wrap:wrap;gap:2px}
+  .plan-hucre .rozet{font-size:9px;padding:2px 3px}
+  /* Dar karede not ve tutar "12…" diye kesilip kareyi uzatıyordu: telefonda
+     ödeme günü küçük altın noktayla işaretlenir (tutar ekran okuyucuda kalır);
+     tutar ve not kareye dokununca açılan gün sekmesinde tam görünür. */
+  .plan-hucre .h-not{display:none}
+  .plan-hucre .hucre-alt{position:absolute;right:5px;bottom:5px;width:auto}
+  .plan-hucre .h-tutar{font-size:0;line-height:0}
+  .plan-hucre .h-tutar::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold)}
+  .plan-hucre.acik .h-tutar::before{background:var(--gold-ink)}
   .plan-ay-bas b{min-width:0;font-size:13px}
 }
 
