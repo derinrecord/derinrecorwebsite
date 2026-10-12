@@ -1622,10 +1622,10 @@
       return `<tr class="selectable" data-act="folder-open" data-id="${esc(f.id)}">
         <td><div class="cell-main">${kapakHucre(f.cover_path, ui, '🎵', 'gold')}
           <span><b>${esc(f.name)}</b><span class="sub">${esc(f.description || 'açıklama yok')}</span></span></div></td>
-        <td class="tight">${adet} parça${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</td>
-        <td class="tight">${yayinda ? chip('live', 'YAYINDA', true) : chip('off', 'beklemede')}</td>
-        <td class="tight">${f.shuffle === false ? '<span class="sub">sırayla</span>' : '<span class="sub">karışık</span>'}</td>
-        <td><div class="row-actions">
+        <td class="tight" data-etiket="İçerik">${adet} parça${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</td>
+        <td class="tight" data-etiket="Durum">${yayinda ? chip('live', 'YAYINDA', true) : chip('off', 'beklemede')}</td>
+        <td class="tight" data-etiket="Çalma">${f.shuffle === false ? '<span class="sub">sırayla</span>' : '<span class="sub">karışık</span>'}</td>
+        <td class="kart-islem"><div class="row-actions">
           <button class="btn sm" data-act="folder-open" data-id="${esc(f.id)}" type="button">AÇ ›</button>
           <button class="btn sm danger" data-act="folder-del" data-id="${esc(f.id)}" type="button">SİL</button>
         </div></td>
@@ -1645,7 +1645,7 @@
       </div>
       <div class="panel">
         <h3>YAYIN KLASÖRLERİ (${D.folders.length})</h3>
-        <table>
+        <table class="klasor-kart">
           <thead><tr><th>KLASÖR</th><th>İÇERİK</th><th>DURUM</th><th>ÇALMA</th><th></th></tr></thead>
           <tbody>${satirlar || bos(5, 'Henüz klasör yok. Yukarıdan ilk klasörü oluştur.')}</tbody>
         </table>
