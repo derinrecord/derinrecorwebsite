@@ -516,6 +516,72 @@
   }
 
   const YAKIN_PLAN=8;            // klasördeki yakın plan dalga penceresi (saniye)
+
+  // ---------- Ana dalga: yakınlaştırma / uzaklaştırma ----------
+  // detail.gorunum = {bas,son} (saniye) — null ise parçanın tamamı görünür.
+  const EN_DAR=1;                 // en fazla yakınlaşma: ekranda 1 saniye
+  const toplamSure=()=>detail.duration||(detail.peaks&&detail.peaks.duration)||0;
+  function gorAralik(){
+    const dur=toplamSure(), g=detail.gorunum;
+    if(!g||!dur)return [0,dur];
+    const uz=Math.min(dur,Math.max(EN_DAR,g.son-g.bas));
+    const bas=Math.max(0,Math.min(dur-uz,g.bas));
+    return [bas,bas+uz];
+  }
+  const yakinMi=()=>{ const [a,b]=gorAralik(); return toplamSure()>0&&(b-a)<toplamSure()-1e-3; };
+  function gorunumAyarla(bas,son){
+    const dur=toplamSure(); if(!dur)return;
+    let uz=Math.min(dur,Math.max(EN_DAR,son-bas));
+    bas=Math.max(0,Math.min(dur-uz,bas));
+    detail.gorunum=uz>=dur-1e-3?null:{bas,son:bas+uz};
+    gorunumUygula();
+  }
+  // Elle gezinme: çalan yer yeni görünümün dışında kaldıysa takip durur
+  // (görünüm geri zıplamaz); çalan yer görüntüye girince ya da bir yere dokununca yeniden başlar.
+  function elleGorunum(bas,son){
+    gorunumAyarla(bas,son);
+    const [a,b]=gorAralik(), c=detail.curTime||0;
+    detail.takipKapali=!(c>=a&&c<=b);
+  }
+  // oran<1 yakınlaştırır, >1 uzaklaştırır; merkez: sabit kalacak zaman noktası.
+  function yakinlastir(oran,merkez){
+    const [a,b]=gorAralik(), uz=b-a;
+    if(merkez==null){ const c=detail.curTime||0; merkez=(c>=a&&c<=b)?c:(a+b)/2; }
+    const yeniUz=Math.min(toplamSure(),Math.max(EN_DAR,uz*oran));
+    const k=(merkez-a)/uz;
+    elleGorunum(merkez-k*yeniUz,merkez-k*yeniUz+yeniUz);
+  }
+  const sureYazi=s=>s>=60?(Math.floor(s/60)+' dk'+(Math.round(s%60)?' '+Math.round(s%60)+' sn':'')):((s<10?String(Math.round(s*10)/10).replace('.',','):Math.round(s))+' sn');
+  function cetvelHtml(){
+    const [a,b]=gorAralik(), uz=b-a, ince=uz<20;
+    return [0,.25,.5,.75,1].map(r=>`<span style="left:${r*100}%">${ince?mmssOnda(a+r*uz):mmss(a+r*uz)}</span>`).join('');
+  }
+  // Ekran yeniden kurulmadan: işaret konumları, cetvel, kaydırma çubuğu, düğmeler, çizim.
+  function gorunumUygula(){
+    const root=document.querySelector('.track-detail'); if(!root)return;
+    const [a,b]=gorAralik(), uz=Math.max(.001,b-a), dur=toplamSure();
+    (detail.points||[]).forEach(p=>{
+      const m=root.querySelector(`[data-tdmark="${p.localId}"]`); if(!m)return;
+      m.style.left=((p.time-a)/uz*100)+'%';
+      m.classList.toggle('disarida',p.time<a-1e-6||p.time>b+1e-6);
+    });
+    const c=root.querySelector('.td-cetvel'); if(c)c.innerHTML=cetvelHtml();
+    const g=root.querySelector('[data-tdgenel]');
+    if(g){ g.hidden=!yakinMi(); const t=g.querySelector('i'); if(t&&dur){ t.style.left=(a/dur*100)+'%'; t.style.width=Math.max(2,uz/dur*100)+'%'; } }
+    const sy=root.querySelector('[data-tdgorsure]'); if(sy)sy.textContent=yakinMi()?sureYazi(uz):'TÜMÜ';
+    const uzak=root.querySelector('[data-tdzoom-out]'); if(uzak)uzak.disabled=!yakinMi();
+    const tum=root.querySelector('[data-tdzoom-fit]'); if(tum)tum.disabled=!yakinMi();
+    const yak=root.querySelector('[data-tdzoom-in]'); if(yak)yak.disabled=uz<=EN_DAR+1e-3;
+    root.querySelector('[data-tdwave]')?.classList.toggle('yakin',yakinMi());
+    cizimYenile();
+  }
+  // Çalarken çalan yer görünümden çıkarsa görünüm onu takip eder (sayfa çevirir gibi).
+  function takipEt(){
+    if(!detail.playing||!yakinMi()||detail.elleKaydiriyor)return;
+    const [a,b]=gorAralik(), c=detail.curTime||0, uz=b-a;
+    if(detail.takipKapali){ if(c>=a&&c<=b)detail.takipKapali=false; else return; }
+    if(c>b-uz*0.02||c<a)gorunumAyarla(c-uz*0.1,c-uz*0.1+uz);
+  }
   const sirali=()=>[...(detail.points||[])].sort((a,b)=>a.time-b.time);
   const noktaNo=p=>String(sirali().indexOf(p)+1).padStart(2,'0');
   const seciliNokta=()=>(detail.points||[]).find(x=>x.localId===detail.selPointLocalId)||null;
@@ -656,7 +722,7 @@
     if(!D)return;
     const sec=seciliNokta();
     const ana=root.querySelector('.td-wave-canvas');
-    if(ana)drawWave(ana,{from:0,to:detail.duration||D.duration,hover:detail.hoverAna});
+    if(ana){ const [ga,gb]=gorAralik(); drawWave(ana,{from:ga,to:gb,hover:detail.hoverAna}); }
     const yakin=root.querySelector('.td-zoom-canvas');
     if(yakin&&sec){
       const [a,b]=yakinPencere(sec.time);
@@ -790,14 +856,24 @@
         <p class="td-iskelet-yazi" role="status">Dalga formu yükleniyor<br><small>Birazdan soldan sağa çizilmeye başlar.</small></p>`}
         <div class="td-hover" data-tdhover hidden></div>
         <div class="td-marks">
-          ${sirali().map(p=>`<div class="td-mark ${p.saved?'saved':'draft'} ${p.localId===detail.selPointLocalId?'active':''}" style="left:${dur?(p.time/dur*100):0}%" data-tdmark="${p.localId}" title="${mmss(p.time)}">
+          ${sirali().map(p=>{ const [ga,gb]=gorAralik(), guz=Math.max(.001,gb-ga), dis=p.time<ga-1e-6||p.time>gb+1e-6;
+            return `<div class="td-mark ${p.saved?'saved':'draft'} ${p.localId===detail.selPointLocalId?'active':''}${dis?' disarida':''}" style="left:${(p.time-ga)/guz*100}%" data-tdmark="${p.localId}" title="${mmss(p.time)}">
             <span class="td-mark-badge">${noktaNo(p)}</span>
             <span class="td-mark-line"></span>
-          </div>`).join('')}
+          </div>`;}).join('')}
         </div>
-        <div class="td-cetvel">${[0,.25,.5,.75,1].map(r=>`<span style="left:${r*100}%">${mmss(r*dur)}</span>`).join('')}</div>
+        <div class="td-cetvel">${cetvelHtml()}</div>
+        <div class="td-genel" data-tdgenel${yakinMi()?'':' hidden'} title="Parçanın neresindesin — sürükleyerek kaydır"><i style="left:${toplamSure()?gorAralik()[0]/toplamSure()*100:0}%;width:${toplamSure()?Math.max(2,(gorAralik()[1]-gorAralik()[0])/toplamSure()*100):100}%"></i></div>
       </div>
-      ${paletHtml()}
+      <div class="td-dalga-arac">
+        <div class="td-zoom-dug" role="group" aria-label="Dalga formunu yakınlaştır">
+          <button type="button" data-tdzoom-out aria-label="Uzaklaştır" title="Uzaklaştır"${yakinMi()?'':' disabled'}>−</button>
+          <span data-tdgorsure aria-live="polite">${yakinMi()?sureYazi(gorAralik()[1]-gorAralik()[0]):'TÜMÜ'}</span>
+          <button type="button" data-tdzoom-in aria-label="Yakınlaştır" title="Yakınlaştır">+</button>
+          <button type="button" class="td-zoom-tum" data-tdzoom-fit aria-label="Tamamını göster" title="Tamamını göster"${yakinMi()?'':' disabled'}>⤢</button>
+        </div>
+        ${paletHtml()}
+      </div>
 
       <div class="td-addbtn-row">
         <button type="button" class="td-addbtn" data-tdaddpoint>+ İŞARET KOY · <span data-tdaddzaman>${mmss(cur)}</span></button>
@@ -824,6 +900,7 @@
     const seek=root.querySelector('[data-tdseek]'); if(seek)seek.value=detail.curTime||0;
     const timeEl=root.querySelector('.td-time'); if(timeEl)timeEl.textContent=`${mmss(detail.curTime)} / ${mmss(detail.duration)}`;
     const ekle=root.querySelector('[data-tdaddzaman]'); if(ekle)ekle.textContent=mmss(detail.curTime);
+    if(yakinMi()){ const once=gorAralik()[0]; takipEt(); if(gorAralik()[0]!==once)gorunumUygula(); }
     const playBtn=root.querySelector('[data-tdplay]'); if(playBtn)playBtn.textContent=detail.audioEl?(detail.playing?'❚❚':'▶'):(detail.sesYuzde!=null?'%'+detail.sesYuzde:'…');
     cizimIste();
   }
@@ -969,10 +1046,11 @@
   // İşaret sürükleme belge düzeyinde izlenir: seçim değişince ekran yeniden
   // çizilse bile sürükleme kopmaz.
   let surukleme=null, surukleKurulu=false;
+  let sikistirmaOldu=false; // iki parmak hareketi sırasında işaret dokunuşları yok sayılır
   function canliKonum(p){
     const root=document.querySelector('.track-detail'); if(!root)return;
     const m=root.querySelector(`[data-tdmark="${p.localId}"]`);
-    if(m&&detail.duration){m.style.left=(p.time/detail.duration*100)+'%';m.title=mmss(p.time);}
+    if(m&&detail.duration){const [ga,gb]=gorAralik(); m.style.left=((p.time-ga)/Math.max(.001,gb-ga)*100)+'%'; m.title=mmss(p.time); m.classList.toggle('disarida',p.time<ga||p.time>gb);}
     const sz=root.querySelector(`[data-sekmezaman="${p.localId}"]`); if(sz)sz.textContent=mmssOnda(p.time);
     if(p===seciliNokta()){const kz=root.querySelector('[data-klasorzaman]');
       if(kz){ if(kz.tagName==='INPUT'){ if(document.activeElement!==kz)kz.value=mmssOnda(p.time); } else kz.textContent=mmssOnda(p.time); }}
@@ -983,18 +1061,25 @@
     surukleKurulu=true;
     document.addEventListener('pointermove',e=>{
       if(!surukleme||!detail.duration)return;
+      if(sikistirmaOldu)return;
       const p=(detail.points||[]).find(x=>x.localId===surukleme.id);
       if(!p||p.saved)return;
       if(!surukleme.oynadi&&Math.abs(e.clientX-surukleme.baslaX)<4)return;
       surukleme.oynadi=true;
-      const wrap=document.querySelector('[data-tdwave]'); if(!wrap)return;
-      const r=wrap.getBoundingClientRect();
-      p.time=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*detail.duration;
+      const tuval=document.querySelector('.td-wave-canvas'); if(!tuval)return;
+      const r=tuval.getBoundingClientRect(), [ga,gb]=gorAralik();
+      p.time=ga+Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*(gb-ga);
       canliKonum(p);
     });
     const bitir=()=>{
       if(!surukleme)return;
-      const {tr,project,oynadi,id}=surukleme; surukleme=null;
+      const {tr,project,oynadi,id,oncekiSec}=surukleme; surukleme=null;
+      if(sikistirmaOldu){
+        // Parmak işarete yanlışlıkla denk geldi: seçimi eski haline döndür, çalmaya dokunma.
+        detail.selPointLocalId=oncekiSec;
+        document.querySelectorAll('.td-mark').forEach(m=>m.classList.toggle('active',m.dataset.tdmark===oncekiSec));
+        cizimIste(); return;
+      }
       const p=(detail.points||[]).find(x=>x.localId===id);
       if(!oynadi&&p){ detail.curTime=p.time; if(detail.audioEl)detail.audioEl.currentTime=p.time; }
       if(openTrackId)renderDetail(tr,project);
@@ -1010,24 +1095,127 @@
 
     const audio=detail.audioEl;
     const playBtn=root.querySelector('[data-tdplay]');
-    if(playBtn)playBtn.onclick=async()=>{ if(!audio)return; if(audio.paused)await audio.play(); else audio.pause(); };
+    if(playBtn)playBtn.onclick=async()=>{ detail.takipKapali=false; if(!audio)return; if(audio.paused)await audio.play(); else audio.pause(); };
     const seek=root.querySelector('[data-tdseek]');
     if(seek)seek.oninput=()=>{ if(audio)audio.currentTime=parseFloat(seek.value); detail.curTime=parseFloat(seek.value); updateDetailProgress(); };
     const ana=root.querySelector('.td-wave-canvas');
     const zamanAl=(el,e,from,to)=>{const r=el.getBoundingClientRect();return from+Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*(to-from);};
-    const git=t=>{ detail.curTime=Math.max(0,Math.min(detail.duration||0,t)); if(audio)audio.currentTime=detail.curTime; updateDetailProgress(); };
+    const git=t=>{ detail.curTime=Math.max(0,Math.min(detail.duration||0,t)); detail.takipKapali=false; if(audio)audio.currentTime=detail.curTime; updateDetailProgress(); };
     const hoverEl=root.querySelector('[data-tdhover]');
     paletBagla(root);
     if(ana&&detail.peaks){
       cizimYenile();
-      ana.onclick=e=>git(zamanAl(ana,e,0,detail.duration));
+      // Dokunma sürerken ekran yeniden çizilebilir (indirme biter, not gelir…); olaylar eski
+      // öğeye bağlı kalır. Ölçüler her zaman ekrandaki güncel dalgadan alınır.
+      const canliTuval=()=>{ const c=document.querySelector('.td-wave-canvas'); return c&&c.isConnected?c:ana; };
+      const imlecZamani=e=>{ const [ga,gb]=gorAralik(); return zamanAl(canliTuval(),e,ga,gb); };
+      // Dokunuşlar: tek parmak kısa dokunuş → o yerden çal; yatay sürükleme → kaydır;
+      // iki parmak → sıkıştırarak yakınlaştır/uzaklaştır (ve birlikte kaydır).
+      const dokunan=new Map(); let hareket=null, sikistirma=null;
+      // İki parmak: tarayıcılar ikinci parmağın işaretçi olaylarını her zaman göndermiyor;
+      // sıkıştırma dokunma olaylarıyla okunur. Dikey sayfa kaydırması tek parmakta serbest kalır.
+      const ikiParmak=e=>{ const r=canliTuval().getBoundingClientRect(); const [t1,t2]=[e.touches[0],e.touches[1]];
+        return {orta:(t1.clientX+t2.clientX)/2, ara:Math.max(20,Math.abs(t1.clientX-t2.clientX)), r}; };
+      const sikistirmaBasla=e=>{
+        const {orta,ara,r}=ikiParmak(e), [ga,gb]=gorAralik();
+        sikistirma={ara0:ara,merkez:ga+((orta-r.left)/r.width)*(gb-ga),ga,gb,gen:r.width,sol:r.left,orta0:orta};
+        hareket={tur:'bitti'}; detail.elleKaydiriyor=true; sikistirmaOldu=true;
+      };
+      const alan=root.querySelector('[data-tdwave]')||ana; // dalga + işaretler
+      alan.addEventListener('touchstart',e=>{
+        if(e.touches.length<2)return;
+        e.preventDefault(); sikistirmaBasla(e);
+      },{passive:false});
+      alan.addEventListener('touchmove',e=>{
+        if(e.touches.length<2)return;
+        e.preventDefault();
+        if(!sikistirma){ sikistirmaBasla(e); return; } // ikinci parmak yalnız harekette bildirildiyse
+        const {orta,ara}=ikiParmak(e), s0=sikistirma;
+        const uz=Math.min(toplamSure(),Math.max(EN_DAR,(s0.gb-s0.ga)*s0.ara0/ara));
+        const k=(orta-s0.sol)/s0.gen;
+        elleGorunum(s0.merkez-k*uz,s0.merkez-k*uz+uz);
+      },{passive:false});
+      const dokunmaBitti=e=>{ if(!sikistirma)return; if(e.touches.length<2){ sikistirma=null; } if(!e.touches.length){ hareket=null; dokunan.clear(); detail.elleKaydiriyor=false; } };
+      alan.addEventListener('touchend',dokunmaBitti); alan.addEventListener('touchcancel',dokunmaBitti);
+      ana.onpointerdown=e=>{
+        if(sikistirma)return;
+        dokunan.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        try{ana.setPointerCapture(e.pointerId);}catch{}
+        const [ga,gb]=gorAralik(), r=canliTuval().getBoundingClientRect();
+        if(dokunan.size===1){ hareket={tur:'dokun',x0:e.clientX,y0:e.clientY,ga,gb,gen:r.width}; }
+        else if(dokunan.size===2){
+          const [p1,p2]=[...dokunan.values()];
+          const orta=(p1.x+p2.x)/2, ara=Math.max(20,Math.abs(p1.x-p2.x));
+          hareket={tur:'sikistir',ara0:ara,merkez:ga+((orta-r.left)/r.width)*(gb-ga),ga,gb,gen:r.width,sol:r.left};
+          detail.elleKaydiriyor=true;
+        }
+      };
       ana.onpointermove=e=>{
+        if(dokunan.has(e.pointerId))dokunan.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        if(hareket&&hareket.tur==='dokun'&&dokunan.size===1){
+          const dx=e.clientX-hareket.x0, dy=e.clientY-hareket.y0;
+          if(Math.abs(dx)>6&&Math.abs(dx)>Math.abs(dy)){
+            if(yakinMi()){ hareket.tur='kaydir'; detail.elleKaydiriyor=true; }
+            else hareket.tur='bitti'; // tam görünümde yana sürükleme çalmayı tetiklemesin
+          } else if(Math.abs(dy)>10) hareket.tur='bitti'; // sayfayı kaydırıyor
+        }
+        if(hareket&&hareket.tur==='kaydir'){
+          const uz=hareket.gb-hareket.ga, kay=-(e.clientX-hareket.x0)/hareket.gen*uz;
+          elleGorunum(hareket.ga+kay,hareket.gb+kay); return;
+        }
+        if(hareket&&hareket.tur==='sikistir'&&dokunan.size>=2){
+          const [p1,p2]=[...dokunan.values()];
+          const ara=Math.max(20,Math.abs(p1.x-p2.x)), orta=(p1.x+p2.x)/2;
+          const uz=Math.min(toplamSure(),Math.max(EN_DAR,(hareket.gb-hareket.ga)*hareket.ara0/ara));
+          const k=(orta-hareket.sol)/hareket.gen;
+          elleGorunum(hareket.merkez-k*uz,hareket.merkez-k*uz+uz); return;
+        }
         if(e.pointerType==='touch')return;
-        detail.hoverAna=zamanAl(ana,e,0,detail.duration);
-        if(hoverEl){hoverEl.hidden=false;hoverEl.textContent=mmss(detail.hoverAna);hoverEl.style.left=(detail.hoverAna/detail.duration*100)+'%';}
+        detail.hoverAna=imlecZamani(e);
+        const [ga,gb]=gorAralik();
+        if(hoverEl){hoverEl.hidden=false;hoverEl.textContent=(gb-ga<20?mmssOnda:mmss)(detail.hoverAna);hoverEl.style.left=((detail.hoverAna-ga)/Math.max(.001,gb-ga)*100)+'%';}
         cizimYenile();
       };
-      ana.onpointerleave=()=>{detail.hoverAna=null;if(hoverEl)hoverEl.hidden=true;cizimYenile();};
+      const birak=e=>{
+        dokunan.delete(e.pointerId);
+        if(hareket&&hareket.tur==='dokun'&&e.type==='pointerup'&&!sikistirma)git(imlecZamani(e));
+        if(!dokunan.size){ hareket=null; detail.elleKaydiriyor=false; }
+        else if(hareket&&hareket.tur==='sikistir')hareket={tur:'bitti'}; // bir parmak kaldı: çalma tetiklenmesin
+      };
+      ana.onpointerup=birak; ana.onpointercancel=birak;
+      ana.onpointerleave=e=>{ if(e.pointerType!=='touch'){detail.hoverAna=null;if(hoverEl)hoverEl.hidden=true;cizimYenile();} };
+      // Trackpad sıkıştırma (tarayıcı ctrlKey ile bildirir) veya Ctrl/⌘ + tekerlek: imlecin olduğu yere yakınlaş.
+      // Yatay kaydırma (iki parmakla yana) veya Shift + tekerlek: yakınken görünümü kaydır.
+      ana.addEventListener('wheel',e=>{
+        if(e.ctrlKey||e.metaKey){
+          e.preventDefault();
+          yakinlastir(Math.exp(Math.max(-1,Math.min(1,e.deltaY*0.01))),imlecZamani(e));
+          return;
+        }
+        const yatay=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:(e.shiftKey?e.deltaY:0);
+        if(yatay&&yakinMi()){
+          e.preventDefault();
+          const [ga,gb]=gorAralik(), kay=yatay/canliTuval().clientWidth*(gb-ga);
+          elleGorunum(ga+kay,gb+kay);
+        }
+      },{passive:false});
+      ana.onclick=null;
+    }
+    // Yakınlaştırma düğmeleri
+    const zIn=root.querySelector('[data-tdzoom-in]'); if(zIn)zIn.onclick=()=>yakinlastir(0.5);
+    const zOut=root.querySelector('[data-tdzoom-out]'); if(zOut)zOut.onclick=()=>yakinlastir(2);
+    const zFit=root.querySelector('[data-tdzoom-fit]'); if(zFit)zFit.onclick=()=>gorunumAyarla(0,toplamSure());
+    // Genel bakış çubuğu: tutup sürükle ya da bir yere dokun → görünüm oraya gider.
+    const genel=root.querySelector('[data-tdgenel]');
+    if(genel){
+      let tut=null;
+      const yerlestir=e=>{ const r=genel.getBoundingClientRect(), [ga,gb]=gorAralik(), uz=gb-ga;
+        const t=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*toplamSure()-(tut?tut.fark:uz/2); elleGorunum(t,t+uz); };
+      genel.onpointerdown=e=>{ e.preventDefault(); try{genel.setPointerCapture(e.pointerId);}catch{}
+        const r=genel.getBoundingClientRect(), [ga,gb]=gorAralik(), t=(e.clientX-r.left)/r.width*toplamSure();
+        tut={fark:(t>=ga&&t<=gb)?t-ga:(gb-ga)/2}; detail.elleKaydiriyor=true; yerlestir(e); };
+      genel.onpointermove=e=>{ if(tut)yerlestir(e); };
+      genel.onpointerup=genel.onpointercancel=()=>{ tut=null; detail.elleKaydiriyor=false; };
     }
     const yakin=root.querySelector('[data-tdzoom]');
     if(yakin){
@@ -1037,7 +1225,10 @@
     }
 
     // Klasör seçimi: klasör açılır, dalga o noktaya gider (çalma başlamaz).
-    const sec=id=>{ detail.selPointLocalId=id; const p=seciliNokta(); if(p){detail.curTime=p.time; if(audio)audio.currentTime=p.time;} renderDetail(tr,project); };
+    const sec=id=>{ detail.selPointLocalId=id; const p=seciliNokta();
+      if(p){ detail.curTime=p.time; if(audio)audio.currentTime=p.time;
+        const [ga,gb]=gorAralik(); if(yakinMi()&&(p.time<ga||p.time>gb)){ const uz=gb-ga; detail.gorunum={bas:p.time-uz/2,son:p.time+uz/2}; } }
+      renderDetail(tr,project); };
     root.querySelectorAll('[data-tdsec]').forEach(b=>b.onclick=()=>sec(b.dataset.tdsec));
 
     root.querySelectorAll('[data-tdburadan]').forEach(b=>b.onclick=async()=>{
@@ -1072,8 +1263,12 @@
       el.addEventListener('pointerdown',e=>{
         e.preventDefault(); e.stopPropagation();
         const p=(detail.points||[]).find(x=>x.localId===el.dataset.tdmark); if(!p)return;
-        surukleme={id:p.localId,tr,project,oynadi:false,baslaX:e.clientX};
-        if(detail.selPointLocalId!==p.localId){ detail.selPointLocalId=p.localId; renderDetail(tr,project); }
+        sikistirmaOldu=false;
+        surukleme={id:p.localId,tr,project,oynadi:false,baslaX:e.clientX,oncekiSec:detail.selPointLocalId};
+        // Seçim hemen görünsün ama ekran yeniden kurulmasın: dokunma sürerken
+        // ikinci parmak gelebilir (sıkıştırma). Tam çizim parmak kalkınca yapılır.
+        if(detail.selPointLocalId!==p.localId){ detail.selPointLocalId=p.localId;
+          root.querySelectorAll('.td-mark').forEach(m=>m.classList.toggle('active',m===el)); cizimIste(); }
       });
     });
     surukleKur();
