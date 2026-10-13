@@ -220,7 +220,7 @@
   .td-desc strong{color:var(--pj-altin2);font-weight:800}
   .td-wave-wrap{position:relative;padding:34px 0 30px;margin-top:6px;border-radius:18px;
     background:linear-gradient(180deg,#101013,#0c0c0e);border:1px solid var(--pj-cizgi)}
-  .td-wave-canvas{display:block;width:calc(100% - 32px);height:112px;margin:0 16px;cursor:pointer;touch-action:pan-y}
+  .td-wave-canvas{display:block;width:calc(100% - 32px);height:150px;margin:0 16px;border-radius:6px;cursor:pointer;touch-action:pan-y}
   .td-marks{position:absolute;left:16px;right:16px;top:6px;bottom:30px;pointer-events:none}
   .td-mark{position:absolute;top:0;bottom:0;width:30px;transform:translateX(-50%);display:flex;flex-direction:column;
     align-items:center;pointer-events:auto;z-index:1;cursor:pointer;touch-action:none}
@@ -241,7 +241,7 @@
   .td-mark.caliyor .td-mark-badge{animation:pjCal 1s ease-in-out infinite}
   @keyframes pjCal{0%,100%{box-shadow:0 0 0 0 rgba(232,209,90,.0)}50%{box-shadow:0 0 0 7px rgba(232,209,90,.35)}}
   .td-wave-wrap.yukleniyor .td-wave-canvas{visibility:hidden}
-  .td-iskelet{position:absolute;left:16px;right:16px;top:34px;height:112px;display:flex;align-items:center;gap:3px;pointer-events:none}
+  .td-iskelet{position:absolute;left:16px;right:16px;top:34px;height:150px;display:flex;align-items:center;gap:3px;pointer-events:none}
   .td-iskelet i{flex:1;height:var(--h);border-radius:2px;background:rgba(244,241,233,.12);animation:pjIskelet 1.2s ease-in-out infinite;animation-delay:var(--g)}
   @keyframes pjIskelet{50%{background:rgba(216,187,44,.35)}}
   @media(prefers-reduced-motion:reduce){.td-iskelet i{animation:none}}
@@ -249,7 +249,7 @@
     font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--pj-krem);text-shadow:0 2px 10px #000;pointer-events:none}
   .td-iskelet-yazi span{color:var(--pj-altin2)}
   .td-iskelet-yazi small{font-weight:600;letter-spacing:.02em;color:var(--pj-soluk);font-size:11px}
-  @media(max-width:640px){.td-iskelet{left:10px;right:10px;height:96px}}
+  @media(max-width:640px){.td-iskelet{left:10px;right:10px;height:128px}}
   .td-hover{position:absolute;top:8px;transform:translateX(-50%);margin-left:16px;padding:3px 7px;border-radius:6px;
     background:rgba(244,241,233,.92);color:var(--pj-ink);font-size:10px;font-weight:800;pointer-events:none;z-index:4}
   .td-hover[hidden]{display:none}
@@ -308,7 +308,7 @@
   .td-point-del{padding:10px 14px;border-radius:999px;border:1px solid rgba(203,36,104,.45);background:transparent;
     color:#ff9cc3;font:inherit;font-size:10px;font-weight:900;letter-spacing:.12em;cursor:pointer}
   .td-zoom{margin-bottom:14px;padding:12px 12px 8px;border-radius:12px;background:#0c0c0e;border:1px solid var(--pj-cizgi)}
-  .td-zoom-canvas{display:block;width:100%;height:92px;cursor:pointer}
+  .td-zoom-canvas{display:block;width:100%;height:120px;border-radius:6px;cursor:pointer}
   .td-zoom-cetvel{display:flex;justify-content:space-between;margin-top:6px;font-size:9px;font-weight:800;letter-spacing:.1em;color:var(--pj-soluk)}
   .td-ince{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px}
   .td-ince span{font-size:9px;font-weight:900;letter-spacing:.18em;color:var(--pj-soluk);margin-right:4px}
@@ -332,12 +332,12 @@
   .td-point-save:disabled{opacity:.6;cursor:default}
   .td-empty{color:var(--pj-soluk);font-size:13px;padding:10px 0;margin:0}
   @media(max-width:640px){
-    .td-wave-canvas{height:96px;width:calc(100% - 20px);margin:0 10px}
+    .td-wave-canvas{height:128px;width:calc(100% - 20px);margin:0 10px}
     .td-marks,.td-cetvel{left:10px;right:10px}
     .td-hover{margin-left:10px}
     .td-klasor{padding:16px 14px}
     .td-klasor-zaman{font-size:26px}
-    .td-zoom-canvas{height:80px}
+    .td-zoom-canvas{height:104px}
   }
   @media(prefers-reduced-motion:reduce){.td-mark.caliyor .td-mark-badge,.td-sekme.caliyor .td-sekme-ikon{animation:none}}
 
@@ -440,7 +440,7 @@
 <script src="audio-file-types.js?v=3"></script>
 <script src="project-track-controls.js?v=1"></script>
 <script src="sortable-touch.js?v=1"></script>
-<script src="dalga-tepeleri.js?v=1"></script>
-<script src="projects.js?v=20261013c"></script>
+<script src="dalga-tepeleri.js?v=2"></script>
+<script src="projects.js?v=20261013d"></script>
 </body>
 </html>

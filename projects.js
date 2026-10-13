@@ -421,13 +421,14 @@
     detail.points=[...savedNow,...draftLocal];
   }
 
-  // ---------- Dalga formu: hızlı okuma + tarayıcıda saklama ----------
-  // 1) WAV ise dalga-tepeleri.js başlığı okuyup örnekleri doğrudan tarar
-  //    (decodeAudioData büyük WAV'da saniyeler sürüyordu).
-  // 2) Sonuç tarayıcıda saklanır: aynı parça ikinci kez açılınca anında gelir.
-  // 3) İndirme yüzdesi ekranda gösterilir.
+  // ---------- Dalga formu ----------
+  // Veri: dalga-tepeleri.js (Ableton tarzı: her dilimde en düşük / en yüksek /
+  // ortalama düzey, saniyede 200 dilim). Kaynak sırası, hızlıdan yavaşa:
+  //   1) tarayıcı belleği  2) ses dosyasının yanındaki "<yol>.dalga" özeti (~100 KB)
+  //   3) sesin kendisi — WAV ise inerken soldan sağa kademeli çizilir.
+  // Özet ilk çıkarıldığında depoya yazılır; o parça sonra herkes için anında açılır.
   const Dalga=window.DerinDalga||null;
-  const DALGA_ANAHTAR='derin:dalga:', DALGA_LISTE='derin:dalga-liste', DALGA_EN_COK=40;
+  const DALGA_ANAHTAR='derin:dalga:', DALGA_LISTE='derin:dalga-liste', DALGA_EN_COK=20;
   const dalgaBellek=new Map();
   function dalgaOku(yol){
     if(dalgaBellek.has(yol))return dalgaBellek.get(yol);
@@ -436,14 +437,13 @@
   }
   function dalgaYaz(yol,veri){
     dalgaBellek.set(yol,veri);
-    if(!Dalga)return;
+    if(!Dalga||!veri||veri.eski)return;
     try{
       let liste=[]; try{liste=JSON.parse(localStorage.getItem(DALGA_LISTE)||'[]')||[];}catch{}
       liste=liste.filter(x=>x!==yol); liste.push(yol);
       while(liste.length>DALGA_EN_COK){ const eski=liste.shift(); try{localStorage.removeItem(DALGA_ANAHTAR+eski);}catch{} }
       const metin=Dalga.kodla(veri);
-      // Depo dolarsa en eskileri silip bir kez daha dene.
-      for(let deneme=0;deneme<3;deneme++){
+      for(let deneme=0;deneme<4;deneme++){
         try{ localStorage.setItem(DALGA_ANAHTAR+yol,metin); break; }
         catch{ const eski=liste.shift(); if(!eski||eski===yol)break; try{localStorage.removeItem(DALGA_ANAHTAR+eski);}catch{} }
       }
@@ -451,8 +451,6 @@
     }catch{}
   }
 
-  // Dalga özeti ses dosyasının yanında küçük bir dosya olarak durur:
-  // "<ses yolu>.dalga" (~15 KB). Böylece 50 MB'lık sesi indirmeden dalga gelir.
   const yanDosya=yol=>yol+'.dalga';
   const sesYollari=yol=>yol?[...Ses.parcalariCoz(yol).map(p=>p.path),yanDosya(yol)]:[];
   async function yanDosyaOku(yol){
@@ -467,71 +465,54 @@
   async function yanDosyaYaz(yol,veri){
     if(!Dalga||!veri)return;
     try{
-      const metin=Dalga.kodla(veri);
-      await client.storage.from('project-audio').upload(yanDosya(yol),new Blob([metin],{type:'application/octet-stream'}),
+      await client.storage.from('project-audio').upload(yanDosya(yol),new Blob([Dalga.kodla(veri)],{type:'application/octet-stream'}),
         {contentType:'application/octet-stream',upsert:true});
-    }catch{ /* yan dosya yazılamazsa sayfa yine kendi hesaplar */ }
-  }
-  // Yükleme anında, elimizdeki dosyadan dalgayı çıkarıp hem tarayıcıya hem depoya yaz:
-  // antrenör parçayı ilk açtığında dalga hazır bekler.
-  async function dalgaOnHazirla(yol,dosya){
-    if(!dosya||dosya.size>300*1024*1024)return; // çok büyük dosyada belleği zorlamayalım; ilk açılışta hesaplanır
-    try{
-      const veri=await tepelerCikar(await dosya.arrayBuffer());
-      dalgaYaz(yol,veri); await yanDosyaYaz(yol,veri);
-    }catch{}
+    }catch{ /* yazılamazsa sayfa bir dahaki açılışta yine çıkarır */ }
   }
 
-  async function indirIlerlemeli(url,ilerleme){
-    const resp=await fetch(url);
-    if(!resp.ok)throw new Error('Ses indirilemedi ('+resp.status+')');
-    const toplam=Number(resp.headers.get('content-length'))||0;
-    if(!resp.body||!toplam||!resp.body.getReader)return resp.arrayBuffer();
-    const okuyucu=resp.body.getReader(), hedef=new Uint8Array(toplam);
-    let gelen=0;
-    for(;;){
-      const {done,value}=await okuyucu.read(); if(done)break;
-      if(gelen+value.length>hedef.length){ // sunucu farklı boy bildirdiyse güvenli yol
-        const parcalar=[hedef.subarray(0,gelen),value]; let toplamYeni=gelen+value.length;
-        for(;;){const r=await okuyucu.read(); if(r.done)break; parcalar.push(r.value); toplamYeni+=r.value.length;}
-        const birlesik=new Uint8Array(toplamYeni); let o=0; for(const p of parcalar){birlesik.set(p,o);o+=p.length;}
-        return birlesik.buffer;
-      }
-      hedef.set(value,gelen); gelen+=value.length;
-      ilerleme&&ilerleme(gelen/toplam);
-    }
-    return hedef.buffer.slice(0,gelen);
-  }
-
-  async function computePeaks(url,ilerleme){
-    return tepelerCikar(await indirIlerlemeli(url,ilerleme));
-  }
-
-  async function tepelerCikar(buf){
-    const hizli=Dalga&&Dalga.wavTepeleri(buf,60);
-    if(hizli)return hizli;
-    // WAV değil (MP3/FLAC): tarayıcı çözücüsü.
+  // Ses baytlarından dalga: WAV doğrudan, diğerleri tarayıcı çözücüsüyle.
+  async function dalgaCikar(buf){
+    const u8=new Uint8Array(buf);
+    if(Dalga.wavMi(u8)){ const r=Dalga.wavTepeleri(buf,Dalga.HZ); if(r)return r; }
     const Ctx=window.AudioContext||window.webkitAudioContext;
     const ctx=new Ctx();
-    const audioBuf=await ctx.decodeAudioData(buf);
-    const kanallar=[];
-    for(let c=0;c<Math.min(2,audioBuf.numberOfChannels);c++)kanallar.push(audioBuf.getChannelData(c));
-    const uzunluk=kanallar[0].length;
-    const hedef=Math.max(200,Math.min(40000,Math.ceil(audioBuf.duration*60)));
-    const blok=Math.max(1,Math.floor(uzunluk/hedef));
-    const adim=Math.max(1,Math.floor(blok/96));
-    const adet=Math.ceil(uzunluk/blok);
-    const peaks=new Float32Array(adet);
-    let enBuyuk=0;
-    for(let i=0;i<adet;i++){
-      let max=0; const start=i*blok, end=Math.min(uzunluk,start+blok);
-      for(const d of kanallar)for(let j=start;j<end;j+=adim){const v=d[j]<0?-d[j]:d[j];if(v>max)max=v;}
-      peaks[i]=max; if(max>enBuyuk)enBuyuk=max;
+    try{
+      const ab=await ctx.decodeAudioData(buf.slice?buf.slice(0):buf);
+      const kanallar=[]; for(let c=0;c<Math.min(2,ab.numberOfChannels);c++)kanallar.push(ab.getChannelData(c));
+      return Dalga.pcmTepeleri(kanallar,ab.sampleRate,Dalga.HZ);
+    }finally{ try{ctx.close();}catch{} }
+  }
+  // Yükleme anında, elimizdeki dosyadan dalgayı çıkarıp depoya yaz:
+  // antrenör parçayı ilk açtığında dalga hazır bekler.
+  async function dalgaOnHazirla(yol,dosya){
+    if(!Dalga||!dosya||dosya.size>300*1024*1024)return;
+    try{ const veri=await dalgaCikar(await dosya.arrayBuffer()); dalgaYaz(yol,veri); await yanDosyaYaz(yol,veri); }catch{}
+  }
+
+  // Sesi parça parça indirir (parçalı dosyalarda sırayla). Her gelen bayt dilimi
+  // `dilim` ile hemen işlenir; `sakla` ise baytlar oynatma için Blob'a toplanır.
+  async function sesAkisIndir(yol,{dilim,ilerleme,sakla}){
+    const parcalar=Ses.parcalariCoz(yol), saklanan=[];
+    let gelen=0, toplam=0;
+    for(let i=0;i<parcalar.length;i++){
+      const url=await signed(parcalar[i].path); if(!url)throw new Error('Ses adresi alınamadı');
+      const resp=await fetch(url); if(!resp.ok)throw new Error('Ses indirilemedi ('+resp.status+')');
+      const boy=Number(resp.headers.get('content-length'))||0;
+      // Toplam boy: ilk parçanın boyu × parça sayısı (son parça küçük olabilir; yalnız yüzde içindir).
+      if(i===0)toplam=boy*parcalar.length;
+      if(!resp.body||!resp.body.getReader){
+        const b=new Uint8Array(await resp.arrayBuffer());
+        dilim&&dilim(b); if(sakla)saklanan.push(b); gelen+=b.length; ilerleme&&ilerleme(toplam?Math.min(1,gelen/toplam):(i+1)/parcalar.length);
+        continue;
+      }
+      const okuyucu=resp.body.getReader();
+      for(;;){
+        const {done,value}=await okuyucu.read(); if(done)break;
+        dilim&&dilim(value); if(sakla)saklanan.push(value);
+        gelen+=value.length; ilerleme&&ilerleme(toplam?Math.min(1,gelen/toplam):(i+1)/parcalar.length);
+      }
     }
-    if(enBuyuk>0)for(let i=0;i<adet;i++)peaks[i]/=enBuyuk;
-    const duration=audioBuf.duration;
-    try{ctx.close();}catch{}
-    return {peaks,duration};
+    return sakla?new Blob(saklanan,{type:Ses.tip({name:yol})||'audio/wav'}):null;
   }
 
   const YAKIN_PLAN=8;            // klasördeki yakın plan dalga penceresi (saniye)
@@ -544,68 +525,98 @@
     return [a,b];
   };
 
-  // Tek çizim fonksiyonu: [from,to] aralığını çubuklarla çizer.
-  // band: vurgulanan bölüm, isaretler: yakın plandaki çizgiler, hover: imleç zamanı.
+  // Ableton tarzı çizim: gri-mavi klip zemini üzerinde, her kanal kendi şeridinde
+  // (stereo: üstte sol, altta sağ), içi dolu koyu kontur. Her ekran pikseli o
+  // aralığın gerçek en düşük/en yüksek örneğini gösterir — yaklaştıkça ayrıntı artar.
+  const RENK={zemin:'#5d7682',zeminCalan:'#6d8778',izgara:'rgba(10,14,16,.22)',ayrac:'rgba(10,14,16,.35)',dalga:'#121314',bos:'rgba(18,19,20,.35)'};
+  function izgaraAdimi(aralik){ // ~8–16 çizgi olacak şekilde saniye adımı
+    for(const a of [.1,.25,.5,1,2,5,10,15,30,60]) if(aralik/a<=16)return a;
+    return 120;
+  }
   function drawWave(canvas,o){
-    const peaks=detail.peaks, dur=detail.duration;
-    if(!canvas||!peaks||!dur)return;
+    const D=detail.peaks, dur=detail.duration||(D&&D.duration);
+    if(!canvas||!D||!dur)return;
     const dpr=window.devicePixelRatio||1;
     const w=canvas.clientWidth||1, h=canvas.clientHeight||1;
-    if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
+    const W=Math.round(w*dpr), H=Math.round(h*dpr);
+    if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
     const ctx=canvas.getContext('2d');
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,w,h);
+    ctx.setTransform(1,0,0,1,0,0);
     const from=o.from||0, to=o.to||dur, aralik=Math.max(.001,to-from);
-    const x=t=>(t-from)/aralik*w;
-    const cur=detail.curTime||0;
+    const X=t=>(t-from)/aralik*W;
+    const cur=detail.curTime||0, curX=Math.max(0,Math.min(W,X(cur)));
 
-    if(o.band){
-      const bx=Math.max(0,x(o.band[0])), bw=Math.min(w,x(o.band[1]))-bx;
-      ctx.fillStyle='rgba(216,187,44,.09)'; ctx.fillRect(bx,0,bw,h);
-      ctx.fillStyle='rgba(216,187,44,.5)'; ctx.fillRect(bx,0,1,h); ctx.fillRect(bx+bw-1,0,1,h);
-    }
+    // Klip zemini: çalınan kısım hafif yeşil-altın tonda.
+    ctx.fillStyle=RENK.zemin; ctx.fillRect(0,0,W,H);
+    if(curX>0){ ctx.fillStyle=RENK.zeminCalan; ctx.fillRect(0,0,curX,H); }
+    // Dikey ızgara
+    const adim=izgaraAdimi(aralik);
+    ctx.fillStyle=RENK.izgara;
+    for(let t=Math.ceil(from/adim)*adim;t<=to;t+=adim){ ctx.fillRect(Math.round(X(t)),0,Math.max(1,Math.round(dpr)),H); }
 
-    const ince=w<520, barW=ince?2:2.6, bosluk=ince?1.4:1.8, adim=barW+bosluk;
-    const n=Math.max(1,Math.floor(w/adim)), n0=peaks.length;
-    const i0=from/dur*n0, perBar=(to-from)/dur*n0/n;
-    const mid=h/2, tepe=h/2-3;
-    const altin=ctx.createLinearGradient(0,0,0,h);
-    altin.addColorStop(0,'#f2df7a'); altin.addColorStop(.5,'#d8bb2c'); altin.addColorStop(1,'#a88f1c');
-    for(let k=0;k<n;k++){
-      const a=Math.floor(i0+k*perBar), b=Math.max(a+1,Math.floor(i0+(k+1)*perBar));
-      let m=0; for(let i=a;i<b&&i<n0;i++)if(peaks[i]>m)m=peaks[i];
-      const yuk=Math.max(1.5,Math.pow(m,.85)*tepe);
-      const tk=from+(k+.5)/n*aralik;
-      const bandIci=o.band&&tk>=o.band[0]&&tk<=o.band[1];
-      ctx.fillStyle=tk<=cur?altin:(bandIci?'rgba(244,241,233,.55)':'rgba(244,241,233,.24)');
-      const bx=k*adim;
-      if(ctx.roundRect){ctx.beginPath();ctx.roundRect(bx,mid-yuk,barW,yuk*2,barW/2);ctx.fill();}
-      else ctx.fillRect(bx,mid-yuk,barW,yuk*2);
+    const kanal=D.kanal||1, hz=D.hz, hazir=D.hazir, olcek=D.tepe>0?1/D.tepe:1;
+    const bosluk=kanal>1?Math.round(3*dpr):0;
+    const serit=(H-bosluk*(kanal-1))/kanal;
+    if(kanal>1){ ctx.fillStyle=RENK.ayrac; for(let c=1;c<kanal;c++)ctx.fillRect(0,Math.round(c*serit+(c-1)*bosluk),W,bosluk); }
+
+    const ust=new Float32Array(W+1), alt=new Float32Array(W+1);
+    for(let c=0;c<kanal;c++){
+      const mnA=D.mn[c], mxA=D.mx[c];
+      const y0=c*(serit+bosluk), mid=y0+serit/2, yar=serit/2-1.5*dpr;
+      let son=-1;
+      for(let px=0;px<=W;px++){
+        const t0=from+px/W*aralik, t1=from+(px+1)/W*aralik;
+        let b0=Math.floor(t0*hz), b1=Math.floor(t1*hz);
+        if(b1<=b0)b1=b0+1;
+        if(b0>=hazir||b0<0)break;
+        if(b1>hazir)b1=hazir;
+        let mn=Infinity, mx=-Infinity;
+        for(let b=b0;b<b1;b++){ if(mnA[b]<mn)mn=mnA[b]; if(mxA[b]>mx)mx=mxA[b]; }
+        ust[px]=mid-mx*olcek*yar; alt[px]=mid-mn*olcek*yar;
+        // Çok kısık yerlerde bile ince bir çizgi görünsün.
+        if(alt[px]-ust[px]<dpr){ const m=(alt[px]+ust[px])/2; ust[px]=m-dpr/2; alt[px]=m+dpr/2; }
+        son=px;
+      }
+      // Henüz inmemiş kısım: ince orta çizgi
+      if(son<W){ ctx.fillStyle=RENK.bos; ctx.fillRect(Math.max(0,son),Math.round(mid),W-Math.max(0,son),Math.max(1,Math.round(dpr))); }
+      if(son<1)continue;
+      // Tek dolu şekil: üst kontur soldan sağa, alt kontur sağdan sola.
+      ctx.beginPath();
+      ctx.moveTo(0,ust[0]);
+      for(let px=1;px<=son;px++)ctx.lineTo(px,ust[px]);
+      for(let px=son;px>=0;px--)ctx.lineTo(px,alt[px]);
+      ctx.closePath();
+      ctx.fillStyle=RENK.dalga; ctx.fill();
     }
-    ctx.fillStyle='rgba(244,241,233,.08)'; ctx.fillRect(0,mid-.5,w,1);
 
     for(const im of (o.isaretler||[])){
       if(im.t<from||im.t>to)continue;
-      const ix=x(im.t);
-      ctx.fillStyle=im.aktif?'#cb2468':(im.saved?'#d8bb2c':'rgba(244,241,233,.75)');
-      ctx.fillRect(ix-(im.aktif?1:.75),0,im.aktif?2:1.5,h);
+      const ix=Math.round(X(im.t)), k=Math.max(1,Math.round((im.aktif?2:1.5)*dpr));
+      ctx.fillStyle=im.aktif?'#cb2468':(im.saved?'#d8bb2c':'#f4f1e9');
+      ctx.fillRect(ix-Math.floor(k/2),0,k,H);
     }
     if(o.hover!=null&&o.hover>=from&&o.hover<=to){
-      ctx.fillStyle='rgba(244,241,233,.45)';
-      for(let y=0;y<h;y+=6)ctx.fillRect(x(o.hover)-.5,y,1,3);
+      ctx.fillStyle='rgba(244,241,233,.7)';
+      const hx=Math.round(X(o.hover));
+      for(let y=0;y<H;y+=6*dpr)ctx.fillRect(hx,y,Math.max(1,Math.round(dpr)),3*dpr);
     }
     if(cur>=from&&cur<=to){
-      ctx.fillStyle='#f4f1e9'; ctx.fillRect(x(cur)-1,0,2,h);
-      ctx.beginPath(); ctx.arc(x(cur),3,3.5,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#f4f1e9'; ctx.fillRect(Math.round(curX)-Math.round(dpr),0,Math.max(2,Math.round(2*dpr)),H);
     }
   }
 
-  // Ana dalga + açık klasördeki yakın plan: oynatırken, sürüklerken ve imleçte anlık.
+  // Ana dalga + açık klasördeki yakın plan: oynatırken, sürüklerken, inerken anlık.
+  let cizimBekliyor=false;
+  function cizimIste(){ if(cizimBekliyor)return; cizimBekliyor=true; (window.requestAnimationFrame||(f=>setTimeout(f,16)))(()=>{cizimBekliyor=false;cizimYenile();}); }
   function cizimYenile(){
-    const root=document.querySelector('.track-detail'); if(!root||!detail.peaks)return;
+    const root=document.querySelector('.track-detail'); if(!root)return;
+    const D=detail.peaks;
+    const rozet=root.querySelector('.td-badge');
+    if(rozet&&D&&!detail.dalgaHata)rozet.textContent=(D.hazir>=D.n&&D.n)?'DALGA FORMU HAZIR':('DALGA FORMU YÜKLENİYOR · %'+Math.floor((detail.dalgaYuzde||0)));
+    if(!D)return;
     const sec=seciliNokta();
     const ana=root.querySelector('.td-wave-canvas');
-    if(ana)drawWave(ana,{from:0,to:detail.duration,band:sec?yakinPencere(sec.time):null,hover:detail.hoverAna});
+    if(ana)drawWave(ana,{from:0,to:detail.duration||D.duration,hover:detail.hoverAna});
     const yakin=root.querySelector('.td-zoom-canvas');
     if(yakin&&sec){
       const [a,b]=yakinPencere(sec.time);
@@ -677,7 +688,8 @@
     if(points.length&&!seciliNokta())detail.selPointLocalId=sirali()[0].localId;
     const draftCount=points.filter(p=>!p.saved).length;
     const savedCount=points.filter(p=>p.saved).length;
-    const waveState=!has?'':(detail.peaks?'DALGA FORMU HAZIR':(detail.dalgaHata?'DALGA FORMU ÇIKARILAMADI':'DALGA FORMU HAZIRLANIYOR'));
+    const D=detail.peaks, dalgaTam=!!(D&&D.n&&D.hazir>=D.n), dalgaVar=!!(D&&D.hazir>0&&(detail.duration||D.duration));
+    const waveState=!has?'':(detail.dalgaHata&&!dalgaVar?'DALGA FORMU ÇIKARILAMADI':(dalgaTam?'DALGA FORMU HAZIR':('DALGA FORMU YÜKLENİYOR · %'+Math.floor(detail.dalgaYuzde||0))));
     return `<div class="track-detail">
       <button type="button" class="td-back" data-tdback>← PROJELERİM</button>
       <div class="td-head">
@@ -717,10 +729,10 @@
       <p class="td-desc">Dalgaya dokun, o yerden dinle. Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek kaydırabilirsin.</p>
 
       ${has?`
-      <div class="td-wave-wrap${detail.peaks?'':' yukleniyor'}" data-tdwave>
+      <div class="td-wave-wrap${dalgaVar?'':' yukleniyor'}" data-tdwave>
         <canvas class="td-wave-canvas"></canvas>
-        ${detail.peaks||detail.dalgaHata?'':`<div class="td-iskelet" aria-hidden="true">${Array.from({length:64},(_,i)=>`<i style="--h:${18+Math.round(Math.abs(Math.sin(i*1.7)*Math.cos(i*.45))*70)}%;--g:${(i%16)*60}ms"></i>`).join('')}</div>
-        <p class="td-iskelet-yazi" role="status">Dalga formu hazırlanıyor · <span data-dalgayuzde>${detail.dalgaYuzde==null?'':('%'+detail.dalgaYuzde)}</span><br><small>Bu sırada parçayı dinleyebilirsin.</small></p>`}
+        ${dalgaVar||detail.dalgaHata?'':`<div class="td-iskelet" aria-hidden="true">${Array.from({length:64},(_,i)=>`<i style="--h:${18+Math.round(Math.abs(Math.sin(i*1.7)*Math.cos(i*.45))*70)}%;--g:${(i%16)*60}ms"></i>`).join('')}</div>
+        <p class="td-iskelet-yazi" role="status">Dalga formu yükleniyor<br><small>Birazdan soldan sağa çizilmeye başlar.</small></p>`}
         <div class="td-hover" data-tdhover hidden></div>
         <div class="td-marks">
           ${sirali().map(p=>`<div class="td-mark ${p.saved?'saved':'draft'} ${p.localId===detail.selPointLocalId?'active':''}" style="left:${dur?(p.time/dur*100):0}%" data-tdmark="${p.localId}" title="${mmss(p.time)}">
@@ -756,63 +768,105 @@
     const seek=root.querySelector('[data-tdseek]'); if(seek)seek.value=detail.curTime||0;
     const timeEl=root.querySelector('.td-time'); if(timeEl)timeEl.textContent=`${mmss(detail.curTime)} / ${mmss(detail.duration)}`;
     const ekle=root.querySelector('[data-tdaddzaman]'); if(ekle)ekle.textContent=mmss(detail.curTime);
-    const playBtn=root.querySelector('[data-tdplay]'); if(playBtn)playBtn.textContent=detail.playing?'❚❚':'▶';
-    cizimYenile();
+    const playBtn=root.querySelector('[data-tdplay]'); if(playBtn)playBtn.textContent=detail.audioEl?(detail.playing?'❚❚':'▶'):(detail.sesYuzde!=null?'%'+detail.sesYuzde:'…');
+    cizimIste();
   }
 
   async function openTrackDetail(tr,project){
     openTrackId=tr.id;
-    detail={points:[],peaks:null,duration:0,curTime:0,selPointLocalId:null,playing:false,audioEl:null,dalgaYuzde:null,dalgaHata:false};
+    const yol=tr.audio_path;
+    detail={points:[],peaks:null,duration:0,curTime:0,selPointLocalId:null,playing:false,audioEl:null,dalgaYuzde:0,dalgaHata:false,sesYuzde:null};
     syncSavedPoints(tr,project);
     const halaAcik=()=>openTrackId===tr.id;
-    // Daha önce çıkarılmış dalga varsa ekran ilk anda onunla açılır.
-    const kayitli=tr.audio_path?dalgaOku(tr.audio_path):null;
-    if(kayitli){ detail.peaks=kayitli.peaks; detail.duration=kayitli.duration; }
+    const dalgaKoy=v=>{ if(!v)return; detail.peaks=v; if(!detail.duration&&v.duration)detail.duration=v.duration; };
+    // 1) Tarayıcı belleği: ekran ilk anda dalgayla açılır.
+    if(yol)dalgaKoy(dalgaOku(yol));
     render();
 
-    // Sesli notların adresleri arka planda, aynı anda alınır (oynatıcıyı bekletmez).
+    // Sesli notların adresleri arka planda.
     const sesliNotlar=Promise.all(detail.points.filter(p=>p.voicePath).map(async p=>{
       try{const r=await client.storage.from('project-voice-notes').createSignedUrl(p.voicePath,3600); p.voiceUrl=r.data?.signedUrl||null;}catch{}
     }));
+    if(!yol){ await sesliNotlar; if(halaAcik())renderDetail(tr,project); return; }
 
-    if(tr.audio_path){
-      const url=await sesUrl(tr.audio_path);
-      if(!halaAcik())return;
-      if(url){
-        const audio=new Audio(url);
-        audio.preload='metadata';
-        detail.audioEl=audio;
-        audio.addEventListener('loadedmetadata',()=>{ if(!detail.duration)detail.duration=audio.duration; updateDetailProgress(); });
-        audio.addEventListener('timeupdate',()=>{ detail.curTime=audio.currentTime; updateDetailProgress(); });
-        audio.addEventListener('play',()=>{ detail.playing=true; updateDetailProgress(); });
-        audio.addEventListener('pause',()=>{ detail.playing=false; updateDetailProgress(); });
-        audio.addEventListener('ended',()=>{ detail.playing=false; updateDetailProgress(); });
-        // Oynatıcı hemen kullanılabilir; dalga formu ayrıca hazırlanır.
-        renderDetail(tr,project);
-        if(!detail.peaks){
-          const yan=await yanDosyaOku(tr.audio_path);
-          if(!halaAcik())return;
-          if(yan){
-            dalgaYaz(tr.audio_path,yan);
-            detail.peaks=yan.peaks; if(!detail.duration)detail.duration=yan.duration;
-            renderDetail(tr,project);
-          }
-        }
-        if(!detail.peaks){
-          detail.dalgaYuzde=0;
-          const yuzdeYaz=()=>{ const el=document.querySelector('[data-dalgayuzde]'); if(el)el.textContent=detail.dalgaYuzde>=100?'işleniyor…':('%'+detail.dalgaYuzde); };
-          try{
-            const veri=await computePeaks(url,oran=>{ const y=Math.min(99,Math.floor(oran*100)); if(y!==detail.dalgaYuzde){detail.dalgaYuzde=y;yuzdeYaz();} });
-            dalgaYaz(tr.audio_path,veri);
-            yanDosyaYaz(tr.audio_path,veri); // eski parçalar için: bir sonraki açılış hızlı olsun
-            if(!halaAcik())return;
-            detail.peaks=veri.peaks; if(!detail.duration)detail.duration=veri.duration;
-          }catch(e){ if(halaAcik())detail.dalgaHata=true; /* dalga çıkmasa da oynatma çalışsın */ }
-          if(!halaAcik())return;
-          detail.dalgaYuzde=null;
-          renderDetail(tr,project);
-        }
+    // 2) Yan dosya (küçük özet) — sesle AYNI ANDA istenir, sesi beklemez.
+    const gerekYan=!detail.peaks||detail.peaks.eski;
+    const yanSozu=gerekYan?yanDosyaOku(yol).then(v=>{
+      if(!v||!halaAcik())return;
+      if(!detail.peaks||detail.peaks.eski||detail.peaks.hazir<detail.peaks.n){
+        if(detail.peaks&&!detail.peaks.eski&&v.eski)return; // yarım yeni veri, eski özetten iyidir
+        dalgaKoy(v); if(!v.eski)dalgaYaz(yol,v); renderDetail(tr,project);
       }
+    }):Promise.resolve();
+
+    const oynaticiKur=url=>{
+      const audio=new Audio(url);
+      audio.preload='metadata';
+      detail.audioEl=audio; detail.sesYuzde=null;
+      audio.addEventListener('loadedmetadata',()=>{ if(!detail.duration)detail.duration=audio.duration; updateDetailProgress(); });
+      audio.addEventListener('timeupdate',()=>{ detail.curTime=audio.currentTime; updateDetailProgress(); });
+      audio.addEventListener('play',()=>{ detail.playing=true; updateDetailProgress(); });
+      audio.addEventListener('pause',()=>{ detail.playing=false; updateDetailProgress(); });
+      audio.addEventListener('ended',()=>{ detail.playing=false; updateDetailProgress(); });
+      if(detail.curTime)try{audio.currentTime=detail.curTime;}catch{}
+    };
+
+    const parcali=Ses.parcaliMi(yol);
+    // Tek parça: oynatıcı imzalı adresle hemen açılır (tarayıcı akışla çalar).
+    if(!parcali){
+      const url=await signed(yol);
+      if(!halaAcik())return;
+      if(url)oynaticiKur(url);
+      renderDetail(tr,project);
+    }
+
+    // Yan dosya cevabını kısa süre bekle: varsa sesi dalga için indirmeye gerek yok.
+    await Promise.race([yanSozu,new Promise(r=>setTimeout(r,1500))]);
+    if(!halaAcik())return;
+    const dalgaGerek=()=>!detail.peaks||detail.peaks.eski;
+
+    // 3) Ses indirmesi: parçalıysa oynatma için zaten gerekli; değilse yalnız dalga eksikse.
+    if(parcali||dalgaGerek()){
+      let akis=null, ilkBaytlar=true, sonCizim=0;
+      const dalgaIcin=dalgaGerek();
+      const blob=await sesAkisIndir(yol,{
+        sakla:parcali||true,
+        dilim:b=>{
+          if(!dalgaIcin||!halaAcik())return;
+          if(ilkBaytlar){ ilkBaytlar=false; if(Dalga&&Dalga.wavMi(b))akis=Dalga.wavAkis(Dalga.HZ); }
+          if(!akis)return;
+          akis.ekle(b);
+          const v=akis.veri();
+          if(v&&v.hazir>0&&dalgaGerek()||v&&detail.peaks===v){
+            const ilk=detail.peaks!==v;
+            if(ilk){ dalgaKoy(v); renderDetail(tr,project); }
+            const simdi=Date.now(); if(simdi-sonCizim>120){ sonCizim=simdi; cizimIste(); }
+          }
+        },
+        ilerleme:oran=>{
+          const y=Math.min(99,Math.floor(oran*100));
+          detail.dalgaYuzde=y; if(parcali&&!detail.audioEl)detail.sesYuzde=y;
+          const el=document.querySelector('[data-tdplay]'); if(el&&!detail.audioEl)el.textContent='%'+y;
+          cizimIste();
+        }
+      }).catch(e=>{ detail.dalgaHata=true; return null; });
+      if(!halaAcik())return;
+      detail.dalgaYuzde=100;
+      if(parcali&&blob){
+        if(aktifBlobUrl){ try{URL.revokeObjectURL(aktifBlobUrl);}catch{} }
+        aktifBlobUrl=URL.createObjectURL(blob);
+        oynaticiKur(aktifBlobUrl);
+      }
+      if(dalgaIcin){
+        try{
+          let v=akis?akis.bitir():null;
+          if(!v&&blob)v=await dalgaCikar(await blob.arrayBuffer());
+          if(v&&halaAcik()&&(dalgaGerek()||detail.peaks===v||detail.peaks===(akis&&akis.veri()))){
+            dalgaKoy(v); dalgaYaz(yol,v); yanDosyaYaz(yol,v);
+          }
+        }catch{ if(!detail.peaks)detail.dalgaHata=true; }
+      }
+      if(halaAcik())renderDetail(tr,project);
     }
     await sesliNotlar;
     if(halaAcik()&&detail.points.some(p=>p.voiceUrl))renderDetail(tr,project);
