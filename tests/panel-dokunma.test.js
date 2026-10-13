@@ -34,6 +34,7 @@ test('telefonda küçük düğmeler ve sekmeler en az 40px yüksek', () => {
 
 test('yeni css sürümü sayfalara yansıdı', () => {
   for (const f of ['radyo-yonetim.html', 'radyo-panel-prova.html']) {
-    assert.match(fs.readFileSync(path.join(kok, f), 'utf8'), /radyo-panel\.css\?v=40"/, f);
+    const m = /radyo-panel\.css\?v=(\d+)"/.exec(fs.readFileSync(path.join(kok, f), 'utf8'));
+    assert.ok(m && Number(m[1]) >= 40, f);
   }
 });
