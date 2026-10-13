@@ -259,12 +259,11 @@
   .td-cetvel span:last-child{transform:translateX(-100%)}
 
   .td-zeminler{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
-  .td-zemin-ac{display:inline-flex;align-items:center;gap:8px;padding:7px 12px 7px 8px;border-radius:999px;
-    border:1px solid var(--pj-cizgi2);background:transparent;color:var(--pj-soluk);font:inherit;font-size:9px;
-    font-weight:900;letter-spacing:.2em;cursor:pointer}
-  .td-zemin-ac:hover{color:var(--pj-krem);border-color:rgba(244,241,233,.32)}
-  .td-zemin-ac i{width:16px;height:16px;border-radius:50%;background:var(--z);box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.3)}
-  .td-zemin-ac b{font-size:10px;letter-spacing:0}
+  .td-zemin-ac{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border-radius:50%;
+    border:1px solid var(--pj-cizgi2);background:transparent;cursor:pointer;transition:border-color .15s,transform .15s}
+  .td-zemin-ac:hover{border-color:rgba(244,241,233,.4);transform:scale(1.06)}
+  .td-zemin-ac[aria-expanded="true"]{border-color:var(--pj-krem)}
+  .td-zemin-ac i{width:20px;height:20px;border-radius:50%;background:var(--z);box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.3)}
   .td-palet{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .td-palet[hidden]{display:none}
   .td-palet-ayrac{width:1px;height:20px;background:var(--pj-cizgi2);margin:0 2px}
@@ -466,6 +465,6 @@
 <script src="project-track-controls.js?v=1"></script>
 <script src="sortable-touch.js?v=1"></script>
 <script src="dalga-tepeleri.js?v=2"></script>
-<script src="projects.js?v=20261013f"></script>
+<script src="projects.js?v=20261013g"></script>
 </body>
 </html>

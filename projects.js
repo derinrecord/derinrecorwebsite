@@ -679,7 +679,7 @@
   function paletHtml(){
     const sw=(kod,renk,ad,ozel)=>`<span class="td-zemin-kap"><button type="button" role="radio" aria-checked="${kod===zeminKodu}" class="td-zemin${kod===zeminKodu?' secili':''}" data-tdzemin="${kod}" style="--z:${renk}" title="${ad}" aria-label="${ad}"></button>${ozel?`<button type="button" class="td-zemin-sil" data-tdzeminsil="${renk}" aria-label="${ad} rengini sil" title="Sil">×</button>`:''}</span>`;
     return `<div class="td-zeminler${paletAcik?' acik':''}">
-      <button type="button" class="td-zemin-ac" data-tdzeminac aria-expanded="${paletAcik}" aria-controls="td-palet"><i style="--z:${zeminHex()}"></i>ZEMİN <b aria-hidden="true">${paletAcik?'▴':'▾'}</b></button>
+      <button type="button" class="td-zemin-ac" data-tdzeminac aria-expanded="${paletAcik}" aria-controls="td-palet" aria-label="Zemin rengi" title="Zemin rengi"><i style="--z:${zeminHex()}"></i></button>
       <div class="td-palet" id="td-palet" role="radiogroup" aria-label="Dalga formu arka plan rengi"${paletAcik?'':' hidden'}>
         ${ZEMINLER.map(z=>sw(z.k,z.renk,z.ad,false)).join('')}
         ${ozelRenkler.length?'<span class="td-palet-ayrac" aria-hidden="true"></span>':''}
