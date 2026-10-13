@@ -413,51 +413,159 @@
     detail.points=[...savedNow,...draftLocal];
   }
 
-  async function computePeaks(url,buckets=220){
+  // Ses dosyasından ince çözünürlüklü tepe değerleri: saniyede ~60 nokta.
+  // Genel görünüm ve yakın plan aynı veriden ekran genişliğine göre toplanır.
+  async function computePeaks(url){
     const resp=await fetch(url);
     const buf=await resp.arrayBuffer();
     const Ctx=window.AudioContext||window.webkitAudioContext;
     const ctx=new Ctx();
     const audioBuf=await ctx.decodeAudioData(buf);
-    const data=audioBuf.getChannelData(0);
-    const blockSize=Math.max(1,Math.floor(data.length/buckets));
-    const peaks=new Float32Array(buckets);
-    for(let i=0;i<buckets;i++){
-      let max=0; const start=i*blockSize; const end=Math.min(data.length,start+blockSize);
-      for(let j=start;j<end;j++){const v=Math.abs(data[j]);if(v>max)max=v;}
-      peaks[i]=max;
+    const kanallar=[];
+    for(let c=0;c<Math.min(2,audioBuf.numberOfChannels);c++)kanallar.push(audioBuf.getChannelData(c));
+    const uzunluk=kanallar[0].length;
+    const hedef=Math.max(200,Math.min(40000,Math.ceil(audioBuf.duration*60)));
+    const blok=Math.max(1,Math.floor(uzunluk/hedef));
+    const adet=Math.ceil(uzunluk/blok);
+    const peaks=new Float32Array(adet);
+    let enBuyuk=0;
+    for(let i=0;i<adet;i++){
+      let max=0; const start=i*blok, end=Math.min(uzunluk,start+blok);
+      for(const d of kanallar)for(let j=start;j<end;j++){const v=d[j]<0?-d[j]:d[j];if(v>max)max=v;}
+      peaks[i]=max; if(max>enBuyuk)enBuyuk=max;
     }
+    // Sessiz kayıtlar da okunur görünsün: en yüksek tepe tam boy olur.
+    if(enBuyuk>0)for(let i=0;i<adet;i++)peaks[i]/=enBuyuk;
     const duration=audioBuf.duration;
     try{ctx.close();}catch{}
     return {peaks,duration};
   }
 
-  function drawWave(canvas,peaks,playheadFrac){
-    if(!canvas||!peaks)return;
+  const YAKIN_PLAN=8;            // klasördeki yakın plan dalga penceresi (saniye)
+  const sirali=()=>[...(detail.points||[])].sort((a,b)=>a.time-b.time);
+  const noktaNo=p=>String(sirali().indexOf(p)+1).padStart(2,'0');
+  const seciliNokta=()=>(detail.points||[]).find(x=>x.localId===detail.selPointLocalId)||null;
+  const yakinPencere=t=>{
+    const dur=detail.duration||0, yarim=YAKIN_PLAN/2;
+    let a=Math.max(0,t-yarim), b=Math.min(dur,a+YAKIN_PLAN); a=Math.max(0,b-YAKIN_PLAN);
+    return [a,b];
+  };
+
+  // Tek çizim fonksiyonu: [from,to] aralığını çubuklarla çizer.
+  // band: vurgulanan bölüm, isaretler: yakın plandaki çizgiler, hover: imleç zamanı.
+  function drawWave(canvas,o){
+    const peaks=detail.peaks, dur=detail.duration;
+    if(!canvas||!peaks||!dur)return;
     const dpr=window.devicePixelRatio||1;
     const w=canvas.clientWidth||1, h=canvas.clientHeight||1;
-    canvas.width=w*dpr; canvas.height=h*dpr;
+    if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
     const ctx=canvas.getContext('2d');
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,w,h);
-    const n=peaks.length, barW=w/n, mid=h/2;
-    const playedUpTo=Math.floor((playheadFrac||0)*n);
-    for(let i=0;i<n;i++){
-      const amp=Math.max(peaks[i],0.035);
-      const barH=Math.max(2,amp*h*0.92);
-      ctx.fillStyle=i<=playedUpTo?'#d4c24e':'#fe4b6a';
-      ctx.fillRect(i*barW,mid-barH/2,Math.max(barW-1.4,1),barH);
+    const from=o.from||0, to=o.to||dur, aralik=Math.max(.001,to-from);
+    const x=t=>(t-from)/aralik*w;
+    const cur=detail.curTime||0;
+
+    if(o.band){
+      const bx=Math.max(0,x(o.band[0])), bw=Math.min(w,x(o.band[1]))-bx;
+      ctx.fillStyle='rgba(216,187,44,.09)'; ctx.fillRect(bx,0,bw,h);
+      ctx.fillStyle='rgba(216,187,44,.5)'; ctx.fillRect(bx,0,1,h); ctx.fillRect(bx+bw-1,0,1,h);
+    }
+
+    const ince=w<520, barW=ince?2:2.6, bosluk=ince?1.4:1.8, adim=barW+bosluk;
+    const n=Math.max(1,Math.floor(w/adim)), n0=peaks.length;
+    const i0=from/dur*n0, perBar=(to-from)/dur*n0/n;
+    const mid=h/2, tepe=h/2-3;
+    const altin=ctx.createLinearGradient(0,0,0,h);
+    altin.addColorStop(0,'#f2df7a'); altin.addColorStop(.5,'#d8bb2c'); altin.addColorStop(1,'#a88f1c');
+    for(let k=0;k<n;k++){
+      const a=Math.floor(i0+k*perBar), b=Math.max(a+1,Math.floor(i0+(k+1)*perBar));
+      let m=0; for(let i=a;i<b&&i<n0;i++)if(peaks[i]>m)m=peaks[i];
+      const yuk=Math.max(1.5,Math.pow(m,.85)*tepe);
+      const tk=from+(k+.5)/n*aralik;
+      const bandIci=o.band&&tk>=o.band[0]&&tk<=o.band[1];
+      ctx.fillStyle=tk<=cur?altin:(bandIci?'rgba(244,241,233,.55)':'rgba(244,241,233,.24)');
+      const bx=k*adim;
+      if(ctx.roundRect){ctx.beginPath();ctx.roundRect(bx,mid-yuk,barW,yuk*2,barW/2);ctx.fill();}
+      else ctx.fillRect(bx,mid-yuk,barW,yuk*2);
+    }
+    ctx.fillStyle='rgba(244,241,233,.08)'; ctx.fillRect(0,mid-.5,w,1);
+
+    for(const im of (o.isaretler||[])){
+      if(im.t<from||im.t>to)continue;
+      const ix=x(im.t);
+      ctx.fillStyle=im.aktif?'#cb2468':(im.saved?'#d8bb2c':'rgba(244,241,233,.75)');
+      ctx.fillRect(ix-(im.aktif?1:.75),0,im.aktif?2:1.5,h);
+    }
+    if(o.hover!=null&&o.hover>=from&&o.hover<=to){
+      ctx.fillStyle='rgba(244,241,233,.45)';
+      for(let y=0;y<h;y+=6)ctx.fillRect(x(o.hover)-.5,y,1,3);
+    }
+    if(cur>=from&&cur<=to){
+      ctx.fillStyle='#f4f1e9'; ctx.fillRect(x(cur)-1,0,2,h);
+      ctx.beginPath(); ctx.arc(x(cur),3,3.5,0,Math.PI*2); ctx.fill();
     }
   }
 
-  function pointRow(p,idx){
-    return `<div class="td-point ${p.saved?'saved':'draft'}" data-tdpoint="${p.localId}">
-      <div class="td-point-head">
-        <span class="td-point-badge">${p.saved?'✓':idx+1}</span>
-        <span class="td-point-time">${mmss(p.time)}</span>
-        ${!p.saved?`<button type="button" class="td-point-del" data-tdpointdel="${p.localId}">Sil</button>`:''}
+  // Ana dalga + açık klasördeki yakın plan: oynatırken, sürüklerken ve imleçte anlık.
+  function cizimYenile(){
+    const root=document.querySelector('.track-detail'); if(!root||!detail.peaks)return;
+    const sec=seciliNokta();
+    const ana=root.querySelector('.td-wave-canvas');
+    if(ana)drawWave(ana,{from:0,to:detail.duration,band:sec?yakinPencere(sec.time):null,hover:detail.hoverAna});
+    const yakin=root.querySelector('.td-zoom-canvas');
+    if(yakin&&sec){
+      const [a,b]=yakinPencere(sec.time);
+      drawWave(yakin,{from:a,to:b,hover:detail.hoverYakin,
+        isaretler:(detail.points||[]).map(p=>({t:p.time,saved:p.saved,aktif:p===sec}))});
+      const ra=root.querySelector('[data-zoombas]'), rb=root.querySelector('[data-zoomson]');
+      if(ra)ra.textContent=mmss(a); if(rb)rb.textContent=mmss(b);
+    }
+    // Çalan yer bir işaretin ±1,5 sn yakınındaysa o işaret ve klasörü "şimdi çalıyor" ışığı alır.
+    const cur=detail.curTime||0;
+    (detail.points||[]).forEach(p=>{
+      const yakinda=!!detail.playing&&Math.abs(cur-p.time)<=1.5;
+      root.querySelector(`[data-tdmark="${p.localId}"]`)?.classList.toggle('caliyor',yakinda);
+      root.querySelector(`[data-tdsec="${p.localId}"]`)?.classList.toggle('caliyor',yakinda);
+    });
+  }
+
+  const klasorIkon='<svg viewBox="0 0 20 16" width="15" height="12" aria-hidden="true"><path d="M1 3.2C1 2 2 1 3.2 1h4.3l2 2.2h7.3C18 3.2 19 4.2 19 5.4v7.4c0 1.2-1 2.2-2.2 2.2H3.2C2 15 1 14 1 12.8z" fill="currentColor"/></svg>';
+
+  function klasorSekmesi(p){
+    const aktif=p.localId===detail.selPointLocalId;
+    const ses=p.voiceUrl||p.voiceBlobUrl;
+    return `<button type="button" role="tab" aria-selected="${aktif}" class="td-sekme ${p.saved?'saved':'draft'}${aktif?' aktif':''}" data-tdsec="${p.localId}">
+      <span class="td-sekme-ikon">${klasorIkon}</span>
+      <span class="td-sekme-no">${noktaNo(p)}</span>
+      <span class="td-sekme-zaman" data-sekmezaman="${p.localId}">${mmss(p.time)}</span>
+      <span class="td-sekme-durum">${p.saved?'KAYITLI':'TASLAK'}${ses?' · SESLİ':''}</span>
+    </button>`;
+  }
+
+  // Açık klasör: yakın plan dalga + o noktanın notu.
+  function klasorGovdesi(p){
+    if(!p)return '';
+    return `<div class="td-klasor ${p.saved?'saved':'draft'}" role="tabpanel" data-tdpoint="${p.localId}">
+      <div class="td-klasor-ust">
+        <div>
+          <p class="td-klasor-etiket">KLASÖR ${noktaNo(p)} · ${p.saved?'KAYITLI NOT':'TASLAK NOT'}</p>
+          <p class="td-klasor-zaman"><span class="td-point-time" data-klasorzaman>${mmss(p.time)}</span></p>
+        </div>
+        <div class="td-klasor-arac">
+          <button type="button" class="td-dinle" data-tdburadan="${p.localId}">▶ BURADAN DİNLE</button>
+          ${!p.saved?`<button type="button" class="td-point-del" data-tdpointdel="${p.localId}">SİL</button>`:''}
+        </div>
       </div>
-      <textarea class="td-point-note" placeholder="Bu nokta için yazılı not…" data-tdpointnote="${p.localId}" ${p.saved?'disabled':''}>${safe(p.body||'')}</textarea>
+      <div class="td-zoom">
+        <canvas class="td-zoom-canvas" data-tdzoom></canvas>
+        <div class="td-zoom-cetvel"><span data-zoombas>0:00</span><span>YAKIN PLAN · ${YAKIN_PLAN} SN</span><span data-zoomson>0:00</span></div>
+      </div>
+      ${!p.saved?`<div class="td-ince"><span>İNCE AYAR</span>
+        <button type="button" data-tdkaydir="-1">−1 sn</button><button type="button" data-tdkaydir="-0.1">−0,1</button>
+        <button type="button" data-tdkaydir="0.1">+0,1</button><button type="button" data-tdkaydir="1">+1 sn</button>
+        <button type="button" data-tdsuana>ÇALAN YERE TAŞI</button></div>`:''}
+      <textarea class="td-point-note" placeholder="Bu noktada ne değişsin? (ör. davul daha sert girsin)" data-tdpointnote="${p.localId}" ${p.saved?'disabled':''}>${safe(p.body||'')}</textarea>
       <div class="td-point-voice">
         ${p.voiceUrl?`<audio controls src="${p.voiceUrl}"></audio>`:''}
         ${!p.saved && p.voiceBlobUrl?`<audio controls src="${p.voiceBlobUrl}"></audio><button type="button" class="td-point-voicedel" data-tdvoicedel="${p.localId}">Sesli notu kaldır</button>`:''}
@@ -472,6 +580,7 @@
     const dur=detail.duration||0, cur=detail.curTime||0;
     const branchLabel=safe((project.branch||'proje').toUpperCase());
     const points=detail.points||[];
+    if(points.length&&!seciliNokta())detail.selPointLocalId=sirali()[0].localId;
     const draftCount=points.filter(p=>!p.saved).length;
     const savedCount=points.filter(p=>p.saved).length;
     const waveState=!has?'':(detail.peaks?'DALGA FORMU HAZIR':'DALGA FORMU YÜKLENİYOR…');
@@ -511,35 +620,30 @@
         </div>
         ${waveState?`<span class="td-badge">${waveState}</span>`:''}
       </div>
-      <p class="td-desc">Dalganın farklı yerlerine tıklayarak birden fazla nokta ekle. İşaretleri sonradan sürükleyerek yerini değiştirebilirsin. Her numara kendi yazılı ve sesli notunu tutar.</p>
+      <p class="td-desc">Dalgaya dokun, o yerden dinle. Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek kaydırabilirsin.</p>
 
       ${has?`
       <div class="td-wave-wrap" data-tdwave>
         <canvas class="td-wave-canvas"></canvas>
+        <div class="td-hover" data-tdhover hidden></div>
         <div class="td-marks">
-          ${points.map((p,i)=>`<div class="td-mark ${p.saved?'saved':'draft'} ${p.localId===detail.selPointLocalId?'active':''}" style="left:${dur?(p.time/dur*100):0}%" data-tdmark="${p.localId}">
+          ${sirali().map(p=>`<div class="td-mark ${p.saved?'saved':'draft'} ${p.localId===detail.selPointLocalId?'active':''}" style="left:${dur?(p.time/dur*100):0}%" data-tdmark="${p.localId}" title="${mmss(p.time)}">
+            <span class="td-mark-badge">${noktaNo(p)}</span>
             <span class="td-mark-line"></span>
-            <span class="td-mark-badge">${p.saved?'✓':i+1}</span>
           </div>`).join('')}
         </div>
+        <div class="td-cetvel">${[0,.25,.5,.75,1].map(r=>`<span style="left:${r*100}%">${mmss(r*dur)}</span>`).join('')}</div>
       </div>
 
-      <div class="td-legend">
-        <span><span class="td-legend-dot draft"></span> Taslak nokta &nbsp;&nbsp; <span class="td-legend-dot saved"></span> Kaydedilmiş not</span>
-        <span>${draftCount} taslak · ${savedCount} kayıtlı</span>
-      </div>
-
-      <div class="td-addrow">
-        <label>Dinleme / yeni nokta zamanı <strong>${mmss(cur)}</strong></label>
-        <input type="range" class="td-addseek" min="0" max="${dur||1}" step="0.01" value="${cur}" data-tdaddseek>
-      </div>
       <div class="td-addbtn-row">
-        <button type="button" class="td-addbtn" data-tdaddpoint>+ BU ANA NOKTA EKLE</button>
-        <span class="td-addhint">Kaydırıcıyla zaman seçip de ekleyebilirsin.</span>
+        <button type="button" class="td-addbtn" data-tdaddpoint>+ İŞARET KOY · <span data-tdaddzaman>${mmss(cur)}</span></button>
+        <span class="td-legend"><i class="td-legend-dot draft"></i> taslak <i class="td-legend-dot saved"></i> kayıtlı <i class="td-legend-dot aktif"></i> açık klasör · ${draftCount} taslak · ${savedCount} kayıtlı</span>
       </div>
 
-      <div class="td-points-list">
-        ${points.length?points.map((p,i)=>pointRow(p,i)).join(''):'<p class="td-empty">Henüz nokta eklenmedi.</p>'}
+      <div class="td-klasorler">
+        <p class="td-klasorler-baslik">NOT KLASÖRLERİ <i>${points.length}</i></p>
+        ${points.length?`<div class="td-sekmeler" role="tablist">${sirali().map(klasorSekmesi).join('')}</div>
+        ${klasorGovdesi(seciliNokta())}`:'<p class="td-empty">Henüz işaret yok. Dinlerken değişmesini istediğin yerde “+ İşaret koy”a bas.</p>'}
       </div>
       `:`<p class="td-empty">Bu parça için henüz ses dosyası yok.</p>`}
     </div>`;
@@ -555,9 +659,9 @@
     if(!root)return;
     const seek=root.querySelector('[data-tdseek]'); if(seek)seek.value=detail.curTime||0;
     const timeEl=root.querySelector('.td-time'); if(timeEl)timeEl.textContent=`${mmss(detail.curTime)} / ${mmss(detail.duration)}`;
-    const canvas=root.querySelector('.td-wave-canvas');
-    if(canvas&&detail.peaks)drawWave(canvas,detail.peaks,detail.duration?detail.curTime/detail.duration:0);
+    const ekle=root.querySelector('[data-tdaddzaman]'); if(ekle)ekle.textContent=mmss(detail.curTime);
     const playBtn=root.querySelector('[data-tdplay]'); if(playBtn)playBtn.textContent=detail.playing?'❚❚':'▶';
+    cizimYenile();
   }
 
   async function openTrackDetail(tr,project){
@@ -596,6 +700,42 @@
     render();
   }
 
+  // İşaret sürükleme belge düzeyinde izlenir: seçim değişince ekran yeniden
+  // çizilse bile sürükleme kopmaz.
+  let surukleme=null, surukleKurulu=false;
+  function canliKonum(p){
+    const root=document.querySelector('.track-detail'); if(!root)return;
+    const m=root.querySelector(`[data-tdmark="${p.localId}"]`);
+    if(m&&detail.duration){m.style.left=(p.time/detail.duration*100)+'%';m.title=mmss(p.time);}
+    const sz=root.querySelector(`[data-sekmezaman="${p.localId}"]`); if(sz)sz.textContent=mmss(p.time);
+    if(p===seciliNokta()){const kz=root.querySelector('[data-klasorzaman]'); if(kz)kz.textContent=mmss(p.time);}
+    cizimYenile();
+  }
+  function surukleKur(){
+    if(surukleKurulu||typeof document.addEventListener!=='function')return;
+    surukleKurulu=true;
+    document.addEventListener('pointermove',e=>{
+      if(!surukleme||!detail.duration)return;
+      const p=(detail.points||[]).find(x=>x.localId===surukleme.id);
+      if(!p||p.saved)return;
+      if(!surukleme.oynadi&&Math.abs(e.clientX-surukleme.baslaX)<4)return;
+      surukleme.oynadi=true;
+      const wrap=document.querySelector('[data-tdwave]'); if(!wrap)return;
+      const r=wrap.getBoundingClientRect();
+      p.time=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*detail.duration;
+      canliKonum(p);
+    });
+    const bitir=()=>{
+      if(!surukleme)return;
+      const {tr,project,oynadi,id}=surukleme; surukleme=null;
+      const p=(detail.points||[]).find(x=>x.localId===id);
+      if(!oynadi&&p){ detail.curTime=p.time; if(detail.audioEl)detail.audioEl.currentTime=p.time; }
+      if(openTrackId)renderDetail(tr,project);
+    };
+    document.addEventListener('pointerup',bitir);
+    document.addEventListener('pointercancel',bitir);
+  }
+
   function wireDetail(tr,project){
     const root=document.querySelector('.track-detail');
     if(!root)return;
@@ -606,52 +746,65 @@
     if(playBtn)playBtn.onclick=async()=>{ if(!audio)return; if(audio.paused)await audio.play(); else audio.pause(); };
     const seek=root.querySelector('[data-tdseek]');
     if(seek)seek.oninput=()=>{ if(audio)audio.currentTime=parseFloat(seek.value); detail.curTime=parseFloat(seek.value); updateDetailProgress(); };
-    const addSeek=root.querySelector('[data-tdaddseek]');
-    if(addSeek)addSeek.oninput=()=>{ detail.curTime=parseFloat(addSeek.value); if(audio)audio.currentTime=detail.curTime; renderDetail(tr,project); };
-
-    const canvas=root.querySelector('.td-wave-canvas');
-    const waveWrap=root.querySelector('[data-tdwave]');
-    if(canvas&&detail.peaks){
-      drawWave(canvas,detail.peaks,detail.duration?detail.curTime/detail.duration:0);
-      canvas.onclick=(e)=>{
-        const rect=canvas.getBoundingClientRect();
-        const frac=Math.min(1,Math.max(0,(e.clientX-rect.left)/rect.width));
-        const t=frac*detail.duration;
-        if(detail.selPointLocalId){
-          const p=(detail.points||[]).find(x=>x.localId===detail.selPointLocalId && !x.saved);
-          if(p){ p.time=t; renderDetail(tr,project); return; }
-        }
-        detail.curTime=t; if(audio)audio.currentTime=t;
-        renderDetail(tr,project);
+    const ana=root.querySelector('.td-wave-canvas');
+    const zamanAl=(el,e,from,to)=>{const r=el.getBoundingClientRect();return from+Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*(to-from);};
+    const git=t=>{ detail.curTime=Math.max(0,Math.min(detail.duration||0,t)); if(audio)audio.currentTime=detail.curTime; updateDetailProgress(); };
+    const hoverEl=root.querySelector('[data-tdhover]');
+    if(ana&&detail.peaks){
+      cizimYenile();
+      ana.onclick=e=>git(zamanAl(ana,e,0,detail.duration));
+      ana.onpointermove=e=>{
+        if(e.pointerType==='touch')return;
+        detail.hoverAna=zamanAl(ana,e,0,detail.duration);
+        if(hoverEl){hoverEl.hidden=false;hoverEl.textContent=mmss(detail.hoverAna);hoverEl.style.left=(detail.hoverAna/detail.duration*100)+'%';}
+        cizimYenile();
       };
+      ana.onpointerleave=()=>{detail.hoverAna=null;if(hoverEl)hoverEl.hidden=true;cizimYenile();};
+    }
+    const yakin=root.querySelector('[data-tdzoom]');
+    if(yakin){
+      yakin.onclick=e=>{const sp=seciliNokta();if(!sp)return;const [a,b]=yakinPencere(sp.time);git(zamanAl(yakin,e,a,b));};
+      yakin.onpointermove=e=>{if(e.pointerType==='touch')return;const sp=seciliNokta();if(!sp)return;const [a,b]=yakinPencere(sp.time);detail.hoverYakin=zamanAl(yakin,e,a,b);cizimYenile();};
+      yakin.onpointerleave=()=>{detail.hoverYakin=null;cizimYenile();};
     }
 
-    root.querySelectorAll('[data-tdmark]').forEach(el=>{
-      el.addEventListener('click',(e)=>{ e.stopPropagation(); detail.selPointLocalId=el.dataset.tdmark; renderDetail(tr,project); });
-      let dragging=false;
-      el.addEventListener('pointerdown',(e)=>{
-        const p=(detail.points||[]).find(x=>x.localId===el.dataset.tdmark);
-        if(!p||p.saved)return;
-        dragging=true; try{el.setPointerCapture(e.pointerId);}catch{}
-      });
-      el.addEventListener('pointermove',(e)=>{
-        if(!dragging||!waveWrap||!detail.duration)return;
-        const rect=waveWrap.getBoundingClientRect();
-        const frac=Math.min(1,Math.max(0,(e.clientX-rect.left)/rect.width));
-        const p=(detail.points||[]).find(x=>x.localId===el.dataset.tdmark);
-        if(p&&!p.saved){
-          p.time=frac*detail.duration; el.style.left=(frac*100)+'%';
-          const timeEl=root.querySelector(`[data-tdpoint="${p.localId}"] .td-point-time`);
-          if(timeEl)timeEl.textContent=mmss(p.time);
-        }
-      });
-      el.addEventListener('pointerup',()=>{ if(dragging){dragging=false; renderDetail(tr,project);} });
+    // Klasör seçimi: klasör açılır, dalga o noktaya gider (çalma başlamaz).
+    const sec=id=>{ detail.selPointLocalId=id; const p=seciliNokta(); if(p){detail.curTime=p.time; if(audio)audio.currentTime=p.time;} renderDetail(tr,project); };
+    root.querySelectorAll('[data-tdsec]').forEach(b=>b.onclick=()=>sec(b.dataset.tdsec));
+
+    root.querySelectorAll('[data-tdburadan]').forEach(b=>b.onclick=async()=>{
+      const p=(detail.points||[]).find(x=>x.localId===b.dataset.tdburadan); if(!p||!audio)return;
+      git(Math.max(0,p.time-2));
+      try{await audio.play();}catch{}
     });
+
+    // İnce ayar (yalnız taslak): işaret, sekme ve yakın plan anında güncellenir.
+    const kaydir=yeni=>{
+      const p=seciliNokta(); if(!p||p.saved)return;
+      p.time=Math.max(0,Math.min(detail.duration||0,yeni));
+      canliKonum(p);
+    };
+    root.querySelectorAll('[data-tdkaydir]').forEach(b=>b.onclick=()=>{const p=seciliNokta();if(p)kaydir(p.time+parseFloat(b.dataset.tdkaydir));});
+    const suana=root.querySelector('[data-tdsuana]'); if(suana)suana.onclick=()=>kaydir(detail.curTime||0);
+
+    // İşaret: dokununca klasörünü açar; taslaksa sürüklenir (yakın plan canlı izler).
+    root.querySelectorAll('[data-tdmark]').forEach(el=>{
+      el.onclick=e=>e.stopPropagation();
+      el.addEventListener('pointerdown',e=>{
+        e.preventDefault(); e.stopPropagation();
+        const p=(detail.points||[]).find(x=>x.localId===el.dataset.tdmark); if(!p)return;
+        surukleme={id:p.localId,tr,project,oynadi:false,baslaX:e.clientX};
+        if(detail.selPointLocalId!==p.localId){ detail.selPointLocalId=p.localId; renderDetail(tr,project); }
+      });
+    });
+    surukleKur();
 
     const addBtn=root.querySelector('[data-tdaddpoint]');
     if(addBtn)addBtn.onclick=()=>{
       detail.points=detail.points||[];
-      detail.points.push({localId:newLocalId(),time:detail.curTime||0,body:'',voicePath:null,voiceUrl:null,voiceBlob:null,voiceBlobUrl:null,saved:false,recording:false});
+      const yeni={localId:newLocalId(),time:detail.curTime||0,body:'',voicePath:null,voiceUrl:null,voiceBlob:null,voiceBlobUrl:null,saved:false,recording:false};
+      detail.points.push(yeni);
+      detail.selPointLocalId=yeni.localId;
       renderDetail(tr,project);
     };
 
@@ -660,7 +813,7 @@
       renderDetail(tr,project);
     });
 
-    root.querySelectorAll('[data-tdpointnote]').forEach(ta=>ta.onchange=()=>{
+    root.querySelectorAll('[data-tdpointnote]').forEach(ta=>ta.oninput=ta.onchange=()=>{
       const p=(detail.points||[]).find(x=>x.localId===ta.dataset.tdpointnote);
       if(p)p.body=ta.value;
     });
