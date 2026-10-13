@@ -541,13 +541,21 @@
     {k:'nane',ad:'Nane',renk:'#7fc3a3'},
     {k:'gece',ad:'Gece',renk:'#1c1f26'}
   ];
-  const ZEMIN_ANAHTAR='derin:dalga-zemin';
-  let zeminKodu='arduvaz';
-  try{ const z=localStorage.getItem(ZEMIN_ANAHTAR); if(ZEMINLER.some(x=>x.k===z))zeminKodu=z; }catch{}
+  const ZEMIN_ANAHTAR='derin:dalga-zemin', OZEL_ANAHTAR='derin:dalga-ozel-renkler', ACIK_ANAHTAR='derin:dalga-palet-acik';
+  const OZEL_EN_COK=8;
+  const hexMi=v=>/^#[0-9a-f]{6}$/i.test(String(v||''));
+  // Kendi kaydettiğin renkler ("ozel:#rrggbb" koduyla seçilir).
+  let ozelRenkler=[];
+  try{ ozelRenkler=(JSON.parse(localStorage.getItem(OZEL_ANAHTAR)||'[]')||[]).filter(hexMi).slice(0,OZEL_EN_COK); }catch{ ozelRenkler=[]; }
+  const ozelKaydet=()=>{ try{localStorage.setItem(OZEL_ANAHTAR,JSON.stringify(ozelRenkler));}catch{} };
+  const zeminGecerli=z=>ZEMINLER.some(x=>x.k===z)||(String(z).startsWith('ozel:')&&ozelRenkler.includes(String(z).slice(5)));
+  let zeminKodu='arduvaz', paletAcik=false;
+  try{ const z=localStorage.getItem(ZEMIN_ANAHTAR); if(zeminGecerli(z))zeminKodu=z; paletAcik=localStorage.getItem(ACIK_ANAHTAR)==='1'; }catch{}
+  const zeminHex=()=>String(zeminKodu).startsWith('ozel:')?zeminKodu.slice(5):(ZEMINLER.find(x=>x.k===zeminKodu)||ZEMINLER[0]).renk;
   const hexRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
   const karis=(a,b,o)=>{const x=hexRgb(a),y=hexRgb(b);return 'rgb('+x.map((v,i)=>Math.round(v*(1-o)+y[i]*o)).join(',')+')';};
   function renkler(){
-    const z=(ZEMINLER.find(x=>x.k===zeminKodu)||ZEMINLER[0]).renk;
+    const z=zeminHex();
     const [r,g,b]=hexRgb(z), parlak=(0.299*r+0.587*g+0.114*b)/255>0.42;
     const ink=parlak?'10,12,14':'244,241,233';
     return {
@@ -666,6 +674,21 @@
     });
   }
 
+  // Zemin paleti: kapalıyken yalnız seçili rengi gösteren küçük düğme; açıkken hazır
+  // renkler + kaydedilmiş özel renkler + "+" (yeni renk kaydet).
+  function paletHtml(){
+    const sw=(kod,renk,ad,ozel)=>`<span class="td-zemin-kap"><button type="button" role="radio" aria-checked="${kod===zeminKodu}" class="td-zemin${kod===zeminKodu?' secili':''}" data-tdzemin="${kod}" style="--z:${renk}" title="${ad}" aria-label="${ad}"></button>${ozel?`<button type="button" class="td-zemin-sil" data-tdzeminsil="${renk}" aria-label="${ad} rengini sil" title="Sil">×</button>`:''}</span>`;
+    return `<div class="td-zeminler${paletAcik?' acik':''}">
+      <button type="button" class="td-zemin-ac" data-tdzeminac aria-expanded="${paletAcik}" aria-controls="td-palet"><i style="--z:${zeminHex()}"></i>ZEMİN <b aria-hidden="true">${paletAcik?'▴':'▾'}</b></button>
+      <div class="td-palet" id="td-palet" role="radiogroup" aria-label="Dalga formu arka plan rengi"${paletAcik?'':' hidden'}>
+        ${ZEMINLER.map(z=>sw(z.k,z.renk,z.ad,false)).join('')}
+        ${ozelRenkler.length?'<span class="td-palet-ayrac" aria-hidden="true"></span>':''}
+        ${ozelRenkler.map(h=>sw('ozel:'+h,h,'Kendi rengin '+h,true)).join('')}
+        ${ozelRenkler.length<OZEL_EN_COK?`<label class="td-zemin-ekle" title="Kendi rengini kaydet" aria-label="Kendi rengini kaydet">+<input type="color" data-tdzeminekle value="${zeminHex()}"></label>`:''}
+      </div>
+    </div>`;
+  }
+
   const klasorIkon='<svg viewBox="0 0 20 16" width="15" height="12" aria-hidden="true"><path d="M1 3.2C1 2 2 1 3.2 1h4.3l2 2.2h7.3C18 3.2 19 4.2 19 5.4v7.4c0 1.2-1 2.2-2.2 2.2H3.2C2 15 1 14 1 12.8z" fill="currentColor"/></svg>';
 
   function klasorSekmesi(p){
@@ -774,10 +797,7 @@
         </div>
         <div class="td-cetvel">${[0,.25,.5,.75,1].map(r=>`<span style="left:${r*100}%">${mmss(r*dur)}</span>`).join('')}</div>
       </div>
-      <div class="td-zeminler" role="radiogroup" aria-label="Dalga formu arka plan rengi">
-        <span>ZEMİN</span>
-        ${ZEMINLER.map(z=>`<button type="button" role="radio" aria-checked="${z.k===zeminKodu}" class="td-zemin${z.k===zeminKodu?' secili':''}" data-tdzemin="${z.k}" style="--z:${z.renk}" title="${z.ad}" aria-label="${z.ad}"></button>`).join('')}
-      </div>
+      ${paletHtml()}
 
       <div class="td-addbtn-row">
         <button type="button" class="td-addbtn" data-tdaddpoint>+ İŞARET KOY · <span data-tdaddzaman>${mmss(cur)}</span></button>
@@ -914,6 +934,38 @@
     render();
   }
 
+  // Palet yalnız kendi kutusunda yeniden çizilir: dalga, not ve oynatıcı yerinde kalır.
+  function paletYenile(root){
+    const eski=root.querySelector('.td-zeminler'); if(!eski)return;
+    const kap=document.createElement('div'); kap.innerHTML=paletHtml();
+    const yeni=kap.firstElementChild; eski.replaceWith(yeni); paletBagla(root);
+  }
+  function zeminSec(root,kod){
+    zeminKodu=kod; RENK=renkler();
+    try{localStorage.setItem(ZEMIN_ANAHTAR,zeminKodu);}catch{}
+    paletYenile(root); cizimYenile();
+  }
+  function paletBagla(root){
+    const ac=root.querySelector('[data-tdzeminac]');
+    if(ac)ac.onclick=()=>{ paletAcik=!paletAcik; try{localStorage.setItem(ACIK_ANAHTAR,paletAcik?'1':'0');}catch{} paletYenile(root); };
+    root.querySelectorAll('[data-tdzemin]').forEach(b=>b.onclick=()=>zeminSec(root,b.dataset.tdzemin));
+    root.querySelectorAll('[data-tdzeminsil]').forEach(b=>b.onclick=()=>{
+      const h=b.dataset.tdzeminsil;
+      ozelRenkler=ozelRenkler.filter(x=>x!==h); ozelKaydet();
+      zeminSec(root,zeminKodu==='ozel:'+h?'arduvaz':zeminKodu);
+    });
+    const ekle=root.querySelector('[data-tdzeminekle]');
+    if(ekle){
+      // Seçerken dalga canlı önizlenir; seçim bitince (change) renk kaydedilir.
+      ekle.oninput=()=>{ if(!hexMi(ekle.value))return; const onceki=zeminKodu; zeminKodu='ozel:'+ekle.value.toLowerCase(); RENK=renkler(); cizimYenile(); zeminKodu=onceki; };
+      ekle.onchange=()=>{
+        const h=String(ekle.value).toLowerCase(); if(!hexMi(h))return;
+        if(!ozelRenkler.includes(h)){ ozelRenkler.push(h); if(ozelRenkler.length>OZEL_EN_COK)ozelRenkler.shift(); ozelKaydet(); }
+        zeminSec(root,'ozel:'+h);
+      };
+    }
+  }
+
   // İşaret sürükleme belge düzeyinde izlenir: seçim değişince ekran yeniden
   // çizilse bile sürükleme kopmaz.
   let surukleme=null, surukleKurulu=false;
@@ -965,13 +1017,7 @@
     const zamanAl=(el,e,from,to)=>{const r=el.getBoundingClientRect();return from+Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*(to-from);};
     const git=t=>{ detail.curTime=Math.max(0,Math.min(detail.duration||0,t)); if(audio)audio.currentTime=detail.curTime; updateDetailProgress(); };
     const hoverEl=root.querySelector('[data-tdhover]');
-    // Zemin rengi: tek dokunuşla değişir, ekran yeniden kurulmadan dalgalar yeniden boyanır.
-    root.querySelectorAll('[data-tdzemin]').forEach(b=>b.onclick=()=>{
-      zeminKodu=b.dataset.tdzemin; RENK=renkler();
-      try{localStorage.setItem(ZEMIN_ANAHTAR,zeminKodu);}catch{}
-      root.querySelectorAll('[data-tdzemin]').forEach(x=>{const s=x===b; x.classList.toggle('secili',s); x.setAttribute('aria-checked',String(s));});
-      cizimYenile();
-    });
+    paletBagla(root);
     if(ana&&detail.peaks){
       cizimYenile();
       ana.onclick=e=>git(zamanAl(ana,e,0,detail.duration));

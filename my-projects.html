@@ -258,14 +258,31 @@
   .td-cetvel span:first-child{transform:none}
   .td-cetvel span:last-child{transform:translateX(-100%)}
 
-  .td-zeminler{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
-  .td-zeminler span{font-size:9px;font-weight:900;letter-spacing:.2em;color:var(--pj-soluk);margin-right:2px}
+  .td-zeminler{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .td-zemin-ac{display:inline-flex;align-items:center;gap:8px;padding:7px 12px 7px 8px;border-radius:999px;
+    border:1px solid var(--pj-cizgi2);background:transparent;color:var(--pj-soluk);font:inherit;font-size:9px;
+    font-weight:900;letter-spacing:.2em;cursor:pointer}
+  .td-zemin-ac:hover{color:var(--pj-krem);border-color:rgba(244,241,233,.32)}
+  .td-zemin-ac i{width:16px;height:16px;border-radius:50%;background:var(--z);box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.3)}
+  .td-zemin-ac b{font-size:10px;letter-spacing:0}
+  .td-palet{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .td-palet[hidden]{display:none}
+  .td-palet-ayrac{width:1px;height:20px;background:var(--pj-cizgi2);margin:0 2px}
+  .td-zemin-kap{position:relative;display:inline-flex}
   .td-zemin{width:26px;height:26px;padding:0;border-radius:50%;border:2px solid rgba(244,241,233,.18);background:var(--z);
     cursor:pointer;transition:transform .15s,border-color .15s;box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
   .td-zemin:hover{transform:scale(1.1)}
   .td-zemin.secili{border-color:var(--pj-krem);box-shadow:0 0 0 3px rgba(244,241,233,.18),inset 0 0 0 2px rgba(0,0,0,.25)}
-  .td-zemin:focus-visible{outline:2px solid var(--pj-altin);outline-offset:3px}
-  @media(max-width:640px){.td-zemin{width:30px;height:30px}}
+  .td-zemin:focus-visible,.td-zemin-ac:focus-visible{outline:2px solid var(--pj-altin);outline-offset:3px}
+  .td-zemin-sil{position:absolute;top:-6px;right:-6px;width:16px;height:16px;padding:0;border-radius:50%;border:0;
+    background:var(--pj-ink);color:var(--pj-krem);font-size:11px;line-height:16px;cursor:pointer;
+    box-shadow:0 0 0 1px var(--pj-cizgi2)}
+  .td-zemin-sil:hover{background:var(--pj-pembe)}
+  .td-zemin-ekle{position:relative;width:26px;height:26px;border-radius:50%;border:1.5px dashed rgba(244,241,233,.4);
+    display:inline-flex;align-items:center;justify-content:center;color:var(--pj-krem);font-size:16px;cursor:pointer;overflow:hidden}
+  .td-zemin-ekle:hover{border-color:var(--pj-altin);color:var(--pj-altin2)}
+  .td-zemin-ekle input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+  @media(max-width:640px){.td-zemin,.td-zemin-ekle{width:30px;height:30px}}
   .td-addbtn-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px}
   .td-addbtn{padding:13px 20px;border-radius:999px;border:0;background:var(--pj-altin);color:var(--pj-ink);
     font:inherit;font-size:11px;font-weight:900;letter-spacing:.12em;cursor:pointer;transition:background .2s}
@@ -449,6 +466,6 @@
 <script src="project-track-controls.js?v=1"></script>
 <script src="sortable-touch.js?v=1"></script>
 <script src="dalga-tepeleri.js?v=2"></script>
-<script src="projects.js?v=20261013e"></script>
+<script src="projects.js?v=20261013f"></script>
 </body>
 </html>
