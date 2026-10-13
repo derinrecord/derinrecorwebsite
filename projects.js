@@ -11,6 +11,12 @@
     if(gn<7)return gn+' gün önce';
     return new Date(t).toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});
   };
+  // "1:05,3" — işaret zamanları onda bir saniye hassasiyetle gösterilir.
+  const mmssOnda=s=>{ if(!s||!isFinite(s))s=0; const t=Math.round(s*10)/10; const dk=Math.floor(t/60), sn=t-dk*60;
+    return dk+':'+String(Math.floor(sn)).padStart(2,'0')+','+Math.round((sn-Math.floor(sn))*10); };
+  // Elle yazılan zaman: "1:05,3", "1:05.3", "65,3" ya da "65" → saniye; anlaşılmazsa null.
+  const zamanCoz=metin=>{ const m=/^\s*(?:(\d+):)?(\d+(?:[.,]\d+)?)\s*$/.exec(String(metin||''));
+    if(!m)return null; const v=(m[1]?parseInt(m[1],10)*60:0)+parseFloat(m[2].replace(',','.')); return isFinite(v)?v:null; };
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
   let client=null,admin=false,me=null,projects=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false;
@@ -372,6 +378,8 @@
     },temelYol,file,ilerleme);
     if(sonuc.error){
       sonHataDetay.yol=sonuc.yol; sonHataDetay.parca=`${sonuc.parca}/${sonuc.toplam}`; sonHataDetay.mesaj=sonuc.error.message;
+    }else if(sonuc.path){
+      dalgaOnHazirla(sonuc.path,file); // beklemeden arka planda
     }
     return sonuc;
   }
@@ -413,11 +421,96 @@
     detail.points=[...savedNow,...draftLocal];
   }
 
-  // Ses dosyasından ince çözünürlüklü tepe değerleri: saniyede ~60 nokta.
-  // Genel görünüm ve yakın plan aynı veriden ekran genişliğine göre toplanır.
-  async function computePeaks(url){
+  // ---------- Dalga formu: hızlı okuma + tarayıcıda saklama ----------
+  // 1) WAV ise dalga-tepeleri.js başlığı okuyup örnekleri doğrudan tarar
+  //    (decodeAudioData büyük WAV'da saniyeler sürüyordu).
+  // 2) Sonuç tarayıcıda saklanır: aynı parça ikinci kez açılınca anında gelir.
+  // 3) İndirme yüzdesi ekranda gösterilir.
+  const Dalga=window.DerinDalga||null;
+  const DALGA_ANAHTAR='derin:dalga:', DALGA_LISTE='derin:dalga-liste', DALGA_EN_COK=40;
+  const dalgaBellek=new Map();
+  function dalgaOku(yol){
+    if(dalgaBellek.has(yol))return dalgaBellek.get(yol);
+    try{ const r=Dalga&&Dalga.coz(localStorage.getItem(DALGA_ANAHTAR+yol)); if(r){dalgaBellek.set(yol,r);return r;} }catch{}
+    return null;
+  }
+  function dalgaYaz(yol,veri){
+    dalgaBellek.set(yol,veri);
+    if(!Dalga)return;
+    try{
+      let liste=[]; try{liste=JSON.parse(localStorage.getItem(DALGA_LISTE)||'[]')||[];}catch{}
+      liste=liste.filter(x=>x!==yol); liste.push(yol);
+      while(liste.length>DALGA_EN_COK){ const eski=liste.shift(); try{localStorage.removeItem(DALGA_ANAHTAR+eski);}catch{} }
+      const metin=Dalga.kodla(veri);
+      // Depo dolarsa en eskileri silip bir kez daha dene.
+      for(let deneme=0;deneme<3;deneme++){
+        try{ localStorage.setItem(DALGA_ANAHTAR+yol,metin); break; }
+        catch{ const eski=liste.shift(); if(!eski||eski===yol)break; try{localStorage.removeItem(DALGA_ANAHTAR+eski);}catch{} }
+      }
+      localStorage.setItem(DALGA_LISTE,JSON.stringify(liste));
+    }catch{}
+  }
+
+  // Dalga özeti ses dosyasının yanında küçük bir dosya olarak durur:
+  // "<ses yolu>.dalga" (~15 KB). Böylece 50 MB'lık sesi indirmeden dalga gelir.
+  const yanDosya=yol=>yol+'.dalga';
+  const sesYollari=yol=>yol?[...Ses.parcalariCoz(yol).map(p=>p.path),yanDosya(yol)]:[];
+  async function yanDosyaOku(yol){
+    if(!Dalga)return null;
+    try{
+      const r=await client.storage.from('project-audio').createSignedUrl(yanDosya(yol),600);
+      const u=r.data?.signedUrl; if(!u)return null;
+      const c=await fetch(u); if(!c.ok)return null;
+      return Dalga.coz(await c.text());
+    }catch{ return null; }
+  }
+  async function yanDosyaYaz(yol,veri){
+    if(!Dalga||!veri)return;
+    try{
+      const metin=Dalga.kodla(veri);
+      await client.storage.from('project-audio').upload(yanDosya(yol),new Blob([metin],{type:'application/octet-stream'}),
+        {contentType:'application/octet-stream',upsert:true});
+    }catch{ /* yan dosya yazılamazsa sayfa yine kendi hesaplar */ }
+  }
+  // Yükleme anında, elimizdeki dosyadan dalgayı çıkarıp hem tarayıcıya hem depoya yaz:
+  // antrenör parçayı ilk açtığında dalga hazır bekler.
+  async function dalgaOnHazirla(yol,dosya){
+    if(!dosya||dosya.size>300*1024*1024)return; // çok büyük dosyada belleği zorlamayalım; ilk açılışta hesaplanır
+    try{
+      const veri=await tepelerCikar(await dosya.arrayBuffer());
+      dalgaYaz(yol,veri); await yanDosyaYaz(yol,veri);
+    }catch{}
+  }
+
+  async function indirIlerlemeli(url,ilerleme){
     const resp=await fetch(url);
-    const buf=await resp.arrayBuffer();
+    if(!resp.ok)throw new Error('Ses indirilemedi ('+resp.status+')');
+    const toplam=Number(resp.headers.get('content-length'))||0;
+    if(!resp.body||!toplam||!resp.body.getReader)return resp.arrayBuffer();
+    const okuyucu=resp.body.getReader(), hedef=new Uint8Array(toplam);
+    let gelen=0;
+    for(;;){
+      const {done,value}=await okuyucu.read(); if(done)break;
+      if(gelen+value.length>hedef.length){ // sunucu farklı boy bildirdiyse güvenli yol
+        const parcalar=[hedef.subarray(0,gelen),value]; let toplamYeni=gelen+value.length;
+        for(;;){const r=await okuyucu.read(); if(r.done)break; parcalar.push(r.value); toplamYeni+=r.value.length;}
+        const birlesik=new Uint8Array(toplamYeni); let o=0; for(const p of parcalar){birlesik.set(p,o);o+=p.length;}
+        return birlesik.buffer;
+      }
+      hedef.set(value,gelen); gelen+=value.length;
+      ilerleme&&ilerleme(gelen/toplam);
+    }
+    return hedef.buffer.slice(0,gelen);
+  }
+
+  async function computePeaks(url,ilerleme){
+    return tepelerCikar(await indirIlerlemeli(url,ilerleme));
+  }
+
+  async function tepelerCikar(buf){
+    const hizli=Dalga&&Dalga.wavTepeleri(buf,60);
+    if(hizli)return hizli;
+    // WAV değil (MP3/FLAC): tarayıcı çözücüsü.
     const Ctx=window.AudioContext||window.webkitAudioContext;
     const ctx=new Ctx();
     const audioBuf=await ctx.decodeAudioData(buf);
@@ -426,15 +519,15 @@
     const uzunluk=kanallar[0].length;
     const hedef=Math.max(200,Math.min(40000,Math.ceil(audioBuf.duration*60)));
     const blok=Math.max(1,Math.floor(uzunluk/hedef));
+    const adim=Math.max(1,Math.floor(blok/96));
     const adet=Math.ceil(uzunluk/blok);
     const peaks=new Float32Array(adet);
     let enBuyuk=0;
     for(let i=0;i<adet;i++){
       let max=0; const start=i*blok, end=Math.min(uzunluk,start+blok);
-      for(const d of kanallar)for(let j=start;j<end;j++){const v=d[j]<0?-d[j]:d[j];if(v>max)max=v;}
+      for(const d of kanallar)for(let j=start;j<end;j+=adim){const v=d[j]<0?-d[j]:d[j];if(v>max)max=v;}
       peaks[i]=max; if(max>enBuyuk)enBuyuk=max;
     }
-    // Sessiz kayıtlar da okunur görünsün: en yüksek tepe tam boy olur.
     if(enBuyuk>0)for(let i=0;i<adet;i++)peaks[i]/=enBuyuk;
     const duration=audioBuf.duration;
     try{ctx.close();}catch{}
@@ -538,7 +631,7 @@
     return `<button type="button" role="tab" aria-selected="${aktif}" class="td-sekme ${p.saved?'saved':'draft'}${aktif?' aktif':''}" data-tdsec="${p.localId}">
       <span class="td-sekme-ikon">${klasorIkon}</span>
       <span class="td-sekme-no">${noktaNo(p)}</span>
-      <span class="td-sekme-zaman" data-sekmezaman="${p.localId}">${mmss(p.time)}</span>
+      <span class="td-sekme-zaman" data-sekmezaman="${p.localId}">${mmssOnda(p.time)}</span>
       <span class="td-sekme-durum">${p.saved?'KAYITLI':'TASLAK'}${ses?' · SESLİ':''}</span>
     </button>`;
   }
@@ -550,7 +643,8 @@
       <div class="td-klasor-ust">
         <div>
           <p class="td-klasor-etiket">KLASÖR ${noktaNo(p)} · ${p.saved?'KAYITLI NOT':'TASLAK NOT'}</p>
-          <p class="td-klasor-zaman"><span class="td-point-time" data-klasorzaman>${mmss(p.time)}</span></p>
+          <p class="td-klasor-zaman">${p.saved?`<span class="td-point-time" data-klasorzaman>${mmssOnda(p.time)}</span>`
+            :`<input class="td-zaman-kutu" data-klasorzaman data-tdzamanyaz inputmode="decimal" value="${mmssOnda(p.time)}" aria-label="İşaret zamanı (dakika:saniye,onda bir)" title="Zamanı yaz, işaret oraya taşınır">`}</p>
         </div>
         <div class="td-klasor-arac">
           <button type="button" class="td-dinle" data-tdburadan="${p.localId}">▶ BURADAN DİNLE</button>
@@ -583,7 +677,7 @@
     if(points.length&&!seciliNokta())detail.selPointLocalId=sirali()[0].localId;
     const draftCount=points.filter(p=>!p.saved).length;
     const savedCount=points.filter(p=>p.saved).length;
-    const waveState=!has?'':(detail.peaks?'DALGA FORMU HAZIR':'DALGA FORMU YÜKLENİYOR…');
+    const waveState=!has?'':(detail.peaks?'DALGA FORMU HAZIR':(detail.dalgaHata?'DALGA FORMU ÇIKARILAMADI':'DALGA FORMU HAZIRLANIYOR'));
     return `<div class="track-detail">
       <button type="button" class="td-back" data-tdback>← PROJELERİM</button>
       <div class="td-head">
@@ -623,8 +717,10 @@
       <p class="td-desc">Dalgaya dokun, o yerden dinle. Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek kaydırabilirsin.</p>
 
       ${has?`
-      <div class="td-wave-wrap" data-tdwave>
+      <div class="td-wave-wrap${detail.peaks?'':' yukleniyor'}" data-tdwave>
         <canvas class="td-wave-canvas"></canvas>
+        ${detail.peaks||detail.dalgaHata?'':`<div class="td-iskelet" aria-hidden="true">${Array.from({length:64},(_,i)=>`<i style="--h:${18+Math.round(Math.abs(Math.sin(i*1.7)*Math.cos(i*.45))*70)}%;--g:${(i%16)*60}ms"></i>`).join('')}</div>
+        <p class="td-iskelet-yazi" role="status">Dalga formu hazırlanıyor · <span data-dalgayuzde>${detail.dalgaYuzde==null?'':('%'+detail.dalgaYuzde)}</span><br><small>Bu sırada parçayı dinleyebilirsin.</small></p>`}
         <div class="td-hover" data-tdhover hidden></div>
         <div class="td-marks">
           ${sirali().map(p=>`<div class="td-mark ${p.saved?'saved':'draft'} ${p.localId===detail.selPointLocalId?'active':''}" style="left:${dur?(p.time/dur*100):0}%" data-tdmark="${p.localId}" title="${mmss(p.time)}">
@@ -666,32 +762,60 @@
 
   async function openTrackDetail(tr,project){
     openTrackId=tr.id;
-    detail={points:[],peaks:null,duration:0,curTime:0,selPointLocalId:null,playing:false,audioEl:null};
+    detail={points:[],peaks:null,duration:0,curTime:0,selPointLocalId:null,playing:false,audioEl:null,dalgaYuzde:null,dalgaHata:false};
     syncSavedPoints(tr,project);
+    const halaAcik=()=>openTrackId===tr.id;
+    // Daha önce çıkarılmış dalga varsa ekran ilk anda onunla açılır.
+    const kayitli=tr.audio_path?dalgaOku(tr.audio_path):null;
+    if(kayitli){ detail.peaks=kayitli.peaks; detail.duration=kayitli.duration; }
     render();
-    for(const p of detail.points){
-      if(p.voicePath){
-        try{const r=await client.storage.from('project-voice-notes').createSignedUrl(p.voicePath,3600); p.voiceUrl=r.data?.signedUrl||null;}catch{}
-      }
-    }
+
+    // Sesli notların adresleri arka planda, aynı anda alınır (oynatıcıyı bekletmez).
+    const sesliNotlar=Promise.all(detail.points.filter(p=>p.voicePath).map(async p=>{
+      try{const r=await client.storage.from('project-voice-notes').createSignedUrl(p.voicePath,3600); p.voiceUrl=r.data?.signedUrl||null;}catch{}
+    }));
+
     if(tr.audio_path){
       const url=await sesUrl(tr.audio_path);
+      if(!halaAcik())return;
       if(url){
         const audio=new Audio(url);
+        audio.preload='metadata';
         detail.audioEl=audio;
         audio.addEventListener('loadedmetadata',()=>{ if(!detail.duration)detail.duration=audio.duration; updateDetailProgress(); });
         audio.addEventListener('timeupdate',()=>{ detail.curTime=audio.currentTime; updateDetailProgress(); });
         audio.addEventListener('play',()=>{ detail.playing=true; updateDetailProgress(); });
         audio.addEventListener('pause',()=>{ detail.playing=false; updateDetailProgress(); });
         audio.addEventListener('ended',()=>{ detail.playing=false; updateDetailProgress(); });
-        try{
-          const {peaks,duration}=await computePeaks(url);
-          detail.peaks=peaks; if(!detail.duration)detail.duration=duration;
-        }catch(e){ /* peak analizi başarısız olsa da oynatma çalışsın */ }
+        // Oynatıcı hemen kullanılabilir; dalga formu ayrıca hazırlanır.
         renderDetail(tr,project);
+        if(!detail.peaks){
+          const yan=await yanDosyaOku(tr.audio_path);
+          if(!halaAcik())return;
+          if(yan){
+            dalgaYaz(tr.audio_path,yan);
+            detail.peaks=yan.peaks; if(!detail.duration)detail.duration=yan.duration;
+            renderDetail(tr,project);
+          }
+        }
+        if(!detail.peaks){
+          detail.dalgaYuzde=0;
+          const yuzdeYaz=()=>{ const el=document.querySelector('[data-dalgayuzde]'); if(el)el.textContent=detail.dalgaYuzde>=100?'işleniyor…':('%'+detail.dalgaYuzde); };
+          try{
+            const veri=await computePeaks(url,oran=>{ const y=Math.min(99,Math.floor(oran*100)); if(y!==detail.dalgaYuzde){detail.dalgaYuzde=y;yuzdeYaz();} });
+            dalgaYaz(tr.audio_path,veri);
+            yanDosyaYaz(tr.audio_path,veri); // eski parçalar için: bir sonraki açılış hızlı olsun
+            if(!halaAcik())return;
+            detail.peaks=veri.peaks; if(!detail.duration)detail.duration=veri.duration;
+          }catch(e){ if(halaAcik())detail.dalgaHata=true; /* dalga çıkmasa da oynatma çalışsın */ }
+          if(!halaAcik())return;
+          detail.dalgaYuzde=null;
+          renderDetail(tr,project);
+        }
       }
     }
-    renderDetail(tr,project);
+    await sesliNotlar;
+    if(halaAcik()&&detail.points.some(p=>p.voiceUrl))renderDetail(tr,project);
   }
 
   function closeTrackDetail(){
@@ -707,8 +831,9 @@
     const root=document.querySelector('.track-detail'); if(!root)return;
     const m=root.querySelector(`[data-tdmark="${p.localId}"]`);
     if(m&&detail.duration){m.style.left=(p.time/detail.duration*100)+'%';m.title=mmss(p.time);}
-    const sz=root.querySelector(`[data-sekmezaman="${p.localId}"]`); if(sz)sz.textContent=mmss(p.time);
-    if(p===seciliNokta()){const kz=root.querySelector('[data-klasorzaman]'); if(kz)kz.textContent=mmss(p.time);}
+    const sz=root.querySelector(`[data-sekmezaman="${p.localId}"]`); if(sz)sz.textContent=mmssOnda(p.time);
+    if(p===seciliNokta()){const kz=root.querySelector('[data-klasorzaman]');
+      if(kz){ if(kz.tagName==='INPUT'){ if(document.activeElement!==kz)kz.value=mmssOnda(p.time); } else kz.textContent=mmssOnda(p.time); }}
     cizimYenile();
   }
   function surukleKur(){
@@ -781,9 +906,20 @@
     // İnce ayar (yalnız taslak): işaret, sekme ve yakın plan anında güncellenir.
     const kaydir=yeni=>{
       const p=seciliNokta(); if(!p||p.saved)return;
-      p.time=Math.max(0,Math.min(detail.duration||0,yeni));
-      canliKonum(p);
+      p.time=Math.round(Math.max(0,Math.min(detail.duration||0,yeni))*10)/10;
+      // Çalma noktası da işaretle birlikte belirlenen saniyeye geçer: dinlerken tam o yer duyulur.
+      detail.curTime=p.time; if(audio)audio.currentTime=p.time;
+      canliKonum(p); updateDetailProgress();
     };
+    // Zamanı elle yaz: geçerli bir zaman yazıldığı anda işaret oraya taşınır.
+    const zamanKutu=root.querySelector('[data-tdzamanyaz]');
+    if(zamanKutu){
+      zamanKutu.oninput=()=>{ const v=zamanCoz(zamanKutu.value); zamanKutu.classList.toggle('hatali',v==null);
+        if(v!=null&&v<=(detail.duration||Infinity))kaydir(v); };
+      zamanKutu.onblur=()=>{ const p=seciliNokta(); if(p){zamanKutu.value=mmssOnda(p.time);zamanKutu.classList.remove('hatali');} };
+      zamanKutu.onkeydown=e=>{ if(e.key==='Enter'){e.preventDefault();zamanKutu.blur();}
+        if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();const p=seciliNokta();if(p){kaydir(p.time+(e.key==='ArrowUp'?.1:-.1));zamanKutu.value=mmssOnda(p.time);}} };
+    }
     root.querySelectorAll('[data-tdkaydir]').forEach(b=>b.onclick=()=>{const p=seciliNokta();if(p)kaydir(p.time+parseFloat(b.dataset.tdkaydir));});
     const suana=root.querySelector('[data-tdsuana]'); if(suana)suana.onclick=()=>kaydir(detail.curTime||0);
 
@@ -895,7 +1031,7 @@
       button.disabled=true;
       try{
         await tekSatir(client.from('project_tracks').delete().eq('id',button.dataset.trackdel),'Parça bulunamadı ya da silme yetkiniz yok.');
-        await client.storage.from('project-audio').remove(Ses.parcalariCoz(button.dataset.path).map(p=>p.path));
+        await client.storage.from('project-audio').remove(sesYollari(button.dataset.path));
         bildir('Parça silindi.','ok');
         openTrackId=null; detail={};
         await load();
@@ -1143,7 +1279,7 @@
       try{
         await tekSatir(client.from('project_tracks').delete().eq('id',button.dataset.trackdel),'Parça bulunamadı ya da silme yetkiniz yok.');
         // Parçalı dosyada tüm parçaları sil.
-        await client.storage.from('project-audio').remove(Ses.parcalariCoz(button.dataset.path).map(p=>p.path));
+        await client.storage.from('project-audio').remove(sesYollari(button.dataset.path));
         bildir('Parça silindi.','ok'); load();
       }catch(error){bildir('Parça silinemedi: '+error.message,'hata');}
       finally{button.disabled=false;}
@@ -1156,7 +1292,7 @@
       const proj=projects.find(p=>p.id===tr.project_id);
       bildir('Varyasyon yükleniyor… ('+dosyaBoyutu(file.size)+')','bilgi');
       if(!sesGecerli(file)){ bildir(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,'hata'); inp.value=''; return; }
-      const eskiParcalar=tr.audio_path?Ses.parcalariCoz(tr.audio_path).map(p=>p.path):[];
+      const eskiParcalar=sesYollari(tr.audio_path);
       const up=await yukleSesParcali(`${proj.coach_id}/${tid}-${Date.now()}`,file,
         (i,n)=>{ bildir(`Varyasyon yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`,'bilgi'); });
       if(up.error){bildir('Yükleme hatası: '+up.error.message,'hata');return;}

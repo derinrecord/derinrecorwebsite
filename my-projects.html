@@ -240,6 +240,16 @@
   .td-mark.active .td-mark-line{border-left:2px solid var(--pj-pembe)}
   .td-mark.caliyor .td-mark-badge{animation:pjCal 1s ease-in-out infinite}
   @keyframes pjCal{0%,100%{box-shadow:0 0 0 0 rgba(232,209,90,.0)}50%{box-shadow:0 0 0 7px rgba(232,209,90,.35)}}
+  .td-wave-wrap.yukleniyor .td-wave-canvas{visibility:hidden}
+  .td-iskelet{position:absolute;left:16px;right:16px;top:34px;height:112px;display:flex;align-items:center;gap:3px;pointer-events:none}
+  .td-iskelet i{flex:1;height:var(--h);border-radius:2px;background:rgba(244,241,233,.12);animation:pjIskelet 1.2s ease-in-out infinite;animation-delay:var(--g)}
+  @keyframes pjIskelet{50%{background:rgba(216,187,44,.35)}}
+  @media(prefers-reduced-motion:reduce){.td-iskelet i{animation:none}}
+  .td-iskelet-yazi{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);margin:0;text-align:center;
+    font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--pj-krem);text-shadow:0 2px 10px #000;pointer-events:none}
+  .td-iskelet-yazi span{color:var(--pj-altin2)}
+  .td-iskelet-yazi small{font-weight:600;letter-spacing:.02em;color:var(--pj-soluk);font-size:11px}
+  @media(max-width:640px){.td-iskelet{left:10px;right:10px;height:96px}}
   .td-hover{position:absolute;top:8px;transform:translateX(-50%);margin-left:16px;padding:3px 7px;border-radius:6px;
     background:rgba(244,241,233,.92);color:var(--pj-ink);font-size:10px;font-weight:800;pointer-events:none;z-index:4}
   .td-hover[hidden]{display:none}
@@ -286,6 +296,12 @@
   .td-klasor-etiket{margin:0 0 4px;font-size:9px;font-weight:900;letter-spacing:.2em;color:var(--pj-soluk)}
   .td-klasor-zaman{margin:0;font-family:var(--pj-serif);font-style:italic;font-size:30px;line-height:1;color:var(--pj-krem)}
   .td-klasor-arac{display:flex;gap:8px;flex-wrap:wrap}
+  .td-zaman-kutu{width:6.2em;padding:2px 8px;margin-left:-8px;border-radius:10px;border:1px dashed rgba(244,241,233,.28);
+    background:transparent;color:var(--pj-krem);font:inherit;font-family:var(--pj-serif);font-style:italic;font-size:30px;line-height:1.1}
+  .td-zaman-kutu:hover{border-color:rgba(216,187,44,.5)}
+  .td-zaman-kutu:focus{outline:none;border-style:solid;border-color:var(--pj-altin);background:rgba(216,187,44,.06)}
+  .td-zaman-kutu.hatali{border-color:var(--pj-pembe)}
+  @media(max-width:640px){.td-zaman-kutu{font-size:26px}}
   .td-dinle{padding:10px 16px;border-radius:999px;border:1px solid rgba(216,187,44,.5);background:rgba(216,187,44,.12);
     color:var(--pj-altin2);font:inherit;font-size:10px;font-weight:900;letter-spacing:.12em;cursor:pointer}
   .td-dinle:hover{background:rgba(216,187,44,.22)}
@@ -424,6 +440,7 @@
 <script src="audio-file-types.js?v=3"></script>
 <script src="project-track-controls.js?v=1"></script>
 <script src="sortable-touch.js?v=1"></script>
-<script src="projects.js?v=20261013b"></script>
+<script src="dalga-tepeleri.js?v=1"></script>
+<script src="projects.js?v=20261013c"></script>
 </body>
 </html>
