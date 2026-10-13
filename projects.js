@@ -528,7 +528,39 @@
   // Ableton tarzı çizim: gri-mavi klip zemini üzerinde, her kanal kendi şeridinde
   // (stereo: üstte sol, altta sağ), içi dolu koyu kontur. Her ekran pikseli o
   // aralığın gerçek en düşük/en yüksek örneğini gösterir — yaklaştıkça ayrıntı artar.
-  const RENK={zemin:'#5d7682',zeminCalan:'#6d8778',izgara:'rgba(10,14,16,.22)',ayrac:'rgba(10,14,16,.35)',dalga:'#121314',bos:'rgba(18,19,20,.35)'};
+  // Klip zemini rengi (Ableton'daki klip renkleri gibi). Dalga rengi zemine göre
+  // kendiliğinden seçilir: açık zeminde koyu, koyu zeminde açık — her renkte net okunur.
+  // Seçim yalnız bu cihazda hatırlanır.
+  const ZEMINLER=[
+    {k:'arduvaz',ad:'Arduvaz',renk:'#5d7682'},
+    {k:'kum',ad:'Kum',renk:'#c9b98c'},
+    {k:'altin',ad:'Altın',renk:'#d8bb2c'},
+    {k:'mercan',ad:'Mercan',renk:'#e07a5f'},
+    {k:'gul',ad:'Gül',renk:'#d06a92'},
+    {k:'lavanta',ad:'Lavanta',renk:'#9a8bd0'},
+    {k:'nane',ad:'Nane',renk:'#7fc3a3'},
+    {k:'gece',ad:'Gece',renk:'#1c1f26'}
+  ];
+  const ZEMIN_ANAHTAR='derin:dalga-zemin';
+  let zeminKodu='arduvaz';
+  try{ const z=localStorage.getItem(ZEMIN_ANAHTAR); if(ZEMINLER.some(x=>x.k===z))zeminKodu=z; }catch{}
+  const hexRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+  const karis=(a,b,o)=>{const x=hexRgb(a),y=hexRgb(b);return 'rgb('+x.map((v,i)=>Math.round(v*(1-o)+y[i]*o)).join(',')+')';};
+  function renkler(){
+    const z=(ZEMINLER.find(x=>x.k===zeminKodu)||ZEMINLER[0]).renk;
+    const [r,g,b]=hexRgb(z), parlak=(0.299*r+0.587*g+0.114*b)/255>0.42;
+    const ink=parlak?'10,12,14':'244,241,233';
+    return {
+      zemin:z,
+      zeminCalan:karis(z,parlak?'#000000':'#e8d15a',parlak?0.12:0.22), // çalınmış kısım bir ton farklı
+      izgara:`rgba(${ink},${parlak?.2:.12})`,
+      ayrac:`rgba(${ink},${parlak?.3:.18})`,
+      dalga:parlak?'#121314':'#ece6d6',
+      bos:`rgba(${ink},.35)`,
+      calanCizgi:parlak?'#ffffff':'#e8d15a'
+    };
+  }
+  let RENK=renkler();
   function izgaraAdimi(aralik){ // ~8–16 çizgi olacak şekilde saniye adımı
     for(const a of [.1,.25,.5,1,2,5,10,15,30,60]) if(aralik/a<=16)return a;
     return 120;
@@ -601,7 +633,7 @@
       for(let y=0;y<H;y+=6*dpr)ctx.fillRect(hx,y,Math.max(1,Math.round(dpr)),3*dpr);
     }
     if(cur>=from&&cur<=to){
-      ctx.fillStyle='#f4f1e9'; ctx.fillRect(Math.round(curX)-Math.round(dpr),0,Math.max(2,Math.round(2*dpr)),H);
+      ctx.fillStyle=RENK.calanCizgi; ctx.fillRect(Math.round(curX)-Math.round(dpr),0,Math.max(2,Math.round(2*dpr)),H);
     }
   }
 
@@ -741,6 +773,10 @@
           </div>`).join('')}
         </div>
         <div class="td-cetvel">${[0,.25,.5,.75,1].map(r=>`<span style="left:${r*100}%">${mmss(r*dur)}</span>`).join('')}</div>
+      </div>
+      <div class="td-zeminler" role="radiogroup" aria-label="Dalga formu arka plan rengi">
+        <span>ZEMİN</span>
+        ${ZEMINLER.map(z=>`<button type="button" role="radio" aria-checked="${z.k===zeminKodu}" class="td-zemin${z.k===zeminKodu?' secili':''}" data-tdzemin="${z.k}" style="--z:${z.renk}" title="${z.ad}" aria-label="${z.ad}"></button>`).join('')}
       </div>
 
       <div class="td-addbtn-row">
@@ -929,6 +965,13 @@
     const zamanAl=(el,e,from,to)=>{const r=el.getBoundingClientRect();return from+Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*(to-from);};
     const git=t=>{ detail.curTime=Math.max(0,Math.min(detail.duration||0,t)); if(audio)audio.currentTime=detail.curTime; updateDetailProgress(); };
     const hoverEl=root.querySelector('[data-tdhover]');
+    // Zemin rengi: tek dokunuşla değişir, ekran yeniden kurulmadan dalgalar yeniden boyanır.
+    root.querySelectorAll('[data-tdzemin]').forEach(b=>b.onclick=()=>{
+      zeminKodu=b.dataset.tdzemin; RENK=renkler();
+      try{localStorage.setItem(ZEMIN_ANAHTAR,zeminKodu);}catch{}
+      root.querySelectorAll('[data-tdzemin]').forEach(x=>{const s=x===b; x.classList.toggle('secili',s); x.setAttribute('aria-checked',String(s));});
+      cizimYenile();
+    });
     if(ana&&detail.peaks){
       cizimYenile();
       ana.onclick=e=>git(zamanAl(ana,e,0,detail.duration));
