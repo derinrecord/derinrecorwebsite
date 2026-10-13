@@ -3,6 +3,14 @@
   const GROUPS=[{t:'BEKLEYEN PROJELER',has:s=>s==='pending'},{t:'YAPIM SÜRECİNDE',has:s=>['approved','started','production','finishing'].includes(s)},{t:'TAMAMLANAN',has:s=>s==='delivered'}];
   const list=document.querySelector('#list'), status=document.querySelector('#s');
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  // "3 gün önce" gibi okunur zaman; bir haftadan eskiyse kısa tarih.
+  const goreli=v=>{
+    const t=new Date(v).getTime(); if(!isFinite(t))return '';
+    const fark=Math.max(0,Date.now()-t), dk=Math.round(fark/6e4), sa=Math.round(fark/36e5), gn=Math.round(fark/864e5);
+    if(dk<1)return 'az önce'; if(dk<60)return dk+' dk önce'; if(sa<24)return sa+' saat önce';
+    if(gn<7)return gn+' gün önce';
+    return new Date(t).toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});
+  };
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
   let client=null,admin=false,me=null,projects=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false;
@@ -96,20 +104,20 @@
   }
 
   const bar=st=>{const at=STAGES.findIndex(s=>s.k===st);
-    return `<div class="stage-bar"><div class="stage-row">${STAGES.map((s,i)=>`<div class="stage-step ${at<0?'':i<at?'done':i===at?'now':''}"><div class="stage-dot"></div>${s.l}</div>`).join('')}</div></div>`;};
+    const yuzde=at<0?0:Math.round((at+1)/STAGES.length*100);
+    return `<div class="stage-bar"><div class="stage-ust"><span>ÜRETİM SÜRECİ</span><b>%${yuzde}</b></div><div class="stage-row">${STAGES.map((s,i)=>`<div class="stage-step ${at<0?'':i<at?'done':i===at?'now':''}"><div class="stage-dot"></div>${s.l}</div>`).join('')}</div></div>`;};
 
   function trackBlock(tr,i,p){
     const has=!!tr.audio_path;
     const renkler=['aerobik','acrobatik','artistik','ritmik','trambolin'];
     const renk=renkler[i%renkler.length];
-    return `<div class="proj-cassette-card ${renk}" data-tb="${tr.id}" data-tdopen="${tr.id}" style="cursor:pointer">
-      <span class="card-number">${String(i+1).padStart(2,'0')}</span>
-      <img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti">
-      <div class="card-meta">
-        <strong>${safe(tr.label||'Parça')}</strong>
-        <span>${has?('v'+tr.version+' · düzenlenmiş'):'ham kaynak'} →</span>
-      </div>
-    </div>`;
+    return `<button type="button" class="proj-track" data-tb="${tr.id}" data-tdopen="${tr.id}">
+      <span class="pt-no">${String(i+1).padStart(2,'0')}</span>
+      <span class="pt-kaset ${renk}"><img src="assets/demo-cassette-derin-record.png" alt="" loading="lazy"></span>
+      <span class="pt-ad"><strong>${safe(tr.label||'Parça')}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small></span>
+      <span class="pt-surum${has?' hazir':''}">v${safe(tr.version||1)}</span>
+      <span class="pt-ok" aria-hidden="true">→</span>
+    </button>`;
   }
 
   // Kart gövdesini "katla/aç": sınıfı değiştirmek yeterli (CSS yüksekliği
@@ -134,11 +142,17 @@
     const trs=tracks[p.id]||[], fbs=(feedback[p.id]||[]).filter(f=>f.start_sec==null);
     const katli=!!katliProjeler[p.id];
     const asama=p.status==='pending'?'BEKLİYOR':((STAGES.find(s=>s.k===p.status)||{}).l||'');
-    return `<article class="proj-card${katli?' katli':''}">
+    const durum=p.status==='pending'?'bekliyor':p.status==='delivered'?'teslim':'yapim';
+    const kim=admin?(names[p.coach_id]||'Antrenör'):'Derin Record × sen';
+    const no=String(projects.indexOf(p)+1).padStart(2,'0');
+    const notSayisi=fbs.length;
+    return `<article class="proj-card${katli?' katli':''}" data-durum="${durum}">
       <div class="proj-head" data-projfold="${p.id}" role="button" tabindex="0" aria-expanded="${katli?'false':'true'}" aria-controls="proj-body-${p.id}">
+        <span class="proj-no" aria-hidden="true">${no}</span>
         <div class="proj-head-main">
+          <p class="proj-kicker">${p.branch?safe(String(p.branch).toLocaleUpperCase('tr-TR'))+' · ':''}${safe(kim)}</p>
           <h3>${safe(p.title||'Proje')}</h3>
-          <p class="meta">${safe(admin?(names[p.coach_id]||'Antrenör'):'Sana ait proje')}${p.branch?' · '+safe(p.branch):''} · ${new Date(p.updated_at||p.created_at).toLocaleString('tr-TR')}</p>
+          <p class="meta">${trs.length} parça · ${notSayisi} not · ${safe(goreli(p.updated_at||p.created_at))} güncellendi</p>
         </div>
         <span class="proj-stage-chip">${asama}</span>
         <span class="proj-fold-label">${katli?'AÇ':'KATLA'}</span>
@@ -146,22 +160,26 @@
       </div>
       <div class="proj-fold" id="proj-body-${p.id}">
       <div class="proj-fold-inner"${katli?' inert':''}>
-      ${p.status==='pending'?'<p class="meta">Onay bekliyor.</p>':bar(p.status)}
-      <div class="proj-tracks-grid">${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<div class="proj-cassette-card proj-empty-track"><span class="card-number">—</span><img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti"><p class="meta">Henüz parça eklenmedi.</p></div>`}</div>
-      ${admin?`<div class="proj-actions">
-        <label class="proj-add-track">YENİ PARÇA EKLE <input type="file" accept="${SES_ACCEPT}" data-addtrack="${p.id}" hidden></label>
-        <select data-stage="${p.id}">
+      ${p.status==='pending'?'<div class="pj-bekleme"><strong>ONAY BEKLİYOR</strong>Talep Derin Record\'a ulaştı. Onaylandığında üretim süreci burada adım adım ilerler.</div>':bar(p.status)}
+      <p class="pj-baslik"><span>PARÇALAR</span><i>${trs.length}</i></p>
+      <div class="proj-tracks">${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<p class="proj-empty-track">Henüz parça yok. İlk taslak yüklendiğinde burada görünecek.</p>`}</div>
+      ${admin?`<div class="proj-actions proj-yonetim"><span>YÖNETİM</span>
+        <label class="proj-add-track">+ YENİ PARÇA <input type="file" accept="${SES_ACCEPT}" data-addtrack="${p.id}" hidden></label>
+        <select data-stage="${p.id}" aria-label="Proje aşaması">
           <option value="pending"${p.status==='pending'?' selected':''}>Bekliyor</option>
           ${STAGES.map(s=>`<option value="${s.k}"${p.status===s.k?' selected':''}>${s.l}</option>`).join('')}
         </select>
-                <button data-dlallow="${p.id}" data-on="${p.download_allowed?1:0}" style="${p.download_allowed?'border-color:rgba(24,195,125,.5);background:rgba(24,195,125,.14);color:#6ee7b0':''}">${p.download_allowed?'İNDİRME AÇIK':'İNDİRMEYE İZİN VER'}</button>
-        <button data-del="${p.id}">SİL</button></div>`:''}
-      <div class="fb-box"><ul class="fb-list">${fbs.length?fbs.map(f=>{
+        <button data-dlallow="${p.id}" data-on="${p.download_allowed?1:0}"${p.download_allowed?' class="aktif"':''}>${p.download_allowed?'✓ İNDİRME AÇIK':'İNDİRMEYE İZİN VER'}</button>
+        <button data-del="${p.id}" class="tehlike">SİL</button></div>`:''}
+      <div class="fb-box"><p class="pj-baslik"><span>NOTLAR</span><i>${notSayisi}</i></p>
+      <ul class="fb-list">${fbs.length?fbs.map(f=>{
         const t=trs.find(x=>x.id===f.track_id);
-        return `<li>${safe(f.body)}${t?` [${safe(t.label)}]`:''}<small>${f.author_id===p.coach_id?'Antrenör':'Derin Record'} · ${new Date(f.created_at).toLocaleString('tr-TR')}</small></li>`;
-      }).join(''):'<li style="opacity:.45">Henüz geri bildirim yok.</li>'}</ul>
-      <textarea data-fb="${p.id}" placeholder="Geri bildirim yaz…"></textarea>
-      <div class="proj-actions"><button data-fbsend="${p.id}">GÖNDER</button></div></div>
+        const antrenor=f.author_id===p.coach_id;
+        const ad=antrenor?(admin?(names[p.coach_id]||'Antrenör'):'Sen'):'Derin Record';
+        return `<li><span class="fb-av${antrenor?'':' stu'}" aria-hidden="true">${safe(ad.trim().charAt(0).toLocaleUpperCase('tr-TR'))}</span><div class="fb-govde">${safe(f.body)}${t?` <em>· ${safe(t.label)}</em>`:''}<small>${safe(ad)} · ${safe(goreli(f.created_at))}</small></div></li>`;
+      }).join(''):'<li class="bos">Henüz not yok. İlk notu sen bırak.</li>'}</ul>
+      <div class="fb-yaz"><textarea data-fb="${p.id}" rows="1" placeholder="Not yaz…" aria-label="Not yaz"></textarea>
+      <button data-fbsend="${p.id}">GÖNDER</button></div></div>
       </div>
       </div>
     </article>`;
@@ -175,14 +193,30 @@
       openTrackId=null;
     }
     const groupsHtml=GROUPS.map(g=>{const it=projects.filter(p=>g.has(p.status));
-      return `<section class="proj-group"><h2>${g.t} (${it.length})</h2>${it.length?it.map(card).join(''):'<p class="proj-empty">Bu grupta proje yok.</p>'}</section>`;}).join('');
-    list.innerHTML=`<button type="button" class="proj-fab" id="proj-fab-btn" aria-label="Yeni proje klasörü aç" title="Yeni proje klasörü aç">${newFolderOpen?'×':'+'}</button>
+      return `<section class="proj-group"><h2>${g.t} <i>${it.length}</i></h2>${it.length?it.map(card).join(''):'<p class="proj-empty">Bu grupta proje yok.</p>'}</section>`;}).join('');
+    list.innerHTML=`<button type="button" class="proj-fab" id="proj-fab-btn" aria-label="Yeni proje klasörü aç" title="Yeni proje klasörü aç"><b>${newFolderOpen?'×':'+'}</b><span>${newFolderOpen?'KAPAT':'YENİ PROJE'}</span></button>
       ${newFolderOpen?newFolderPanel():''}
       ${groupsHtml}`;
-    status.textContent=projects.length?`${projects.length} proje · anlık güncellenir.`:'Henüz proje yok.';
+    status.textContent=projects.length?'● Canlı — değişiklikler anında yansır':'Henüz proje yok.';
+    ozetCiz();
     const foldAll=document.querySelector('#foldall');
     if(foldAll){ foldAll.hidden=!projects.length; tumunuKatlaEtiketiniYenile(); }
     wire();
+  }
+
+  // Üstteki dört sayı: tek bakışta durum.
+  function ozetCiz(){
+    const kutu=document.querySelector('#ozet'); if(!kutu)return;
+    if(!projects.length){kutu.hidden=true;return;}
+    const say=f=>projects.filter(p=>f(p.status)).length;
+    const parca=projects.reduce((n,p)=>n+(tracks[p.id]||[]).length,0);
+    kutu.innerHTML=[
+      ['vurgu',say(s=>['approved','started','production','finishing'].includes(s)),'YAPIMDA'],
+      ['',say(s=>s==='pending'),'ONAY BEKLİYOR'],
+      ['',say(s=>s==='delivered'),'TESLİM EDİLDİ'],
+      ['',parca,'PARÇA']
+    ].map(([c,n,l])=>`<div class="${c}"><b>${n}</b><span>${l}</span></div>`).join('');
+    kutu.hidden=false;
   }
 
   function newFolderPanel(){
