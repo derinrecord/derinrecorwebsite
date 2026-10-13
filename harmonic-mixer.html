@@ -25,6 +25,15 @@
   .hm-track.sel{border-color:#e0c341;box-shadow:0 0 0 3px rgba(224,195,65,.16)}
   .hm-track strong{font-size:13px;font-weight:600}
   .hm-track small{display:block;opacity:.55;font-size:11px;margin-top:2px}
+  .hm-mini{min-height:40px;padding:0 12px;border-radius:11px;font:inherit;font-size:11px;font-weight:600;
+    letter-spacing:.04em;white-space:nowrap;cursor:pointer;touch-action:manipulation}
+  .hm-mini-ekle{border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a}
+  .hm-mini-sil{border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit}
+  .hm-mini:focus-visible{outline:2px solid #e8d15a;outline-offset:2px}
+  /* Katalog sol sütunda dar (≤340px): düğmeler her genişlikte parça adının altına iner. */
+  .hm-track:has(.hm-eylem){flex-wrap:wrap}
+  .hm-eylem{display:flex;gap:7px;align-items:center;flex:1 1 100%}
+  .hm-eylem .hm-mini-ekle{flex:1}
 
   .hm-key{flex:0 0 auto;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;
     letter-spacing:.04em;background:rgba(224,195,65,.16);color:#e8d15a;border:1px solid rgba(224,195,65,.35)}
@@ -91,7 +100,7 @@
 <!-- Ses dosyası yardımcıları: tek nesne sınırını aşan kayıtlar parçalanarak yüklenir. -->
 <script src="audio-file-types.js?v=3"></script>
 <script src="harmonic-set.js?v=8"></script>
-<script src="harmonic-mixer.js?v=11"></script>
+<script src="harmonic-mixer.js?v=12"></script>
   <script src="harmonic-analyze.js?v=1"></script>
 </body>
 </html>

@@ -549,9 +549,9 @@
             ${tracks.map(t => `
               <div class="hm-track ${selected?.id === t.id ? 'sel' : ''}" data-pick="${t.id}">
                 <span><strong>${safe(t.title)}</strong><small>${meta(t)}</small></span>
-                <span style="display:flex;gap:7px;align-items:center">${keyChip(t)}
-                  <button data-push="${t.id}" style="padding:4px 9px;border-radius:9px;font-size:10px;border:1px solid rgba(224,195,65,.5);background:rgba(224,195,65,.14);color:#e8d15a;cursor:pointer">SETE EKLE</button>
-                  <button data-del="${t.id}" style="padding:4px 9px;border-radius:9px;font-size:10px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer">SİL</button></span>
+                <span class="hm-eylem">${keyChip(t)}
+                  <button class="hm-mini hm-mini-ekle" data-push="${t.id}" aria-label="${safe(t.title)} — sete ekle">SETE EKLE</button>
+                  <button class="hm-mini hm-mini-sil" data-del="${t.id}" aria-label="${safe(t.title)} — sil">SİL</button></span>
               </div>`).join('') || '<p style="opacity:.5;font-size:13px">Katalog boş. Yukarıdan parça ekle.</p>'}
 
             ${selected ? `<div class="hm-edit">
