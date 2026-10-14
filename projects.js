@@ -907,7 +907,7 @@
       </div>
       <div class="td-desc" id="td-bilgi"${bilgiAcik?'':' hidden'}>
         <p><strong>Dinle:</strong> Dalgaya dokun, o yerden çalar.</p>
-        <p><strong>İşaretle:</strong> Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek ya da ince ayarla kaydırabilirsin.${admin?' Kayıtlı işaretleri de taşıyabilirsin; yeni yeri kendiliğinden kaydedilir.':''}</p>
+        <p><strong>İşaretle:</strong> Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek ya da ince ayarla kaydırabilirsin.${admin?' Kayıtlı işaretleri de taşıyabilirsin; yeni yeri kendiliğinden kaydedilir.':' Kendi kaydettiğin işaretleri de taşıyabilirsin; yeni yeri kendiliğinden kaydedilir.'}</p>
         <p><strong>Yakınlaştır:</strong> − / + düğmeleri, telefonda iki parmak, bilgisayarda Ctrl/⌘ + tekerlek. Yakınken sağa-sola sürükleyerek gezin.</p>
         <p><strong>Renk:</strong> Alttaki yuvarlak simgeden dalganın zemin rengini seç.</p>
       </div>
@@ -1108,12 +1108,12 @@
     }
   }
 
-  // Taslak işaretleri herkes, kayıtlı işaretleri yalnız yönetici taşır
-  // (veritabanında notu güncelleme izni yalnız yöneticide).
-  const tasinabilir=p=>!!p&&(!p.saved||admin);
+  // Taslak işaretleri herkes taşır. Kayıtlı işareti yönetici her zaman, antrenör yalnız
+  // kendi yazdığı notu taşıyabilir (supabase/not-zamani-tasima.sql: yalnız zaman alanı değişir).
+  const tasinabilir=p=>!!p&&(!p.saved||admin||(!!p.yazar&&p.yazar===me));
   let kayitZamanlayici=null;
   function zamaniKaydet(p){
-    if(!p||!p.saved||!p.dbId||!admin)return;
+    if(!p||!p.saved||!p.dbId||!tasinabilir(p))return;
     clearTimeout(kayitZamanlayici);
     kayitZamanlayici=setTimeout(async()=>{
       const eski=p.kayitliZaman, yeni=Math.round(p.time*10)/10;
