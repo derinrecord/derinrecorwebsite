@@ -9,18 +9,21 @@
  */
 
 :root{
-  --bg:#0a0a0c;
+  /* Palet marka sunumuyla (marka-sunum.css) aynı: mürekkep, krem, altın,
+     pembe. Değişken adları korundu — panelin tamamı bunlara bağlı. */
+  --bg:#0b0b0d;
   --surface:rgba(255,255,255,.055);
   --surface-2:rgba(255,255,255,.09);
   --surface-3:rgba(255,255,255,.13);
-  --line:rgba(255,255,255,.13);
+  --line:rgba(255,255,255,.16);
   --line-2:rgba(255,255,255,.26);
-  --txt:#f4f2ee;
-  --muted:rgba(244,242,238,.64);
-  --muted-2:rgba(244,242,238,.42);
-  --gold:#d4c24e;
-  --gold-ink:#14120a;
-  --purple:#a855f7;
+  --txt:#f4f1e9;
+  --muted:rgba(244,241,233,.64);
+  --muted-2:rgba(244,241,233,.42);
+  --gold:#e8d15a;
+  --pink:#cb2468;   /* Derin Record imzası: vurgu ve arka plan tramı */
+  --cream:#f4f1e9;
+  --gold-ink:#141209;
   --live:#22c98a;
   --danger:#ff5f6d;
   --warn:#f0a132;
@@ -35,11 +38,39 @@ body{
   font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;
 }
-body::before,body::after{content:"";position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
-body::before{width:560px;height:560px;background:#c98a4b;opacity:.16;top:-220px;left:-160px}
-body::after{width:520px;height:520px;background:#3b6ea5;opacity:.14;bottom:-240px;right:-140px}
+
+/* ---------- Arka plan: marka sunumuyla aynı doku ----------
+   İki sabit katman, ikisi de içeriğin arkasında ve tıklamayı geçirir:
+   (1) halftone nokta tramı — 17px ızgara, pembe. Kenarlarda yoğun, ortada
+       seyrek; tabloların arkası sakin kalsın diye maskeyle eritilir.
+   (2) soluk kaset filigranları — griye çevrilmiş, dağınık.
+   Panelin kartları yarı saydam olduğu için doku aralarından görünür. */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.34;
+  background-image:radial-gradient(circle,var(--pink) 1.4px,transparent 2.1px);
+  background-size:17px 17px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 42%,transparent 32%,#000 86%);
+  mask-image:radial-gradient(ellipse at 50% 42%,transparent 32%,#000 86%);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.055;
+  background-image:url('assets/kaset-filigran.png'),url('assets/kaset-filigran.png');
+  background-repeat:no-repeat,no-repeat;
+  background-size:min(430px,38vw) auto,min(330px,30vw) auto;
+  background-position:right -70px top 8%,left -60px bottom 10%;
+  filter:grayscale(1) contrast(1.1) brightness(1.7);
+}
+/* Panelin kendi katmanları dokunun ÜSTÜNDE kalmalı. */
+.rail,.app,.drawer,.modal-wrap,.player,.toast,.backdrop{position:relative;z-index:1}
+.modal-wrap,.drawer,.backdrop,.player,.toast{z-index:60}
+@media(max-width:700px){
+  /* Telefonda ekran dar: tram seyrelir, filigranlardan biri kalkar. */
+  body::before{opacity:.22}
+  body::after{background-image:url('assets/kaset-filigran.png');
+    background-size:min(260px,54vw) auto;background-position:right -50px top 6%}
+}
 a{color:inherit;text-decoration:none}
-::selection{background:rgba(212,194,78,.35)}
+::selection{background:rgba(232,209,90,.35)}
 
 button,input,select,textarea{font:inherit;color:inherit}
 /* :where(...) özgüllüğü sıfırlar: aksi hâlde :not() zinciri (0,3,1)'e çıkar ve
@@ -166,7 +197,6 @@ a.nav-item{text-decoration:none}
 .chip.off{color:rgba(244,242,238,.55)}
 .chip.lock{color:#ffd9a1;border-color:rgba(240,161,50,.5);background:rgba(240,161,50,.16)}
 .chip.gold{color:#f4eaa4;border-color:rgba(212,194,78,.5);background:rgba(212,194,78,.16)}
-.chip.purple{color:#e3ccff;border-color:rgba(168,85,247,.5);background:rgba(168,85,247,.16)}
 .chip.danger{color:#ffc9d0;border-color:rgba(255,95,109,.5);background:rgba(255,95,109,.16)}
 .chip i{width:6px;height:6px;border-radius:50%;background:currentColor}
 
