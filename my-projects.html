@@ -481,6 +481,17 @@
   .proj-bildirim-kopyala{padding:8px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.28);
     background:rgba(255,255,255,.08);color:inherit;font:inherit;font-size:11px;letter-spacing:.05em;cursor:pointer}
   .proj-bildirim-kopyala:hover{background:rgba(255,255,255,.16)}
+
+  /* iPhone'da sayfanın sağa sola kaymasını önler:
+     1) 16 pikselden küçük yazı/seçim kutusuna dokununca Safari sayfayı büyütüp öyle bırakıyor
+        → telefonda tüm kutular en az 16 piksel (zaman kutusu zaten büyük).
+     2) Düğmelere hızlı art arda dokunmak "çift dokun-büyüt" sayılıyor
+        → düğme ve sekmelerde yalnız çift dokunma büyütmesi kapalı; iki parmakla büyütme açık kalır. */
+  button,a,label,select,summary,.td-sekme,.proj-head,.proj-track{touch-action:manipulation}
+  @media(max-width:640px){
+    textarea,select,
+    input:not([type=file]):not([type=range]):not([type=color]):not([type=checkbox]):not([type=radio]):not(.td-zaman-kutu){font-size:16px!important}
+  }
 </style>
 </head>
 <body>
@@ -510,6 +521,6 @@
 <script src="project-track-controls.js?v=1"></script>
 <script src="sortable-touch.js?v=1"></script>
 <script src="dalga-tepeleri.js?v=2"></script>
-<script src="projects.js?v=20261014e"></script>
+<script src="projects.js?v=20261014f"></script>
 </body>
 </html>
