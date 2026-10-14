@@ -60,6 +60,7 @@
   const sayacYazisi = n => (!n || n < 1) ? '' : (n > 99 ? '99+' : String(n));
   // Rozet görünümü auth.js ile gelir (auth.css sürümsüz yüklendiği için telefon eski kopyayı tutabiliyor).
   function sayacStiliEkle() {
+    if (typeof document.getElementById !== 'function' || typeof document.createElement !== 'function') return;
     if (document.getElementById('bildirim-sayac-stili')) return;
     const st = document.createElement('style'); st.id = 'bildirim-sayac-stili';
     st.textContent = '.bildirim-sayac{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:8px;border-radius:9px;background:#cb2468;color:#fff;font:800 .62rem/1 Arial,sans-serif;letter-spacing:0;vertical-align:middle;box-sizing:border-box}'
