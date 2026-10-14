@@ -2,6 +2,12 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
+<!-- 2026-10-14: Sohbet sitede gizlendi (Derin'in isteği). Dosyalar ve
+     direct_messages tablosundaki mesajlar SİLİNMEDİ; geri açmak için bu iki
+     satırı kaldırıp auth.js menüsüne SOHBET bağlantısını eklemek yeter.
+     Müzik araştırma istekleri artık bildirimler.html'de onaylanır. -->
+<meta http-equiv="refresh" content="0;url=index.html">
+<script>location.replace('index.html');</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sohbet — Derin Record</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
@@ -24,7 +30,7 @@
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
-<script src="auth.js?v=20261010"></script>
+<script src="auth.js?v=20261014"></script>
 <script src="audio-file-types.js?v=3"></script>
 <script src="chat.js?v=27"></script>
 </body>

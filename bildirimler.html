@@ -1,0 +1,22 @@
+<!doctype html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bildirimler — Derin Record</title><link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"><link rel="stylesheet" href="branch.css"><link rel="stylesheet" href="auth.css"><link rel="stylesheet" href="glass.css?v=2" /><style>
+.bild-ozet{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.bild-filtre{appearance:none;border:1px solid rgba(255,255,255,.18);background:transparent;color:inherit;font:inherit;font-weight:800;font-size:12px;letter-spacing:.06em;padding:9px 16px;border-radius:999px;cursor:pointer}
+.bild-filtre.aktif{background:#e6cf55;border-color:#e6cf55;color:#181516}
+.bild-list{display:flex;flex-direction:column;gap:16px;margin-top:22px}
+.bild-card{position:relative;padding:22px 24px;border-radius:20px;background:radial-gradient(circle at 15% 10%,rgba(255,45,150,.16),transparent 55%),#141018;border:1px solid rgba(255,255,255,.1);box-shadow:0 16px 40px rgba(0,0,0,.35);border-left:4px solid #e6cf55}
+.bild-card.onayli{border-left-color:#3ccf7a;opacity:.82}
+.bild-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.bild-name{font-weight:800;font-size:17px}
+.bild-etiket{display:inline-flex;align-items:center;background:#e6cf55;color:#181516;font-weight:800;font-size:11px;letter-spacing:.05em;padding:5px 12px;border-radius:999px}
+.bild-card.onayli .bild-etiket{background:#3ccf7a}
+.bild-date{font-size:12px;opacity:.6}
+.bild-baslik{font-weight:700;font-size:15px;margin:0 0 8px}
+.bild-parcalar{margin:0 0 10px;padding-left:20px;font-size:14px;line-height:1.6}
+.bild-parcalar a{color:#7fe3ff;text-decoration:none;word-break:break-word}
+.bild-not{font-size:14px;line-height:1.5;opacity:.9;white-space:pre-wrap;margin:0 0 12px}
+.bild-onay{appearance:none;border:0;background:#e6cf55;color:#181516;font:inherit;font-weight:900;font-size:13px;letter-spacing:.04em;padding:12px 18px;border-radius:12px;cursor:pointer;min-height:44px}
+.bild-onay:disabled{opacity:.6;cursor:wait}
+.bild-hata{color:#ff8fb8;font-size:13px;margin-top:8px}
+.bild-empty{opacity:.7;margin-top:24px}
+@media(max-width:560px){.bild-card{padding:18px}.bild-onay{width:100%}}
+</style></head><body><div class="noise"></div><header class="header"><a class="home" href="index.html"><span>←</span> SİTEYE DÖN</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header><main class="admin-main"><p class="eyebrow">ANTRENÖR İSTEKLERİ</p><h1>BİLDİRİMLER.</h1><p id="bild-status">Hesap kontrol ediliyor…</p><section id="bild-app" hidden></section></main><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="auth.js?v=20261014"></script><script src="bildirimler.js?v=1"></script></body></html>

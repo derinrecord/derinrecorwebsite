@@ -92,9 +92,10 @@
     zone.addEventListener('drop',e=>{e.preventDefault();drop();});
     zone.addEventListener('click',drop);   // dokunmatik cihazlar için
 
-    // Not: artık projeyi doğrudan oluşturmuyoruz — istek önce Derin'e SOHBET
-    // mesajı olarak gider; Derin sohbette "ONAYLA" dedikten sonra proje
-    // Projelerim sayfasına düşer (hem antrenörde hem Derin'de).
+    // Not: projeyi doğrudan oluşturmuyoruz — istek önce Derin'e gider ve
+    // yöneticinin BİLDİRİMLER sayfasına düşer (bildirimler.js). Derin orada
+    // "ONAYLA" dedikten sonra proje Projelerim sayfasına düşer. Sohbet
+    // sayfası 2026-10-14'te gizlendi; istekler yine direct_messages tablosunda.
     sendBtn.onclick=async()=>{
       sendBtn.disabled=true; status.textContent='Gönderiliyor…';
       const title=pending.length>1?`${f.branch.value} · ${pending.length} parça birleşimi`:`${f.branch.value} · ${pending[0].label}`;
@@ -107,7 +108,7 @@
       const body=`[Müzik araştırma isteği] ${title}\n${listText}${note?`\nNot: ${note}`:''}\n\n__DATA__:${JSON.stringify(payload)}`;
       const { error }=await client.from('direct_messages').insert({recipient_id:adminRes.data,body});
       if(error){status.textContent='Gönderilemedi: '+error.message;sendBtn.disabled=false;return;}
-      status.textContent='Gönderildi. Derin sohbette onaylayınca Projelerim sayfasından takip edebilirsin.';
+      status.textContent='Gönderildi. Derin onaylayınca Projelerim sayfasından takip edebilirsin.';
       render();
     };
   }
