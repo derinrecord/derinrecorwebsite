@@ -4,12 +4,13 @@
   const state = { client: null, user: null, profile: null, configured };
   let resolveReady;
   const ready = new Promise(resolve => { resolveReady = resolve; });
-  window.DerinAuth = { ...state, ready, open: () => openAuth('login') };
+  window.DerinAuth = { ...state, ready, open: () => openAuth('login'), _sayacYazisi: n => (!n || n < 1) ? '' : (n > 99 ? '99+' : String(n)) };
 
   const escapeHtml = value => String(value || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   const emit = () => { Object.assign(window.DerinAuth, state); window.dispatchEvent(new CustomEvent('derin:authchange', { detail: state })); };
 
   function shell() {
+    sayacStiliEkle();
     const header = document.querySelector('.header, .site-header');
     if (!header || document.querySelector('.account-actions')) return;
     const actions = document.createElement('div'); actions.className = 'account-actions';
@@ -46,9 +47,69 @@
     setNavigation(true);
     signup.hidden = true; coachAction.hidden = false;
     button.textContent = `${(state.profile?.full_name || state.user.email || 'HESABIM').toUpperCase()} · HESABIM`;
-    menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER</a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a>`;
+    menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a>`;
     menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || 'HESABIM';
+    sayaclariYaz();
   }
+
+  // ---------- Bildirim sayacı (yalnız yönetici) ----------
+  // Onay bekleyen Müzik Araştır istekleri sayılır (bildirimler.js ile aynı ölçüt).
+  // Menüdeki BİLDİRİMLER bağlantısında ve HESABIM düğmesinde görünür; 20 sn'de bir,
+  // sekmeye dönünce ve bildirimler sayfasında onay verilince tazelenir.
+  let bekleyenSayisi = 0, sayacZamanlayici = null;
+  const sayacYazisi = n => (!n || n < 1) ? '' : (n > 99 ? '99+' : String(n));
+  // Rozet görünümü auth.js ile gelir (auth.css sürümsüz yüklendiği için telefon eski kopyayı tutabiliyor).
+  function sayacStiliEkle() {
+    if (document.getElementById('bildirim-sayac-stili')) return;
+    const st = document.createElement('style'); st.id = 'bildirim-sayac-stili';
+    st.textContent = '.bildirim-sayac{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:8px;border-radius:9px;background:#cb2468;color:#fff;font:800 .62rem/1 Arial,sans-serif;letter-spacing:0;vertical-align:middle;box-sizing:border-box}'
+      + '.bildirim-sayac[hidden]{display:none}'
+      + '.account-button[data-sayac]{position:relative}'
+      + '.account-button[data-sayac]::after{content:attr(data-sayac);position:absolute;top:-9px;right:-9px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#cb2468;color:#fff;font:800 .62rem/19px Arial,sans-serif;letter-spacing:0;text-align:center;box-sizing:border-box;box-shadow:0 0 0 2px #0b0b0d;animation:bildirimGeldi .5s ease}'
+      + '@keyframes bildirimGeldi{0%{transform:scale(.4)}60%{transform:scale(1.2)}100%{transform:scale(1)}}'
+      + '@media(prefers-reduced-motion:reduce){.account-button[data-sayac]::after{animation:none}}'
+      // Telefonda başlık tek satıra sığmıyordu: HESABIM düğmesi ekrandan taşıp sayfayı
+      // sağa-sola kaydırıyordu. Dar ekranda hesap düğmeleri ikinci satıra, sağa iner.
+      + '@media(max-width:600px){.header:has(.account-actions){flex-wrap:wrap;row-gap:10px}'
+      + '.header>.account-actions{order:3;flex:1 1 100%;min-width:0;justify-content:flex-end;margin-left:0}'
+      + '.header>.account-actions .account-button{white-space:nowrap}}';
+    (document.head || document.body).appendChild(st);
+  }
+  function sayaclariYaz() {
+    if (document.head || document.body) sayacStiliEkle();
+    const yazi = sayacYazisi(bekleyenSayisi);
+    document.querySelectorAll('[data-bildirim-sayac]').forEach(el => { el.textContent = yazi; el.hidden = !yazi; });
+    const dugme = document.querySelector('.account-actions [data-login]');
+    if (dugme) {
+      if (yazi && state.user) { dugme.dataset.sayac = yazi; dugme.setAttribute('aria-label', `${dugme.textContent} — ${yazi} yeni bildirim`); }
+      else { delete dugme.dataset.sayac; dugme.removeAttribute('aria-label'); }
+    }
+  }
+  async function bildirimSay() {
+    if (!state.client || !state.user || state.profile?.role !== 'admin') return;
+    if (document.visibilityState === 'hidden') return;
+    try {
+      const { count, error } = await state.client.from('direct_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('recipient_id', state.user.id)
+        .neq('sender_id', state.user.id)
+        .is('research_project_id', null)
+        .ilike('body', '%[Müzik araştırma isteği%');
+      if (error) return;
+      bekleyenSayisi = count || 0;
+      sayaclariYaz();
+    } catch (e) { /* sayaç gösterilemezse sessizce geç; sayfa çalışmaya devam eder */ }
+  }
+  function sayaciYonet() {
+    const yonetici = !!state.user && state.profile?.role === 'admin';
+    clearInterval(sayacZamanlayici); sayacZamanlayici = null;
+    if (!yonetici) { bekleyenSayisi = 0; sayaclariYaz(); return; }
+    bildirimSay();
+    sayacZamanlayici = setInterval(bildirimSay, 20000);
+  }
+  window.addEventListener('derin:authchange', sayaciYonet);
+  window.addEventListener('derin:bildirim-yenile', bildirimSay);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') bildirimSay(); });
   function toggleMenu() { const menu = document.querySelector('.account-menu'); if (menu) menu.hidden ? openMenu(menu) : closeMenu(menu); }
 function openMenu(menu) { menu.hidden = false; document.body.classList.add('account-menu-open'); requestAnimationFrame(() => menu.classList.add('open')); }
 function closeMenu(menu) { let done = false; const finish = () => { if (done) return; done = true; menu.hidden = true; }; menu.classList.remove('open'); document.body.classList.remove('account-menu-open'); menu.addEventListener('transitionend', finish, { once: true }); setTimeout(finish, 320); }

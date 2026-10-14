@@ -111,6 +111,8 @@
     }
     status.textContent = 'Antrenörlerin Müzik Araştır istekleri. Onaylananlar Projelerim\'e düşer.';
     ciz();
+    // Menüdeki/hesap düğmesindeki bildirim sayacını da tazele.
+    window.dispatchEvent(new CustomEvent('derin:bildirim-yenile'));
   }
 
   async function basla() {
