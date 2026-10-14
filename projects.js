@@ -121,6 +121,7 @@
       <span class="pt-no">${String(i+1).padStart(2,'0')}</span>
       <span class="pt-kaset ${renk}"><img src="assets/demo-cassette-derin-record.png" alt="" loading="lazy"></span>
       <span class="pt-ad"><strong>${safe(tr.label||'Parça')}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small></span>
+      ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${n} not — parçayı açıp klasörlerde gör">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
       <span class="pt-surum${has?' hazir':''}">v${safe(tr.version||1)}</span>
       <span class="pt-ok" aria-hidden="true">→</span>
     </button>`;
@@ -145,7 +146,8 @@
   }
 
   function card(p){
-    const trs=tracks[p.id]||[], fbs=(feedback[p.id]||[]).filter(f=>f.start_sec==null);
+    // Parça notları kendi klasörlerinde durur; kartta yalnız projenin geneline yazılanlar görünür.
+    const trs=tracks[p.id]||[], fbs=(feedback[p.id]||[]).filter(f=>f.track_id==null&&f.start_sec==null);
     const katli=!!katliProjeler[p.id];
     const asama=p.status==='pending'?'BEKLİYOR':((STAGES.find(s=>s.k===p.status)||{}).l||'');
     const durum=p.status==='pending'?'bekliyor':p.status==='delivered'?'teslim':'yapim';
@@ -411,14 +413,32 @@
 
   // ---------- Parça detayı (dalga formu / nokta işaretleme) ----------
 
+  // Notun zamanı: kayıtlı zaman alanı; yoksa (klasör sistemi öncesi notlar) yazının
+  // içindeki ilk "1:05" / "0:23,4" biçimli zaman. Veritabanı değiştirilmez.
+  function metindekiZaman(body){
+    const m=/(?:^|[\s\[(·•-])(\d{1,2}):([0-5]\d)(?:[.,](\d))?(?!\d)/.exec(String(body||''));
+    // Saat gibi yazılmış zamanları (ör. 12:30) parça zamanı sanmamak için dakika 15 ile sınırlı.
+    return m&&+m[1]<=15?(+m[1]*60+ +m[2]+(m[3]?+m[3]/10:0)):null;
+  }
+  const notZamani=f=>f.start_sec!=null?Number(f.start_sec):metindekiZaman(f.body);
+  const sistemNotuMu=f=>f.kind==='system';
+  // Bir parçanın notları: zamanlı olanlar işaret klasörlerine, zamansızlar GENEL klasörüne.
+  function parcaNotlari(projectId,trackId){
+    const hepsi=(feedback[projectId]||[]).filter(f=>f.track_id===trackId&&!sistemNotuMu(f));
+    return {zamanli:hepsi.filter(f=>notZamani(f)!=null), genel:hepsi.filter(f=>notZamani(f)==null), hepsi};
+  }
+
   function syncSavedPoints(tr,project){
-    const fbs=(feedback[project.id]||[]).filter(f=>f.track_id===tr.id && f.start_sec!=null);
+    const {zamanli,genel}=parcaNotlari(project.id,tr.id);
     const draftLocal=(detail.points||[]).filter(p=>!p.saved);
-    const savedNow=fbs.map(f=>{
+    const savedNow=zamanli.map(f=>{
       const existing=(detail.points||[]).find(p=>p.dbId===f.id);
-      return {localId:existing?existing.localId:'db-'+f.id,dbId:f.id,time:Number(f.start_sec),body:f.body||'',voicePath:f.voice_path||null,voiceUrl:existing?existing.voiceUrl:null,saved:true};
+      return {localId:existing?existing.localId:'db-'+f.id,dbId:f.id,time:notZamani(f),body:f.body||'',voicePath:f.voice_path||null,
+        voiceUrl:existing?existing.voiceUrl:null,saved:true,yazar:f.author_id,tarih:f.created_at,metindenZaman:f.start_sec==null};
     });
     detail.points=[...savedNow,...draftLocal];
+    detail.genelNotlar=genel;
+    detail.proje=project;
   }
 
   // ---------- Dalga formu ----------
@@ -760,6 +780,14 @@
     </div>`;
   }
 
+  const yazarAdi=(id,project)=>{
+    if(id===me)return 'Sen';
+    if(project&&id===project.coach_id)return admin?(names[id]||'Antrenör'):'Sen';
+    return 'Derin Record';
+  };
+  const GENEL='__genel';
+  const genelSecili=()=>detail.selPointLocalId===GENEL;
+
   const klasorIkon='<svg viewBox="0 0 20 16" width="15" height="12" aria-hidden="true"><path d="M1 3.2C1 2 2 1 3.2 1h4.3l2 2.2h7.3C18 3.2 19 4.2 19 5.4v7.4c0 1.2-1 2.2-2.2 2.2H3.2C2 15 1 14 1 12.8z" fill="currentColor"/></svg>';
 
   function klasorSekmesi(p){
@@ -773,13 +801,36 @@
     </button>`;
   }
 
+  function genelSekmesi(){
+    const n=(detail.genelNotlar||[]).length, aktif=genelSecili();
+    return `<button type="button" role="tab" aria-selected="${aktif}" class="td-sekme genel${n?' saved':''}${aktif?' aktif':''}" data-tdsec="${GENEL}">
+      <span class="td-sekme-ikon">${klasorIkon}</span>
+      <span class="td-sekme-no">GENEL</span>
+      <span class="td-sekme-zaman">${n}</span>
+      <span class="td-sekme-durum">PARÇANIN GENELİ</span>
+    </button>`;
+  }
+  function genelGovdesi(){
+    const notlar=detail.genelNotlar||[];
+    return `<div class="td-klasor genel" role="tabpanel">
+      <div class="td-klasor-ust"><div>
+        <p class="td-klasor-etiket">GENEL KLASÖR · BELİRLİ BİR ANA BAĞLI OLMAYAN NOTLAR</p>
+      </div></div>
+      ${notlar.length?`<ul class="td-genel-liste">${notlar.map(f=>`<li><span class="fb-av${f.author_id===detail.proje?.coach_id?'':' stu'}" aria-hidden="true">${safe(yazarAdi(f.author_id,detail.proje).charAt(0).toLocaleUpperCase('tr-TR'))}</span>
+        <div class="fb-govde">${safe(f.body||'')}<small>${safe(yazarAdi(f.author_id,detail.proje))} · ${safe(goreli(f.created_at))}</small></div></li>`).join('')}</ul>`
+        :'<p class="td-empty">Bu klasörde henüz not yok.</p>'}
+      <div class="fb-yaz td-genel-yaz"><textarea data-tdgenelnot rows="1" placeholder="Parçanın geneli için not yaz…" aria-label="Parçanın geneli için not"></textarea>
+        <button type="button" data-tdgenelgonder>GÖNDER</button></div>
+    </div>`;
+  }
+
   // Açık klasör: yakın plan dalga + o noktanın notu.
   function klasorGovdesi(p){
     if(!p)return '';
     return `<div class="td-klasor ${p.saved?'saved':'draft'}" role="tabpanel" data-tdpoint="${p.localId}">
       <div class="td-klasor-ust">
         <div>
-          <p class="td-klasor-etiket">KLASÖR ${noktaNo(p)} · ${p.saved?'KAYITLI NOT':'TASLAK NOT'}</p>
+          <p class="td-klasor-etiket">KLASÖR ${noktaNo(p)} · ${p.saved?('NOT · '+safe(yazarAdi(p.yazar,detail.proje).toLocaleUpperCase('tr-TR'))+(p.tarih?' · '+safe(goreli(p.tarih).toLocaleUpperCase('tr-TR')):'')):'TASLAK NOT'}</p>
           <p class="td-klasor-zaman">${p.saved?`<span class="td-point-time" data-klasorzaman>${mmssOnda(p.time)}</span>`
             :`<input class="td-zaman-kutu" data-klasorzaman data-tdzamanyaz inputmode="decimal" value="${mmssOnda(p.time)}" aria-label="İşaret zamanı (dakika:saniye,onda bir)" title="Zamanı yaz, işaret oraya taşınır">`}</p>
         </div>
@@ -811,7 +862,7 @@
     const dur=detail.duration||0, cur=detail.curTime||0;
     const branchLabel=safe((project.branch||'proje').toUpperCase());
     const points=detail.points||[];
-    if(points.length&&!seciliNokta())detail.selPointLocalId=sirali()[0].localId;
+    if(!genelSecili()&&!seciliNokta())detail.selPointLocalId=points.length?sirali()[0].localId:GENEL;
     const draftCount=points.filter(p=>!p.saved).length;
     const savedCount=points.filter(p=>p.saved).length;
     const D=detail.peaks, dalgaTam=!!(D&&D.n&&D.hazir>=D.n), dalgaVar=!!(D&&D.hazir>0&&(detail.duration||D.duration));
@@ -838,10 +889,6 @@
         ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="${SES_ACCEPT}" data-newver="${tr.id}" hidden></label>`:''}
         ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
       </div>
-      ${has?`<div class="td-quicknote">
-        <input data-cut="${tr.id}" placeholder="Bu parça için genel notun (isteğe bağlı)">
-        <button type="button" data-notesend="${tr.id}">NOT GÖNDER</button>
-      </div>`:''}
 
       <hr class="td-divider">
 
@@ -891,9 +938,10 @@
       </div>
 
       <div class="td-klasorler">
-        <p class="td-klasorler-baslik">NOT KLASÖRLERİ <i>${points.length}</i></p>
-        ${points.length?`<div class="td-sekmeler" role="tablist">${sirali().map(klasorSekmesi).join('')}</div>
-        ${klasorGovdesi(seciliNokta())}`:'<p class="td-empty">Henüz işaret yok. Dinlerken değişmesini istediğin yerde “+ İşaret koy”a bas.</p>'}
+        <p class="td-klasorler-baslik">NOT KLASÖRLERİ <i>${points.length+(detail.genelNotlar||[]).length}</i></p>
+        <div class="td-sekmeler" role="tablist">${genelSekmesi()}${sirali().map(klasorSekmesi).join('')}</div>
+        ${genelSecili()?genelGovdesi():klasorGovdesi(seciliNokta())}
+        ${points.length?'':'<p class="td-empty">İşaretli bir yere not bırakmak için dinlerken “+ İşaret koy”a bas; o not kendi klasöründe durur.</p>'}
       </div>
       `:`<p class="td-empty">Bu parça için henüz ses dosyası yok.</p>`}
     </div>`;
@@ -1242,7 +1290,7 @@
     }
 
     // Klasör seçimi: klasör açılır, dalga o noktaya gider (çalma başlamaz).
-    const sec=id=>{ detail.selPointLocalId=id; const p=seciliNokta();
+    const sec=id=>{ detail.selPointLocalId=id; if(id===GENEL){ renderDetail(tr,project); return; } const p=seciliNokta();
       if(p){ detail.curTime=p.time; if(audio)audio.currentTime=p.time;
         const [ga,gb]=gorAralik(); if(yakinMi()&&(p.time<ga||p.time>gb)){ const uz=gb-ga; detail.gorunum={bas:p.time-uz/2,son:p.time+uz/2}; } }
       renderDetail(tr,project); };
@@ -1419,18 +1467,17 @@
       }
     });
 
-    root.querySelectorAll('[data-notesend]').forEach(b=>b.onclick=async()=>{
-      const inp=root.querySelector(`[data-cut="${tr.id}"]`);
-      const body=(inp?.value||'').trim();
-      b.disabled=true;
-      const {error}=await client.from('project_feedback').insert({
-        project_id:project.id,author_id:me,track_id:tr.id,kind:'note',
-        body:body||'Bu parça hakkında not.'
-      });
-      bildir(error?'Gönderilemedi: '+error.message:'Not gönderildi.',error?'hata':'ok');
-      if(!error && inp)inp.value='';
-      b.disabled=false;
-    });
+    const genelGonder=root.querySelector('[data-tdgenelgonder]');
+    if(genelGonder)genelGonder.onclick=async()=>{
+      const kutu=root.querySelector('[data-tdgenelnot]');
+      const body=(kutu?.value||'').trim();
+      if(!body){ kutu?.focus(); return; }   // boş not gönderilmez
+      genelGonder.disabled=true;
+      const {error}=await client.from('project_feedback').insert({project_id:project.id,author_id:me,track_id:tr.id,kind:'note',body});
+      bildir(error?'Gönderilemedi: '+error.message:'Not GENEL klasörüne eklendi.',error?'hata':'ok');
+      genelGonder.disabled=false;
+      if(!error){ detail.selPointLocalId=GENEL; await load(); }
+    };
   }
 
   // ---------- Liste görünümü kablolama ----------
