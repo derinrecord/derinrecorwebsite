@@ -740,6 +740,11 @@
     });
   }
 
+  // Bilgilendirme yazısı: kapalı başlar, tercih bu cihazda hatırlanır.
+  const BILGI_ANAHTAR='derin:dalga-bilgi-acik';
+  let bilgiAcik=false;
+  try{ bilgiAcik=localStorage.getItem(BILGI_ANAHTAR)==='1'; }catch{}
+
   // Zemin paleti: kapalıyken yalnız seçili rengi gösteren küçük düğme; açıkken hazır
   // renkler + kaydedilmiş özel renkler + "+" (yeni renk kaydet).
   function paletHtml(){
@@ -841,13 +846,18 @@
       <hr class="td-divider">
 
       <div class="td-shape-head">
-        <div>
+        <div class="td-shape-sol">
           <p class="td-eyebrow">BİRLİKTE ŞEKİLLENDİRELİM</p>
-          <h3 class="td-shape-title">Her değişikliğin bir işareti olsun.</h3>
+          <button type="button" class="td-bilgi-ac" data-tdbilgi aria-expanded="${bilgiAcik}" aria-controls="td-bilgi">ⓘ NASIL KULLANILIR <b aria-hidden="true">${bilgiAcik?'▴':'▾'}</b></button>
         </div>
         ${waveState?`<span class="td-badge">${waveState}</span>`:''}
       </div>
-      <p class="td-desc">Dalgaya dokun, o yerden dinle. Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek kaydırabilirsin.</p>
+      <div class="td-desc" id="td-bilgi"${bilgiAcik?'':' hidden'}>
+        <p><strong>Dinle:</strong> Dalgaya dokun, o yerden çalar.</p>
+        <p><strong>İşaretle:</strong> Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek ya da ince ayarla kaydırabilirsin.</p>
+        <p><strong>Yakınlaştır:</strong> − / + düğmeleri, telefonda iki parmak, bilgisayarda Ctrl/⌘ + tekerlek. Yakınken sağa-sola sürükleyerek gezin.</p>
+        <p><strong>Renk:</strong> Alttaki yuvarlak simgeden dalganın zemin rengini seç.</p>
+      </div>
 
       ${has?`
       <div class="td-wave-wrap${dalgaVar?'':' yukleniyor'}" data-tdwave>
@@ -1103,6 +1113,13 @@
     const git=t=>{ detail.curTime=Math.max(0,Math.min(detail.duration||0,t)); detail.takipKapali=false; if(audio)audio.currentTime=detail.curTime; updateDetailProgress(); };
     const hoverEl=root.querySelector('[data-tdhover]');
     paletBagla(root);
+    const bilgiDug=root.querySelector('[data-tdbilgi]');
+    if(bilgiDug)bilgiDug.onclick=()=>{
+      bilgiAcik=!bilgiAcik; try{localStorage.setItem(BILGI_ANAHTAR,bilgiAcik?'1':'0');}catch{}
+      const kutu=root.querySelector('#td-bilgi'); if(kutu)kutu.hidden=!bilgiAcik;
+      bilgiDug.setAttribute('aria-expanded',String(bilgiAcik));
+      const ok=bilgiDug.querySelector('b'); if(ok)ok.textContent=bilgiAcik?'▴':'▾';
+    };
     if(ana&&detail.peaks){
       cizimYenile();
       // Dokunma sürerken ekran yeniden çizilebilir (indirme biter, not gelir…); olaylar eski

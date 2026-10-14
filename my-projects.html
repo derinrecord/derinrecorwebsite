@@ -209,12 +209,21 @@
   .td-time{font-size:12px;opacity:.65;white-space:nowrap}
   .td-divider{border:none;border-top:1px solid rgba(255,255,255,.14);margin:26px 0}
 
-  .td-shape-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
-  .td-shape-title{margin:0;font-size:22px;letter-spacing:-.3px}
+  .td-shape-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .td-shape-sol{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .td-shape-sol .td-eyebrow{margin:0}
+  .td-bilgi-ac{padding:6px 12px;border-radius:999px;border:1px solid var(--pj-cizgi2);background:transparent;color:var(--pj-soluk);
+    font:inherit;font-size:9px;font-weight:900;letter-spacing:.14em;cursor:pointer}
+  .td-bilgi-ac:hover,.td-bilgi-ac[aria-expanded="true"]{color:var(--pj-krem);border-color:rgba(244,241,233,.35)}
+  .td-bilgi-ac b{font-size:10px;letter-spacing:0;margin-left:2px}
+  .td-bilgi-ac:focus-visible{outline:2px solid var(--pj-altin);outline-offset:2px}
   .td-badge{flex:0 0 auto;padding:7px 14px;border-radius:999px;border:1px solid rgba(212,194,78,.5);
     background:rgba(212,194,78,.14);color:#e9dc94;font-size:10px;font-weight:800;letter-spacing:.08em;
     white-space:nowrap}
-  .td-desc{margin:12px 0 20px;font-size:13px;line-height:1.6;opacity:.65;max-width:640px}
+  .td-desc{margin:14px 0 4px;padding:14px 16px;border-radius:14px;background:rgba(244,241,233,.04);border:1px solid var(--pj-cizgi);
+    font-size:13px;line-height:1.6;color:#c7c3be;max-width:680px}
+  .td-desc[hidden]{display:none}
+  .td-desc p{margin:0 0 6px}.td-desc p:last-child{margin:0}
 
   /* ===== Dalga formu, işaretler ve not klasörleri ===== */
   .td-desc strong{color:var(--pj-altin2);font-weight:800}
@@ -486,6 +495,6 @@
 <script src="project-track-controls.js?v=1"></script>
 <script src="sortable-touch.js?v=1"></script>
 <script src="dalga-tepeleri.js?v=2"></script>
-<script src="projects.js?v=20261013i"></script>
+<script src="projects.js?v=20261014a"></script>
 </body>
 </html>
