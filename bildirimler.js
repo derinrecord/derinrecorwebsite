@@ -27,9 +27,9 @@
     const veri = cozumle(istek.body) || {};
     const onayli = !!istek.research_project_id;
     const parcalar = Array.isArray(veri.tracks) ? veri.tracks : [];
-    const parcaHtml = parcalar.length ? `<ol class="bild-parcalar">${parcalar.map(p => {
+    const parcaHtml = parcalar.length ? `<ol class="bild-parcalar">${parcalar.map((p, i) => {
       const link = guvenliLink(p.source_url);
-      return `<li>${escapeHtml(p.label)}${link ? ` — <a href="${escapeHtml(link)}" target="_blank" rel="noreferrer">dinle ↗</a>` : ''}</li>`;
+      return `<li><span class="no">${String(i + 1).padStart(2, '0')}</span><span>${escapeHtml(p.label)}</span>${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noreferrer">DİNLE ↗</a>` : '<span></span>'}</li>`;
     }).join('')}</ol>` : '';
     return `<article class="bild-card ${onayli ? 'onayli' : ''}" data-id="${escapeHtml(istek.id)}">
       <div class="bild-top"><span class="bild-name">${escapeHtml(adlar[istek.sender_id] || 'Antrenör')}</span>
@@ -38,7 +38,7 @@
       <p class="bild-date">${escapeHtml(tarih(istek.created_at))}${veri.branch ? ' · ' + escapeHtml(veri.branch) : ''}</p>
       ${parcaHtml}
       ${veri.note ? `<p class="bild-not">Not: ${escapeHtml(veri.note)}</p>` : ''}
-      ${onayli ? '<p class="bild-not">Projelerim\'e eklendi.</p>'
+      ${onayli ? '<p class="bild-not durum">✓ PROJELERİM\'E EKLENDİ</p>'
         : (cozumle(istek.body) ? '<button type="button" class="bild-onay" data-onayla>ONAYLA — PROJELERİM\'E EKLE</button>'
           : '<p class="bild-hata">Bu isteğin parça bilgisi okunamadı.</p>')}
       <p class="bild-hata" data-hata hidden></p>
@@ -50,8 +50,8 @@
     const bekleyen = sonListe.filter(i => !i.research_project_id);
     const gosterilen = filtre === 'bekleyen' ? bekleyen : sonListe;
     app.innerHTML = `<div class="bild-ozet">
-        <button type="button" class="bild-filtre ${filtre === 'bekleyen' ? 'aktif' : ''}" data-filtre="bekleyen">BEKLEYEN (${bekleyen.length})</button>
-        <button type="button" class="bild-filtre ${filtre === 'tumu' ? 'aktif' : ''}" data-filtre="tumu">TÜMÜ (${sonListe.length})</button>
+        <button type="button" class="bild-filtre ${filtre === 'bekleyen' ? 'aktif' : ''}" data-filtre="bekleyen">BEKLEYEN<b>${bekleyen.length}</b></button>
+        <button type="button" class="bild-filtre ${filtre === 'tumu' ? 'aktif' : ''}" data-filtre="tumu">TÜMÜ<b>${sonListe.length}</b></button>
       </div>
       <div class="bild-list">${gosterilen.length ? gosterilen.map(kart).join('')
         : `<p class="bild-empty">${filtre === 'bekleyen' ? 'Onay bekleyen istek yok.' : 'Henüz istek gelmedi.'}</p>`}</div>`;
