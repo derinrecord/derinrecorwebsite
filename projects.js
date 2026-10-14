@@ -835,7 +835,7 @@
             :`<input class="td-zaman-kutu" data-klasorzaman data-tdzamanyaz inputmode="decimal" value="${mmssOnda(p.time)}" aria-label="İşaret zamanı (dakika:saniye,onda bir)" title="Zamanı yaz, işaret oraya taşınır">`}</p>
         </div>
         <div class="td-klasor-arac">
-          <button type="button" class="td-dinle" data-tdburadan="${p.localId}">▶ BURADAN DİNLE</button>
+          <button type="button" class="td-dinle" data-tdburadan="${p.localId}" aria-label="${detail.playing?'Durdur':'Bu noktadan çal'}" title="${detail.playing?'Durdur':'Bu noktadan çal'}">${detail.playing?'❚❚':'▶'}</button>
           ${!p.saved?`<button type="button" class="td-point-del" data-tdpointdel="${p.localId}">SİL</button>`:''}
         </div>
       </div>
@@ -959,6 +959,7 @@
     const timeEl=root.querySelector('.td-time'); if(timeEl)timeEl.textContent=`${mmss(detail.curTime)} / ${mmss(detail.duration)}`;
     const ekle=root.querySelector('[data-tdaddzaman]'); if(ekle)ekle.textContent=mmss(detail.curTime);
     if(yakinMi()){ const once=gorAralik()[0]; takipEt(); if(gorAralik()[0]!==once)gorunumUygula(); }
+    root.querySelectorAll('[data-tdburadan]').forEach(b=>{ const t=detail.playing?'❚❚':'▶'; if(b.textContent!==t){ b.textContent=t; const e=detail.playing?'Durdur':'Bu noktadan çal'; b.setAttribute('aria-label',e); b.title=e; } });
     const playBtn=root.querySelector('[data-tdplay]'); if(playBtn)playBtn.textContent=detail.audioEl?(detail.playing?'❚❚':'▶'):(detail.sesYuzde!=null?'%'+detail.sesYuzde:'…');
     cizimIste();
   }
@@ -1296,8 +1297,10 @@
       renderDetail(tr,project); };
     root.querySelectorAll('[data-tdsec]').forEach(b=>b.onclick=()=>sec(b.dataset.tdsec));
 
+    // Klasördeki çal/durdur: çalıyorsa durdurur; duruyorsa işaretten 2 sn önceden çalar.
     root.querySelectorAll('[data-tdburadan]').forEach(b=>b.onclick=async()=>{
       const p=(detail.points||[]).find(x=>x.localId===b.dataset.tdburadan); if(!p||!audio)return;
+      if(!audio.paused){ audio.pause(); return; }
       git(Math.max(0,p.time-2));
       try{await audio.play();}catch{}
     });

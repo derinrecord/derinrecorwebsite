@@ -368,9 +368,11 @@
   .td-zaman-kutu:focus{outline:none;border-style:solid;border-color:var(--pj-altin);background:rgba(216,187,44,.06)}
   .td-zaman-kutu.hatali{border-color:var(--pj-pembe)}
   @media(max-width:640px){.td-zaman-kutu{font-size:26px}}
-  .td-dinle{padding:10px 16px;border-radius:999px;border:1px solid rgba(216,187,44,.5);background:rgba(216,187,44,.12);
-    color:var(--pj-altin2);font:inherit;font-size:10px;font-weight:900;letter-spacing:.12em;cursor:pointer}
-  .td-dinle:hover{background:rgba(216,187,44,.22)}
+  .td-dinle{width:44px;height:44px;padding:0;border-radius:50%;border:0;background:var(--pj-altin);color:var(--pj-ink);
+    font:inherit;font-size:15px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 16px rgba(0,0,0,.35);transition:background .15s,transform .15s}
+  .td-dinle:hover{background:var(--pj-altin2);transform:scale(1.05)}
+  .td-dinle:focus-visible{outline:2px solid var(--pj-krem);outline-offset:3px}
   .td-point-del{padding:10px 14px;border-radius:999px;border:1px solid rgba(203,36,104,.45);background:transparent;
     color:#ff9cc3;font:inherit;font-size:10px;font-weight:900;letter-spacing:.12em;cursor:pointer}
   .td-zoom{margin-bottom:14px;padding:12px 12px 8px;border-radius:12px;background:#0c0c0e;border:1px solid var(--pj-cizgi)}
@@ -507,6 +509,6 @@
 <script src="project-track-controls.js?v=1"></script>
 <script src="sortable-touch.js?v=1"></script>
 <script src="dalga-tepeleri.js?v=2"></script>
-<script src="projects.js?v=20261014b"></script>
+<script src="projects.js?v=20261014c"></script>
 </body>
 </html>
