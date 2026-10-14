@@ -320,7 +320,7 @@
     ].join('\n');
   }
 
-  function bildir(metin,tur){
+  function bildir(metin,tur,eylem){
     status.textContent=metin;
     if(!metin)return;
     const tip=tur||'bilgi';
@@ -347,7 +347,12 @@
       alt.appendChild(kopyala); kutu.appendChild(alt);
       console.error('[Derin Record] '+metin+'\n'+raporMetni());
     }else{
-      clearTimeout(bildir._t); bildir._t=setTimeout(()=>{ const k=document.querySelector('#proj-bildirim'); if(k)k.remove(); },6000);
+      if(eylem){
+        const d=document.createElement('button'); d.type='button'; d.className='proj-bildirim-kopyala'; d.textContent=eylem.etiket;
+        d.onclick=async()=>{ d.disabled=true; kutu.remove(); try{ await eylem.is(); }catch(e){ bildir('İşlem yapılamadı: '+e.message,'hata'); } };
+        const alt=document.createElement('div'); alt.className='proj-bildirim-alt'; alt.appendChild(d); kutu.appendChild(alt);
+      }
+      clearTimeout(bildir._t); bildir._t=setTimeout(()=>{ const k=document.querySelector('#proj-bildirim'); if(k)k.remove(); },eylem?9000:6000);
     }
   }
 
@@ -434,7 +439,8 @@
     const savedNow=zamanli.map(f=>{
       const existing=(detail.points||[]).find(p=>p.dbId===f.id);
       return {localId:existing?existing.localId:'db-'+f.id,dbId:f.id,time:notZamani(f),body:f.body||'',voicePath:f.voice_path||null,
-        voiceUrl:existing?existing.voiceUrl:null,saved:true,yazar:f.author_id,tarih:f.created_at,metindenZaman:f.start_sec==null};
+        voiceUrl:existing?existing.voiceUrl:null,saved:true,yazar:f.author_id,tarih:f.created_at,metindenZaman:f.start_sec==null,
+        kayitliZaman:notZamani(f)};
     });
     detail.points=[...savedNow,...draftLocal];
     detail.genelNotlar=genel;
@@ -831,7 +837,7 @@
       <div class="td-klasor-ust">
         <div>
           <p class="td-klasor-etiket">KLASÖR ${noktaNo(p)} · ${p.saved?('NOT · '+safe(yazarAdi(p.yazar,detail.proje).toLocaleUpperCase('tr-TR'))+(p.tarih?' · '+safe(goreli(p.tarih).toLocaleUpperCase('tr-TR')):'')):'TASLAK NOT'}</p>
-          <p class="td-klasor-zaman">${p.saved?`<span class="td-point-time" data-klasorzaman>${mmssOnda(p.time)}</span>`
+          <p class="td-klasor-zaman">${!tasinabilir(p)?`<span class="td-point-time" data-klasorzaman>${mmssOnda(p.time)}</span>`
             :`<input class="td-zaman-kutu" data-klasorzaman data-tdzamanyaz inputmode="decimal" value="${mmssOnda(p.time)}" aria-label="İşaret zamanı (dakika:saniye,onda bir)" title="Zamanı yaz, işaret oraya taşınır">`}</p>
         </div>
         <div class="td-klasor-arac">
@@ -843,7 +849,7 @@
         <canvas class="td-zoom-canvas" data-tdzoom></canvas>
         <div class="td-zoom-cetvel"><span data-zoombas>0:00</span><span>YAKIN PLAN · ${YAKIN_PLAN} SN</span><span data-zoomson>0:00</span></div>
       </div>
-      ${!p.saved?`<div class="td-ince"><span>İNCE AYAR</span>
+      ${tasinabilir(p)?`<div class="td-ince"><span>İNCE AYAR</span>
         <button type="button" data-tdkaydir="-1">−1 sn</button><button type="button" data-tdkaydir="-0.1">−0,1</button>
         <button type="button" data-tdkaydir="0.1">+0,1</button><button type="button" data-tdkaydir="1">+1 sn</button>
         <button type="button" data-tdsuana>ÇALAN YERE TAŞI</button></div>`:''}
@@ -901,7 +907,7 @@
       </div>
       <div class="td-desc" id="td-bilgi"${bilgiAcik?'':' hidden'}>
         <p><strong>Dinle:</strong> Dalgaya dokun, o yerden çalar.</p>
-        <p><strong>İşaretle:</strong> Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek ya da ince ayarla kaydırabilirsin.</p>
+        <p><strong>İşaretle:</strong> Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek ya da ince ayarla kaydırabilirsin.${admin?' Kayıtlı işaretleri de taşıyabilirsin; yeni yeri kendiliğinden kaydedilir.':''}</p>
         <p><strong>Yakınlaştır:</strong> − / + düğmeleri, telefonda iki parmak, bilgisayarda Ctrl/⌘ + tekerlek. Yakınken sağa-sola sürükleyerek gezin.</p>
         <p><strong>Renk:</strong> Alttaki yuvarlak simgeden dalganın zemin rengini seç.</p>
       </div>
@@ -914,7 +920,7 @@
         <div class="td-hover" data-tdhover hidden></div>
         <div class="td-marks">
           ${sirali().map(p=>{ const [ga,gb]=gorAralik(), guz=Math.max(.001,gb-ga), dis=p.time<ga-1e-6||p.time>gb+1e-6;
-            return `<div class="td-mark ${p.saved?'saved':'draft'} ${p.localId===detail.selPointLocalId?'active':''}${dis?' disarida':''}" style="left:${(p.time-ga)/guz*100}%" data-tdmark="${p.localId}" title="${mmss(p.time)}">
+            return `<div class="td-mark ${p.saved?'saved':'draft'}${tasinabilir(p)?' surukle':''} ${p.localId===detail.selPointLocalId?'active':''}${dis?' disarida':''}" style="left:${(p.time-ga)/guz*100}%" data-tdmark="${p.localId}" title="${mmss(p.time)}">
             <span class="td-mark-badge">${noktaNo(p)}</span>
             <span class="td-mark-line"></span>
           </div>`;}).join('')}
@@ -1102,6 +1108,33 @@
     }
   }
 
+  // Taslak işaretleri herkes, kayıtlı işaretleri yalnız yönetici taşır
+  // (veritabanında notu güncelleme izni yalnız yöneticide).
+  const tasinabilir=p=>!!p&&(!p.saved||admin);
+  let kayitZamanlayici=null;
+  function zamaniKaydet(p){
+    if(!p||!p.saved||!p.dbId||!admin)return;
+    clearTimeout(kayitZamanlayici);
+    kayitZamanlayici=setTimeout(async()=>{
+      const eski=p.kayitliZaman, yeni=Math.round(p.time*10)/10;
+      if(eski!=null&&Math.abs(eski-yeni)<0.05)return;
+      const kayit=Object.values(feedback).flat().find(f=>f.id===p.dbId);
+      const uygula=async(deger)=>{
+        await tekSatir(client.from('project_feedback').update({start_sec:deger}).eq('id',p.dbId),'Not bulunamadı ya da taşıma yetkin yok.');
+        p.kayitliZaman=deger; if(kayit)kayit.start_sec=deger;
+      };
+      try{
+        await uygula(yeni);
+        bildir(`İşaret ${mmssOnda(yeni)} konumuna taşındı.`,'ok',{etiket:'GERİ AL',is:async()=>{
+          await uygula(eski); p.time=eski; canliKonum(p); bildir('Geri alındı: '+mmssOnda(eski),'ok');
+        }});
+      }catch(e){
+        if(eski!=null){ p.time=eski; canliKonum(p); }
+        bildir('İşaret taşınamadı: '+e.message,'hata');
+      }
+    },600);
+  }
+
   // İşaret sürükleme belge düzeyinde izlenir: seçim değişince ekran yeniden
   // çizilse bile sürükleme kopmaz.
   let surukleme=null, surukleKurulu=false;
@@ -1122,7 +1155,7 @@
       if(!surukleme||!detail.duration)return;
       if(sikistirmaOldu)return;
       const p=(detail.points||[]).find(x=>x.localId===surukleme.id);
-      if(!p||p.saved)return;
+      if(!tasinabilir(p))return;
       if(!surukleme.oynadi&&Math.abs(e.clientX-surukleme.baslaX)<4)return;
       surukleme.oynadi=true;
       const tuval=document.querySelector('.td-wave-canvas'); if(!tuval)return;
@@ -1141,6 +1174,7 @@
       }
       const p=(detail.points||[]).find(x=>x.localId===id);
       if(!oynadi&&p){ detail.curTime=p.time; if(detail.audioEl)detail.audioEl.currentTime=p.time; }
+      if(oynadi&&p&&p.saved){ p.time=Math.round(p.time*10)/10; zamaniKaydet(p); }
       if(openTrackId)renderDetail(tr,project);
     };
     document.addEventListener('pointerup',bitir);
@@ -1305,13 +1339,14 @@
       try{await audio.play();}catch{}
     });
 
-    // İnce ayar (yalnız taslak): işaret, sekme ve yakın plan anında güncellenir.
+    // İnce ayar: işaret, sekme ve yakın plan anında güncellenir; kayıtlı işarette (yönetici) kaydedilir.
     const kaydir=yeni=>{
-      const p=seciliNokta(); if(!p||p.saved)return;
+      const p=seciliNokta(); if(!tasinabilir(p))return;
       p.time=Math.round(Math.max(0,Math.min(detail.duration||0,yeni))*10)/10;
       // Çalma noktası da işaretle birlikte belirlenen saniyeye geçer: dinlerken tam o yer duyulur.
       detail.curTime=p.time; if(audio)audio.currentTime=p.time;
       canliKonum(p); updateDetailProgress();
+      if(p.saved)zamaniKaydet(p);
     };
     // Zamanı elle yaz: geçerli bir zaman yazıldığı anda işaret oraya taşınır.
     const zamanKutu=root.querySelector('[data-tdzamanyaz]');

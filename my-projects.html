@@ -236,7 +236,8 @@
   .td-marks{position:absolute;left:16px;right:16px;top:6px;bottom:30px;pointer-events:none}
   .td-mark{position:absolute;top:0;bottom:0;width:30px;transform:translateX(-50%);display:flex;flex-direction:column;
     align-items:center;pointer-events:auto;z-index:1;cursor:pointer;touch-action:none}
-  .td-mark.draft{cursor:grab}
+  .td-mark.draft,.td-mark.surukle{cursor:grab}
+  .td-mark.surukle:active{cursor:grabbing}
   .td-mark.draft:active{cursor:grabbing}
   .td-mark-badge{flex:0 0 auto;min-width:22px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:6px 6px 6px 1px;
     display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:.02em;
@@ -509,6 +510,6 @@
 <script src="project-track-controls.js?v=1"></script>
 <script src="sortable-touch.js?v=1"></script>
 <script src="dalga-tepeleri.js?v=2"></script>
-<script src="projects.js?v=20261014c"></script>
+<script src="projects.js?v=20261014d"></script>
 </body>
 </html>
