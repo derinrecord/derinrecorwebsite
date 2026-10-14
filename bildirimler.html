@@ -4,17 +4,19 @@
    dağınık kasetler. Renkler: mürekkep, krem, altın, pembe. */
 .bild-root{--ink:#0b0b0d;--cream:#f4f1e9;--pink:#cb2468;--gold:#d8bb2c;--gold2:#e8d15a;--green:#3ccf7a;--line:rgba(255,255,255,.14);
   position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:clamp(28px,5vw,56px) clamp(16px,4vw,46px) 72px}
-body:has(.bild-root){background:var(--ink,#0b0b0d)}
+/* Arka plan katmanları sayfanın TAMAMINI kaplar (yalnız ilk ekranı değil):
+   uzun listede alt kısım düz kalmasın. */
+body:has(.bild-root){position:relative;min-height:100vh;background:var(--ink,#0b0b0d)}
 /* Üst şerit: glass.css'in yuvarlak cam bandı yerine düz bant + pembe çizgi. */
 body:has(.bild-root) .header{position:relative;z-index:2;border-radius:0;margin:0;width:100%;max-width:none;
   padding:16px clamp(16px,2.2vw,46px);border:0;border-bottom:2px solid #cb2468;background:rgba(12,11,14,.92);box-shadow:none}
 body:has(.bild-root) .header .home{border-radius:0}
 /* Arka plan: kenarlarda yoğun, ortada seyrek pembe nokta tramı. */
-.bild-tram{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.38;
+.bild-tram{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.38;
   background-image:radial-gradient(circle,#cb2468 1.4px,transparent 2.1px);background-size:17px 17px;
-  -webkit-mask-image:radial-gradient(ellipse at 50% 42%,transparent 34%,#000 88%);
-  mask-image:radial-gradient(ellipse at 50% 42%,transparent 34%,#000 88%)}
-.bild-arka{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+  -webkit-mask-image:radial-gradient(ellipse at 50% 50%,transparent 34%,#000 88%);
+  mask-image:radial-gradient(ellipse at 50% 50%,transparent 34%,#000 88%)}
+.bild-arka{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
 .bild-arka img{position:absolute;display:block;filter:grayscale(1) contrast(1.15) brightness(1.9);opacity:.08;mix-blend-mode:screen}
 .bild-arka .k1{width:min(480px,46vw);top:6%;left:-10%;transform:rotate(-14deg)}
 .bild-arka .k2{width:min(360px,34vw);top:34%;right:-7%;transform:rotate(9deg);opacity:.07}
@@ -64,4 +66,4 @@ body:has(.bild-root) .header .home{border-radius:0}
   .bild-arka .k3{display:none}
 }
 @media(prefers-reduced-motion:reduce){.bild-onay{transition:none}}
-</style></head><body><div class="bild-tram" aria-hidden="true"></div><div class="bild-arka" aria-hidden="true"><img src="assets/kaset-filigran.png" alt="" class="k1"><img src="assets/kaset-filigran.png" alt="" class="k2"><img src="assets/kaset-filigran.png" alt="" class="k3"></div><header class="header"><a class="home" href="index.html"><span>←</span> SİTEYE DÖN</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header><main class="bild-root"><p class="bild-eyebrow">ANTRENÖR İSTEKLERİ</p><h1>BİLDİRİM<span>LER.</span></h1><p id="bild-status">Hesap kontrol ediliyor…</p><section id="bild-app" hidden></section></main><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="auth.js?v=20261014"></script><script src="bildirimler.js?v=2"></script></body></html>
+</style></head><body><div class="bild-tram" aria-hidden="true"></div><div class="bild-arka" aria-hidden="true"><img src="assets/kaset-filigran.png" alt="" class="k1"><img src="assets/kaset-filigran.png" alt="" class="k2"><img src="assets/kaset-filigran.png" alt="" class="k3"></div><header class="header"><a class="home" href="index.html"><span>←</span> SİTEYE DÖN</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header><main class="bild-root"><p class="bild-eyebrow">ANTRENÖR İSTEKLERİ</p><h1>BİLDİRİM<span>LER.</span></h1><p id="bild-status">Hesap kontrol ediliyor…</p><section id="bild-app" hidden></section></main><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="auth.js?v=20261014"></script><script src="bildirimler.js?v=3"></script></body></html>
