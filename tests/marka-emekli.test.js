@@ -6,7 +6,6 @@ const fs = require('node:fs');
 
 const V = require('../radyo-panel-views.js');
 const yonetim = fs.readFileSync(require.resolve('../radyo-yonetim.js'), 'utf8');
-const sayfa = fs.readFileSync(require.resolve('../coffee-marka.html'), 'utf8');
 
 const D = {
   brands: [{ id: 'b1', name: 'Mokka Coffee', slug: 'mokka-coffee', access_code: 'KOD', is_active: true }],
@@ -34,13 +33,4 @@ test('yönetim betiği marka link/kod işlemlerini taşımaz', () => {
   assert.ok(!yonetim.includes("case 'brand-slug-set'"));
   assert.ok(!yonetim.includes("case 'brand-code-set'"));
   assert.ok(!yonetim.includes('brandUrl'));
-});
-
-test('eski marka linki katalog okumaz', () => {
-  assert.ok(!/coffee-marka\.js/.test(sayfa), 'coffee-marka.js yüklenmemeli');
-  assert.ok(!/supabase/i.test(sayfa), 'supabase betiği yüklenmemeli');
-  assert.ok(!/config\.js/.test(sayfa), 'config.js yüklenmemeli');
-  assert.ok(sayfa.includes('Bu link artık kullanılmıyor.'));
-  assert.ok(sayfa.includes('Şubenize iletilen linki kullanın; yoksa Derin Record ile iletişime geçin.'));
-  assert.match(sayfa, /<meta name="robots" content="noindex,nofollow">/);
 });

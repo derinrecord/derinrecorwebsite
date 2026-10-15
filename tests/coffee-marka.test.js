@@ -11,12 +11,14 @@ const fs = require('node:fs');
 
 const source = fs.readFileSync(require.resolve('../coffee-marka.js'), 'utf8');
 const css = fs.readFileSync(require.resolve('../marka-sunum.css'), 'utf8');
+const sayfa = fs.readFileSync(require.resolve('../coffee-marka.html'), 'utf8');
 
 test('marka paneli listeleri okur ve sunar', () => {
   assert.match(source, /client\.rpc\('coffee_brand_auth', \{ p_slug: slug, p_code: kod \}\)/);
   assert.match(source, /client\.rpc\('coffee_brand_liste', \{ p_slug: slug, p_code: kod \}\)/);
   assert.match(source, /function tabsCiz\(\)/, 'listeler sekme olarak çizilmeli');
   assert.match(source, /function listeCiz\(\)/, 'seçilen listenin parçaları çizilmeli');
+  assert.match(sayfa, /coffee-marka\.js\?v=\d+/, 'betik sürüm damgası taşımalı');
 });
 
 // Yazma yolu yok: marka panelinden hiçbir tablo satırı değişmez. Atama kararı

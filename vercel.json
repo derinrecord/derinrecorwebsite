@@ -1,7 +1,7 @@
 {
   "rewrites": [
     { "source": "/coffee", "destination": "/coffee.html" },
-    { "source": "/coffee/s/:key", "destination": "/sunum.html" },
+    { "source": "/coffee/s/:key", "destination": "/coffee-marka.html" },
     { "source": "/coffee/:slug", "destination": "/coffee-marka.html" }
   ]
 }

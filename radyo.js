@@ -2,9 +2,7 @@
   const byId = id => document.getElementById(id);
   const audio = byId('audio');
   const url = new URLSearchParams(location.search);
-  // Şube sunum ekranı (sunum.html) /coffee/s/<anahtar> adresinde açılır;
-  // eski bağlantılar ?key= taşır. Doğrulamayı gecerliAnahtar yapar.
-  const key = url.get('key') || ((location.pathname.match(/\/coffee\/s\/([^/?#]+)/) || [])[1] || null);
+  const key = url.get('key');
   // Şube cihazı "dokunuşsuz kurulum" ile açılıyorsa bağlantıda kiosk=1 gelir:
   // yalnız o zaman yayın sayfa açılışında kendiliğinden başlar. Normal açılışta
   // ses, biri başlat düğmesine basmadan çalmaz.
