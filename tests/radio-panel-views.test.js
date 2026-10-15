@@ -1964,3 +1964,9 @@ test('pasif marka panelde şube ekranının gerçek mesajını anlatır ve liste
   assert.ok(!src.includes('bu link tanınmadı'), 'eski oynatıcı mesajı panelde kalmamalı');
   assert.ok(src.includes("chip('off', 'BEKLEMEDE')"));
 });
+
+test('Markalar sayfasında markanın akışı GENEL YAYIN başlığıyla görünür', () => {
+  const src = require('node:fs').readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
+  assert.ok(src.includes('<h3>GENEL YAYIN</h3>'));
+  assert.ok(!src.includes('<h3>CANLI YAYIN</h3>'));
+});
