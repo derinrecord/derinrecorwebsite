@@ -1619,6 +1619,8 @@
       aciklama: 'Çalan parçanın hangi listeden geldiğini panele bildirir.', etki: 'Canlı durum' },
     { anahtar: 'radio-ses-kontrolu.sql', ad: 'Ses kontrolü',
       aciklama: 'Şube ekranındaki ses seviyesini ve parçanın takılıp takılmadığını panele bildirir.', etki: 'Canlı durum · ses dalgası' },
+    { anahtar: 'radio-alarm-duzeni.sql', ad: 'Alarm düzeni (70 şube)',
+      aciklama: 'Sorun 3 dk sürerse alarm, toplu alarm, şube başına sınır, test markası ve gece günlük özet.', etki: 'Telegram · Markalar' },
     { anahtar: 'radio-sube-alarm.sql', ad: 'Yayın alarmı (Telegram)',
       aciklama: 'Parça açılamazsa, takılırsa, ses kapanırsa ya da şube yayın saatinde susarsa panel ve Telegram anında haber alır; düzelince de haber verir.', etki: 'Canlı durum · Telegram' },
     { anahtar: 'radio-erisim.sql', ad: 'Şube erişim kapısı',
@@ -2131,6 +2133,13 @@
             ? 'Bu markanın bütün şubelerinde yayın kapalı; şube ekranları “Yayın şu an kapalı” gösterir.'
             : 'Durdurursanız bu markanın bütün şubelerinde yayın en geç bir dakika içinde tamamen kesilir. Gönderdiğiniz yayını kaldırmak için bu düğmeyi değil, Yayın başlat ekranındaki GENEL YAYINA DÖNDÜR düğmesini kullanın.'}</span>
         </div>
+        ${D.kurulum && D.kurulum['radio-alarm-duzeni.sql'] ? `<div class="row" style="margin-bottom:16px">
+          ${b.test ? chip('gold', 'TEST MARKASI') : chip('off', 'GERÇEK MÜŞTERİ')}
+          <button class="btn" data-act="brand-test" data-id="${esc(b.id)}" type="button">${b.test ? 'TEST İŞARETİNİ KALDIR' : 'TEST MARKASI YAP'}</button>
+          <span class="sub">${b.test
+            ? 'Bu markanın yayın sorunları yalnız panelde görünür; Telegram\'a alarm gitmez ve günlük özete girmez.'
+            : 'Yayın sorunları Telegram\'a gider. Deneme için kurduğunuz markayı test yapın ki telefonunuz gereksiz mesajla dolmasın.'}</span>
+        </div>` : ''}
         <div class="row" style="margin-top:16px">
           ${b.is_active === false && k.tip
             ? chip('off', 'BEKLEMEDE')

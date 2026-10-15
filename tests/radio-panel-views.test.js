@@ -2006,3 +2006,11 @@ test('yayın alarmı şeridi süren sorunu gösterir, duraklatılmış şubede s
   const src = require('node:fs').readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
   assert.ok(src.includes('son çalan: <b>'), 'duraklatılınca son çalan parça yazmalı');
 });
+
+test('marka sayfasında test markası düğmesi alarm düzeni kuruluysa çizilir', () => {
+  const Dt = { ...D, brands: [{ ...D.brands[0], test: true }], kurulum: { ...(D.kurulum || {}), 'radio-alarm-duzeni.sql': true } };
+  const html = V.gorunum({ nav: 'musteri', sub: 'markalar', openBrand: Dt.brands[0].id }, Dt, ui).html;
+  assert.ok(html.includes('TEST MARKASI') && html.includes('TEST İŞARETİNİ KALDIR'));
+  const yok = V.gorunum({ nav: 'musteri', sub: 'markalar', openBrand: D.brands[0].id }, { ...D, kurulum: {} }, ui).html;
+  assert.ok(!yok.includes('TEST MARKASI YAP'), 'SQL kurulmadan düğme çizilmez');
+});
