@@ -36,3 +36,9 @@ test('erişim alarmına, radio_ping\'e ve politikalara dokunmaz', () => {
   assert.ok(!/radio_bildirim_gonder|radio_bildirim_tetik|radio_ping|create policy|drop policy/i.test(sql));
   assert.match(sql, /alter table public\.radio_alarm_kayit enable row level security/);
 });
+
+test('panel alarm düzeni kurulumunu alarm_bildirildi sütunundan anlar', () => {
+  const y = fs.readFileSync(require.resolve('../radyo-yonetim.js'), 'utf8');
+  assert.match(y, /select\('alarm_bildirildi'\)\.limit\(1\)/);
+  assert.match(y, /D\.kurulum\['radio-alarm-duzeni\.sql'\] = !duzen\.error/);
+});

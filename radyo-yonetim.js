@@ -928,6 +928,9 @@
     // Ses kontrolü alanları (supabase/radio-ses-kontrolu.sql). Kurulmadıysa
     // sorgu hata döner; dalga o zaman yalnız "çalıyor" bildirimine bakar.
     try {
+      // Alarm düzeni (radio-alarm-duzeni.sql) kurulu mu: alarm_bildirildi sütunu var mı.
+      const duzen = await client.from('brand_players').select('alarm_bildirildi').limit(1);
+      D.kurulum['radio-alarm-duzeni.sql'] = !duzen.error;
       let ses = await client.from('brand_players').select('id,ses_seviyesi,ses_ilerliyor,ses_at,alarm_tur,alarm_at,alarm_detay');
       D.kurulum['radio-sube-alarm.sql'] = !ses.error;
       if (ses.error) ses = await client.from('brand_players').select('id,ses_seviyesi,ses_ilerliyor,ses_at');
