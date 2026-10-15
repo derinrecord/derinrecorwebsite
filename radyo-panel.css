@@ -158,6 +158,7 @@ a.nav-item{text-decoration:none}
 .uyari-serit{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
   padding:12px 34px;border-bottom:1px solid rgba(255,95,109,.35);
   background:linear-gradient(90deg,rgba(255,95,109,.16),rgba(255,95,109,.04))}
+.uyari-serit[hidden]{display:none}   /* boşken çizgi bile kalmasın */
 .uyari-govde{flex:1 1 320px;min-width:0}
 .uyari-govde b{display:block;font-size:13.5px;letter-spacing:-.1px}
 .uyari-govde .sub{margin-top:2px;color:rgba(255,201,208,.78)}
