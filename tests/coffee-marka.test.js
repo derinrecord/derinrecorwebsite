@@ -135,4 +135,5 @@ test('şube ekranı kilitli linkte kod formunu gizler, eski marka linkini redded
   assert.match(source, /G\.nabizBaslat\(\{ client, anahtar, calarMi: \(\) => !audio\.paused \}\)/);
   assert.match(source, /function mesaideMi\(\)/);
   assert.match(source, /'radio_anonslar'/);
+  assert.match(source, /get\('kiosk'\) === '1'/, 'dokunuşsuz kurulum desteklenmeli');
 });

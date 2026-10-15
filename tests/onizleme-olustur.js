@@ -4,7 +4,7 @@
 // tek dosyaya çevirmek gerekir. Betik bunu yapar.
 //
 // Kullanım:  node tests/onizleme-olustur.js <senaryo> [cikti]
-// Örnek:     node tests/onizleme-olustur.js zincir-kopuk
+// Örnek:     node tests/onizleme-olustur.js marka
 // Çıktı bilinçli olarak tests/ altına yazılır: .vercelignore bu klasörü yayına
 // almaz, böylece prova dosyası canlıya sızmaz.
 const fs = require('fs');
@@ -13,7 +13,7 @@ const path = require('path');
 const kok = path.join(__dirname, '..');
 const oku = f => fs.readFileSync(path.join(kok, f), 'utf8');
 
-const senaryo = process.argv[2] || 'zincir-kopuk';
+const senaryo = process.argv[2] || 'marka';
 const cikti = process.argv[3] || path.join('tests', 'onizleme.html');
 const ciktiYolu = path.resolve(kok, cikti);
 
@@ -729,60 +729,5 @@ body{background:#0b0b0d;padding:22px;display:block}
   return;
 }
 
-let sayfa = oku('radyo-cihaz-prova.html');
-const kuyruk = oku('radio-playlist-queue.js');
-// Oynatıcı anahtarı yalnızca sorgu dizesinden okur; provada sorgu dizesi
-// olmadığı için taklitte varsayılan anahtarı kullanırız. Anahtar geçerli bir
-// uuid olmalı, yoksa oynatıcı onu bozuk sanıp hiç açılmaz.
-const PROVA_ANAHTAR = 'a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa';
-let sayfaHam = fs.readFileSync(path.join(kok, 'radyo-cihaz-prova.html'), 'utf8');
-if (!sayfaHam.includes("'" + PROVA_ANAHTAR + "'")) {
-  throw new Error('prova sayfasının anahtarı değişmiş; buradaki PROVA_ANAHTAR ile eşleşmeli');
-}
-// Oynatıcının anahtar okuma satırı değişirse yama sessizce boşa düşer ve prova
-// "şubeye özel link ile açılmalıdır" der; o yüzden önce varlığını doğrularız.
-const ANAHTAR_SATIRI = "const key = url.get('key');";
-const radyoHam = oku('radyo.js');
-if (!radyoHam.includes(ANAHTAR_SATIRI)) {
-  throw new Error('oynatıcının anahtar okuma satırı değişmiş: onizleme-olustur.js yamasını güncelleyin');
-}
-const radyo = radyoHam
-  .replace(ANAHTAR_SATIRI, "const key = url.get('key') || '" + PROVA_ANAHTAR + "';");
-
-// Dış bağımlılıkları çıkar: yapılandırma satır içine gömülür, CDN'e gidilmez.
-sayfa = sayfa
-  .replace(/<script src="config\.js"><\/script>\n?/, '')
-  .replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@[^"]+"><\/script>\n?/, '')
-  // Sürüm damgası değişebilir; sabit metne bağlanmayalım.
-  // Önizleme tek dosyadır, yanındaki r2-depo.js'i yükleyemez. Gerçek R2'ye de
-  // çıkılmaz: adresler sahte önekle üretilir, ses zaten çalmaz.
-  .replace(/<script src="r2-depo\.js\?v=[^"]+"><\/script>/,
-    "<script>window.DerinR2 = { adres: function (kova, p) { return p ? 'prova://' + kova + '/' + p : null; } };</script>")
-  .replace(/<script src="radio-playlist-queue\.js\?v=[^"]+"><\/script>/, '<script>\n' + kuyruk + '\n</script>')
-  .replace(/<script src="radyo\.js\?v=[^"]+"><\/script>/, '<script>\n' + radyo + '\n</script>');
-
-// Senaryo seçimi: sorgu dizesi olmadan da çalışsın.
-sayfa = sayfa.replace("|| 'ilk';", "|| '" + senaryo + "';");
-sayfa = sayfa.replace(
-  '<script>\n// ---- Sunucu taklidi',
-  '<script>window.DERIN_CONFIG = { supabaseUrl: \'https://prova.test\', supabasePublishableKey: \'prova\' };</script>\n<script>\n// ---- Sunucu taklidi'
-);
-
-// Önizleme tek dosya olarak servis edilir, yanındaki varlıkları yükleyemez;
-// oynatıcının varsayılan kapak logosu bu yüzden satır içine alınır.
-const LOGO_YOLU = 'assets/logo.png';
-const LOGO_URL = "url('" + LOGO_YOLU + "')";
-if (sayfa.includes(LOGO_URL)) {
-  const logo = fs.readFileSync(path.join(kok, LOGO_YOLU)).toString('base64');
-  sayfa = sayfa.split(LOGO_URL).join("url('data:image/png;base64," + logo + "')");
-}
-
-fs.writeFileSync(ciktiYolu, sayfa);
-console.log(path.relative(kok, ciktiYolu) + ' yazıldı · senaryo=' + senaryo + ' · ' + sayfa.length + ' bayt');
-['radyo.js', 'radio-playlist-queue.js', 'config.js'].forEach(dis => {
-  if (sayfa.includes('src="' + dis)) throw new Error(dis + ' hâlâ dışarıdan yükleniyor');
-});
-if (!sayfa.includes('window.DERIN_CONFIG')) throw new Error('DERIN_CONFIG gömülmedi');
-if (sayfaHam.includes('assets/logo.png') && !sayfa.includes('data:image/png;base64,')) {
-  throw new Error('kapak logosu satır içine alınmadı');
-}
+// Eski kafe oynatıcısı (radyo.html) kaldırıldı; şube ekranı için "marka" senaryosu.
+throw new Error('Bilinmeyen senaryo: ' + senaryo);

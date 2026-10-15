@@ -94,7 +94,7 @@
   }
 
   // ---------- BAĞLANTI GEÇMİŞİ ----------
-  // Oynatıcı (radyo.js) durum değiştikçe sunucuya olay bırakıyor
+  // Şube ekranı (sube-guvenlik.js) durum değiştikçe sunucuya olay bırakıyor
   // (supabase/radio-baglanti-gecmisi.sql). Kafe sunumunun kod girişleri de aynı
   // çizelgede okunur. Panelin buradaki asıl işi, sahada “yayın durdu” diye gelen
   // şikâyetin kimden çıktığını ayırmak: biz mi durdurduk (mesai saati, kaynak,

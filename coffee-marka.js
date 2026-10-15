@@ -597,8 +597,18 @@ function mesaideMi() {
   if (acilis < kapanis) return an >= acilis && an < kapanis;
   return an >= acilis || an < kapanis;   // gece yarısını aşan mesai
 }
+// Dokunuşsuz kurulum (panel: ?kiosk=1): cihaz açılışta ve mesai başlayınca kendiliğinden çalar.
+const kiosk = new URLSearchParams(location.search).get('kiosk') === '1';
+let mesaiIleDurdu = false;
 function mesaiDenetle() {
+  if (kiosk && mesaideMi() && audio.paused && mesaiIleDurdu && kuyruk.length) {
+    mesaiIleDurdu = false;
+    if (sira < 0) gecisCal(0); else audio.play().catch(() => {});
+    durum('');
+    return;
+  }
   if (mesaideMi() || audio.paused) return;
+  mesaiIleDurdu = true;
   duraklatmaSebebi = 'mesai-disi';
   audio.pause();
   durum('Yayın saatleri dışında.');
@@ -753,7 +763,12 @@ async function ac(kod) {
   G.nabizBaslat({ client, anahtar, calarMi: () => !audio.paused });
   setInterval(mesaiDenetle, 60000);
   setInterval(anonslariYokla, 15000);
-  if (!mesaideMi()) durum('Yayın saatleri dışında.');
+  if (!mesaideMi()) {
+    durum('Yayın saatleri dışında.');
+    mesaiIleDurdu = true;
+  } else if (kiosk && kuyruk.length) {
+    gecisCal(0);
+  }
 }
 
 byId('mk-gir').onclick = () => {

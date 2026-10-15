@@ -1,7 +1,35 @@
 {
   "rewrites": [
-    { "source": "/coffee", "destination": "/coffee.html" },
-    { "source": "/coffee/s/:key", "destination": "/coffee-marka.html" },
-    { "source": "/coffee/:slug", "destination": "/coffee-marka.html" }
+    {
+      "source": "/coffee",
+      "destination": "/coffee.html"
+    },
+    {
+      "source": "/coffee/s/:key",
+      "destination": "/coffee-marka.html"
+    },
+    {
+      "source": "/coffee/:slug",
+      "destination": "/coffee-marka.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/radyo.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "key",
+          "value": "(?<key>.*)"
+        }
+      ],
+      "destination": "/coffee/s/:key",
+      "permanent": true
+    },
+    {
+      "source": "/radyo.html",
+      "destination": "/coffee",
+      "permanent": true
+    }
   ]
 }

@@ -196,7 +196,7 @@
   // Davet penceresindeki QR: kafede linki elle yazmak yerine kamerayla okutmak
   // için. Kodu bilerek taşımaz; kod QR'a gömülseydi QR'ın fotoğrafı da linkin
   // kendisi kadar paylaşılabilir bir anahtar olurdu (oynatıcı da kodu adresten
-  // okumaz: bkz. radyo.js · KOD_ANAHTARI). Kodlayıcı CDN'den gelir
+  // okumaz: bkz. sube-guvenlik.js · kodAnahtari). Kodlayıcı CDN'den gelir
   // (radyo-yonetim.html); yüklenmezse pencere çökmez, link yazı olarak çizilir.
   function qrCiz() {
     const kutu = el('modal') && el('modal').querySelector('[data-qr]');
