@@ -1018,9 +1018,6 @@ test('oynatıcı ve sunum sayfası katalog verisini sunucu fonksiyonundan ister'
   assert.match(radyo, /const r = await icerikRpc\(ad, \{ p_player_key: key \}\)/);
   assert.match(radyo, /from\('brand_playlists'\)/, 'yedek yol durmalı');
 
-  const sunum = fs.readFileSync(path.join(KOK, 'coffee-marka.js'), 'utf8');
-  assert.match(sunum, /rpc\('coffee_brand_liste'/);
-  assert.match(sunum, /from\('brand_playlists'\)/, 'yedek yol durmalı');
 });
 
 // Kafe linki cihaza bağlı olmalı: içerik fonksiyonları cihaz kimliği sormazsa,

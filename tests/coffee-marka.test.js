@@ -14,8 +14,10 @@ const css = fs.readFileSync(require.resolve('../marka-sunum.css'), 'utf8');
 const sayfa = fs.readFileSync(require.resolve('../coffee-marka.html'), 'utf8');
 
 test('marka paneli listeleri okur ve sunar', () => {
-  assert.match(source, /client\.rpc\('coffee_brand_auth', \{ p_slug: slug, p_code: kod \}\)/);
-  assert.match(source, /client\.rpc\('coffee_brand_liste', \{ p_slug: slug, p_code: kod \}\)/);
+  assert.match(source, /client\.rpc\('sube_sunum_marka', \{ p_player_key: anahtar, p_device_id: cihaz \}\)/);
+  assert.match(source, /client\.rpc\('sube_sunum_liste', \{ p_player_key: anahtar, p_device_id: cihaz \}\)/);
+  assert.ok(!source.includes('coffee_brand_auth'), 'marka erişim kodu yolu kalkmalı');
+  assert.ok(!source.includes("sessionStorage"), 'eski oturum kodu saklanmamalı');
   assert.match(source, /function tabsCiz\(\)/, 'listeler sekme olarak çizilmeli');
   assert.match(source, /function listeCiz\(\)/, 'seçilen listenin parçaları çizilmeli');
   assert.match(sayfa, /coffee-marka\.js\?v=\d+/, 'betik sürüm damgası taşımalı');
@@ -65,9 +67,9 @@ test('sunumda karışık çal seçeneği çalma sırasını değiştirir', () =>
 // kapağı olmayan liste/parçaların varsayılanı olarak kullanmalı. Fonksiyon
 // kurulmadıysa sessizce atlanmalı; sunum bozulmamalı.
 test('sunum marka kapağını varsayılan görsel olarak kullanır', () => {
-  assert.match(source, /rpc\('coffee_brand_kapak', \{ p_slug: slug, p_code: kod \}\)/);
+  assert.match(source, /rpc\('sube_sunum_kapak', \{ p_player_key: anahtar, p_device_id: cihaz \}\)/);
   assert.match(source, /t\.cover_path \|\| t\._playlistCover \|\| markaKapak/, 'marka kapağı en son yedek olmalı');
-  const i = source.indexOf('coffee_brand_kapak');
+  const i = source.indexOf('sube_sunum_kapak');
   const blok = source.slice(Math.max(0, i - 220), i + 260);
   assert.ok(!/throw /.test(blok), 'fonksiyon yoksa çökmeden devam etmeli');
 });
@@ -124,4 +126,13 @@ test('sunum kolonu kapsayıcıdan taşmaz, üst şeritle hizalanır', () => {
   assert.match(mkRoot, /max-width:none/, 'admin-main sınırı kaldırılmalı');
   assert.match(mkRoot, /padding-left:0/, 'sol dolgu sıfırlanmalı');
   assert.match(mkRoot, /padding-right:0/, 'sağ dolgu sıfırlanmalı');
+});
+
+// Şube ekranı: kilitli linkte kod formu gizlenir; eski marka linki açılmaz.
+test('şube ekranı kilitli linkte kod formunu gizler, eski marka linkini reddeder', () => {
+  assert.match(source, /if \(s\.durum === 'kilitli'\) \{[\s\S]*?kodFormu\(false\)/);
+  assert.ok(source.includes('Bu link artık kullanılmıyor. Şubenize iletilen linki kullanın.'));
+  assert.match(source, /G\.nabizBaslat\(\{ client, anahtar, calarMi: \(\) => !audio\.paused \}\)/);
+  assert.match(source, /function mesaideMi\(\)/);
+  assert.match(source, /'radio_anonslar'/);
 });

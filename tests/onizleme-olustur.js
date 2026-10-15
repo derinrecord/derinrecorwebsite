@@ -446,9 +446,9 @@ if (senaryo === 'marka') {
 <script>
 // ---- Sunucu taklidi: marka paneli yalnız bu uçlarla konuşur ---------------
 (() => {
-  const COD = 'PROVA';
+  const COD = 'PROVA-KOD1';
   const MARKA = {
-    brand_id: 'b1', name: 'Brew Lab', slug: 'onizleme-marka.html',
+    brand_id: 'b1', name: 'Brew Lab', player_label: 'Selçuk',
     tagline: 'Üçüncü nesil kahve, ölçülü ritim.', accent_color: '#e8d15a',
     roast_profile: null, tasting_notes: []
   };
@@ -479,21 +479,26 @@ if (senaryo === 'marka') {
   }));
   const listeSatirlari = [].concat(...P_LISTELER.map(satir));
 
+  // Şube yayını durumu adres çubuğundan seçilir: ?durum=kod | kilitli | mesai.
+  const DURUM = new URLSearchParams(location.search).get('durum') || 'acik';
   window.supabase = {
     createClient: () => ({
       rpc(ad, p) {
-        if (ad === 'coffee_brand_auth') {
-          return Promise.resolve(p.p_code === COD
-            ? { data: [MARKA], error: null }
-            : { data: [], error: null });
+        if (ad === 'radio_ping') {
+          if (DURUM === 'kilitli') return Promise.resolve({ data: [{ ok: false, reason: 'locked_to_other_device' }], error: null });
+          if (DURUM === 'kod' && p.p_kod !== COD) {
+            return Promise.resolve({ data: [{ ok: false, reason: p.p_kod ? 'invalid_code' : 'code_required' }], error: null });
+          }
+          return Promise.resolve({ data: [{ ok: true, reason: null }], error: null });
         }
-        if (ad === 'coffee_brand_liste') return Promise.resolve({ data: listeSatirlari, error: null });
+        if (ad === 'sube_sunum_marka') {
+          const saat = DURUM === 'mesai' ? { open_time: '00:00:00', close_time: '00:01:00' } : { open_time: null, close_time: null };
+          return Promise.resolve({ data: [Object.assign({}, MARKA, saat)], error: null });
+        }
+        if (ad === 'sube_sunum_liste') return Promise.resolve({ data: listeSatirlari, error: null });
         return Promise.resolve({ data: [], error: null });
       },
-      storage: { from: () => ({ getPublicUrl: p => ({ data: { publicUrl: p ? kapakSvg(p) : '' } }) }) },
-      from: () => ({
-        select: () => ({ eq: () => ({ order: () => ({ then: r => r({ data: [], error: null }) }) }) })
-      })
+      storage: { from: () => ({ getPublicUrl: p => ({ data: { publicUrl: p ? kapakSvg(p) : '' } }) }) }
     })
   };
   // Önizlemede gerçek R2'ye çıkılmaz: kapak yerel SVG, ses kapalı.
@@ -507,7 +512,10 @@ if (senaryo === 'marka') {
 
   // Filigran da tek dosyaya gömülür: önizleme kardeş varlıkları yükleyemez.
   const filigran = 'data:image/png;base64,' + fs.readFileSync(path.join(kok, 'assets/kaset-filigran.png')).toString('base64');
-  const markaJs = oku('coffee-marka.js').split('/assets/kaset-filigran.png').join(filigran);
+  // Önizleme dosya olarak açılır: şube adresi koda sabitlenir.
+  const markaJs = oku('coffee-marka.js').split('/assets/kaset-filigran.png').join(filigran)
+    .replace('G.anahtarOku(location)', "G.anahtarOku({ pathname: '/coffee/s/a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa' })");
+  const guvenlikJs = oku('sube-guvenlik.js');
 
   let gomulu = sayfaHam
     .replace(/(href)="\/branch\.css(?:\?[^"]*)?"/, '$1="' + gom('branch.css') + '"')
@@ -518,15 +526,16 @@ if (senaryo === 'marka') {
     .replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@[^"]+"><\/script>/, '')
     // r2-depo.js önizlemeye gömülmez; sahte DerinR2'yi zaten taklit bloğu kurar.
     .replace(/<script src="\/r2-depo\.js\?v=[^"]+"><\/script>\n?/, '')
-    .replace(/<script src="\/coffee-marka\.js\?v=[^"]+"><\/script>/, taklit + '\n<script>\n' + markaJs + '\n</script>');
+    .replace(/<script src="\/sube-guvenlik\.js\?v=[^"]+"><\/script>\n?/, '')
+    .replace(/<script src="\/coffee-marka\.js\?v=[^"]+"><\/script>/, () => taklit + '\n<script>\n' + guvenlikJs + '\n</script>\n<script>\n' + markaJs + '\n</script>');
 
   // Gömme sessizce boşa düşerse prova stilsiz/sunucusuz açılır; bunun yerine dur.
-  ['branch.css', 'auth.css', 'glass.css', 'marka-sunum.css', 'coffee-marka.js'].forEach(dis => {
+  ['branch.css', 'auth.css', 'glass.css', 'marka-sunum.css', 'coffee-marka.js', 'sube-guvenlik.js'].forEach(dis => {
     if (gomulu.includes('"/' + dis) || gomulu.includes('src="/' + dis)) {
       throw new Error(dis + ' gömülmedi: prova sayfasının etiketi değişmiş, onizleme-olustur.js marka modunu güncelleyin');
     }
   });
-  if (!gomulu.includes('coffee_brand_liste')) throw new Error('sunucu taklidi gömülmedi');
+  if (!gomulu.includes('sube_sunum_liste')) throw new Error('sunucu taklidi gömülmedi');
   if (!gomulu.includes('data:image/png;base64,')) throw new Error('filigran satır içine alınmadı');
   fs.writeFileSync(ciktiYolu, gomulu);
   console.log(path.relative(kok, ciktiYolu) + ' yazıldı · marka paneli · ' + gomulu.length + ' bayt');

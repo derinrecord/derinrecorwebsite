@@ -1,5 +1,7 @@
-/* Derin Record — marka sunumu.
-   Veriyi coffee_brand_auth ile açar, listeleri ve parçaları okur.
+/* Derin Record — müşteri sunumu (şube ekranı).
+   Şube linkiyle (/coffee/s/<anahtar>) açılır; şube kodu ve cihaz kilidi
+   sube-guvenlik.js'te. Veriyi sube_sunum_* fonksiyonlarıyla okur
+   (supabase/sube-sunum.sql).
    Parça geçişleri hem görselde hem seste fade ile akar:
    parça bitmeden 2.6 sn önce ses kısılır, yeni parça 1.1 sn'de açılır. */
 (() => {
@@ -25,7 +27,9 @@ const bekle = ms => new Promise(done => setTimeout(done, ms));
 
 const client = window.supabase.createClient(
   window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
-const slug = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
+const G = window.DerinSubeGuvenlik;
+const anahtar = G.anahtarOku(location);
+const baglam = { client, anahtar };
 // Kapak ve ses Cloudflare R2'den gelir (bkz. r2-depo.js).
 const urly = (kova, p) => window.DerinR2.adres(kova, p);
 const kapak = p => urly('radio-covers', p);
@@ -44,7 +48,7 @@ let listeler = [];
 let kuyruk = [];
 let sira = -1;
 // "Karışık çal": müşteri sunumda kendisi açar. Sunucu listeleri sıralı gelir
-// (coffee_brand_liste shuffle döndürmez), o yüzden varsayılan kapalıdır.
+// (sube_sunum_liste shuffle döndürmez), o yüzden varsayılan kapalıdır.
 let karisik = false;
 // Fiilen çalınacak sıra: kuyruğa indeksler. Karışık kapalıyken doğal sıra.
 let duzen = [];
@@ -123,6 +127,7 @@ function parcaSec(i, { cal = true, baslangic = seviye } = {}) {
   sira = i;
   const t = kuyruk[i];
   if (cal) kaynakYukle(t, baslangic);
+  parcaDegisti(t);
   sahneYaz(t);
   satirlariIsaretle();
 }
@@ -558,94 +563,214 @@ function detayGoster(t) {
   });
 }
 
+// ---------- Şube yayını: geçmiş, çalan parça, yayın saatleri, anons ----------
+let yayinSaati = { acilis: null, kapanis: null };
+let ilkCalis = true;
+let duraklatmaSebebi = null;
+let anonsta = false;
+let sonAnons = null;
+
+function parcaDegisti(t) {
+  if (!t) return;
+  G.calaniBildir(baglam, {
+    track_id: t.id, title: clean(t.title),
+    playlist_id: t._playlistId, playlist_name: t._playlistName
+  });
+}
+
+const dakika = v => {
+  const m = String(v || '').match(/^(\d{1,2}):(\d{2})/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+function simdiDakika() {
+  const parcalar = new Intl.DateTimeFormat('tr-TR', {
+    timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(new Date());
+  const al = tip => Number(parcalar.find(p => p.type === tip).value);
+  return al('hour') * 60 + al('minute');
+}
+// Saat girilmemişse yayın kesintisiz sürer (paneldeki kural).
+function mesaideMi() {
+  const { acilis, kapanis } = yayinSaati;
+  if (acilis === null || kapanis === null || acilis === kapanis) return true;
+  const an = simdiDakika();
+  if (acilis < kapanis) return an >= acilis && an < kapanis;
+  return an >= acilis || an < kapanis;   // gece yarısını aşan mesai
+}
+function mesaiDenetle() {
+  if (mesaideMi() || audio.paused) return;
+  duraklatmaSebebi = 'mesai-disi';
+  audio.pause();
+  durum('Yayın saatleri dışında.');
+  G.olay(baglam, 'mesai', 'disi');
+}
+
+function sesOlaylariniBagla() {
+  audio.addEventListener('play', () => {
+    if (!mesaideMi()) { mesaiDenetle(); return; }
+    const t = kuyruk[sira];
+    const ad = t ? clean(t.title) + (t._playlistName ? ' · ' + t._playlistName : '') : '';
+    G.olay(baglam, ilkCalis ? 'caliyor' : 'devam', ad || null);
+    ilkCalis = false;
+  });
+  audio.addEventListener('pause', () => {
+    // Parça sonu ve parça geçişi duraklatma sayılmaz.
+    if (gecisVar || audio.ended || (audio.duration > 0 && audio.currentTime >= audio.duration - 0.75)) return;
+    const sebep = duraklatmaSebebi || 'cihaz';
+    duraklatmaSebebi = null;
+    G.olay(baglam, 'durakladi', sebep);
+  });
+  audio.addEventListener('error', () => {
+    const t = kuyruk[sira];
+    if (t) G.olay(baglam, 'yuklenemedi', clean(t.title));
+  });
+}
+
+async function anonslariYokla() {
+  if (anonsta) return;
+  let r;
+  try {
+    r = await client.rpc('radio_anonslar', {
+      p_player_key: anahtar, p_device_id: G.cihazKimligi(),
+      p_since: sonAnons || new Date(Date.now() - 60000).toISOString()
+    });
+  } catch { return; }
+  const yeni = r && Array.isArray(r.data) ? r.data : [];
+  for (const a of yeni) {
+    sonAnons = a.created_at;
+    await anonsCal(a);
+  }
+}
+async function anonsCal(a) {
+  if (!a || !a.storage_path) return;
+  anonsta = true;
+  const caliyordu = !audio.paused;
+  try {
+    if (caliyordu) await fade(0.12, 600);
+    durum('Anons' + (a.label ? ' — ' + a.label : ''));
+    const ses = new Audio(urly('radio-announcements', a.storage_path));
+    await new Promise(bitti => {
+      ses.onended = bitti; ses.onerror = bitti;
+      ses.play().catch(bitti);
+      setTimeout(bitti, 180000);
+    });
+    if (caliyordu) await fade(seviye, 800);
+    durum('');
+  } finally { anonsta = false; }
+}
+
 // ---------- Açılış ----------
+// Başka cihaza bağlı linkte kod girmek işe yaramaz: form gizlenir, yalnız mesaj kalır.
+function kodFormu(gorunur) {
+  const form = byId('mk-kod').closest('.mk-code');
+  if (form) form.hidden = !gorunur;
+}
+function kilitKarti(mesaj, sebep) {
+  byId('mk-app').hidden = true;
+  byId('mk-lock').hidden = false;
+  byId('mk-hata').textContent = mesaj || '';
+  kodFormu(sebep !== 'kilitli');
+}
+
+function kapanisDinle() {
+  window.addEventListener('derin:sube-kapandi', e => {
+    duraklatmaSebebi = 'cihaz-kilidi';
+    try { audio.pause(); } catch { /* yok say */ }
+    kilitKarti((e.detail && e.detail.mesaj) || 'Yayın kapandı.', e.detail && e.detail.sebep);
+  });
+}
+
+function satirlariListeyeCevir(satirlar) {
+  const gorulen = new Map();
+  satirlar.forEach(x => {
+    if (!gorulen.has(x.playlist_id)) {
+      gorulen.set(x.playlist_id, {
+        id: x.playlist_id, name: x.name, cover_path: x.cover_path,
+        created_at: x.created_at, _tracks: []
+      });
+    }
+    if (x.track_id) {
+      gorulen.get(x.playlist_id)._tracks.push({
+        id: x.track_id, title: x.title, storage_path: x.storage_path,
+        cover_path: x.track_cover, duration_sec: x.duration_sec,
+        _playlistId: x.playlist_id, _playlistName: x.name, _playlistCover: x.cover_path
+      });
+    }
+  });
+  const sonuc = [...gorulen.values()];
+  sonuc.forEach(pl => { pl._sure = pl._tracks.reduce((n, t) => n + (Number(t.duration_sec) || 0), 0); });
+  return sonuc;
+}
+
+let acildi = false;
 async function ac(kod) {
   const hata = byId('mk-hata');
   const dugme = byId('mk-gir');
   hata.textContent = 'Kontrol ediliyor…';
   dugme.disabled = true;
-  const { data, error } = await client.rpc('coffee_brand_auth', { p_slug: slug, p_code: kod });
+  const s = await G.baglan({ client, anahtar, kod });
   dugme.disabled = false;
-  if (error) { hata.textContent = 'Bağlantı kurulamadı: ' + error.message; return; }
-  if (!data || !data.length) {
-    hata.textContent = 'Kod doğru değil ya da sunum henüz hazır değil.';
+  if (s.durum === 'baglanti') {
+    hata.textContent = s.mesaj;
+    setTimeout(() => ac(G.kayitliKod(anahtar)), 15000);
     return;
   }
-  const brand = data[0];
-
-  // Marka kapağı: sunumda kendi görseli olmayan liste/parçaların varsayılanı.
-  // Fonksiyon kurulmadıysa (supabase/marka-kapagi.sql) sessizce atlanır.
-  try {
-    const k = await client.rpc('coffee_brand_kapak', { p_slug: slug, p_code: kod });
-    if (k && !k.error && typeof k.data === 'string' && k.data) markaKapak = k.data;
-  } catch { /* fonksiyon yok: marka kapağı kullanılmaz */ }
-
-  // Listeler ve parçalar: katalog tabloları dışarıya (girişsiz ziyaretçiye)
-  // kapatıldığı için sunum sayfası veriyi, erişim kodunu sunucuda doğrulayan
-  // coffee_brand_liste'den alır (supabase/radio-erisim.sql). Fonksiyon henüz
-  // kurulmadıysa aşağıdaki eski doğrudan okumaya düşülür, yani geçiş sırasında
-  // müşterinin gördüğü sayfa bozulmaz.
-  let satirlar = null;
-  try {
-    const r = await client.rpc('coffee_brand_liste', { p_slug: slug, p_code: kod });
-    if (r && !r.error && Array.isArray(r.data)) satirlar = r.data;
-  } catch { /* fonksiyon yok: eski yola düşülür */ }
-
-  if (satirlar) {
-    const gorulen = new Map();
-    satirlar.forEach(x => {
-      if (!gorulen.has(x.playlist_id)) {
-        gorulen.set(x.playlist_id, {
-          id: x.playlist_id, name: x.name, cover_path: x.cover_path,
-          created_at: x.created_at, _tracks: []
-        });
-      }
-      if (x.track_id) {
-        gorulen.get(x.playlist_id)._tracks.push({
-          id: x.track_id, title: x.title, storage_path: x.storage_path,
-          cover_path: x.track_cover, duration_sec: x.duration_sec,
-          _playlistId: x.playlist_id, _playlistName: x.name, _playlistCover: x.cover_path
-        });
-      }
-    });
-    listeler = [...gorulen.values()];
-  } else {
-    const { data: plistRaw } = await client.from('brand_playlists')
-      .select('id,name,cover_path,created_at').eq('brand_id', brand.brand_id).order('created_at');
-    listeler = plistRaw || [];
-    const idler = listeler.map(p => p.id);
-    const { data: pt } = idler.length
-      ? await client.from('brand_playlist_tracks').select('id,playlist_id,track_id,sort_order').in('playlist_id', idler).order('sort_order')
-      : { data: [] };
-    const trackIds = [...new Set((pt || []).map(x => x.track_id))];
-    const { data: parcalar } = trackIds.length
-      ? await client.from('radio_tracks').select('id,title,storage_path,cover_path,duration_sec').in('id', trackIds)
-      : { data: [] };
-    const trackById = Object.fromEntries((parcalar || []).map(t => [t.id, t]));
-
-    listeler.forEach(pl => {
-      pl._tracks = (pt || []).filter(x => x.playlist_id === pl.id)
-        .map(x => trackById[x.track_id]).filter(Boolean)
-        .map(t => ({ ...t, _playlistId: pl.id, _playlistName: pl.name, _playlistCover: pl.cover_path }));
-    });
+  if (s.durum !== 'tamam') {
+    hata.textContent = s.mesaj;
+    if (s.durum === 'kilitli') {
+      G.olay(baglam, 'kilitlendi', 'bu link başka bir cihaza kayıtlı');
+      kodFormu(false);
+    }
+    if (s.durum === 'kod-yanlis') G.olay(baglam, 'kod-yanlis', 'girilen kod bu şubeye ait değil');
+    byId('mk-kod').value = '';
+    return;
   }
 
-  listeler.forEach(pl => {
-    pl._sure = pl._tracks.reduce((n, t) => n + (Number(t.duration_sec) || 0), 0);
-  });
+  const cihaz = G.cihazKimligi();
+  const m = await client.rpc('sube_sunum_marka', { p_player_key: anahtar, p_device_id: cihaz });
+  const brand = m && !m.error && Array.isArray(m.data) ? m.data[0] : null;
+  if (!brand) {
+    hata.textContent = 'Yayın şu an kapalı. Derin Record ile iletişime geçin.';
+    return;
+  }
+  yayinSaati = { acilis: dakika(brand.open_time), kapanis: dakika(brand.close_time) };
 
-  try { sessionStorage.setItem('br-' + slug, kod); } catch {}
+  try {
+    const k = await client.rpc('sube_sunum_kapak', { p_player_key: anahtar, p_device_id: cihaz });
+    if (k && !k.error && typeof k.data === 'string' && k.data) markaKapak = k.data;
+  } catch { /* marka kapağı kullanılmaz */ }
+
+  const r = await client.rpc('sube_sunum_liste', { p_player_key: anahtar, p_device_id: cihaz });
+  listeler = satirlariListeyeCevir(r && !r.error && Array.isArray(r.data) ? r.data : []);
+
+  hata.textContent = '';
+  if (acildi) return;
+  acildi = true;
   ciz(brand, listeler);
+  sesOlaylariniBagla();
+  kapanisDinle();
+  G.olay(baglam, 'acildi', 'müşteri sunumu');
+  G.nabizBaslat({ client, anahtar, calarMi: () => !audio.paused });
+  setInterval(mesaiDenetle, 60000);
+  setInterval(anonslariYokla, 15000);
+  if (!mesaideMi()) durum('Yayın saatleri dışında.');
 }
 
 byId('mk-gir').onclick = () => {
   const kod = byId('mk-kod').value.trim();
-  if (!kod) { byId('mk-hata').textContent = 'Erişim kodunu girin.'; return; }
+  if (!kod) { byId('mk-hata').textContent = G.MESAJ['kod-gerekli']; return; }
   ac(kod).catch(err => { byId('mk-hata').textContent = 'Beklenmeyen hata: ' + (err.message || ''); });
 };
 byId('mk-kod').addEventListener('keydown', e => { if (e.key === 'Enter') byId('mk-gir').click(); });
 
-let kayitli = null;
-try { kayitli = sessionStorage.getItem('br-' + slug); } catch {}
-if (kayitli) ac(kayitli).catch(err => { byId('mk-hata').textContent = 'Beklenmeyen hata: ' + (err.message || ''); });
+if (!anahtar) {
+  // Eski marka linki (/coffee/<marka>) ya da eksik kopyalanmış şube linki.
+  byId('mk-hata').textContent = /\/coffee\/s\//.test(location.pathname)
+    ? G.MESAJ['tanınmadı']
+    : 'Bu link artık kullanılmıyor. Şubenize iletilen linki kullanın.';
+  kodFormu(false);
+} else {
+  // Kafede zaten bağlı olan cihaz kod sorulmadan açılır: sunucu cihazı tanır.
+  ac(G.kayitliKod(anahtar)).catch(err => { byId('mk-hata').textContent = 'Beklenmeyen hata: ' + (err.message || ''); });
+}
 })();
