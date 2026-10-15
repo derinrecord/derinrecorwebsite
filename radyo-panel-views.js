@@ -2739,11 +2739,10 @@
           ? `<div class="key">${esc(p.player_code)}</div>
             <div class="row" style="margin-top:12px">
               <button class="btn sm primary" data-act="copy" data-copy="${esc(davetMetni(p, link))}" type="button">DAVETİ KOPYALA</button>
-              <button class="btn sm" data-act="copy" data-copy="${esc(p.player_code)}" type="button">KODU KOPYALA</button>
               <button class="btn sm" data-act="player-kod-yenile" data-id="${esc(p.id)}" type="button">YENİ KOD ÜRET</button>
               <button class="btn sm danger" data-act="player-kod-kaldir" data-id="${esc(p.id)}" type="button">KODU KALDIR</button>
             </div>
-            <p class="sub" style="margin-top:10px">DAVETİ KOPYALA, link ve kodu tek mesaj hâlinde panoya alır; şubeye olduğu gibi iletebilirsiniz.</p>`
+            <p class="sub" style="margin-top:10px">DAVETİ KOPYALA, link ve kodu tek mesaj hâlinde panoya alır; şubeye olduğu gibi iletin. Kodu tek başına yazdırmanız gerekirse yukarıdaki kutudan okuyabilirsiniz.</p>`
           : `<p class="sub">Bu şubede kod yok: yayın yalnız linkle açılır. Şube cihaza henüz bağlanmadıysa kod ekleyin.</p>
             <div class="row" style="margin-top:12px">
               <button class="btn sm primary" data-act="player-kod-yenile" data-id="${esc(p.id)}" type="button">KOD ÜRET</button>
