@@ -34,21 +34,15 @@
 *{box-sizing:border-box}
 html,body{min-height:100%}
 body{
-  margin:0;background:#0e0d0f;color:var(--txt);
+  margin:0;background:var(--bg);color:var(--txt);
   font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;
 }
 
-/* ---------- Arka plan: koyu kâğıt + seyrek pembe nokta (15 Ekim, "B") ----------
-   Tek sabit katman, içeriğin arkasında ve tıklamayı geçirir: ince kâğıt greni,
-   hafif kâğıt lifi; Derin Record zine imzası pembe nokta tramı body::after'da.
-   Dokular SVG gürültüsüyle satır içinde üretilir; ek dosya indirilmez. */
-body::before{
-  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:1;
-  background-image:url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27260%27%20height%3D%27260%27%3E%3Cfilter%20id%3D%27n%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%27.85%27%20numOctaves%3D%273%27%20stitchTiles%3D%27stitch%27/%3E%3CfeColorMatrix%20values%3D%270%200%200%200%20.96%200%200%200%200%20.94%200%200%200%200%20.9%200%200%200%20.11%200%27/%3E%3C/filter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23n%29%27/%3E%3C/svg%3E"),
-    url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27520%27%20height%3D%27520%27%3E%3Cfilter%20id%3D%27f%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%27.03%20.16%27%20numOctaves%3D%272%27%20seed%3D%277%27%20stitchTiles%3D%27stitch%27/%3E%3CfeColorMatrix%20values%3D%270%200%200%200%20.96%200%200%200%200%20.94%200%200%200%200%20.9%200%200%200%20.028%200%27/%3E%3C/filter%3E%3Crect%20width%3D%27100%25%27%20height%3D%27100%25%27%20filter%3D%27url%28%23f%29%27/%3E%3C/svg%3E");
-  background-size:260px 260px,520px 520px;
-}
+/* ---------- Arka plan (15 Ekim) ----------
+   Düz koyu zemin; Derin Record zine imzası pembe nokta tramı altta yoğun,
+   yukarı doğru azalarak kaybolur. Kâğıt dokusu denendi, Derin istemedi. */
+body::before{content:none}
 /* Pembe nokta tramı: sayfanın altında yoğun, yukarı doğru azalarak kaybolur. */
 body::after{
   content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
