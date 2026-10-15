@@ -723,3 +723,21 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 }
 
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Canlı durum: çalan şubenin küçük ses dalgası. Şube son 90 sn içinde
+   "çalıyorum" dediyse çubuklar oynar; haber kesildiyse düz ve gri durur. */
+.ses-dalga{display:inline-flex;align-items:flex-end;gap:2px;height:14px;width:20px;
+  margin-right:8px;vertical-align:-2px}
+.ses-dalga i{display:block;width:2.4px;height:3px;border-radius:2px;background:var(--live)}
+.ses-dalga.canli i{animation:ses-dalga 1.05s ease-in-out infinite}
+.ses-dalga.canli i:nth-child(2){animation-delay:-.75s}
+.ses-dalga.canli i:nth-child(3){animation-delay:-.35s}
+.ses-dalga.canli i:nth-child(4){animation-delay:-.9s}
+.ses-dalga.canli i:nth-child(5){animation-delay:-.55s}
+.ses-dalga.durgun i{background:var(--muted-2)}
+.ses-dalga-not{margin-right:8px;color:#e8a34a}
+@keyframes ses-dalga{0%,100%{height:3px}50%{height:14px}}
+@media (prefers-reduced-motion:reduce){.ses-dalga.canli i{animation:none;height:9px}}
+/* Telefonda tablo yana kayar: dalga şube adının altında da görünür. */
+.ses-dalga-ad{display:none}
+@media (max-width:560px){.ses-dalga-ad{display:flex;align-items:center;margin-top:6px}}

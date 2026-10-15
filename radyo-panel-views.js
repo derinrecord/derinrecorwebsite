@@ -1125,6 +1125,22 @@
   // Canlı durum ekranındaki yayın hücresi. Oynatıcı parça bildirdiyse gerçekten
   // çalan parçanın adı üstte yazar; bildirim yoksa (kurulum eskiyse) markaya
   // atanmış kaynak adı gösterilir ve altta tekrar edilmez.
+  // Küçük ses dalgası: şube son 90 sn içinde "çalıyorum" dediyse oynar. Haber
+  // kesildiyse (bayrak "çalıyor" ama son görülme eski) dalga düz ve gri durur,
+  // yanında son haberin ne kadar önce geldiği yazar: donmuş bir "ÇALIYOR"
+  // canlı sanılmasın. Panel şubenin sesini duymaz; dalga bildirimi gösterir.
+  const DALGA_TAZE_MS = 90000;
+  function sesDalgasi(p, now) {
+    if (!p.is_playing || !p.last_seen_at) return '';
+    const yas = now - new Date(p.last_seen_at).getTime();
+    const cubuklar = '<i></i><i></i><i></i><i></i><i></i>';
+    if (yas < DALGA_TAZE_MS) {
+      return `<span class="ses-dalga canli" role="img" aria-label="Şubeden çalıyor bilgisi geliyor">${cubuklar}</span>`;
+    }
+    return `<span class="ses-dalga durgun" role="img" aria-label="Şubeden haber kesildi">${cubuklar}</span>`
+      + `<span class="sub ses-dalga-not">son haber ${esc(goreli(p.last_seen_at, now))}</span>`;
+  }
+
   function yayinHucresi(p, k, now, D) {
     // Çevrimdışı bir şubede "şu an bu çalıyor" demeyiz: ses akmıyordur, elimizdeki
     // bayrak da son görülme zamanı kadar eskidir.
@@ -1133,7 +1149,7 @@
       ? esc(calan)
       : (k && k.ad ? esc(k.ad) : '<span class="sub">yayın atanmadı</span>');
     const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
-    return ust + ' <span class="sub">' + yayinDurumu(p, k, now, !!calan, farkli) + '</span>';
+    return sesDalgasi(p, now) + ust + ' <span class="sub">' + yayinDurumu(p, k, now, !!calan, farkli) + '</span>';
   }
   const kilitChip = p => p.bound_device_id ? chip('lock', 'KİLİTLİ') : chip('off', 'serbest');
   const bos = (kolon, metin) => `<tr><td colspan="${kolon}"><div class="empty">${esc(metin)}</div></td></tr>`;
@@ -1322,7 +1338,8 @@
         const k = etkinKaynak(D, p);
         return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
           <td><div class="cell-main"><span class="cover">📻</span><span><b>${esc(p.label)}</b>
-            <span class="sub">${esc(marka ? marka.name : '—')}</span></span></div></td>
+            <span class="sub">${esc(marka ? marka.name : '—')}</span>
+            <span class="ses-dalga-ad">${sesDalgasi(p, now)}</span></span></div></td>
           <td class="tight">${bagliChip(p, now)}${ihlalVar(p) ? chip('danger', 'PAYLAŞIM GİRİŞİMİ') : ''}</td>
           <td>${yayinHucresi(p, k, now, D)}</td>
           <td class="tight">${esc(hhmm(p.open_time) || '—')}–${esc(hhmm(p.close_time) || '—')}</td>
@@ -2935,6 +2952,7 @@
     kodUret: kodUret,
     linkYenileAlanlari: linkYenileAlanlari,
     ihlalVar: ihlalVar,
+    sesDalgasi: sesDalgasi,
     ihlalCozuldu: ihlalCozuldu,
     ihlalCumlesi: ihlalCumlesi,
     IHLAL_TUR: IHLAL_TUR,

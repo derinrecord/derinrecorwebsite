@@ -1970,3 +1970,13 @@ test('Markalar sayfasında markanın akışı GENEL YAYIN başlığıyla görün
   assert.ok(src.includes('<h3>GENEL YAYIN</h3>'));
   assert.ok(!src.includes('<h3>CANLI YAYIN</h3>'));
 });
+
+test('canlı durumda çalan şubede ses dalgası oynar, haber kesilince gri durur', () => {
+  const simdi = Date.parse('2026-10-15T09:00:00Z');
+  const once = sn => new Date(simdi - sn * 1000).toISOString();
+  const taze = V.sesDalgasi({ is_playing: true, last_seen_at: once(20) }, simdi);
+  assert.ok(taze.includes('ses-dalga canli'));
+  const bayat = V.sesDalgasi({ is_playing: true, last_seen_at: once(200) }, simdi);
+  assert.ok(bayat.includes('ses-dalga durgun') && bayat.includes('son haber'));
+  assert.equal(V.sesDalgasi({ is_playing: false, last_seen_at: once(20) }, simdi), '', 'duraklatılmış şubede dalga yok');
+});
