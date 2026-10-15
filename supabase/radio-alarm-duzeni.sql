@@ -11,8 +11,8 @@
 --   2) Toplu alarm: aynı turda 3 ya da daha çok şubeye alarm düşerse tek mesaj
 --      gider (markaya göre gruplu; çok şube birden düşüyorsa sorun büyük
 --      ihtimalle internette ya da bizdedir).
---   3) Şube başına sınır: bir şube son bir saatte 2 alarm gönderdiyse üçüncüde
---      "sık kopuyor" mesajı gider ve şube 1 saat sessize alınır.
+--   3) Şube başına sınır YOK: sorun süren şube her yeni alarmda mesaj gönderir
+--      (Derin'in isteği, 15 Ekim; sessize alma kaldırıldı).
 --   4) Düzeldi mesajı yalnız en az 5 dakika süren ve bildirilmiş sorunlar için.
 --      Aynı turda 3+ şube düzelirse tek mesaj.
 --   5) Günlük özet: her gece 00:10 (İstanbul) son 24 saatin tek mesajlık özeti.
@@ -20,8 +20,8 @@
 -- BU DOSYA NE YAPAR:
 --   * brand_players'a alarm_bildirildi, alarm_sessiz_kadar,
 --     duzeldi_mesaj sütunları ekler (veriler değişmez).
---   * radio_alarm_kayit tablosu: her alarmın başlangıç/bitişi (günlük özet ve
---     şube başına sınır için). RLS açık, politika yok: yalnız sunucu
+--   * radio_alarm_kayit tablosu: her alarmın başlangıç/bitişi (günlük özet
+--     için). RLS açık, politika yok: yalnız sunucu
 --     fonksiyonları okur/yazar; anon/authenticated hiçbir satır göremez.
 --   * radio_alarm_isle tetikleyici fonksiyonunu yeniler: artık Telegram'a
 --     doğrudan yazmaz, yalnız alarm durumunu ve kaydı tutar.
@@ -44,6 +44,9 @@ alter table public.brand_players
   add column if not exists alarm_bildirildi   boolean not null default false,
   add column if not exists alarm_sessiz_kadar timestamptz,
   add column if not exists duzeldi_mesaj      text;
+
+-- Sessize alma kaldırıldı: önceden sessize alınmış şube varsa serbest bırakılır.
+update public.brand_players set alarm_sessiz_kadar = null where alarm_sessiz_kadar is not null;
 
 create table if not exists public.radio_alarm_kayit (
   id         bigserial primary key,
@@ -149,10 +152,8 @@ declare
   v_ayar   public.radio_bildirim_ayari%rowtype;
   v_acik   boolean;
   r        record;
-  v_sayi   int;
   v_satir  text;
   v_liste  text[] := '{}';
-  v_sik    text[] := '{}';
   v_ids    uuid[] := '{}';
   v_duz    text[] := '{}';
   v_duzids uuid[] := '{}';
@@ -164,8 +165,7 @@ begin
 
   -- (a) 3 dakikadır süren, henüz bildirilmemiş alarmlar.
   for r in
-    select p.id, p.label, p.alarm_tur, p.alarm_detay, p.alarm_sessiz_kadar,
-           b.name as marka
+    select p.id, p.label, p.alarm_tur, p.alarm_detay, b.name as marka
     from public.brand_players p
     join public.brands b on b.id = p.brand_id
     where p.alarm_tur is not null
@@ -174,18 +174,8 @@ begin
     order by b.name, p.label
   loop
     v_ids := v_ids || r.id;
-    -- Sessize alınmış şube: işaretlenir, mesaj gitmez.
-    continue when r.alarm_sessiz_kadar is not null and r.alarm_sessiz_kadar > now();
-
-    select count(*) into v_sayi from public.radio_alarm_kayit k
-      where k.player_id = r.id and k.bildirildi and k.basla > now() - interval '1 hour';
-    if v_sayi >= 2 then
-      v_sik := v_sik || (r.marka || ' · ' || r.label);
-      update public.brand_players set alarm_sessiz_kadar = now() + interval '1 hour' where id = r.id;
-    else
-      v_liste := v_liste || (r.marka || ' · ' || r.label || ': ' || public.radio_alarm_adi(r.alarm_tur)
-        || coalesce(' (' || r.alarm_detay || ')', ''));
-    end if;
+    v_liste := v_liste || (r.marka || ' · ' || r.label || ': ' || public.radio_alarm_adi(r.alarm_tur)
+      || coalesce(' (' || r.alarm_detay || ')', ''));
     update public.radio_alarm_kayit set bildirildi = true
       where player_id = r.id and bitis is null;
   end loop;
@@ -208,23 +198,15 @@ begin
     end loop;
   end if;
 
-  if v_acik and array_length(v_sik, 1) > 0 then
-    perform public.radio_telegram_gonder(v_ayar.token, v_ayar.chat_id,
-      '⚠️ DERİN RECORD · SIK KOPAN ŞUBE' || E'\n' || array_to_string(v_sik, E'\n')
-      || E'\nSon bir saatte 3. kez sorun. Bu şube(ler) 1 saat sessize alındı; panelden takip edin.'
-      || E'\n' || v_saat);
-  end if;
-
   -- (b) Düzelen şubeler.
   for r in
-    select p.id, p.label, p.duzeldi_mesaj, p.alarm_sessiz_kadar, b.name as marka
+    select p.id, p.label, p.duzeldi_mesaj, b.name as marka
     from public.brand_players p
     join public.brands b on b.id = p.brand_id
     where p.duzeldi_mesaj is not null
     order by b.name, p.label
   loop
     v_duzids := v_duzids || r.id;
-    continue when r.alarm_sessiz_kadar is not null and r.alarm_sessiz_kadar > now();
     v_duz := v_duz || (r.marka || ' · ' || r.label || ' (' || r.duzeldi_mesaj || ')');
   end loop;
 

@@ -15,11 +15,11 @@ test('tetikleyici Telegram\'a doğrudan yazmaz; gönderim dakikalık görevde', 
   assert.match(sql, /select public\.radio_sessiz_denetle\(\); select public\.radio_alarm_gonder\(\);/);
 });
 
-test('sorun 3 dk sürerse alarm, 3+ şubede toplu mesaj, şube başına saatte 2 sınır', () => {
+test('sorun 3 dk sürerse alarm, 3+ şubede toplu mesaj, şube başına sınır yok', () => {
   const g = govde('radio_alarm_gonder');
   assert.ok(g.includes("p.alarm_at <= now() - interval '3 minutes'"));
   assert.ok(g.includes('array_length(v_liste, 1) >= 3'), 'toplu alarm');
-  assert.ok(g.includes('v_sayi >= 2') && g.includes("interval '1 hour'"), 'şube başına sınır');
+  assert.ok(!g.includes('v_sayi') && !g.includes('SIK KOPAN') && !g.includes('alarm_sessiz_kadar'), 'şube başına sınır ve sessize alma yok');
 });
 
 test('düzeldi mesajı yalnız bildirilmiş ve 5 dk+ süren sorun için; günlük özet gece', () => {

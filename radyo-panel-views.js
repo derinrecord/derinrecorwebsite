@@ -1620,7 +1620,7 @@
     { anahtar: 'radio-ses-kontrolu.sql', ad: 'Ses kontrolü',
       aciklama: 'Şube ekranındaki ses seviyesini ve parçanın takılıp takılmadığını panele bildirir.', etki: 'Canlı durum · ses dalgası' },
     { anahtar: 'radio-alarm-duzeni.sql', ad: 'Alarm düzeni (70 şube)',
-      aciklama: 'Sorun 3 dk sürerse alarm, toplu alarm, şube başına sınır ve gece günlük özet.', etki: 'Telegram' },
+      aciklama: 'Sorun 3 dk sürerse alarm, toplu alarm ve gece günlük özet.', etki: 'Telegram' },
     { anahtar: 'radio-sube-alarm.sql', ad: 'Yayın alarmı (Telegram)',
       aciklama: 'Parça açılamazsa, takılırsa, ses kapanırsa ya da şube yayın saatinde susarsa panel ve Telegram anında haber alır; düzelince de haber verir.', etki: 'Canlı durum · Telegram' },
     { anahtar: 'radio-erisim.sql', ad: 'Şube erişim kapısı',
