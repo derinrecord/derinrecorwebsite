@@ -639,7 +639,15 @@
 
   // Bir şubede paylaşım girişimi kaydı var mı? (Sayaç ve zaman birlikte dolu
   // olmalı: temizlenmiş alarm yeniden "var" görünmesin.)
-  const ihlalVar = p => !!(p && Number(p.ihlal_sayisi || 0) > 0 && p.son_ihlal_at);
+  const ihlalKaydi = p => !!(p && Number(p.ihlal_sayisi || 0) > 0 && p.son_ihlal_at);
+  // Uyarı yalnız sorun sürüyorsa yanar: son denemeden SONRA şube bir cihaza
+  // yeniden kilitlendiyse (kilit sıfırlanıp doğru kodla kuruldu) sorun çözülmüştür,
+  // uyarı elle temizlemeye gerek kalmadan kendiliğinden kalkar. Kurulumdan sonra
+  // gelen yeni deneme uyarıyı yeniden yakar.
+  const zamanMs = v => { const t = Date.parse(v || ''); return isFinite(t) ? t : 0; };
+  const ihlalCozuldu = p => ihlalKaydi(p) && !!p.bound_device_id
+    && zamanMs(p.bound_at) > zamanMs(p.son_ihlal_at);
+  const ihlalVar = p => ihlalKaydi(p) && !ihlalCozuldu(p);
 
   const IHLAL_TUR = {
     cihaz: 'Link başka bir cihazdan açılmayı denendi',
@@ -2712,6 +2720,10 @@
           <button class="btn sm danger" data-act="player-lock" data-id="${esc(p.id)}" type="button">CİHAZ KİLİDİNİ SIFIRLA</button>
         </div>
         <p class="sub" style="margin-top:10px">Karar sizde: meşru şube cihaz değiştirdiyse kilidi sıfırlayın, şüpheli bir denemeyse kaydı saklayıp şubeyle konuşun.</p>
+      </div>` : ihlalCozuldu(p) ? `<div class="block">
+        <h4>PAYLAŞIM GİRİŞİMİ · ÇÖZÜLDÜ</h4>
+        <p class="sub">${esc(p.ihlal_sayisi)} deneme kurulumdan önceydi (son deneme ${esc(tarih(p.son_ihlal_at))}).
+          Cihaz ${esc(tarih(p.bound_at))} tarihinde yeniden kuruldu; o zamandan beri yeni deneme yok. Yeni bir deneme olursa uyarı kendiliğinden geri gelir.</p>
       </div>` : ''}
 
       <div class="block"><h4>ŞUBE LİNKİ</h4>
@@ -2921,6 +2933,7 @@
     kodUret: kodUret,
     linkYenileAlanlari: linkYenileAlanlari,
     ihlalVar: ihlalVar,
+    ihlalCozuldu: ihlalCozuldu,
     ihlalCumlesi: ihlalCumlesi,
     IHLAL_TUR: IHLAL_TUR,
     konumBilgi: konumBilgi,

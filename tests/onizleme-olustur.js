@@ -180,7 +180,8 @@ if (senaryo === 'sube') {
       last_seen_at: snOnce(8), open_time: '09:00:00', close_time: '22:00:00',
       bound_device_id: 'cihaz-1', bound_at: snOnce(600), first_ip: null, last_ip: '88.240.10.1',
       last_ip_at: snOnce(8), is_playing: true, now_title: 'Kalabalık Caddesi', now_at: snOnce(8),
-      now_playlist_id: 'l1', now_playlist_name: 'Sabah Akışı', player_code: 'G5LV-S8VD'
+      now_playlist_id: 'l1', now_playlist_name: 'Sabah Akışı', player_code: 'G5LV-S8VD',
+      ihlal_sayisi: 2, son_ihlal_at: snOnce(900), son_ihlal_tur: 'kod', son_ihlal_ip: '88.240.10.9'
     }],
     broadcast: [{ brand_id: 'b1', folder_id: 'f1', playlist_id: null, updated_at: snOnce(600) }],
     playerBroadcast: [{ player_id: 'p1', folder_id: null, playlist_id: 'l1', updated_at: snOnce(300) }],

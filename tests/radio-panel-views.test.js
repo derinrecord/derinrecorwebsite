@@ -1941,3 +1941,20 @@ test('marka sayfasının şube tablosu telefonda kart olabilmesi için sınıf v
   assert.match(tel, /\.kart-tablo thead\{display:none\}/);
   assert.match(tel, /\.kart-tablo td\[data-etiket\]::before/);
 });
+
+// Uyarı sorun çözülünce kendiliğinden kalkar: son denemeden sonra cihaz yeniden
+// kilitlendiyse (kilit sıfırlandı, doğru kodla kuruldu) kırmızı uyarı yanmaz.
+test('paylaşım uyarısı cihaz yeniden kurulunca kendiliğinden kalkar, yeni denemede geri gelir', () => {
+  const cozulmus = { ...KODLU_P, bound_device_id: 'cihaz-yeni', bound_at: iso(-60000), son_ihlal_at: iso(-120000) };
+  assert.equal(V.ihlalVar(cozulmus), false, 'kurulumdan önceki deneme uyarı yakmamalı');
+  assert.equal(V.ihlalCozuldu(cozulmus), true);
+  const cekmece = V.subeCekmecesi('p2', { ...D, players: [D.players[0], cozulmus] }, ui);
+  assert.ok(cekmece.includes('PAYLAŞIM GİRİŞİMİ · ÇÖZÜLDÜ'));
+  assert.ok(!cekmece.includes('ihlal-temizle'), 'çözülmüş kayıtta temizleme düğmesi gerekmez');
+
+  const yeniden = { ...cozulmus, son_ihlal_at: iso(-10000) };
+  assert.equal(V.ihlalVar(yeniden), true, 'kurulumdan sonraki deneme uyarıyı yeniden yakmalı');
+
+  const kilitsiz = { ...KODLU_P };
+  assert.equal(V.ihlalVar(kilitsiz), true, 'cihaz kurulmadıysa sorun sürüyor');
+});
