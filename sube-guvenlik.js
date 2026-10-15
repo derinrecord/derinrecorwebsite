@@ -123,6 +123,19 @@ function calaniBildir({ client, anahtar }, parca) {
   } catch { /* bildirim yayını etkilemez */ }
 }
 
+// Ses kontrolü (supabase/radio-ses-kontrolu.sql): ekrandaki ses seviyesi ve
+// parçanın ilerleyip ilerlemediği panele gider. Fonksiyon kurulmadıysa sessizce geçer.
+function sesBildir({ client, anahtar }, { seviye, ilerliyor }) {
+  if (!client || !anahtar) return;
+  try {
+    Promise.resolve(client.rpc('radio_ses_bildir', {
+      p_player_key: anahtar, p_device_id: cihazKimligi(),
+      p_seviye: Math.max(0, Math.min(100, Math.round(Number(seviye) || 0))),
+      p_ilerliyor: ilerliyor
+    })).catch(() => {});
+  } catch { /* ses bilgisi yayını etkilemez */ }
+}
+
 // Dakikada bir yoklama: panel şubeyi "canlı" görür. Kilit dönerse (panelde
 // başka cihaza bağlandı, kod yenilendi vb.) ekran kapanır.
 function nabizBaslat({ client, anahtar, calarMi = () => false, aralik = 60000 }) {
@@ -137,5 +150,5 @@ function nabizBaslat({ client, anahtar, calarMi = () => false, aralik = 60000 })
   return () => clearInterval(zaman);
 }
 
-window.DerinSubeGuvenlik = { anahtarOku, cihazKimligi, kayitliKod, baglan, nabizBaslat, olay, calaniBildir, MESAJ };
+window.DerinSubeGuvenlik = { anahtarOku, cihazKimligi, kayitliKod, baglan, nabizBaslat, olay, calaniBildir, sesBildir, MESAJ };
 })();

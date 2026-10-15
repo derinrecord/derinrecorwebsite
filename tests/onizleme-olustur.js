@@ -90,14 +90,17 @@ if (senaryo === 'canli') {
       // yerine çalınan liste yazılmalı.
       sube('p1', 'Alsancak', {
         now_title: 'Kalabalık Caddesi', now_track_id: null, now_at: snOnce(8),
-        now_playlist_id: 'l1', now_playlist_name: 'Sabah Akışı'
+        now_playlist_id: 'l1', now_playlist_name: 'Sabah Akışı',
+        ses_seviyesi: 80, ses_ilerliyor: true, ses_at: snOnce(8)
       }),
+      // Çalıyor ama parça ilerlemiyor: TAKILDI görünmeli.
+      sube('p5', 'Konak', { last_seen_at: snOnce(15), ses_seviyesi: 70, ses_ilerliyor: false, ses_at: snOnce(15) }),
       // Bağlı ama duraklatılmış: parça adı iddia edilmemeli.
       sube('p2', 'Karşıyaka', { last_seen_at: snOnce(40), is_playing: false }),
       // Çevrimdışı: bayat kayıt canlı sanılmamalı.
       sube('p3', 'Bornova', { last_seen_at: snOnce(3600), is_playing: true }),
       // Bildirim yok (kurulum eski): kaynak adına düşmeli.
-      sube('p4', 'Buca', { last_seen_at: snOnce(20), is_playing: true })
+      sube('p4', 'Buca', { last_seen_at: snOnce(20), is_playing: true, ses_seviyesi: 0, ses_ilerliyor: true, ses_at: snOnce(20) })
     ],
     broadcast: [{ brand_id: 'b1', folder_id: 'f1', playlist_id: null, updated_at: snOnce(600) }],
     announcements: [],

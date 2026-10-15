@@ -1980,3 +1980,15 @@ test('canlı durumda çalan şubede ses dalgası oynar, haber kesilince gri duru
   assert.ok(bayat.includes('ses-dalga durgun') && bayat.includes('son haber'));
   assert.equal(V.sesDalgasi({ is_playing: false, last_seen_at: once(20) }, simdi), '', 'duraklatılmış şubede dalga yok');
 });
+
+test('ses kontrolü: ses kapalı ve takılan parça dalgada ayrı gösterilir', () => {
+  const simdi = Date.parse('2026-10-15T09:00:00Z');
+  const once = sn => new Date(simdi - sn * 1000).toISOString();
+  const temel = { is_playing: true, last_seen_at: once(20), ses_at: once(20) };
+  assert.ok(V.sesDalgasi({ ...temel, ses_seviyesi: 0, ses_ilerliyor: true }, simdi).includes('SES KAPALI'));
+  assert.ok(V.sesDalgasi({ ...temel, ses_seviyesi: 80, ses_ilerliyor: false }, simdi).includes('PARÇA TAKILDI'));
+  const kisik = V.sesDalgasi({ ...temel, ses_seviyesi: 20, ses_ilerliyor: true }, simdi);
+  assert.ok(kisik.includes('ses-dalga canli') && kisik.includes('ses kısık'));
+  // Ses bilgisi eskiyse yalnız "çalıyor" bildirimine bakılır.
+  assert.equal(V.sesDurumu({ ...temel, ses_at: once(400), ses_seviyesi: 0 }, simdi), null);
+});

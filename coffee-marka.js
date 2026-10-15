@@ -722,6 +722,27 @@ async function yayinDenetle() {
   }
 }
 
+// ---------- Ses kontrolü ----------
+// Dakikada bir: ekrandaki ses seviyesi (sessize alındıysa 0) ve çalan parçanın
+// son ölçümden beri ilerleyip ilerlemediği panele gider. Ses düğmesi sıfıra
+// çekilince beklemeden bildirilir.
+let sonSesZamani = null;
+function sesOlcVeBildir() {
+  const caliyor = !audio.paused && !!audio.src;
+  const an = audio.currentTime;
+  const ilerliyor = caliyor ? (sonSesZamani === null || an !== sonSesZamani) : null;
+  sonSesZamani = caliyor ? an : null;
+  G.sesBildir(baglam, { seviye: audio.muted ? 0 : seviye * 100, ilerliyor });
+}
+let sesZamanlayici = null;
+function sesDegisti() {
+  clearTimeout(sesZamanlayici);
+  sesZamanlayici = setTimeout(() => G.sesBildir(baglam, {
+    seviye: audio.muted ? 0 : seviye * 100,
+    ilerliyor: !audio.paused && !!audio.src ? true : null
+  }), 1500);
+}
+
 // ---------- Canlı yayın (panel › Yayın başlat) ----------
 // Panelden şubeye (ya da markanın geneline) gönderilen yayın, listelerin önünde
 // "CANLI YAYIN" sekmesi olarak durur. Yayın değişince (Yayın başlat) şube o anda
@@ -904,6 +925,10 @@ async function ac(kod) {
   setInterval(mesaiDenetle, 60000);
   setInterval(yayinDenetle, 60000);
   setInterval(canliYayinYokla, 30000);
+  setInterval(sesOlcVeBildir, 60000);
+  const sesDugmesi = byId('mk-ses');
+  if (sesDugmesi) sesDugmesi.addEventListener('change', sesDegisti);
+  audio.addEventListener('volumechange', () => { if (audio.muted) sesDegisti(); });
   setInterval(anonslariYokla, 15000);
   if (!mesaideMi()) {
     durum('Yayın saatleri dışında.');

@@ -925,6 +925,17 @@
     // toleranslı tutarız ki ana yükleme bundan etkilenmesin. Liste alanları
     // eksikse parça alanlarıyla devam ederiz: sahadaki "şu an çalan parça"
     // bilgisi yalnızca yeni SQL yüzünden kaybolmasın.
+    // Ses kontrolü alanları (supabase/radio-ses-kontrolu.sql). Kurulmadıysa
+    // sorgu hata döner; dalga o zaman yalnız "çalıyor" bildirimine bakar.
+    try {
+      const ses = await client.from('brand_players').select('id,ses_seviyesi,ses_ilerliyor,ses_at');
+      D.kurulum['radio-ses-kontrolu.sql'] = !ses.error;
+      if (!ses.error && Array.isArray(ses.data)) {
+        const harita = new Map(ses.data.map(x => [x.id, x]));
+        D.players = D.players.map(p => Object.assign({}, p, harita.get(p.id) || {}));
+      }
+    } catch { D.kurulum['radio-ses-kontrolu.sql'] = false; }
+
     try {
       let calanlar = await client.from('brand_players')
         .select('id,now_title,now_at,now_playlist_id,now_playlist_name');

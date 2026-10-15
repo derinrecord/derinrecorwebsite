@@ -124,3 +124,14 @@ test('çalan parça bildirimi şube anahtarı ve cihazla gider', () => {
   assert.equal(x.p.p_device_id, 'kafe-cihazi');
   assert.equal(x.p.p_playlist_name, 'SABAH');
 });
+
+test('ses bildirimi seviyeyi 0–100 aralığında ve cihaz kimliğiyle gönderir', () => {
+  const { G } = ortam({ derin_record_device_id: 'kafe-cihazi' });
+  const c = istemci(() => ({ data: true, error: null }));
+  G.sesBildir({ client: c, anahtar: ANAHTAR }, { seviye: 140.4, ilerliyor: false });
+  const x = c.cagrilar[0];
+  assert.equal(x.ad, 'radio_ses_bildir');
+  assert.equal(x.p.p_seviye, 100);
+  assert.equal(x.p.p_ilerliyor, false);
+  assert.equal(x.p.p_device_id, 'kafe-cihazi');
+});

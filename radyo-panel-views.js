@@ -1130,15 +1130,38 @@
   // yanında son haberin ne kadar önce geldiği yazar: donmuş bir "ÇALIYOR"
   // canlı sanılmasın. Panel şubenin sesini duymaz; dalga bildirimi gösterir.
   const DALGA_TAZE_MS = 90000;
+  // Ses kontrolü (supabase/radio-ses-kontrolu.sql): şube ekranı dakikada bir ses
+  // seviyesini ve parçanın ilerleyip ilerlemediğini bildirir. Bilgi tazeyse dalga
+  // ona göre çizilir: ses 0 ise "SES KAPALI", parça ilerlemiyorsa "TAKILDI",
+  // değilse çubuklar ses seviyesiyle orantılı yükseklikte oynar.
+  const SES_TAZE_MS = 150000;
+  function sesDurumu(p, now) {
+    if (!p.ses_at || now - new Date(p.ses_at).getTime() > SES_TAZE_MS) return null;
+    if (p.ses_seviyesi === 0) return 'kapali';
+    if (p.ses_ilerliyor === false) return 'takildi';
+    return 'akiyor';
+  }
   function sesDalgasi(p, now) {
     if (!p.is_playing || !p.last_seen_at) return '';
     const yas = now - new Date(p.last_seen_at).getTime();
     const cubuklar = '<i></i><i></i><i></i><i></i><i></i>';
-    if (yas < DALGA_TAZE_MS) {
-      return `<span class="ses-dalga canli" role="img" aria-label="Şubeden çalıyor bilgisi geliyor">${cubuklar}</span>`;
+    if (yas >= DALGA_TAZE_MS) {
+      return `<span class="ses-dalga durgun" role="img" aria-label="Şubeden haber kesildi">${cubuklar}</span>`
+        + `<span class="sub ses-dalga-not">son haber ${esc(goreli(p.last_seen_at, now))}</span>`;
     }
-    return `<span class="ses-dalga durgun" role="img" aria-label="Şubeden haber kesildi">${cubuklar}</span>`
-      + `<span class="sub ses-dalga-not">son haber ${esc(goreli(p.last_seen_at, now))}</span>`;
+    const ses = sesDurumu(p, now);
+    if (ses === 'kapali') {
+      return `<span class="ses-dalga sorun" role="img" aria-label="Şubede ses kapalı">${cubuklar}</span>`
+        + `<span class="ses-dalga-not sorun">SES KAPALI</span>`;
+    }
+    if (ses === 'takildi') {
+      return `<span class="ses-dalga uyari" role="img" aria-label="Şubede parça takıldı">${cubuklar}</span>`
+        + `<span class="ses-dalga-not">PARÇA TAKILDI</span>`;
+    }
+    const boy = ses === 'akiyor' ? Math.max(25, Math.min(100, Number(p.ses_seviyesi) || 0)) : 100;
+    const etiket = ses === 'akiyor' ? 'Şubede ses akıyor · seviye ' + boy : 'Şubeden çalıyor bilgisi geliyor';
+    const seviyeNotu = ses === 'akiyor' && boy < 40 ? `<span class="sub ses-dalga-not">ses kısık · %${esc(p.ses_seviyesi)}</span>` : '';
+    return `<span class="ses-dalga canli" style="--ses-boy:${boy / 100}" role="img" aria-label="${esc(etiket)}">${cubuklar}</span>${seviyeNotu}`;
   }
 
   function yayinHucresi(p, k, now, D) {
@@ -1560,6 +1583,8 @@
       aciklama: 'Cihazın hangi parçayı çaldığını panele bildirir.', etki: 'Canlı durum' },
     { anahtar: 'radio-liste-bildirimi.sql', ad: 'Çalan liste bildirimi',
       aciklama: 'Çalan parçanın hangi listeden geldiğini panele bildirir.', etki: 'Canlı durum' },
+    { anahtar: 'radio-ses-kontrolu.sql', ad: 'Ses kontrolü',
+      aciklama: 'Şube ekranındaki ses seviyesini ve parçanın takılıp takılmadığını panele bildirir.', etki: 'Canlı durum · ses dalgası' },
     { anahtar: 'radio-erisim.sql', ad: 'Şube erişim kapısı',
       aciklama: 'Şube linki ve sunum kodu doğrulanmadan katalog okunamaz; içerik dışarıya kapanır.', etki: 'Güvenlik · oynatıcı' },
     { anahtar: 'radio-sube-kodu.sql', ad: 'Şube kodu ve paylaşım alarmı',
@@ -2953,6 +2978,7 @@
     linkYenileAlanlari: linkYenileAlanlari,
     ihlalVar: ihlalVar,
     sesDalgasi: sesDalgasi,
+    sesDurumu: sesDurumu,
     ihlalCozuldu: ihlalCozuldu,
     ihlalCumlesi: ihlalCumlesi,
     IHLAL_TUR: IHLAL_TUR,
