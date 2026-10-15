@@ -15,12 +15,10 @@
 --      "sık kopuyor" mesajı gider ve şube 1 saat sessize alınır.
 --   4) Düzeldi mesajı yalnız en az 5 dakika süren ve bildirilmiş sorunlar için.
 --      Aynı turda 3+ şube düzelirse tek mesaj.
---   5) Test markası: brands.test = true olan markalar Telegram'a alarm
---      göndermez (panelde yine görünür) ve günlük özete girmez.
---   6) Günlük özet: her gece 00:10 (İstanbul) son 24 saatin tek mesajlık özeti.
+--   5) Günlük özet: her gece 00:10 (İstanbul) son 24 saatin tek mesajlık özeti.
 --
 -- BU DOSYA NE YAPAR:
---   * brands'e test sütunu; brand_players'a alarm_bildirildi, alarm_sessiz_kadar,
+--   * brand_players'a alarm_bildirildi, alarm_sessiz_kadar,
 --     duzeldi_mesaj sütunları ekler (veriler değişmez).
 --   * radio_alarm_kayit tablosu: her alarmın başlangıç/bitişi (günlük özet ve
 --     şube başına sınır için). RLS açık, politika yok: yalnız sunucu
@@ -42,11 +40,6 @@
 -- --------------------------------------------------------------------------
 -- 1) Sütunlar ve alarm kaydı
 -- --------------------------------------------------------------------------
-alter table public.brands
-  add column if not exists test boolean not null default false;
-comment on column public.brands.test is
-  'Test markası: Telegram yayın alarmı göndermez, günlük özete girmez.';
-
 alter table public.brand_players
   add column if not exists alarm_bildirildi   boolean not null default false,
   add column if not exists alarm_sessiz_kadar timestamptz,
@@ -172,7 +165,7 @@ begin
   -- (a) 3 dakikadır süren, henüz bildirilmemiş alarmlar.
   for r in
     select p.id, p.label, p.alarm_tur, p.alarm_detay, p.alarm_sessiz_kadar,
-           b.name as marka, coalesce(b.test, false) as test
+           b.name as marka
     from public.brand_players p
     join public.brands b on b.id = p.brand_id
     where p.alarm_tur is not null
@@ -181,8 +174,8 @@ begin
     order by b.name, p.label
   loop
     v_ids := v_ids || r.id;
-    -- Test markası ve sessize alınmış şube: işaretlenir, mesaj gitmez.
-    continue when r.test or (r.alarm_sessiz_kadar is not null and r.alarm_sessiz_kadar > now());
+    -- Sessize alınmış şube: işaretlenir, mesaj gitmez.
+    continue when r.alarm_sessiz_kadar is not null and r.alarm_sessiz_kadar > now();
 
     select count(*) into v_sayi from public.radio_alarm_kayit k
       where k.player_id = r.id and k.bildirildi and k.basla > now() - interval '1 hour';
@@ -224,14 +217,14 @@ begin
 
   -- (b) Düzelen şubeler.
   for r in
-    select p.id, p.label, p.duzeldi_mesaj, p.alarm_sessiz_kadar, b.name as marka, coalesce(b.test, false) as test
+    select p.id, p.label, p.duzeldi_mesaj, p.alarm_sessiz_kadar, b.name as marka
     from public.brand_players p
     join public.brands b on b.id = p.brand_id
     where p.duzeldi_mesaj is not null
     order by b.name, p.label
   loop
     v_duzids := v_duzids || r.id;
-    continue when r.test or (r.alarm_sessiz_kadar is not null and r.alarm_sessiz_kadar > now());
+    continue when r.alarm_sessiz_kadar is not null and r.alarm_sessiz_kadar > now();
     v_duz := v_duz || (r.marka || ' · ' || r.label || ' (' || r.duzeldi_mesaj || ')');
   end loop;
 
@@ -274,10 +267,10 @@ begin
     return;
   end if;
 
-  -- Takipteki şube: aktif, test olmayan marka; bir cihaza kurulu; son 3 günde görülmüş.
+  -- Takipteki şube: aktif marka; bir cihaza kurulu; son 3 günde görülmüş.
   select count(*) into v_toplam
   from public.brand_players p join public.brands b on b.id = p.brand_id
-  where b.is_active and not coalesce(b.test, false)
+  where b.is_active
     and p.bound_device_id is not null and p.last_seen_at > now() - interval '3 days';
   if v_toplam = 0 then
     return;
@@ -290,8 +283,7 @@ begin
     from public.radio_alarm_kayit k
     join public.brand_players p on p.id = k.player_id
     join public.brands b on b.id = p.brand_id
-    where not coalesce(b.test, false)
-      and coalesce(k.bitis, now()) > now() - interval '24 hours'
+    where coalesce(k.bitis, now()) > now() - interval '24 hours'
     group by b.name, p.label
   )
   select count(*), string_agg('• ' || marka || ' · ' || label || ': ' || adet || ' sorun, ' || dk || ' dk', E'\n' order by dk desc)

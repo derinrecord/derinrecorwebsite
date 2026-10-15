@@ -20,14 +20,16 @@ test('sorun 3 dk sürerse alarm, 3+ şubede toplu mesaj, şube başına saatte 2
   assert.ok(g.includes("p.alarm_at <= now() - interval '3 minutes'"));
   assert.ok(g.includes('array_length(v_liste, 1) >= 3'), 'toplu alarm');
   assert.ok(g.includes('v_sayi >= 2') && g.includes("interval '1 hour'"), 'şube başına sınır');
-  assert.ok(g.includes('r.test'), 'test markası mesaj göndermez');
 });
 
 test('düzeldi mesajı yalnız bildirilmiş ve 5 dk+ süren sorun için; günlük özet gece', () => {
   const t = govde('radio_alarm_isle');
   assert.ok(t.includes('v_sube.alarm_bildirildi and v_dk >= 5'));
   assert.match(sql, /cron\.schedule\('radio-gunluk-ozet', '10 21 \* \* \*'/);
-  assert.ok(govde('radio_gunluk_ozet').includes('not coalesce(b.test, false)'));
+});
+
+test('test markası seçeneği yok (Derin istemedi)', () => {
+  assert.ok(!/brands\s+add column if not exists test|b\.test|r\.test/.test(sql));
 });
 
 test('erişim alarmına, radio_ping\'e ve politikalara dokunmaz', () => {

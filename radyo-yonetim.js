@@ -1011,16 +1011,6 @@
       }
     } catch { /* kolon yok: marka kapağı kapalı */ }
 
-    // Test markası (supabase/radio-alarm-duzeni.sql): Telegram'a yayın alarmı
-    // göndermez. Kolon yoksa düğme çizilmez.
-    try {
-      const test = await client.from('brands').select('id,test');
-      D.kurulum['radio-alarm-duzeni.sql'] = !test.error;
-      if (!test.error) {
-        const harita = new Map((test.data || []).map(x => [x.id, !!x.test]));
-        D.brands.forEach(b => { b.test = harita.get(b.id) || false; });
-      }
-    } catch { D.kurulum['radio-alarm-duzeni.sql'] = false; }
 
     // Veri her tazelendiğinde alarm imzası karşılaştırılır: yeni bir paylaşım
     // girişimi doğduysa haber verilir.
@@ -2454,17 +2444,6 @@
         if (sorun) return hata(sorun);
         await yenile(false);
         bildir(acilacak ? 'Marka yayına alındı.' : 'Marka durduruldu.');
-        return;
-      }
-      case 'brand-test': {
-        const b = marka(id);
-        if (!b) return hata('Marka bulunamadı.');
-        const yeni = !b.test;
-        const sorun = await yazDogrula(
-          client.from('brands').update({ test: yeni }).eq('id', id), 'Test işareti değiştirilemedi');
-        if (sorun) return hata(sorun);
-        await yenile(false);
-        bildir(yeni ? 'Test markası: Telegram alarmı gönderilmeyecek.' : 'Test işareti kaldırıldı: alarmlar Telegram\'a gider.');
         return;
       }
       case 'brand-del': {
