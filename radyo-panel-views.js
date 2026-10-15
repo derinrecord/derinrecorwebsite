@@ -1913,45 +1913,39 @@
         const canli = subeler.some(p => p.is_playing && canliMi(p, now));
         const ab = D.subscriptions.find(s => s.brand_id === b.id);
         const paket = ab ? D.plans.find(p => p.id === ab.plan_id) : null;
-        return `<tr class="selectable" data-act="brand-open" data-id="${esc(b.id)}">
-          <td><div class="cell-main"><span class="cover gold">🏷</span><span><b>${esc(b.name)}</b>
-            <span class="sub">${listeler.length} çalma listesi · ${esc(k.ad || 'yayın atanmadı')}</span></span></div></td>
-          <td class="tight">${subeler.length} şube</td>
-          <td class="tight">${ab
-            ? chip(ab.status === 'trial' ? 'gold' : (ab.status === 'active' ? 'live' : 'danger'),
-                ((paket && paket.name) || 'paket'), ab.status === 'active')
-            : chip('off', 'abonelik yok')}</td>
-          <td class="tight">${esc(abonelikBitis(ab) ? uzunTarih(abonelikBitis(ab)) : '—')}</td>
-          <td class="tight">${canli ? chip('live', '▶ CANLI', true) : (k.ad ? chip('gold', 'YAYINDA') : chip('off', 'kapalı'))}</td>
-          <td><div class="row-actions">
-            <button class="btn sm" data-act="brand-open" data-id="${esc(b.id)}" type="button">AÇ ›</button>
-          </div></td>
-        </tr>`;
+        // Sade liste (15 Ekim): marka · ne çalıyor · şube · paket. Kutu ve tablo yok.
+        const durum = canli ? 'calar' : (k.ad ? 'durdu' : 'kapali');
+        const paketYazi = ab
+          ? ((paket && paket.name) || 'paket') + (ab.status === 'trial' ? ' · deneme' : (ab.status === 'active' ? '' : ' · bitti'))
+            + (abonelikBitis(ab) ? ' · ' + uzunTarih(abonelikBitis(ab)) : '')
+          : 'abonelik yok';
+        return `<div class="sd-satir selectable" data-act="brand-open" data-id="${esc(b.id)}" role="button" tabindex="0">
+          <span class="sd-dalga sd-${durum}${canli ? ' oynar' : ''}" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <div class="sd-ad"><b>${esc(b.name)}</b><small>${subeler.length} şube · ${listeler.length} liste</small></div>
+          <div class="sd-calan"><span class="${k.ad ? '' : 'sd-sonuk'}">${esc(k.ad || 'yayın atanmadı')}</span>
+            <small class="${ab && ab.status !== 'active' && ab.status !== 'trial' ? 'sd-sessiz' : ''}">${esc(paketYazi)}</small></div>
+          <span class="sd-ne">${canli ? 'canlı' : ''}</span>
+        </div>`;
       }).join('');
 
     return `
-      <div class="panel" style="margin-bottom:18px">
-        <h3>YENİ MARKA</h3>
-        <div class="form-grid">
-          <div class="field"><label for="brand-name">MARKA ADI</label>
-            <input id="brand-name" placeholder="Örn. Kahve Dünyası" autocomplete="off"></div>
-          <div class="field"><label for="brand-contact-name">YETKİLİ</label>
-            <input id="brand-contact-name" placeholder="İsteğe bağlı" autocomplete="off"></div>
-          <div class="field"><label for="brand-contact-phone">TELEFON</label>
-            <input id="brand-contact-phone" type="tel" placeholder="İsteğe bağlı" autocomplete="off"></div>
-          <div class="field"><label for="brand-contact-email">E-POSTA</label>
-            <input id="brand-contact-email" type="email" placeholder="İsteğe bağlı" autocomplete="off"></div>
-          <button class="btn primary" data-act="brand-add" type="button">MARKA OLUŞTUR</button>
-        </div>
-        <span class="sub" id="brand-msg"></span>
+      <div class="sd-baslik"><p class="sd-ozet"><b>${D.brands.length}</b> marka</p>
+        <details class="sd-yeni"><summary>+ Yeni marka</summary>
+          <div class="form-grid">
+            <div class="field"><label for="brand-name">MARKA ADI</label>
+              <input id="brand-name" placeholder="Örn. Kahve Dünyası" autocomplete="off"></div>
+            <div class="field"><label for="brand-contact-name">YETKİLİ</label>
+              <input id="brand-contact-name" placeholder="İsteğe bağlı" autocomplete="off"></div>
+            <div class="field"><label for="brand-contact-phone">TELEFON</label>
+              <input id="brand-contact-phone" type="tel" placeholder="İsteğe bağlı" autocomplete="off"></div>
+            <div class="field"><label for="brand-contact-email">E-POSTA</label>
+              <input id="brand-contact-email" type="email" placeholder="İsteğe bağlı" autocomplete="off"></div>
+            <button class="btn primary" data-act="brand-add" type="button">MARKA OLUŞTUR</button>
+          </div>
+          <span class="sub" id="brand-msg"></span>
+        </details>
       </div>
-      <div class="panel">
-        <h3>MARKALAR (${D.brands.length})</h3>
-        <table>
-          <thead><tr><th>MARKA</th><th>ŞUBE</th><th>PAKET</th><th>BİTİŞ</th><th>YAYIN</th><th></th></tr></thead>
-          <tbody>${satirlar || bos(6, 'Henüz marka yok.')}</tbody>
-        </table>
-      </div>`;
+      <div class="sd-liste">${satirlar || '<p class="sd-bos">Henüz marka yok.</p>'}</div>`;
   }
 
   // ---------- Katlanabilir bölüm ----------
@@ -2759,10 +2753,10 @@
     }
     let govde;
     if (state.openPlaylist) govde = listeDetay(state, D, ui);
-    else if (state.openBrand) govde = markaDetay(state, D, ui);
+    else if (state.openBrand) govde = '<div class="sade">' + markaDetay(state, D, ui) + '</div>';
     else if (state.sub === 'abonelikler') govde = abonelikListesi(state, D, ui);
     else if (state.sub === 'talepler') govde = talepListesi(state, D, ui);
-    else govde = markaListesi(state, D, ui);
+    else govde = '<div class="sade">' + markaListesi(state, D, ui) + '</div>';
     return kabuk(sekmeler(state, D) + govde);
   }
 

@@ -43,9 +43,9 @@ body{
    Tek sabit katman: bütün sayfada eşit aralıklı pembe noktalar, içeriğin
    arkasında ve tıklamayı geçirir. Kaset filigranı ve ortadaki boşluk kaldırıldı. */
 body::before{
-  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35;
-  background-image:radial-gradient(circle,var(--pink) 1.2px,transparent 1.8px);
-  background-size:22px 22px;
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.2;
+  background-image:radial-gradient(circle,var(--pink) 1.1px,transparent 1.7px);
+  background-size:34px 34px;
 }
 body::after{content:none}
 /* Panelin kendi katmanları dokunun ÜSTÜNDE kalmalı. */
@@ -802,3 +802,26 @@ small.sd-calar{color:var(--live)}small.sd-takildi{color:var(--warn)}small.sd-ses
 /* Yatay kayan menü ve sekmelerde kaydırma çubuğu görünmesin. */
 .tabs,.rail{scrollbar-width:none}
 .tabs::-webkit-scrollbar,.rail::-webkit-scrollbar{display:none}
+
+/* ---------- Markalar sade (15 Ekim) ----------
+   .sade içinde paneller kutusuz: arka plan, kenar ve gölge yok; bölümler
+   boşluk ve ince çizgiyle ayrılır. Uzun açıklama yazıları gizlenir. */
+.sd-baslik{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.sd-baslik .sd-ozet{margin:0}
+.sd-yeni summary{cursor:pointer;color:var(--gold);font-size:14px;font-weight:600;list-style:none}
+.sd-yeni summary::-webkit-details-marker{display:none}
+.sd-yeni[open]{flex:1 1 100%}
+.sd-yeni[open] summary{margin-bottom:12px}
+.sade .panel{background:none;border:0;box-shadow:none;border-radius:0;padding:22px 0;
+  border-top:1px solid rgba(244,241,233,.08)}
+.sade > .panel:first-child,.sade .panel:first-of-type{border-top:0}
+.sade .panel > h3,.sade .panel > .panel-head h3{font-size:13px;letter-spacing:.14em;color:var(--txt)}
+.sade .panel-sub,.sade .row > .sub,.sade .panel > p.sub{display:none}
+.sade .btn{background:none;border-color:rgba(244,241,233,.18)}
+.sade .btn:hover{background:rgba(244,241,233,.06)}
+.sade .btn.primary{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
+.sade .btn.danger{background:none;color:#ff9aa5;border-color:rgba(255,95,109,.4)}
+.sade .chip{background:none;border-color:transparent;padding-left:0}
+.sade table thead th{border-bottom:1px solid rgba(244,241,233,.08)}
+.sade tbody td{border-color:rgba(244,241,233,.06)}
+.sade .tiles .tile{background:none;border:0;box-shadow:none;padding-left:0}

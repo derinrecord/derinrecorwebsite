@@ -1367,7 +1367,7 @@ test('marka sayfası listeleri yönetir, detay markanın altında açılır', ()
 // düşer; yönetici nerede olduğunu kaybetmez.
 test('bulunamayan liste marka listesine düşer', () => {
   const html = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1', openPlaylist: 'yok' }), LISTE_D, ui).html;
-  assert.ok(html.includes('MARKALAR'), 'marka listesi çizilmeli');
+  assert.ok(html.includes('+ Yeni marka') && html.includes('class="sd-liste"'), 'marka listesi çizilmeli');
   assert.ok(!html.includes('data-act="list-addtrack"'), 'olmayan listenin detayı açılmamalı');
 });
 
