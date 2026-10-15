@@ -103,7 +103,7 @@ test('canlı durum ekranları sekmeden açılır, sayaçlar sekmede okunur', () 
 test('canlı durum şube bağlantısını, çalan akışı ve kilidi gösterir', () => {
   const { html } = V.gorunum(durum({}), D, ui);
   assert.ok(html.includes('BAĞLI'));
-  assert.ok(html.includes('▶ ÇALIYOR'));
+  assert.ok(html.includes('chip live chip-dalga'));
   assert.ok(html.includes('KİLİTLİ'));
   assert.ok(html.includes('Sabah Açılış'), 'markaya atanmış kaynak adı görünmeli');
   assert.ok(html.includes('09:00–22:00'), 'yayın saatleri görünmeli');
@@ -121,7 +121,7 @@ test('yayın sütunu çalan parçayı gösterir, bildirim yoksa kaynağa düşer
 
   const calan = V.yayinHucresi({ ...canli, now_title: 'Kalabalık Caddesi', now_at: taze }, k, simdi2);
   assert.ok(calan.includes('Kalabalık Caddesi'), 'bildirilen parça görünmeli');
-  assert.ok(calan.includes('▶ ÇALIYOR'));
+  assert.ok(calan.includes('chip live chip-dalga'));
   assert.ok(calan.includes('Öğleden sonra akışı'), 'bağlam için kaynak da yazılmalı');
 
   // Bildirim yok (kurulum eski): kaynak adına düşer, kaynağı tekrar etmez.
@@ -137,12 +137,12 @@ test('yayın sütunu çalan parçayı gösterir, bildirim yoksa kaynağa düşer
   // Duraklatılmışken ses akmıyor: parça "çalıyor" diye değil, "son çalan" diye yazılır.
   const durmus = V.yayinHucresi({ ...canli, is_playing: false, now_title: 'Kalabalık Caddesi', now_at: taze }, k, simdi2);
   assert.ok(durmus.includes('son çalan: <b>Kalabalık Caddesi</b>'));
-  assert.ok(!durmus.includes('▶ ÇALIYOR'));
+  assert.ok(!durmus.includes('chip live chip-dalga'));
   assert.ok(durmus.includes('DURAKLATILDI'));
 
   // Çevrimdışı şubede hiçbir şey iddia edilmez.
   const kapali = V.yayinHucresi({ is_playing: true, last_seen_at: null, now_title: 'Kalabalık Caddesi', now_at: taze }, k, simdi2);
-  assert.ok(!kapali.includes('▶ ÇALIYOR'));
+  assert.ok(!kapali.includes('chip live chip-dalga'));
   assert.ok(!kapali.includes('Kalabalık Caddesi'));
 });
 
@@ -150,21 +150,21 @@ test('canlı durum ekranı sütunu ve tazeliği doğru yazar', () => {
   const { html } = V.gorunum(durum({}), D, ui);
   assert.ok(html.includes('ŞU AN ÇALAN'));
   assert.match(html, /\d+ sn önce/, 'canlı bilginin tazeliği yazılmalı');
-  assert.ok(html.includes('▶ ÇALIYOR'));
+  assert.ok(html.includes('chip live chip-dalga'));
 
   // Ses vermeyen ama bağlı şube "duraklatıldı" görünür.
   const duraklatilmis = V.gorunum(durum({}), {
     ...D, players: [{ ...D.players[0], is_playing: false }]
   }, ui).html;
   assert.ok(duraklatilmis.includes('DURAKLATILDI'));
-  assert.ok(!duraklatilmis.includes('▶ ÇALIYOR'));
+  assert.ok(!duraklatilmis.includes('chip live chip-dalga'));
 
   // Çevrimdışı şubede yayın hücresi susar; bağlantı durumunu DURUM sütunu yazar.
   const cevrimdisi = V.gorunum(durum({}), {
     ...D, players: [{ ...D.players[0], last_seen_at: null, is_playing: true }]
   }, ui).html;
   assert.ok(cevrimdisi.includes('ÇEVRİMDIŞI'));
-  assert.ok(!cevrimdisi.includes('▶ ÇALIYOR'), 'bayat kayıt canlı sayılmamalı');
+  assert.ok(!cevrimdisi.includes('chip live chip-dalga'), 'bayat kayıt canlı sayılmamalı');
 });
 
 // Şube çekmecesinde de gerçekten çalan parça görünmeli; destek için gerekli.
@@ -2005,4 +2005,16 @@ test('yayın alarmı şeridi süren sorunu gösterir, duraklatılmış şubede s
   assert.equal(V.alarmSeridi({ players: [{ id: 'a1', label: 'A', alarm_tur: 'sustu', alarm_at: once(60) }] }, ui2), '', 'susma YAYIN DURDU şeridinde');
   const src = require('node:fs').readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
   assert.ok(src.includes('son çalan: <b>'), 'duraklatılınca son çalan parça yazmalı');
+});
+
+test('ses dalgası ÇALIYOR etiketinin içinde; ses kapalıysa etiket sorunu yazar', () => {
+  const simdi = Date.parse('2026-10-15T09:00:00Z');
+  const once = sn => new Date(simdi - sn * 1000).toISOString();
+  const k = { ad: 'Öğleden Sonra' };
+  const temel = { is_playing: true, last_seen_at: once(10), ses_at: once(10), ses_ilerliyor: true };
+  const akiyor = V.yayinHucresi({ ...temel, ses_seviyesi: 80 }, k, simdi, { players: [] });
+  assert.match(akiyor, /<span class="chip live chip-dalga"><span class="ses-dalga canli"[^>]*>(<i><\/i>){5}<\/span>ÇALIYOR<\/span>/);
+  assert.ok(!akiyor.startsWith('<span class="ses-dalga'), 'dalga parça adının solunda durmaz');
+  const kapali = V.yayinHucresi({ ...temel, ses_seviyesi: 0 }, k, simdi, { players: [] });
+  assert.ok(kapali.includes('chip danger chip-dalga') && kapali.includes('SES KAPALI</span>'));
 });

@@ -745,3 +745,13 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 /* Telefonda tablo yana kayar: dalga şube adının altında da görünür. */
 .ses-dalga-ad{display:none}
 @media (max-width:560px){.ses-dalga-ad{display:flex;align-items:center;margin-top:6px}}
+/* Dalga ÇALIYOR etiketinin içinde: etiketteki nokta stili çubuklara uygulanmaz. */
+.chip-dalga{gap:7px}
+.chip .ses-dalga{margin-right:0;height:11px;width:17px;vertical-align:0}
+.chip .ses-dalga i{width:2.2px;height:2px;border-radius:2px}
+.chip .ses-dalga.canli i{background:currentColor}
+.chip .ses-dalga.sorun i,.chip .ses-dalga.uyari i{background:currentColor;height:2px}
+.chip .ses-dalga.durgun i{background:currentColor;opacity:.45}
+.chip .ses-dalga.canli i{animation-name:ses-dalga-kucuk}
+@keyframes ses-dalga-kucuk{0%,100%{height:2px}50%{height:calc(2px + 9px * var(--ses-boy, 1))}}
+@media (prefers-reduced-motion:reduce){.chip .ses-dalga.canli i{animation:none;height:7px}}

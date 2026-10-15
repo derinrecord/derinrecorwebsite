@@ -1140,10 +1140,27 @@
   // Yayın hücresinin ikinci satırı: ses gerçekten akıyor mu, bu bilgi ne kadar
   // taze ve cihaz hangi listeyi çalıyor? Çevrimdışıysa susar; bağlantı durumunu
   // zaten DURUM sütunu yazıyor.
+  // ÇALIYOR etiketi ses dalgasını içinde taşır: ses akıyorsa çubuklar ses
+  // seviyesiyle oynar; ses kapalıysa ya da parça takıldıysa etiket o sorunu yazar.
+  function calarEtiketi(p, now) {
+    const cubuklar = '<i></i><i></i><i></i><i></i><i></i>';
+    const ses = sesDurumu(p, now);
+    if (ses === 'kapali') {
+      return `<span class="chip danger chip-dalga"><span class="ses-dalga sorun" aria-hidden="true">${cubuklar}</span>SES KAPALI</span>`;
+    }
+    if (ses === 'takildi') {
+      return `<span class="chip gold chip-dalga"><span class="ses-dalga uyari" aria-hidden="true">${cubuklar}</span>PARÇA TAKILDI</span>`;
+    }
+    const taze = now - new Date(p.last_seen_at).getTime() < DALGA_TAZE_MS;
+    const boy = ses === 'akiyor' ? Math.max(25, Math.min(100, Number(p.ses_seviyesi) || 0)) : 100;
+    const kisik = ses === 'akiyor' && boy < 40 ? ` <span class="sub ses-dalga-not">ses kısık · %${esc(p.ses_seviyesi)}</span>` : '';
+    return `<span class="chip live chip-dalga"><span class="ses-dalga ${taze ? 'canli' : 'durgun'}" style="--ses-boy:${boy / 100}" aria-hidden="true">${cubuklar}</span>ÇALIYOR</span>${kisik}`;
+  }
+
   function yayinDurumu(p, k, now, kaynakTekrar, farkliListe) {
     if (!canliMi(p, now)) return '';
     const damga = esc(goreli(p.last_seen_at, now));
-    const nisan = p.is_playing ? chip('live', '▶ ÇALIYOR', true) : chip('gold', 'DURAKLATILDI');
+    const nisan = p.is_playing ? calarEtiketi(p, now) : chip('gold', 'DURAKLATILDI');
     // Parça adı üstte yazıyorsa kaynağı burada tekrar ederiz (bağlam için);
     // üstte kaynak adı yazıyorsa tekrara gerek yok. Cihaz atanmıştan başka bir
     // liste çalıyorsa atanmış kaynağı hiç yazmayız: "şu an ne çalıyor" sorusuna
@@ -1206,7 +1223,10 @@
       ? esc(calan)
       : (k && k.ad ? esc(k.ad) : '<span class="sub">yayın atanmadı</span>'));
     const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
-    return sesDalgasi(p, now) + ust + ' <span class="sub">' + yayinDurumu(p, k, now, !!calan, farkli) + '</span>';
+    // Dalga ÇALIYOR etiketinin içinde; yalnız şubeden haber kesildiyse (etiket
+    // çizilmez) gri dalga ve "son haber" notu başta durur.
+    const kesik = (p.is_playing && !canliMi(p, now)) ? sesDalgasi(p, now) : '';
+    return kesik + ust + ' <span class="sub">' + yayinDurumu(p, k, now, !!calan, farkli) + '</span>';
   }
   const kilitChip = p => p.bound_device_id ? chip('lock', 'KİLİTLİ') : chip('off', 'serbest');
   const bos = (kolon, metin) => `<tr><td colspan="${kolon}"><div class="empty">${esc(metin)}</div></td></tr>`;
