@@ -17,3 +17,8 @@ test('aynı alarm tekrar mesaj atmaz; susma dakikada bir denetlenir', () => {
   assert.ok(sql.includes("interval '3 minutes'") && sql.includes("interval '3 days'"));
   assert.match(sql, /revoke all on function public\.radio_sessiz_denetle\(\) from public, anon, authenticated/);
 });
+
+test('duraklatılmış şubenin susması alarm üretmez', () => {
+  assert.match(sql, /and v_mesai\s+and r\.is_playing\s+and r\.last_seen_at < now\(\) - interval '3 minutes'/);
+  assert.ok(sql.includes("(not v_mesai or not r.is_playing)"), 'duraklatılınca süren susma alarmı sessizce kapanır');
+});

@@ -17,7 +17,8 @@
 --      DÜZELİNCE mesaj gider. Mevcut erişim alarmı tetikleyicisine
 --      (radio_bildirim_tetik) dokunulmaz.
 --   3) radio_sessiz_denetle: dakikada bir çalışır (pg_cron). Yayın saatindeki,
---      bir cihaza kurulu şube 3 dakikadır haber vermiyorsa "sustu" alarmı;
+--      bir cihaza kurulu ve son bildirdiğinde MÜZİK ÇALAN şube 3 dakikadır
+--      haber vermiyorsa "sustu" alarmı (duraklatılmış ekran alarm üretmez);
 --      yeniden bağlanınca "duzeldi". 3 günden uzun süredir kapalı şube kurulum
 --      dışı sayılır, alarm üretmez.
 --   RLS politikası değişmez. radio_ping değişmez.
@@ -175,8 +176,13 @@ begin
       else v_an >= r.open_time or v_an < r.close_time
     end;
 
+    -- Yalnız müzik ÇALARKEN susan şube alarm üretir. Duraklatılmış ya da hiç
+    -- başlatılmamış bir ekranın susması (bilgisayar uykuya geçti, sekme arka
+    -- planda) yayın sorunu değildir; aksi hâlde Telegram gereksiz mesajla dolar
+    -- (15 Ekim: duraklatılmış deneme sekmesi 15–20 dk'da bir alarm üretti).
     if r.alarm_tur is distinct from 'sustu'
        and v_mesai
+       and r.is_playing
        and r.last_seen_at < now() - interval '3 minutes' then
       insert into public.radio_player_events (player_key, player_id, brand_id, device_id, kind, detail)
       values (r.player_key, r.id, r.brand_id, r.bound_device_id, 'sustu',
@@ -184,8 +190,8 @@ begin
     elsif r.alarm_tur = 'sustu' and r.last_seen_at > now() - interval '2 minutes' then
       insert into public.radio_player_events (player_key, player_id, brand_id, device_id, kind, detail)
       values (r.player_key, r.id, r.brand_id, r.bound_device_id, 'duzeldi', 'yeniden bağlandı');
-    elsif r.alarm_tur = 'sustu' and not v_mesai then
-      -- Yayın saati bitti: alarm sessizce kapanır (ertesi gün yeniden denetlenir).
+    elsif r.alarm_tur = 'sustu' and (not v_mesai or not r.is_playing) then
+      -- Yayın saati bitti ya da şube bilerek duraklatıldı: alarm sessizce kapanır.
       update public.brand_players set alarm_tur = null, alarm_at = null, alarm_detay = null
         where id = r.id;
     end if;
