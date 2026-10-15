@@ -568,7 +568,9 @@ function detayGoster(t) {
 // ---------- Şube yayını: geçmiş, çalan parça, yayın saatleri, anons ----------
 let yayinSaati = { acilis: null, kapanis: null };
 let ilkCalis = true;
-let duraklatildi = false;   // "devam" yalnız gerçek duraklatmadan sonra yazılır
+let duraklatildi = false;
+let yuklemeHatasi = false;
+let ardisikHata = 0;   // "devam" yalnız gerçek duraklatmadan sonra yazılır
 let duraklatmaSebebi = null;
 let anonsta = false;
 let sonAnons = null;
@@ -650,9 +652,21 @@ function sesOlaylariniBagla() {
     G.olay(baglam, 'durakladi', sebep);
     anlikBildir();
   });
+  // Tek parça açılamazsa ekran sıradakine geçer: bu yalnız geçmişe yazılır.
+  // Art arda iki parça açılamıyorsa yayın gerçekten sorunludur: alarm olayı.
   audio.addEventListener('error', () => {
     const t = kuyruk[sira];
-    if (t) G.olay(baglam, 'yuklenemedi', clean(t.title));
+    ardisikHata++;
+    const tur = ardisikHata >= 2 ? 'yuklenemedi' : 'parca-acilamadi';
+    if (t) G.olay(baglam, tur, clean(t.title));
+    if (tur === 'yuklenemedi') yuklemeHatasi = true;
+  });
+  // Bir parça gerçekten çalmaya başlarsa sayaç sıfırlanır, alarm varsa kapanır.
+  audio.addEventListener('playing', () => {
+    ardisikHata = 0;
+    if (!yuklemeHatasi) return;
+    yuklemeHatasi = false;
+    G.olay(baglam, 'duzeldi', 'parça açıldı');
   });
 }
 
@@ -738,20 +752,38 @@ async function yayinDenetle() {
 // son ölçümden beri ilerleyip ilerlemediği panele gider. Ses düğmesi sıfıra
 // çekilince beklemeden bildirilir.
 let sonSesZamani = null;
+// Süren ses sorunu ('ses-kapali' | 'takildi' | null). Sorun başlayınca ve
+// bitince bağlantı geçmişine olay düşer; sunucu bundan panel ve Telegram
+// alarmı üretir (supabase/radio-sube-alarm.sql). Duraklatılmış yayında
+// sorun değerlendirilmez.
+let sesSorunu = null;
+function sesSorunuDenetle(caliyor, ilerliyor) {
+  if (!caliyor) return;
+  const sessiz = audio.muted || seviye <= 0;
+  const yeni = sessiz ? 'ses-kapali' : (ilerliyor === false ? 'takildi' : null);
+  if (yeni === sesSorunu) return;
+  const eski = sesSorunu;
+  sesSorunu = yeni;
+  const t = kuyruk[sira];
+  if (yeni) G.olay(baglam, yeni, t ? clean(t.title) : null);
+  else G.olay(baglam, 'duzeldi', eski);
+}
 function sesOlcVeBildir() {
   const caliyor = !audio.paused && !!audio.src;
   const an = audio.currentTime;
   const ilerliyor = caliyor ? (sonSesZamani === null || an !== sonSesZamani) : null;
   sonSesZamani = caliyor ? an : null;
   G.sesBildir(baglam, { seviye: audio.muted ? 0 : seviye * 100, ilerliyor });
+  sesSorunuDenetle(caliyor, ilerliyor);
 }
 let sesZamanlayici = null;
 function sesDegisti() {
   clearTimeout(sesZamanlayici);
-  sesZamanlayici = setTimeout(() => G.sesBildir(baglam, {
-    seviye: audio.muted ? 0 : seviye * 100,
-    ilerliyor: !audio.paused && !!audio.src ? true : null
-  }), 1500);
+  sesZamanlayici = setTimeout(() => {
+    const caliyor = !audio.paused && !!audio.src;
+    G.sesBildir(baglam, { seviye: audio.muted ? 0 : seviye * 100, ilerliyor: caliyor ? true : null });
+    sesSorunuDenetle(caliyor, caliyor ? true : null);
+  }, 1500);
 }
 
 // ---------- Canlı yayın (panel › Yayın başlat) ----------

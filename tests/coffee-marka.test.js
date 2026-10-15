@@ -166,3 +166,9 @@ test('duraklatma ve yeniden başlatma panele beklemeden bildirilir', () => {
   assert.ok((g.match(/anlikBildir\(\)/g) || []).length >= 2, 'play ve pause anında bildirmeli');
   assert.match(source, /function anlikBildir\(\) \{[\s\S]*?G\.baglan\(\{ client, anahtar, kod: G\.kayitliKod\(anahtar\), calarMi: caliyor \}\)/);
 });
+
+test('şube ekranı ses sorununu ve art arda açılamayan parçaları alarm olayı olarak yazar', () => {
+  assert.match(source, /const yeni = sessiz \? 'ses-kapali' : \(ilerliyor === false \? 'takildi' : null\)/);
+  assert.match(source, /else G\.olay\(baglam, 'duzeldi', eski\)/);
+  assert.match(source, /ardisikHata >= 2 \? 'yuklenemedi' : 'parca-acilamadi'/);
+});

@@ -928,7 +928,9 @@
     // Ses kontrolü alanları (supabase/radio-ses-kontrolu.sql). Kurulmadıysa
     // sorgu hata döner; dalga o zaman yalnız "çalıyor" bildirimine bakar.
     try {
-      const ses = await client.from('brand_players').select('id,ses_seviyesi,ses_ilerliyor,ses_at');
+      let ses = await client.from('brand_players').select('id,ses_seviyesi,ses_ilerliyor,ses_at,alarm_tur,alarm_at,alarm_detay');
+      D.kurulum['radio-sube-alarm.sql'] = !ses.error;
+      if (ses.error) ses = await client.from('brand_players').select('id,ses_seviyesi,ses_ilerliyor,ses_at');
       D.kurulum['radio-ses-kontrolu.sql'] = !ses.error;
       if (!ses.error && Array.isArray(ses.data)) {
         const harita = new Map(ses.data.map(x => [x.id, x]));

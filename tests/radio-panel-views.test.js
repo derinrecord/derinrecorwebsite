@@ -134,9 +134,10 @@ test('yayın sütunu çalan parçayı gösterir, bildirim yoksa kaynağa düşer
   assert.ok(!bayatHucre.includes('Eski Parça'), 'bayat parça adı gösterilmemeli');
   assert.ok(bayatHucre.includes('Öğleden sonra akışı'));
 
-  // Duraklatılmışken ses akmıyor; parça adı iddia edilmemeli.
+  // Duraklatılmışken ses akmıyor: parça "çalıyor" diye değil, "son çalan" diye yazılır.
   const durmus = V.yayinHucresi({ ...canli, is_playing: false, now_title: 'Kalabalık Caddesi', now_at: taze }, k, simdi2);
-  assert.ok(!durmus.includes('Kalabalık Caddesi'));
+  assert.ok(durmus.includes('son çalan: <b>Kalabalık Caddesi</b>'));
+  assert.ok(!durmus.includes('▶ ÇALIYOR'));
   assert.ok(durmus.includes('DURAKLATILDI'));
 
   // Çevrimdışı şubede hiçbir şey iddia edilmez.
@@ -1991,4 +1992,17 @@ test('ses kontrolü: ses kapalı ve takılan parça dalgada ayrı gösterilir', 
   assert.ok(kisik.includes('ses-dalga canli') && kisik.includes('ses kısık'));
   // Ses bilgisi eskiyse yalnız "çalıyor" bildirimine bakılır.
   assert.equal(V.sesDurumu({ ...temel, ses_at: once(400), ses_seviyesi: 0 }, simdi), null);
+});
+
+test('yayın alarmı şeridi süren sorunu gösterir, duraklatılmış şubede son çalan yazar', () => {
+  const simdi = Date.parse('2026-10-15T09:00:00Z');
+  const once = sn => new Date(simdi - sn * 1000).toISOString();
+  const ui2 = { now: () => simdi };
+  const Dx = { players: [{ id: 'a1', label: 'Alsancak', alarm_tur: 'takildi', alarm_at: once(120), alarm_detay: 'Morning Brew' }] };
+  const serit = V.alarmSeridi(Dx, ui2);
+  assert.ok(serit.includes('YAYIN ALARMI') && serit.includes('parça takıldı'));
+  assert.equal(V.alarmSeridi({ players: [{ id: 'a1', label: 'A', alarm_tur: null }] }, ui2), '', 'sorun yokken şerit yok');
+  assert.equal(V.alarmSeridi({ players: [{ id: 'a1', label: 'A', alarm_tur: 'sustu', alarm_at: once(60) }] }, ui2), '', 'susma YAYIN DURDU şeridinde');
+  const src = require('node:fs').readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
+  assert.ok(src.includes('son çalan: <b>'), 'duraklatılınca son çalan parça yazmalı');
 });

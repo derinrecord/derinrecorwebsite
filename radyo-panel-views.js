@@ -164,8 +164,12 @@
     // ("kod-denemesi") yerine okunur bir adla görünsün.
     if (kind === 'kod-denemesi') return { ad: 'Yanlış şube kodu girildi', ek: det, taraf: null, sorun: true };
     if (kind === 'paylasim-girisimi') return { ad: 'Link başka bir cihazda açılmayı denendi', ek: det, taraf: null, sorun: true };
-    if (kind === 'takildi') return { ad: 'Yayın takıldı, yeniden bağlandı', ek: det, taraf: 'bizde', sorun: true };
-    if (kind === 'yuklenemedi') return { ad: 'Parçanın ses dosyası çalınamadı', ek: det, taraf: 'bizde', sorun: true };
+    if (kind === 'takildi') return { ad: 'Parça takıldı, ilerlemiyor', ek: det, taraf: 'bizde', sorun: true };
+    if (kind === 'yuklenemedi') return { ad: 'Art arda parçalar açılamadı', ek: det, taraf: 'bizde', sorun: true };
+    if (kind === 'parca-acilamadi') return { ad: 'Bir parça açılamadı, sıradakine geçildi', ek: det, taraf: 'bizde', sorun: false };
+    if (kind === 'ses-kapali') return { ad: 'Şube ekranında ses kapatıldı', ek: det, taraf: 'şubede', sorun: true };
+    if (kind === 'sustu') return { ad: 'Yayın saatinde şubeden haber kesildi', ek: det, taraf: null, sorun: true };
+    if (kind === 'duzeldi') return { ad: 'Sorun düzeldi', ek: ALARM_ADI[det] || det, taraf: null, sorun: false };
     return { ad: kind || 'Bilinmeyen olay', ek: det, taraf: null, sorun: true };
   }
 
@@ -951,8 +955,35 @@
 
   // Ekranın üstünde duran şeritler: paylaşım girişimi (varsa) + sessiz şube.
   // İkisi de yoksa panel hiçbir şey göstermez.
+  // Yayın alarmı (supabase/radio-sube-alarm.sql): şubede süren sorun. Sorun
+  // düzelince sunucu alarmı kapatır, şerit kendiliğinden kalkar. Susan şube
+  // zaten "YAYIN DURDU" şeridinde anlatıldığı için burada tekrarlanmaz.
+  const ALARM_ADI = {
+    yuklenemedi: 'parçalar açılamıyor', takildi: 'parça takıldı',
+    'ses-kapali': 'ses kapalı', sustu: 'şube sustu'
+  };
+  function alarmSeridi(D, ui) {
+    const now = ui.now();
+    const vuranlar = (D.players || []).filter(p => p.alarm_tur && p.alarm_tur !== 'sustu' && ALARM_ADI[p.alarm_tur]);
+    if (!vuranlar.length) return '';
+    const ilk = vuranlar[0];
+    const baslik = vuranlar.length === 1
+      ? `${ilk.label} · ${ALARM_ADI[ilk.alarm_tur]}`
+      : `${vuranlar.length} şubede yayın sorunu · ${ilk.label}: ${ALARM_ADI[ilk.alarm_tur]}`;
+    const dugmeler = vuranlar.slice(0, 4).map(p =>
+      `<button class="btn sm" data-act="branch-open" data-id="${esc(p.id)}" type="button">${esc(p.label)} · ${esc(ALARM_ADI[p.alarm_tur])}</button>`).join('');
+    return `<div class="uyari-serit">
+      <span class="chip danger">YAYIN ALARMI</span>
+      <div class="uyari-govde">
+        <b>${esc(baslik)}</b>
+        <span class="sub">${esc(goreli(ilk.alarm_at, now))} başladı${ilk.alarm_detay ? ' · ' + esc(ilk.alarm_detay) : ''} · düzelince bu şerit kendiliğinden kalkar</span>
+      </div>
+      <div class="uyari-dugmeler">${dugmeler}</div>
+    </div>`;
+  }
+
   function uyariSeridi(D, ui) {
-    return paylasimSeridi(D, ui) + kesintiSeridi(D, ui);
+    return paylasimSeridi(D, ui) + alarmSeridi(D, ui) + kesintiSeridi(D, ui);
   }
 
   // Sessiz şube şeridi: hangi şube, ne zamandır ve kimin tarafında.
@@ -1168,9 +1199,12 @@
     // Çevrimdışı bir şubede "şu an bu çalıyor" demeyiz: ses akmıyordur, elimizdeki
     // bayrak da son görülme zamanı kadar eskidir.
     const calan = (canliMi(p, now) && p.is_playing && parcaTaze(p, now)) ? p.now_title : null;
-    const ust = calan
+    // Duraklatılınca parça adı kaybolmasın: en son ne çaldığı ve ne zaman yazar.
+    const sonCalan = (!calan && !p.is_playing && p.now_title && p.now_at)
+      ? `<span class="sub">son çalan: <b>${esc(p.now_title)}</b> · ${esc(goreli(p.now_at, now))}</span><br>` : '';
+    const ust = sonCalan + (calan
       ? esc(calan)
-      : (k && k.ad ? esc(k.ad) : '<span class="sub">yayın atanmadı</span>');
+      : (k && k.ad ? esc(k.ad) : '<span class="sub">yayın atanmadı</span>'));
     const farkli = p.is_playing ? personelListesi(p, k, D, now) : null;
     return sesDalgasi(p, now) + ust + ' <span class="sub">' + yayinDurumu(p, k, now, !!calan, farkli) + '</span>';
   }
@@ -1585,6 +1619,8 @@
       aciklama: 'Çalan parçanın hangi listeden geldiğini panele bildirir.', etki: 'Canlı durum' },
     { anahtar: 'radio-ses-kontrolu.sql', ad: 'Ses kontrolü',
       aciklama: 'Şube ekranındaki ses seviyesini ve parçanın takılıp takılmadığını panele bildirir.', etki: 'Canlı durum · ses dalgası' },
+    { anahtar: 'radio-sube-alarm.sql', ad: 'Yayın alarmı (Telegram)',
+      aciklama: 'Parça açılamazsa, takılırsa, ses kapanırsa ya da şube yayın saatinde susarsa panel ve Telegram anında haber alır; düzelince de haber verir.', etki: 'Canlı durum · Telegram' },
     { anahtar: 'radio-erisim.sql', ad: 'Şube erişim kapısı',
       aciklama: 'Şube linki ve sunum kodu doğrulanmadan katalog okunamaz; içerik dışarıya kapanır.', etki: 'Güvenlik · oynatıcı' },
     { anahtar: 'radio-sube-kodu.sql', ad: 'Şube kodu ve paylaşım alarmı',
@@ -2979,6 +3015,7 @@
     ihlalVar: ihlalVar,
     sesDalgasi: sesDalgasi,
     sesDurumu: sesDurumu,
+    alarmSeridi: alarmSeridi,
     ihlalCozuldu: ihlalCozuldu,
     ihlalCumlesi: ihlalCumlesi,
     IHLAL_TUR: IHLAL_TUR,

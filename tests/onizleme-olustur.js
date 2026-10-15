@@ -94,9 +94,10 @@ if (senaryo === 'canli') {
         ses_seviyesi: 80, ses_ilerliyor: true, ses_at: snOnce(8)
       }),
       // Çalıyor ama parça ilerlemiyor: TAKILDI görünmeli.
-      sube('p5', 'Konak', { last_seen_at: snOnce(15), ses_seviyesi: 70, ses_ilerliyor: false, ses_at: snOnce(15) }),
+      sube('p5', 'Konak', { last_seen_at: snOnce(15), ses_seviyesi: 70, ses_ilerliyor: false, ses_at: snOnce(15),
+        alarm_tur: 'takildi', alarm_at: snOnce(75), alarm_detay: 'Morning Brew' }),
       // Bağlı ama duraklatılmış: parça adı iddia edilmemeli.
-      sube('p2', 'Karşıyaka', { last_seen_at: snOnce(40), is_playing: false }),
+      sube('p2', 'Karşıyaka', { last_seen_at: snOnce(40), is_playing: false, now_title: 'El compás del mundo', now_at: snOnce(420) }),
       // Çevrimdışı: bayat kayıt canlı sanılmamalı.
       sube('p3', 'Bornova', { last_seen_at: snOnce(3600), is_playing: true }),
       // Bildirim yok (kurulum eski): kaynak adına düşmeli.
@@ -126,7 +127,7 @@ body{background:#0b0b0d;padding:22px;display:block}
 .panel{max-width:1080px;margin:0 auto}
 </style>
 </head>
-<body><div class="panel">${gorunum.html}</div></body>
+<body>${V.uyariSeridi(D, ui)}<div class="panel">${gorunum.html}</div></body>
 </html>`;
   fs.writeFileSync(ciktiYolu, sayfa3);
   console.log(path.relative(kok, ciktiYolu) + ' yazıldı · canlı durum');
