@@ -39,35 +39,20 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 
-/* ---------- Arka plan: marka sunumuyla aynı doku ----------
-   İki sabit katman, ikisi de içeriğin arkasında ve tıklamayı geçirir:
-   (1) halftone nokta tramı — 17px ızgara, pembe. Kenarlarda yoğun, ortada
-       seyrek; tabloların arkası sakin kalsın diye maskeyle eritilir.
-   (2) soluk kaset filigranları — griye çevrilmiş, dağınık.
-   Panelin kartları yarı saydam olduğu için doku aralarından görünür. */
+/* ---------- Arka plan: düz pembe nokta tramı (15 Ekim, "C" yönü) ----------
+   Tek sabit katman: bütün sayfada eşit aralıklı pembe noktalar, içeriğin
+   arkasında ve tıklamayı geçirir. Kaset filigranı ve ortadaki boşluk kaldırıldı. */
 body::before{
-  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.34;
-  background-image:radial-gradient(circle,var(--pink) 1.4px,transparent 2.1px);
-  background-size:17px 17px;
-  -webkit-mask-image:radial-gradient(ellipse at 50% 42%,transparent 32%,#000 86%);
-  mask-image:radial-gradient(ellipse at 50% 42%,transparent 32%,#000 86%);
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35;
+  background-image:radial-gradient(circle,var(--pink) 1.2px,transparent 1.8px);
+  background-size:22px 22px;
 }
-body::after{
-  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.055;
-  background-image:url('assets/kaset-filigran.png'),url('assets/kaset-filigran.png');
-  background-repeat:no-repeat,no-repeat;
-  background-size:min(430px,38vw) auto,min(330px,30vw) auto;
-  background-position:right -70px top 8%,left -60px bottom 10%;
-  filter:grayscale(1) contrast(1.1) brightness(1.7);
-}
+body::after{content:none}
 /* Panelin kendi katmanları dokunun ÜSTÜNDE kalmalı. */
 .rail,.app,.drawer,.modal-wrap,.player,.toast,.backdrop{position:relative;z-index:1}
 .modal-wrap,.drawer,.backdrop,.player,.toast{z-index:60}
 @media(max-width:700px){
-  /* Telefonda ekran dar: tram seyrelir, filigranlardan biri kalkar. */
-  body::before{opacity:.22}
-  body::after{background-image:url('assets/kaset-filigran.png');
-    background-size:min(260px,54vw) auto;background-position:right -50px top 6%}
+  body::after{content:none}
 }
 a{color:inherit;text-decoration:none}
 ::selection{background:rgba(232,209,90,.35)}
@@ -755,3 +740,32 @@ tr.tasiyor td{background:rgba(212,194,78,.12)!important}
 .chip .ses-dalga.canli i{animation-name:ses-dalga-kucuk}
 @keyframes ses-dalga-kucuk{0%,100%{height:2px}50%{height:calc(2px + 9px * var(--ses-boy, 1))}}
 @media (prefers-reduced-motion:reduce){.chip .ses-dalga.canli i{animation:none;height:7px}}
+
+/* ---------- Canlı durum: sade liste (15 Ekim) ----------
+   Kutu ve tablo yok: ince çizgiyle ayrılan satırlar. Renk yalnız durumu
+   anlatır (yeşil çalıyor, turuncu takıldı, kırmızı ses kapalı, gri diğerleri). */
+.sd-ozet{margin:4px 0 14px;color:var(--muted);font-size:14px}
+.sd-ozet b{color:var(--txt);font-weight:700}.sd-ozet .sd-sorun{color:var(--danger)}
+.sd-liste{max-width:1080px}
+.sd-satir{display:grid;grid-template-columns:28px minmax(140px,1.1fr) 2fr 56px;gap:16px;align-items:center;
+  padding:15px 4px;border-top:1px solid rgba(244,241,233,.08);cursor:pointer;border-radius:10px;transition:background .15s}
+.sd-satir:hover,.sd-satir:focus-visible{background:rgba(244,241,233,.04);outline:none}
+.sd-ad b{display:block;font-size:16px;letter-spacing:-.01em}
+.sd-ad small,.sd-calan small{display:block;color:var(--muted);font-size:13px;margin-top:1px}
+.sd-calan span{font-size:15px}.sd-calan .sd-sonuk{color:var(--muted)}
+.sd-ne{color:var(--muted-2);font-size:12px;text-align:right}
+.sd-ihlal{color:var(--danger);font-style:normal}
+.sd-bos{color:var(--muted);padding:18px 4px}
+small.sd-calar{color:var(--live)}small.sd-takildi{color:var(--warn)}small.sd-sessiz{color:var(--danger)}
+.sd-dalga{display:inline-flex;align-items:flex-end;gap:2px;height:14px}
+.sd-dalga i{width:3px;height:2px;border-radius:2px;background:currentColor}
+.sd-dalga.sd-calar{color:var(--live)}.sd-dalga.sd-takildi{color:var(--warn)}.sd-dalga.sd-sessiz{color:var(--danger)}
+.sd-dalga.sd-durdu{color:var(--muted)}.sd-dalga.sd-kapali{color:var(--muted-2)}
+.sd-dalga.oynar i{animation:sd-dalga 1s ease-in-out infinite}
+.sd-dalga.oynar i:nth-child(2){animation-delay:-.7s}.sd-dalga.oynar i:nth-child(3){animation-delay:-.3s}.sd-dalga.oynar i:nth-child(4){animation-delay:-.85s}
+@keyframes sd-dalga{0%,100%{height:3px}50%{height:calc(3px + 11px * var(--ses-boy, 1))}}
+@media (prefers-reduced-motion:reduce){.sd-dalga.oynar i{animation:none;height:9px}}
+@media(max-width:560px){
+  .sd-satir{grid-template-columns:24px 1fr 44px;row-gap:3px;padding:14px 2px}
+  .sd-calan{grid-column:2/4}.sd-ne{grid-row:1;grid-column:3}
+}

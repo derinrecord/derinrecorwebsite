@@ -1395,13 +1395,58 @@
   }
 
   // ---------- CANLI DURUM ----------
+  // Canlı durum (15 Ekim, sade liste): kutu yok, tablo yok. Üstte tek satır
+  // özet, altta her şube bir satır: durum dalgası · şube · çalan · ne zaman.
+  // Ayrıntılar (saat, kilit, link) şubeye dokununca açılan çekmecede.
+  function subeDurumu(p, now) {
+    if (!canliMi(p, now)) return { tur: 'kapali', yazi: 'bağlı değil' };
+    if (!p.is_playing) return { tur: 'durdu', yazi: 'duraklatıldı' };
+    const ses = sesDurumu(p, now);
+    if (ses === 'kapali') return { tur: 'sessiz', yazi: 'ses kapalı' };
+    if (ses === 'takildi') return { tur: 'takildi', yazi: 'parça takıldı' };
+    return { tur: 'calar', yazi: 'çalıyor' };
+  }
+
+  function sadeSatir(p, D, now) {
+    const marka = D.brands.find(b => b.id === p.brand_id);
+    const k = etkinKaynak(D, p);
+    const d = subeDurumu(p, now);
+    const taze = canliMi(p, now) && p.is_playing && parcaTaze(p, now);
+    const parca = taze ? p.now_title
+      : (p.now_title && !p.is_playing ? p.now_title : (k && k.ad ? k.ad : ''));
+    const liste = (p.is_playing ? personelListesi(p, k, D, now) : null);
+    const listeAdi = liste ? liste.ad : (p.now_playlist_name || (k && k.ad) || '');
+    const altYazi = d.yazi
+      + ((d.tur === 'calar' || d.tur === 'takildi' || d.tur === 'durdu') && listeAdi && listeAdi !== parca ? ' · ' + listeAdi : '')
+      + (d.tur === 'calar' && sesDurumu(p, now) === 'akiyor' && Number(p.ses_seviyesi) < 40 ? ' · ses kısık %' + p.ses_seviyesi : '');
+    const dalga = `<span class="sd-dalga sd-${d.tur}${d.tur === 'calar' && now - new Date(p.last_seen_at).getTime() < DALGA_TAZE_MS ? ' oynar' : ''}"`
+      + (d.tur === 'calar' && sesDurumu(p, now) === 'akiyor' ? ` style="--ses-boy:${Math.max(25, Math.min(100, Number(p.ses_seviyesi) || 0)) / 100}"` : '')
+      + ` aria-hidden="true"><i></i><i></i><i></i><i></i></span>`;
+    const ne = p.last_seen_at ? kisaGoreli(p.last_seen_at, now) : '—';
+    return `<div class="sd-satir selectable" data-act="branch-open" data-id="${esc(p.id)}" role="button" tabindex="0">
+        ${dalga}
+        <div class="sd-ad"><b>${esc(p.label)}</b><small>${esc(marka ? marka.name : '—')}</small></div>
+        <div class="sd-calan"><span class="${taze ? '' : 'sd-sonuk'}">${esc(parca || '—')}</span>
+          <small class="sd-${d.tur}">${esc(altYazi)}${ihlalVar(p) ? ' <em class="sd-ihlal">· paylaşım girişimi</em>' : ''}</small></div>
+        <span class="sd-ne">${esc(ne)}</span>
+      </div>`;
+  }
+
+  // "8 sn", "3 dk", "2 sa", "4 gün": listenin sağında tek kelimelik tazelik.
+  function kisaGoreli(zaman, now) {
+    const sn = Math.max(0, Math.round((now - new Date(zaman).getTime()) / 1000));
+    if (sn < 60) return sn + ' sn';
+    if (sn < 3600) return Math.round(sn / 60) + ' dk';
+    if (sn < 86400) return Math.round(sn / 3600) + ' sa';
+    return Math.round(sn / 86400) + ' gün';
+  }
+
   function canliView(state, D, ui) {
     const now = ui.now();
     const q = norm(state.q);
-    const yayinda = D.broadcast.filter(b => b.folder_id || b.playlist_id).length;
     const bagli = D.players.filter(p => canliMi(p, now)).length;
     const caliyor = D.players.filter(p => p.is_playing && canliMi(p, now)).length;
-    const kilitli = D.players.filter(p => p.bound_device_id).length;
+    const sorunlu = D.players.filter(p => ['sessiz', 'takildi'].includes(subeDurumu(p, now).tur)).length;
 
     const satirlar = D.players
       .filter(p => {
@@ -1410,40 +1455,13 @@
         return hit(q, p.label, marka ? marka.name : '', k.ad || '');
       })
       .sort((a, b) => (a.label || '').localeCompare(b.label || '', 'tr'))
-      .map(p => {
-        const marka = D.brands.find(b => b.id === p.brand_id);
-        const k = etkinKaynak(D, p);
-        return `<tr class="selectable" data-act="branch-open" data-id="${esc(p.id)}">
-          <td><div class="cell-main"><span class="cover">📻</span><span><b>${esc(p.label)}</b>
-            <span class="sub">${esc(marka ? marka.name : '—')}</span>
-            <span class="ses-dalga-ad">${sesDalgasi(p, now)}</span></span></div></td>
-          <td class="tight">${bagliChip(p, now)}${ihlalVar(p) ? chip('danger', 'PAYLAŞIM GİRİŞİMİ') : ''}</td>
-          <td>${yayinHucresi(p, k, now, D)}</td>
-          <td class="tight">${esc(hhmm(p.open_time) || '—')}–${esc(hhmm(p.close_time) || '—')}</td>
-          <td class="tight">${kilitChip(p)}</td>
-          <td><div class="row-actions">
-            <button class="btn sm" data-act="player-copy" data-id="${esc(p.id)}" type="button">CİHAZ LİNKİ</button>
-            <button class="btn sm" data-act="branch-open" data-id="${esc(p.id)}" type="button">YÖNET ›</button>
-          </div></td>
-        </tr>`;
-      }).join('');
+      .map(p => sadeSatir(p, D, now)).join('');
 
     return `
-      <div class="tiles">
-        <div class="tile gold"><span>YAYINDA</span><b>${yayinda}</b><small>markaya akış atanmış</small></div>
-        <div class="tile"><span>ŞUBE</span><b>${D.players.length}</b><small>${bagli} bağlı · ${D.players.length - bagli} çevrimdışı</small></div>
-        <div class="tile"><span>ŞU AN ÇALIYOR</span><b>${caliyor}</b><small>canlı yayında</small></div>
-        <div class="tile"><span>KİLİTLİ CİHAZ</span><b>${kilitli}</b><small>başka cihazda açılamaz</small></div>
-        ${paylasimSayi(D) ? `<div class="tile danger"><span>PAYLAŞIM GİRİŞİMİ</span><b>${paylasimSayi(D)}</b><small>link/kod başka yerde denendi</small></div>` : ''}
-      </div>
-      <div class="panel">
-        <h3>ŞUBELER (${D.players.length})</h3>
-        <table>
-          <thead><tr><th>ŞUBE</th><th>DURUM</th><th title="Şu an çalan parça. Oynatıcı parça adını henüz bildirmiyorsa markaya atanmış yayın kaynağı yazılır. Personel cihazdan başka bir çalma listesi seçtiyse o liste de burada görünür.">ŞU AN ÇALAN</th><th>SAAT</th><th>CİHAZ</th><th></th></tr></thead>
-          <tbody>${satirlar || bos(6, 'Eşleşen şube yok.')}</tbody>
-        </table>
-      </div>`;
+      <p class="sd-ozet"><b>${caliyor}</b> çalıyor · <b>${bagli}</b> bağlı · <b>${D.players.length}</b> şube${sorunlu ? ` · <b class="sd-sorun">${sorunlu}</b> sorun` : ''}</p>
+      <div class="sd-liste">${satirlar || '<p class="sd-bos">Eşleşen şube yok.</p>'}</div>`;
   }
+
 
   // ---------- YAYIN SAĞLIĞI ----------
   // Aşağıdaki denetim, oynatıcının sunucudan istediği radio_now_playing
@@ -3036,6 +3054,7 @@
     linkYenileAlanlari: linkYenileAlanlari,
     ihlalVar: ihlalVar,
     sesDalgasi: sesDalgasi,
+    subeDurumu: subeDurumu,
     sesDurumu: sesDurumu,
     alarmSeridi: alarmSeridi,
     ihlalCozuldu: ihlalCozuldu,

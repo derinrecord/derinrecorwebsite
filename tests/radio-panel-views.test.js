@@ -100,13 +100,12 @@ test('canlı durum ekranları sekmeden açılır, sayaçlar sekmede okunur', () 
   assert.ok(gecmis.includes('class="tabs"'));
 });
 
-test('canlı durum şube bağlantısını, çalan akışı ve kilidi gösterir', () => {
+test('canlı durum sade liste: özet satırı, çalan şube ve kaynak adı', () => {
   const { html } = V.gorunum(durum({}), D, ui);
-  assert.ok(html.includes('BAĞLI'));
-  assert.ok(html.includes('chip live chip-dalga'));
-  assert.ok(html.includes('KİLİTLİ'));
+  assert.match(html, /<p class="sd-ozet"><b>\d+<\/b> çalıyor/);
+  assert.ok(html.includes('sd-dalga sd-calar'), 'çalan şubede yeşil dalga');
   assert.ok(html.includes('Sabah Açılış'), 'markaya atanmış kaynak adı görünmeli');
-  assert.ok(html.includes('09:00–22:00'), 'yayın saatleri görünmeli');
+  assert.ok(!html.includes('<table') && !html.includes('class="tile'), 'tablo ve kutu yok');
 });
 
 // Panel artık gerçekten çalan parçayı gösterebiliyor; ama bu bilgi oynatıcının
@@ -146,25 +145,24 @@ test('yayın sütunu çalan parçayı gösterir, bildirim yoksa kaynağa düşer
   assert.ok(!kapali.includes('Kalabalık Caddesi'));
 });
 
-test('canlı durum ekranı sütunu ve tazeliği doğru yazar', () => {
+test('canlı durum listesi tazeliği ve durumu doğru yazar', () => {
   const { html } = V.gorunum(durum({}), D, ui);
-  assert.ok(html.includes('ŞU AN ÇALAN'));
-  assert.match(html, /\d+ sn önce/, 'canlı bilginin tazeliği yazılmalı');
-  assert.ok(html.includes('chip live chip-dalga'));
+  assert.match(html, /<span class="sd-ne">\d+ (sn|dk)<\/span>/, 'tazelik kısa yazılmalı');
+  assert.ok(html.includes('sd-dalga sd-calar oynar'));
 
   // Ses vermeyen ama bağlı şube "duraklatıldı" görünür.
   const duraklatilmis = V.gorunum(durum({}), {
     ...D, players: [{ ...D.players[0], is_playing: false }]
   }, ui).html;
-  assert.ok(duraklatilmis.includes('DURAKLATILDI'));
-  assert.ok(!duraklatilmis.includes('chip live chip-dalga'));
+  assert.ok(duraklatilmis.includes('duraklatıldı'));
+  assert.ok(!duraklatilmis.includes('sd-dalga sd-calar'));
 
-  // Çevrimdışı şubede yayın hücresi susar; bağlantı durumunu DURUM sütunu yazar.
+  // Çevrimdışı şube "bağlı değil"; bayat kayıt çalıyor sayılmaz.
   const cevrimdisi = V.gorunum(durum({}), {
     ...D, players: [{ ...D.players[0], last_seen_at: null, is_playing: true }]
   }, ui).html;
-  assert.ok(cevrimdisi.includes('ÇEVRİMDIŞI'));
-  assert.ok(!cevrimdisi.includes('chip live chip-dalga'), 'bayat kayıt canlı sayılmamalı');
+  assert.ok(cevrimdisi.includes('bağlı değil'));
+  assert.ok(!cevrimdisi.includes('sd-dalga sd-calar'), 'bayat kayıt canlı sayılmamalı');
 });
 
 // Şube çekmecesinde de gerçekten çalan parça görünmeli; destek için gerekli.
@@ -1880,7 +1878,7 @@ test('bildirimler menüde kendi satırı, başlığı ve rozetiyle durur', () =>
 test('şube linki düğmesi kime ait olduğunu söylüyor', () => {
   const kaynak = require('node:fs').readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
   const dugmeler = kaynak.match(/data-act="player-copy"[^>]*>([^<]*)</g) || [];
-  assert.equal(dugmeler.length, 3, 'üç ekranda da link düğmesi var');
+  assert.equal(dugmeler.length, 2, 'link düğmesi kalan ekranlarda var (canlı durum listesinde yok; çekmecede)');
   dugmeler.forEach(d => assert.match(d, /CİHAZ LİNKİ</, 'düğme "CİHAZ LİNKİ" demeli'));
 });
 
