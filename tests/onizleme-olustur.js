@@ -488,6 +488,8 @@ if (senaryo === 'marka') {
   window.supabase = {
     createClient: () => ({
       rpc(ad, p) {
+        // Önizlemede sunucuya giden çağrılar sayılır (window.ONIZLEME_RPC).
+        (window.ONIZLEME_RPC = window.ONIZLEME_RPC || []).push({ ad, p });
         if (ad === 'radio_ping') {
           if (DURUM === 'kilitli') return Promise.resolve({ data: [{ ok: false, reason: 'locked_to_other_device' }], error: null });
           if (DURUM === 'kod' && p.p_kod !== COD) {

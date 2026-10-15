@@ -160,3 +160,9 @@ test('şube ekranı canlı yayını yoklar ve genel yayına dönünce önceki se
   assert.ok(g.includes('r.error') && g.includes('return'), 'bağlantı hatası yayını değiştirmez');
   assert.ok(source.includes("t._playlistId === CANLI_ID ? null"), 'sunucuya uuid olmayan liste kimliği gitmez');
 });
+
+test('duraklatma ve yeniden başlatma panele beklemeden bildirilir', () => {
+  const g = source.slice(source.indexOf('function sesOlaylariniBagla'), source.indexOf('async function anonslariYokla'));
+  assert.ok((g.match(/anlikBildir\(\)/g) || []).length >= 2, 'play ve pause anında bildirmeli');
+  assert.match(source, /function anlikBildir\(\) \{[\s\S]*?G\.baglan\(\{ client, anahtar, kod: G\.kayitliKod\(anahtar\), calarMi: caliyor \}\)/);
+});

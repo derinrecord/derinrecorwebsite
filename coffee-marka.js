@@ -619,6 +619,14 @@ function mesaiDenetle() {
   G.olay(baglam, 'mesai', 'disi');
 }
 
+// Çalma/duraklatma panele beklemeden gider: dakikalık yoklamayı beklemek,
+// panelde duraklatılmış şubeyi bir dakika "çalıyor" gösteriyordu.
+function anlikBildir() {
+  const caliyor = !audio.paused && !!audio.src;
+  G.baglan({ client, anahtar, kod: G.kayitliKod(anahtar), calarMi: caliyor }).catch(() => {});
+  G.sesBildir(baglam, { seviye: audio.muted ? 0 : seviye * 100, ilerliyor: caliyor ? true : null });
+}
+
 function sesOlaylariniBagla() {
   audio.addEventListener('play', () => {
     if (!mesaideMi()) { mesaiDenetle(); return; }
@@ -626,10 +634,12 @@ function sesOlaylariniBagla() {
     const ad = t ? clean(t.title) + (t._playlistName ? ' · ' + t._playlistName : '') : '';
     // Parça geçişi de 'play' yollar: geçmişe yalnız ilk çalış ve duraklatma
     // sonrası devam yazılır, her parça için satır açılmaz.
+    const durumDegisti = ilkCalis || duraklatildi;
     if (ilkCalis) G.olay(baglam, 'caliyor', ad || null);
     else if (duraklatildi) G.olay(baglam, 'devam', ad || null);
     ilkCalis = false;
     duraklatildi = false;
+    if (durumDegisti) anlikBildir();
   });
   audio.addEventListener('pause', () => {
     // Parça sonu ve parça geçişi duraklatma sayılmaz.
@@ -638,6 +648,7 @@ function sesOlaylariniBagla() {
     duraklatmaSebebi = null;
     duraklatildi = true;
     G.olay(baglam, 'durakladi', sebep);
+    anlikBildir();
   });
   audio.addEventListener('error', () => {
     const t = kuyruk[sira];
