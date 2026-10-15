@@ -1631,7 +1631,8 @@ test('şube çekmecesi kodu, davet metnini ve alarm kanıtını gösterir', () =
   // Kopyalanacak davet metni; link, kod ve kurulum cümlesini birlikte taşır.
   const davet = V.davetMetni(KODLU_P, 'https://ornek.test/coffee/s/' + ANAHTAR_ALSANCAK);
   assert.ok(davet.includes('K7M2-4QPD') && davet.includes('Yayın linki'));
-  assert.ok(davet.includes('başka bir cihazda açılırsa yayın çalışmaz'));
+  assert.ok(davet.includes('Kurulum: cihazda linki açın'));
+  assert.ok(!davet.includes('başka bir cihazda açılırsa'), 'uyarı cümlesi davette yer almaz');
 });
 
 test('kodu olmayan şubede çekmece kod üretmeyi teklif eder, alarm çizilmez', () => {

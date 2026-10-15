@@ -680,8 +680,7 @@
       p.label ? 'Şube: ' + p.label : '',
       'Yayın linki: ' + link,
       p.player_code ? 'Şube kodu: ' + p.player_code : '',
-      'Kurulum: cihazda linki açın, istenen şube kodunu bir kez girin.',
-      'Bu link yalnız bu şubeye aittir; başka bir cihazda açılırsa yayın çalışmaz ve bize bildirim gelir.'
+      'Kurulum: cihazda linki açın, istenen şube kodunu bir kez girin.'
     ].filter(Boolean).join('\n');
   }
 
