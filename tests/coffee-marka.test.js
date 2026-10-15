@@ -148,3 +148,15 @@ test('şube ekranı pasif markayı dakikada bir yakalar ve parça geçişini dev
   assert.ok(g.includes('location.reload()'), 'yeniden yayına alınınca açılır');
   assert.match(source, /else if \(duraklatildi\) G\.olay\(baglam, 'devam'/);
 });
+
+// Panel › Yayın başlat: şube ekranı gönderilen yayını yoklar, değişince ona geçer,
+// GENEL YAYINA DÖNDÜR ile önceki seçime döner.
+test('şube ekranı canlı yayını yoklar ve genel yayına dönünce önceki seçime döner', () => {
+  assert.match(source, /setInterval\(canliYayinYokla, 30000\)/);
+  assert.match(source, /client\.rpc\('radio_now_playing', \{ p_player_key: anahtar, p_device_id: G\.cihazKimligi\(\) \}\)/);
+  const g = source.slice(source.indexOf('async function canliYayinYokla'), source.indexOf('function satirlariListeyeCevir'));
+  assert.ok(g.includes('geriDonus.imza'), 'önceki yayına dönüş tanınmalı');
+  assert.ok(g.includes("durum('Genel yayına dönüldü.')"));
+  assert.ok(g.includes('r.error') && g.includes('return'), 'bağlantı hatası yayını değiştirmez');
+  assert.ok(source.includes("t._playlistId === CANLI_ID ? null"), 'sunucuya uuid olmayan liste kimliği gitmez');
+});

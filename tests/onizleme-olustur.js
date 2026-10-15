@@ -499,6 +499,19 @@ if (senaryo === 'marka') {
           return Promise.resolve({ data: [Object.assign({}, MARKA, saat)], error: null });
         }
         if (ad === 'sube_sunum_liste') return Promise.resolve({ data: listeSatirlari, error: null });
+        // Panel › Yayın başlat taklidi: window.ONIZLEME_CANLI = 'genel' | 'ozel' | null.
+        if (ad === 'radio_now_playing') {
+          const tur = window.ONIZLEME_CANLI === undefined ? 'genel' : window.ONIZLEME_CANLI;
+          if (!tur) return Promise.resolve({ data: [], error: null });
+          const k = tur === 'ozel'
+            ? { folder_id: 'f-ozel', folder_name: 'Hafta Sonu Kampanya', updated_at: '2026-10-15T10:00:00Z', ad: ['Kampanya Açılış', 'Kampanya Ritim', 'Kampanya Kapanış'] }
+            : { folder_id: 'l1', folder_name: 'Sabah Akışı', updated_at: '2026-10-01T09:00:00Z', ad: ['Filtre Sabah', 'Uzun Yol'] };
+          return Promise.resolve({ data: k.ad.map((t, i) => ({
+            folder_id: k.folder_id, folder_name: k.folder_name, cover_path: 'onizleme/l1.svg', shuffle: false,
+            updated_at: k.updated_at, start_track_id: null, track_id: k.folder_id + '-' + i, title: t,
+            storage_path: k.folder_id + '/p' + i + '.wav', sort_order: i
+          })), error: null });
+        }
         return Promise.resolve({ data: [], error: null });
       },
       storage: { from: () => ({ getPublicUrl: p => ({ data: { publicUrl: p ? kapakSvg(p) : '' } }) }) }
@@ -519,7 +532,8 @@ if (senaryo === 'marka') {
   const markaJs = oku('coffee-marka.js').split('/assets/kaset-filigran.png').join(filigran)
     .replace('G.anahtarOku(location)', "G.anahtarOku({ pathname: '/coffee/s/a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa' })")
     // Önizlemede marka denetimi beklemesin: dakika yerine 2 saniye.
-    .replace('setInterval(yayinDenetle, 60000)', 'setInterval(yayinDenetle, 2000)');
+    .replace('setInterval(yayinDenetle, 60000)', 'setInterval(yayinDenetle, 2000)')
+    .replace('setInterval(canliYayinYokla, 30000)', 'setInterval(canliYayinYokla, 1500)');
   const guvenlikJs = oku('sube-guvenlik.js');
 
   let gomulu = sayfaHam

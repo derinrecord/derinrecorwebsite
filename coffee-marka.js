@@ -311,10 +311,12 @@ function listeCiz() {
 }
 
 function istatistikCiz(brand) {
-  const parcaSayisi = listeler.reduce((n, pl) => n + pl._tracks.length, 0);
-  const toplam = listeler.reduce((n, pl) => n + pl._sure, 0);
+  // Canlı yayın sekmesi sayıma girmez: aynı parçalar listelerde zaten sayılıyor.
+  const gercek = listeler.filter(pl => !pl._canli);
+  const parcaSayisi = gercek.reduce((n, pl) => n + pl._tracks.length, 0);
+  const toplam = gercek.reduce((n, pl) => n + pl._sure, 0);
   byId('mk-stats').innerHTML = `
-    <div class="mk-stat"><b>${listeler.length}</b><span>ÇALMA LİSTESİ</span></div>
+    <div class="mk-stat"><b>${gercek.length}</b><span>ÇALMA LİSTESİ</span></div>
     <div class="mk-stat"><b>${parcaSayisi}</b><span>PARÇA</span></div>
     <div class="mk-stat"><b>${sureMetni(toplam)}</b><span>TOPLAM AKIŞ</span></div>`;
   byId('mk-selam').textContent = 'DERİN RECORD × ' + String(brand.name || '').toUpperCase();
@@ -573,9 +575,10 @@ let sonAnons = null;
 
 function parcaDegisti(t) {
   if (!t) return;
+  // Canlı yayın sekmesinin kimliği uuid değildir: sunucuya liste kimliği gitmez.
   G.calaniBildir(baglam, {
     track_id: t.id, title: clean(t.title),
-    playlist_id: t._playlistId, playlist_name: t._playlistName
+    playlist_id: t._playlistId === CANLI_ID ? null : t._playlistId, playlist_name: t._playlistName
   });
 }
 
@@ -719,6 +722,108 @@ async function yayinDenetle() {
   }
 }
 
+// ---------- Canlı yayın (panel › Yayın başlat) ----------
+// Panelden şubeye (ya da markanın geneline) gönderilen yayın, listelerin önünde
+// "CANLI YAYIN" sekmesi olarak durur. Yayın değişince (Yayın başlat) şube o anda
+// ona geçer; GENEL YAYINA DÖN ile önceki yayına dönülünce personelin o sırada
+// seçili olan listesi geri gelir. Kaynak 30 sn'de bir yoklanır.
+const CANLI_ID = 'canli-yayin';
+let canliImza = null;       // yürürlükteki kaynağın kimliği (klasör/liste + güncelleme zamanı)
+let geriDonus = null;       // { imza, listeId }: Yayın başlat'tan önceki durum
+
+function canliListeKur(satirlar) {
+  const ilk = satirlar[0];
+  const parcalar = satirlar.filter(x => x.track_id && x.storage_path);
+  const pl = {
+    id: CANLI_ID, name: 'CANLI YAYIN · ' + (ilk.folder_name || ''), cover_path: ilk.cover_path,
+    created_at: ilk.updated_at, _canli: true, _karisik: !!ilk.shuffle, _baslangic: ilk.start_track_id,
+    _tracks: parcalar.map(x => ({
+      id: x.track_id, title: x.title, storage_path: x.storage_path, cover_path: null,
+      duration_sec: null, _playlistId: CANLI_ID, _playlistName: 'Canlı yayın · ' + (ilk.folder_name || ''),
+      _playlistCover: ilk.cover_path
+    }))
+  };
+  // Süre ve kapak canlı yayın cevabında yok: aynı parça listelerde varsa oradan alınır.
+  const bilinen = new Map();
+  listeler.forEach(x => { if (!x._canli) x._tracks.forEach(t => bilinen.set(String(t.id), t)); });
+  pl._tracks.forEach(t => {
+    const b = bilinen.get(String(t.id));
+    if (b) { t.duration_sec = b.duration_sec; t.cover_path = b.cover_path; }
+  });
+  pl._sure = pl._tracks.reduce((n, t) => n + (Number(t.duration_sec) || 0), 0);
+  return pl;
+}
+
+function listeyeGec(pl, { cal }) {
+  acikListe = pl;
+  kuyruk = pl ? pl._tracks : [];
+  duzen = [];
+  sira = -1;
+  if (pl && pl._canli) {
+    karisik = pl._karisik;
+    const k = byId('mk-karisik');
+    if (k) k.setAttribute('aria-pressed', karisik ? 'true' : 'false');
+  }
+  tabsCiz();
+  listeCiz();
+  const bas = pl && pl._baslangic ? Math.max(0, kuyruk.findIndex(t => es(t.id, pl._baslangic))) : 0;
+  if (cal && kuyruk.length) gecisCal(bas);
+  else { satirlariIsaretle(); sahneYaz(kuyruk[bas] || kuyruk[0] || null); }
+}
+
+async function canliYayinYokla() {
+  let r;
+  try {
+    r = await client.rpc('radio_now_playing', { p_player_key: anahtar, p_device_id: G.cihazKimligi() });
+  } catch { return; }
+  if (!r || r.error || !Array.isArray(r.data)) return;   // bağlantı sorunu: olduğu gibi kal
+  const satirlar = r.data.filter(x => x.track_id);
+  const imza = satirlar.length ? [satirlar[0].folder_id, satirlar[0].updated_at].join('|') : null;
+  if (imza === canliImza) return;
+
+  const ilkAcilis = canliImza === null && !ilkKaynakGoruldu;
+  ilkKaynakGoruldu = true;
+  const caliyordu = !audio.paused && !!audio.src;
+  const onceki = canliImza;
+  canliImza = imza;
+
+  const eskiIndeks = listeler.findIndex(x => x._canli);
+  if (eskiIndeks >= 0) listeler.splice(eskiIndeks, 1);
+  const canli = imza ? canliListeKur(satirlar) : null;
+  if (canli) listeler.unshift(canli);
+
+  if (ilkAcilis) {
+    // Açılış: kaynak varsa varsayılan sekme odur; ses yalnız dokunuşla ya da kiosk'ta başlar.
+    if (canli) listeyeGec(canli, { cal: false }); else tabsCiz();
+    istatistikCiz(markaBilgi);
+    return;
+  }
+
+  if (geriDonus && imza === geriDonus.imza) {
+    // GENEL YAYINA DÖN: Yayın başlat'tan önceki seçime geri dönülür.
+    const hedef = listeler.find(x => es(x.id, geriDonus.listeId)) || canli || listeler[0] || null;
+    geriDonus = null;
+    listeyeGec(hedef, { cal: caliyordu });
+    durum('Genel yayına dönüldü.');
+  } else if (canli) {
+    // Yeni yayın başlatıldı: şube o anda ona geçer.
+    if (!geriDonus) geriDonus = { imza: onceki, listeId: acikListe ? acikListe.id : null };
+    listeyeGec(canli, { cal: caliyordu || kiosk });
+    durum('Canlı yayın başladı: ' + (satirlar[0].folder_name || ''));
+    G.olay(baglam, 'liste', 'canlı yayın · ' + (satirlar[0].folder_name || ''));
+  } else {
+    // Yayın tamamen kaldırıldı: personelin listesine dönülür.
+    const hedef = (geriDonus && listeler.find(x => es(x.id, geriDonus.listeId))) || listeler[0] || null;
+    geriDonus = null;
+    if (acikListe && acikListe._canli) listeyeGec(hedef, { cal: caliyordu });
+    else tabsCiz();
+    durum('Canlı yayın kaldırıldı.');
+  }
+  istatistikCiz(markaBilgi);
+}
+let ilkKaynakGoruldu = false;
+let markaBilgi = null;
+
 function satirlariListeyeCevir(satirlar) {
   const gorulen = new Map();
   satirlar.forEach(x => {
@@ -789,13 +894,16 @@ async function ac(kod) {
   hata.textContent = '';
   if (acildi) return;
   acildi = true;
+  markaBilgi = brand;
   ciz(brand, listeler);
+  await canliYayinYokla();
   sesOlaylariniBagla();
   kapanisDinle();
   G.olay(baglam, 'acildi', 'müşteri sunumu');
   G.nabizBaslat({ client, anahtar, calarMi: () => !audio.paused });
   setInterval(mesaiDenetle, 60000);
   setInterval(yayinDenetle, 60000);
+  setInterval(canliYayinYokla, 30000);
   setInterval(anonslariYokla, 15000);
   if (!mesaideMi()) {
     durum('Yayın saatleri dışında.');

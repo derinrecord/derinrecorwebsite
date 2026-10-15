@@ -2051,7 +2051,7 @@
           <button class="btn${b.is_active === false ? ' primary' : ''}" data-act="brand-active" data-id="${esc(b.id)}" type="button">${b.is_active === false ? 'MARKAYI YAYINA AL' : 'MARKAYI DURDUR'}</button>
           <span class="sub">${b.is_active === false
             ? 'Bu markanın bütün şubelerinde yayın kapalı; şube ekranları “Yayın şu an kapalı” gösterir.'
-            : 'Durdurursanız bu markanın bütün şubelerinde yayın en geç bir dakika içinde kesilir.'}</span>
+            : 'Durdurursanız bu markanın bütün şubelerinde yayın en geç bir dakika içinde tamamen kesilir. Gönderdiğiniz yayını kaldırmak için bu düğmeyi değil, Yayın başlat ekranındaki GENEL YAYINA DÖNDÜR düğmesini kullanın.'}</span>
         </div>
         <div class="row" style="margin-top:16px">
           ${b.is_active === false && k.tip
