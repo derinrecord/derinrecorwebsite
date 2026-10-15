@@ -1511,7 +1511,7 @@
       <div class="panel">
         <h3>YAYIN SAĞLIĞI <span>${D.players.length} şube denetlendi</span></h3>
         <p class="panel-sub">Oynatıcı yayını isterken sunucu şu zinciri arar: şube anahtarı → markanın canlı yayın kaydı → markanın
-          aktif olması → kaynakta parça → abonelik. Kopuk halka varsa şube “bu link tanınmadı” der. Buradaki denetim
+          aktif olması → kaynakta parça → abonelik. Kopuk halka varsa şube ekranı “Yayın şu an kapalı” der. Buradaki denetim
           zinciri panelin elindeki kayıtlardan yoklar; “SUNUCUYLA DOĞRULA” düğmesi aynı kontrolü gerçek sunucuya da sorar.</p>
         <div class="row" style="margin-bottom:14px">
           <button class="btn primary" data-act="saglik-denetle" type="button">SUNUCUYLA DOĞRULA</button>
@@ -2045,16 +2045,18 @@
         k.ad || 'yayın atanmadı'])}
       <div class="panel" style="margin-bottom:18px">
         <h3>CANLI YAYIN</h3>
-        <p class="panel-sub">Markanın bütün şubeleri bu akışı çalar. Bir şubeye kendi yayınını verdiyseniz (<b>Canlı durum › Yayın başlat</b> ekranında şubeyi seçerek) yalnız o şube buradan ayrılır. Marka pasifse, canlı yayın kaydı yoksa ya da kaynak seçilmemişse şubeler yayın bekler ve oynatıcı “bu link tanınmadı” der.</p>
+        <p class="panel-sub">Markanın bütün şubeleri bu akışı çalar. Bir şubeye kendi yayınını verdiyseniz (<b>Canlı durum › Yayın başlat</b> ekranında şubeyi seçerek) yalnız o şube buradan ayrılır. Marka pasife alınırsa şubelerde çalan yayın en geç bir dakika içinde durur ve şube ekranı “Yayın şu an kapalı” der; markayı yeniden yayına aldığınızda şubeler kendiliğinden açılır.</p>
         <div class="row" style="margin-bottom:16px">
           ${b.is_active === false ? chip('danger', 'MARKA PASİF — YAYIN VERİLMEZ') : chip('live', 'MARKA AKTİF', true)}
           <button class="btn${b.is_active === false ? ' primary' : ''}" data-act="brand-active" data-id="${esc(b.id)}" type="button">${b.is_active === false ? 'MARKAYI YAYINA AL' : 'MARKAYI DURDUR'}</button>
           <span class="sub">${b.is_active === false
-            ? 'Pasif markanın anahtarı sunucuda tanınmaz; bütün şubeler “bu link tanınmadı” görür.'
-            : 'Durdurursanız bu markanın bütün yayın linkleri anında devre dışı kalır.'}</span>
+            ? 'Bu markanın bütün şubelerinde yayın kapalı; şube ekranları “Yayın şu an kapalı” gösterir.'
+            : 'Durdurursanız bu markanın bütün şubelerinde yayın en geç bir dakika içinde kesilir.'}</span>
         </div>
         <div class="row" style="margin-top:16px">
-          ${k.tip === 'liste' ? chip('live', 'AKTİF LİSTE', true) : (k.tip ? chip('gold', 'AKTİF KLASÖR') : chip('off', 'YAYIN KAPALI'))}
+          ${b.is_active === false && k.tip
+            ? chip('off', 'BEKLEMEDE')
+            : (k.tip === 'liste' ? chip('live', 'AKTİF LİSTE', true) : (k.tip ? chip('gold', 'AKTİF KLASÖR') : chip('off', 'YAYIN KAPALI')))}
           <b>${esc(k.ad || 'yayın atanmadı')}</b>
           <span class="sub">Kaynağı başlatmak ya da durdurmak <b>Canlı durum › Yayın başlat</b> ekranının işi.</span>
         </div>

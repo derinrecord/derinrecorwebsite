@@ -1958,3 +1958,9 @@ test('paylaşım uyarısı cihaz yeniden kurulunca kendiliğinden kalkar, yeni d
   const kilitsiz = { ...KODLU_P };
   assert.equal(V.ihlalVar(kilitsiz), true, 'cihaz kurulmadıysa sorun sürüyor');
 });
+
+test('pasif marka panelde şube ekranının gerçek mesajını anlatır ve listeyi beklemede gösterir', () => {
+  const src = require('node:fs').readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
+  assert.ok(!src.includes('bu link tanınmadı'), 'eski oynatıcı mesajı panelde kalmamalı');
+  assert.ok(src.includes("chip('off', 'BEKLEMEDE')"));
+});

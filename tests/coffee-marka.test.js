@@ -137,3 +137,14 @@ test('şube ekranı kilitli linkte kod formunu gizler, eski marka linkini redded
   assert.match(source, /'radio_anonslar'/);
   assert.match(source, /get\('kiosk'\) === '1'/, 'dokunuşsuz kurulum desteklenmeli');
 });
+
+// Marka pasife alınınca ya da abonelik bitince çalan yayın en geç bir dakikada
+// kesilir; parça geçişi bağlantı geçmişine "devam" diye yazılmaz.
+test('şube ekranı pasif markayı dakikada bir yakalar ve parça geçişini devam saymaz', () => {
+  assert.match(source, /setInterval\(yayinDenetle, 60000\)/);
+  const g = source.slice(source.indexOf('async function yayinDenetle'), source.indexOf('function satirlariListeyeCevir'));
+  assert.ok(g.includes('audio.pause()') && g.includes('KAPALI_MESAJ'), 'pasifte ses durur, mesaj çıkar');
+  assert.ok(g.includes('m.error') && g.includes('return'), 'bağlantı hatası yayını kesmez');
+  assert.ok(g.includes('location.reload()'), 'yeniden yayına alınınca açılır');
+  assert.match(source, /else if \(duraklatildi\) G\.olay\(baglam, 'devam'/);
+});

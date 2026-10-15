@@ -566,6 +566,7 @@ function detayGoster(t) {
 // ---------- Şube yayını: geçmiş, çalan parça, yayın saatleri, anons ----------
 let yayinSaati = { acilis: null, kapanis: null };
 let ilkCalis = true;
+let duraklatildi = false;   // "devam" yalnız gerçek duraklatmadan sonra yazılır
 let duraklatmaSebebi = null;
 let anonsta = false;
 let sonAnons = null;
@@ -620,14 +621,19 @@ function sesOlaylariniBagla() {
     if (!mesaideMi()) { mesaiDenetle(); return; }
     const t = kuyruk[sira];
     const ad = t ? clean(t.title) + (t._playlistName ? ' · ' + t._playlistName : '') : '';
-    G.olay(baglam, ilkCalis ? 'caliyor' : 'devam', ad || null);
+    // Parça geçişi de 'play' yollar: geçmişe yalnız ilk çalış ve duraklatma
+    // sonrası devam yazılır, her parça için satır açılmaz.
+    if (ilkCalis) G.olay(baglam, 'caliyor', ad || null);
+    else if (duraklatildi) G.olay(baglam, 'devam', ad || null);
     ilkCalis = false;
+    duraklatildi = false;
   });
   audio.addEventListener('pause', () => {
     // Parça sonu ve parça geçişi duraklatma sayılmaz.
     if (gecisVar || audio.ended || (audio.duration > 0 && audio.currentTime >= audio.duration - 0.75)) return;
     const sebep = duraklatmaSebebi || 'cihaz';
     duraklatmaSebebi = null;
+    duraklatildi = true;
     G.olay(baglam, 'durakladi', sebep);
   });
   audio.addEventListener('error', () => {
@@ -674,6 +680,9 @@ async function anonsCal(a) {
 function kodFormu(gorunur) {
   const form = byId('mk-kod').closest('.mk-code');
   if (form) form.hidden = !gorunur;
+  // Kod sorulmuyorsa "kodu girin" yönergeleri de gizlenir: yalnız mesaj kalır.
+  document.querySelectorAll('#mk-lock > p:not(.mk-eyebrow):not(.mk-err)')
+    .forEach(el => { el.hidden = !gorunur; });
 }
 function kilitKarti(mesaj, sebep) {
   byId('mk-app').hidden = true;
@@ -688,6 +697,26 @@ function kapanisDinle() {
     try { audio.pause(); } catch { /* yok say */ }
     kilitKarti((e.detail && e.detail.mesaj) || 'Yayın kapandı.', e.detail && e.detail.sebep);
   });
+}
+
+// Marka pasife alınır ya da abonelik biterse yayın en geç bir dakikada kesilir;
+// marka yeniden yayına alınınca sayfa kendini yeniler (kayıtlı kodla açılır).
+const KAPALI_MESAJ = 'Yayın şu an kapalı. Derin Record ile iletişime geçin.';
+let yayinKapali = false;
+async function yayinDenetle() {
+  let m;
+  try {
+    m = await client.rpc('sube_sunum_marka', { p_player_key: anahtar, p_device_id: G.cihazKimligi() });
+  } catch { return; }
+  if (!m || m.error || !Array.isArray(m.data)) return;   // bağlantı sorunu: yayını kesme
+  if (!m.data.length && !yayinKapali) {
+    yayinKapali = true;
+    duraklatmaSebebi = 'yayin-kapandi';
+    try { audio.pause(); } catch { /* yok say */ }
+    kilitKarti(KAPALI_MESAJ, 'kilitli');
+  } else if (m.data.length && yayinKapali) {
+    location.reload();
+  }
 }
 
 function satirlariListeyeCevir(satirlar) {
@@ -740,9 +769,13 @@ async function ac(kod) {
   const m = await client.rpc('sube_sunum_marka', { p_player_key: anahtar, p_device_id: cihaz });
   const brand = m && !m.error && Array.isArray(m.data) ? m.data[0] : null;
   if (!brand) {
-    hata.textContent = 'Yayın şu an kapalı. Derin Record ile iletişime geçin.';
+    hata.textContent = KAPALI_MESAJ;
+    kodFormu(false);
+    // Marka yeniden yayına alınınca kendiliğinden açılsın.
+    setTimeout(() => ac(G.kayitliKod(anahtar)).catch(() => {}), 60000);
     return;
   }
+  kodFormu(true);
   yayinSaati = { acilis: dakika(brand.open_time), kapanis: dakika(brand.close_time) };
 
   try {
@@ -762,6 +795,7 @@ async function ac(kod) {
   G.olay(baglam, 'acildi', 'müşteri sunumu');
   G.nabizBaslat({ client, anahtar, calarMi: () => !audio.paused });
   setInterval(mesaiDenetle, 60000);
+  setInterval(yayinDenetle, 60000);
   setInterval(anonslariYokla, 15000);
   if (!mesaideMi()) {
     durum('Yayın saatleri dışında.');

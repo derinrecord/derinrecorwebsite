@@ -493,6 +493,8 @@ if (senaryo === 'marka') {
           return Promise.resolve({ data: [{ ok: true, reason: null }], error: null });
         }
         if (ad === 'sube_sunum_marka') {
+          // Önizlemede marka sonradan pasife alınabilir: window.ONIZLEME_PASIF = true.
+          if (window.ONIZLEME_PASIF) return Promise.resolve({ data: [], error: null });
           const saat = DURUM === 'mesai' ? { open_time: '00:00:00', close_time: '00:01:00' } : { open_time: null, close_time: null };
           return Promise.resolve({ data: [Object.assign({}, MARKA, saat)], error: null });
         }
@@ -515,7 +517,9 @@ if (senaryo === 'marka') {
   const filigran = 'data:image/png;base64,' + fs.readFileSync(path.join(kok, 'assets/kaset-filigran.png')).toString('base64');
   // Önizleme dosya olarak açılır: şube adresi koda sabitlenir.
   const markaJs = oku('coffee-marka.js').split('/assets/kaset-filigran.png').join(filigran)
-    .replace('G.anahtarOku(location)', "G.anahtarOku({ pathname: '/coffee/s/a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa' })");
+    .replace('G.anahtarOku(location)', "G.anahtarOku({ pathname: '/coffee/s/a1b2c3d4-e5f6-4a7b-8c9d-0000000000aa' })")
+    // Önizlemede marka denetimi beklemesin: dakika yerine 2 saniye.
+    .replace('setInterval(yayinDenetle, 60000)', 'setInterval(yayinDenetle, 2000)');
   const guvenlikJs = oku('sube-guvenlik.js');
 
   let gomulu = sayfaHam
