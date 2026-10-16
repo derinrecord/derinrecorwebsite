@@ -508,9 +508,10 @@ body:has(.mk-root) .mk-hero-logo{opacity:.09}
 
 /* Parça kredisi (15 Ekim): adın altında sanatçı, yanında (i) bilgi düğmesi. */
 .mk-info{display:inline-grid;place-items:center;width:18px;height:18px;margin-left:8px;padding:0;
-  border:1px solid rgba(244,241,233,.32);border-radius:50%;background:none;color:rgba(244,241,233,.7);
-  font:italic 700 11px/1 Georgia,serif;cursor:pointer;vertical-align:middle}
-.mk-info:hover,.mk-info:focus-visible{border-color:var(--mk-accent,#e8d15a);color:var(--mk-accent,#e8d15a);outline:none}
+  border:0;border-radius:50%;background:#cb2468;color:#f4f1e9;
+  font:800 10.5px/1 -apple-system,"Helvetica Neue",Arial,sans-serif;cursor:pointer;vertical-align:middle;
+  box-shadow:0 0 0 3px rgba(203,36,104,.18);transition:box-shadow .15s,transform .15s}
+.mk-info:hover,.mk-info:focus-visible{box-shadow:0 0 0 4px rgba(203,36,104,.32);transform:scale(1.06);outline:none}
 .mk-item .sure{display:inline-flex;align-items:center;justify-content:flex-end}
 .mk-card .mk-card-sanatci{color:var(--mk-accent,#e8d15a);font-weight:600;margin-top:-4px}
 .mk-card .mk-card-kredi{font-size:12.5px;opacity:.72;line-height:1.5;white-space:pre-line;word-break:break-word}
