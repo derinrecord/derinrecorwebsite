@@ -1807,7 +1807,7 @@
         <button class="btn sm" data-act="track-play" data-id="${esc(t.id)}" type="button">DİNLE</button>
         <button class="btn sm" data-act="track-rename" data-id="${esc(t.id)}" type="button">AD</button>
         <button class="btn sm" data-act="track-img" data-id="${esc(t.id)}" type="button">KAPAK</button>
-        ${kurulumVar(D, 'parca-kredi.sql') ? `<button class="btn sm" data-act="track-kredi" data-id="${esc(t.id)}" type="button">KREDİ</button>` : ''}
+        ${kurulumVar(D, 'parca-kredi.sql') ? `<button class="btn sm${t.sanatci || t.kredi ? '' : ' primary'}" data-act="track-kredi" data-id="${esc(t.id)}" type="button">ⓘ ${t.sanatci || t.kredi ? 'İNFO' : 'İNFO EKLE'}</button>` : ''}
         <button class="btn sm" data-act="track-move" data-id="${esc(t.id)}" type="button">TAŞI</button>
         <button class="btn sm danger" data-act="track-del" data-id="${esc(t.id)}"
           data-path="${esc(t.storage_path)}" type="button">SİL</button>

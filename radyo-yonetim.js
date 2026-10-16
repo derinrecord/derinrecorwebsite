@@ -2321,11 +2321,11 @@
         if (!t) return;
         const deger = await new Promise(res => {
           pencere({
-            baslik: 'Parça kredisi',
+            baslik: 'Parça bilgisi (ⓘ)',
             govde: `<p class="sub">${esc(V.clean(t.title))}</p>
               <div class="field"><label for="kredi-sanatci">SANATÇI</label>
                 <input id="kredi-sanatci" value="${esc(t.sanatci || '')}" placeholder="Boşsa “Derin Record” yazar"></div>
-              <div class="field"><label for="kredi-not">KREDİ NOTU</label>
+              <div class="field"><label for="kredi-not">İNFO / KREDİ NOTU</label>
                 <textarea id="kredi-not" rows="3" placeholder="Örn. Music provided by BreakingCopyright · breakingcopyright.com">${esc(t.kredi || '')}</textarea></div>`,
             onayMetni: 'KAYDET',
             onOnay: () => res({
@@ -2340,7 +2340,7 @@
           client.from('radio_tracks').update({ sanatci: deger.sanatci || null, kredi: deger.kredi || null }).eq('id', t.id),
           'Kredi kaydedilemedi');
         if (sorun) return hata(sorun);
-        await yenile(false); bildir('Parça kredisi kaydedildi.');
+        await yenile(false); bildir('Parça bilgisi kaydedildi.');
         return;
       }
       case 'track-img': {

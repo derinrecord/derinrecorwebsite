@@ -25,7 +25,8 @@ test('sunumda sanatçı adı adın altında, (i) kredi kartını açar; boşsa D
 
 test('panelde KREDİ düğmesi yalnız SQL kuruluyken çizilir ve iki alanı kaydeder', () => {
   const src = fs.readFileSync(require.resolve('../radyo-panel-views.js'), 'utf8');
-  assert.match(src, /kurulumVar\(D, 'parca-kredi\.sql'\) \? `<button class="btn sm" data-act="track-kredi"/);
+  assert.match(src, /kurulumVar\(D, 'parca-kredi\.sql'\) \? `<button class="btn sm\$\{t\.sanatci \|\| t\.kredi \? '' : ' primary'\}" data-act="track-kredi"/);
+  assert.ok(src.includes("'İNFO EKLE'"), 'düğme İNFO EKLE yazmalı');
   assert.match(yonetim, /update\(\{ sanatci: deger\.sanatci \|\| null, kredi: deger\.kredi \|\| null \}\)/);
   assert.ok(V);
 });
