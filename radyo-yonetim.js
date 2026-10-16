@@ -925,6 +925,17 @@
     // toleranslı tutarız ki ana yükleme bundan etkilenmesin. Liste alanları
     // eksikse parça alanlarıyla devam ederiz: sahadaki "şu an çalan parça"
     // bilgisi yalnızca yeni SQL yüzünden kaybolmasın.
+    // Parça kredisi (supabase/parca-kredi.sql): sanatçı ve kredi notu. Kurulmadıysa
+    // KREDİ düğmesi çizilmez.
+    try {
+      const kredi = await client.from('radio_tracks').select('id,sanatci,kredi');
+      D.kurulum['parca-kredi.sql'] = !kredi.error;
+      if (!kredi.error && Array.isArray(kredi.data)) {
+        const harita = new Map(kredi.data.map(x => [x.id, x]));
+        D.tracks = D.tracks.map(t => Object.assign({}, t, harita.get(t.id) || {}));
+      }
+    } catch { D.kurulum['parca-kredi.sql'] = false; }
+
     // Ses kontrolü alanları (supabase/radio-ses-kontrolu.sql). Kurulmadıysa
     // sorgu hata döner; dalga o zaman yalnız "çalıyor" bildirimine bakar.
     try {
@@ -2303,6 +2314,33 @@
           client.from('radio_tracks').update({ title: yeni }).eq('id', t.id), 'Ad kaydedilemedi');
         if (sorun) return hata(sorun);
         await yenile(false); bildir('Parça adı güncellendi.');
+        return;
+      }
+      case 'track-kredi': {
+        const t = D.tracks.find(x => x.id === id);
+        if (!t) return;
+        const deger = await new Promise(res => {
+          pencere({
+            baslik: 'Parça kredisi',
+            govde: `<p class="sub">${esc(V.clean(t.title))}</p>
+              <div class="field"><label for="kredi-sanatci">SANATÇI</label>
+                <input id="kredi-sanatci" value="${esc(t.sanatci || '')}" placeholder="Boşsa “Derin Record” yazar"></div>
+              <div class="field"><label for="kredi-not">KREDİ NOTU</label>
+                <textarea id="kredi-not" rows="3" placeholder="Örn. Music provided by BreakingCopyright · breakingcopyright.com">${esc(t.kredi || '')}</textarea></div>`,
+            onayMetni: 'KAYDET',
+            onOnay: () => res({
+              sanatci: el('modal').querySelector('#kredi-sanatci').value.trim(),
+              kredi: el('modal').querySelector('#kredi-not').value.trim()
+            }),
+            onKapat: () => res(null)
+          });
+        });
+        if (!deger) return;
+        const sorun = await yazDogrula(
+          client.from('radio_tracks').update({ sanatci: deger.sanatci || null, kredi: deger.kredi || null }).eq('id', t.id),
+          'Kredi kaydedilemedi');
+        if (sorun) return hata(sorun);
+        await yenile(false); bildir('Parça kredisi kaydedildi.');
         return;
       }
       case 'track-img': {

@@ -480,7 +480,9 @@ if (senaryo === 'marka') {
   const satir = (pl) => P_TRACK[pl.id].map((t, i) => ({
     playlist_id: pl.id, name: pl.name, cover_path: pl.cover_path, created_at: '2026-09-01T09:00:00Z',
     track_id: 't-' + pl.id + '-' + i, title: t, storage_path: pl.id + '/p' + i + '.wav',
-    track_cover: null, duration_sec: 200 + i * 10, sort_order: i
+    track_cover: null, duration_sec: 200 + i * 10, sort_order: i,
+    sanatci: i === 0 ? 'Ikson' : null,
+    kredi: i === 0 ? 'Music provided by BreakingCopyright · breakingcopyright.com' : null
   }));
   const listeSatirlari = [].concat(...P_LISTELER.map(satir));
 

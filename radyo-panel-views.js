@@ -1655,6 +1655,8 @@
       aciklama: 'Cihazın hangi parçayı çaldığını panele bildirir.', etki: 'Canlı durum' },
     { anahtar: 'radio-liste-bildirimi.sql', ad: 'Çalan liste bildirimi',
       aciklama: 'Çalan parçanın hangi listeden geldiğini panele bildirir.', etki: 'Canlı durum' },
+    { anahtar: 'parca-kredi.sql', ad: 'Parça kredisi',
+      aciklama: 'Parçaya sanatçı ve kredi notu eklenir; müşteri sunumunda parça adının altında görünür.', etki: 'Yayın klasörleri · sunum' },
     { anahtar: 'radio-ses-kontrolu.sql', ad: 'Ses kontrolü',
       aciklama: 'Şube ekranındaki ses seviyesini ve parçanın takılıp takılmadığını panele bildirir.', etki: 'Canlı durum · ses dalgası' },
     { anahtar: 'radio-alarm-duzeni.sql', ad: 'Alarm düzeni (70 şube)',
@@ -1798,13 +1800,14 @@
       <td class="tight"><span class="drag" title="Sürükleyerek sırala" aria-hidden="true">⋮⋮</span></td>
       <td><div class="cell-main"><span class="cover">${t.cover_path
         ? `<img src="${esc(kapakYolu(t.cover_path, ui))}" alt="" loading="lazy">` : '♪'}</span>
-        <span><b>${esc(clean(t.title))}</b><span class="sub">${esc(t.storage_path)}</span>${kapakYok(t)
+        <span><b>${esc(clean(t.title))}</b><span class="sub">${t.sanatci ? esc(t.sanatci) : esc(t.storage_path)}</span>${kapakYok(t)
           ? ' ' + chip('gold', 'KAPAK YOK') : ''}</span></div></td>
       <td class="tight">${mmss(t.duration_sec)}</td>
       <td><div class="row-actions">
         <button class="btn sm" data-act="track-play" data-id="${esc(t.id)}" type="button">DİNLE</button>
         <button class="btn sm" data-act="track-rename" data-id="${esc(t.id)}" type="button">AD</button>
         <button class="btn sm" data-act="track-img" data-id="${esc(t.id)}" type="button">KAPAK</button>
+        ${kurulumVar(D, 'parca-kredi.sql') ? `<button class="btn sm" data-act="track-kredi" data-id="${esc(t.id)}" type="button">KREDİ</button>` : ''}
         <button class="btn sm" data-act="track-move" data-id="${esc(t.id)}" type="button">TAŞI</button>
         <button class="btn sm danger" data-act="track-del" data-id="${esc(t.id)}"
           data-path="${esc(t.storage_path)}" type="button">SİL</button>
@@ -2024,6 +2027,8 @@
   // Marka kapağı, supabase/marka-kapagi.sql kuruluysa kullanılabilir. Kolon
   // yokken bölüm hiç çizilmez: kaydedilemeyecek bir düğme göstermeyiz.
   const markaKapagiVar = D => !!(((D && D.kurulum) || {})['marka-kapagi.sql']);
+  // Opsiyonel SQL dosyası kurulu mu (Kurulum durumu ekranıyla aynı işaret).
+  const kurulumVar = (D, dosya) => !!(((D && D.kurulum) || {})[dosya]);
 
   // Marka iletişim kartı (docs/superpowers/specs/2026-10-10-satis-takibi-design.md §5.3).
   // Boş alan "—" yazılır; boş telefon/e-posta için bağlantı üretilmez.

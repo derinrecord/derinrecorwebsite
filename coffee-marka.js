@@ -247,7 +247,9 @@ function doldur(t) {
   const cizgi = byId('mk-dock-bar'); if (cizgi) cizgi.style.width = '0%';
   byId('mk-baslik').textContent = clean(t.title);
   byId('mk-alt').textContent = t._playlistName || '';
-  byId('mk-album').textContent = t._album || '';
+  byId('mk-album').innerHTML = `${safe(sanatciAdi(t))} <button class="mk-info" type="button" id="mk-info-sahne" aria-label="Parça bilgisi">i</button>`;
+  const sahneBilgi = byId('mk-info-sahne');
+  if (sahneBilgi) sahneBilgi.onclick = () => detayGoster(t);
   stage.classList.toggle('caliyor', !audio.paused);
 }
 
@@ -305,8 +307,8 @@ function listeCiz() {
         <span class="ttl">${kapak(t.cover_path)
           ? `<img src="${safe(kapak(t.cover_path))}" alt="">`
           : '<span class="ph" aria-hidden="true">♪</span>'}
-          <span class="ad">${safe(clean(t.title))}</span><small class="alt">${safe(t._album || 'Derin Record')}</small></span>
-        <span class="sure">${fmt(t.duration_sec)}</span>
+          <span class="ad">${safe(clean(t.title))}</span><small class="alt">${safe(sanatciAdi(t))}</small></span>
+        <span class="sure">${fmt(t.duration_sec)}<button class="mk-info" type="button" data-info="${i}" aria-label="Parça bilgisi">i</button></span>
       </li>`).join('')}</ol>`;
 }
 
@@ -468,6 +470,13 @@ function bagla() {
   });
 
   byId('mk-liste').addEventListener('click', e => {
+    const bilgi = e.target.closest('.mk-info');
+    if (bilgi) {
+      e.stopPropagation();
+      const tb = kuyruk[Number(bilgi.dataset.info)];
+      if (tb) detayGoster(tb);
+      return;
+    }
     const satir = e.target.closest('.mk-item');
     if (!satir) return;
     const i = Number(satir.dataset.idx);
@@ -545,6 +554,9 @@ function bagla() {
   }
 }
 
+// Parçanın sahibi: kredi girilmişse sanatçı, yoksa Derin Record.
+const sanatciAdi = t => (t && t.sanatci) ? String(t.sanatci) : 'Derin Record';
+
 function detayGoster(t) {
   const kapakPath = t.cover_path || t._playlistCover || markaKapak;
   const ov = document.createElement('div');
@@ -553,7 +565,9 @@ function detayGoster(t) {
     <div class="mk-card" role="dialog" aria-modal="true">
       ${kapak(kapakPath) ? `<img src="${safe(kapak(kapakPath))}" alt="">` : '<div class="ph">♪</div>'}
       <h3>${safe(clean(t.title))}</h3>
+      <p class="mk-card-sanatci">${safe(sanatciAdi(t))}</p>
       <p>${safe(t._playlistName || '')}${t.duration_sec ? ' · ' + fmt(t.duration_sec) : ''}</p>
+      ${t.kredi ? `<p class="mk-card-kredi">${safe(t.kredi)}</p>` : ''}
       <button id="mk-kapat" type="button">KAPAT</button>
     </div>`;
   document.body.appendChild(ov);
@@ -812,7 +826,7 @@ function canliListeKur(satirlar) {
   listeler.forEach(x => { if (!x._canli) x._tracks.forEach(t => bilinen.set(String(t.id), t)); });
   pl._tracks.forEach(t => {
     const b = bilinen.get(String(t.id));
-    if (b) { t.duration_sec = b.duration_sec; t.cover_path = b.cover_path; }
+    if (b) { t.duration_sec = b.duration_sec; t.cover_path = b.cover_path; t.sanatci = b.sanatci; t.kredi = b.kredi; }
   });
   pl._sure = pl._tracks.reduce((n, t) => n + (Number(t.duration_sec) || 0), 0);
   return pl;
@@ -901,6 +915,7 @@ function satirlariListeyeCevir(satirlar) {
       gorulen.get(x.playlist_id)._tracks.push({
         id: x.track_id, title: x.title, storage_path: x.storage_path,
         cover_path: x.track_cover, duration_sec: x.duration_sec,
+        sanatci: x.sanatci || null, kredi: x.kredi || null,
         _playlistId: x.playlist_id, _playlistName: x.name, _playlistCover: x.cover_path
       });
     }
