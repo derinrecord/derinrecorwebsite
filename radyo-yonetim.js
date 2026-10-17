@@ -1377,11 +1377,11 @@
     D.folders.sort((a, b) => sira(a) - sira(b) || String(a.name).localeCompare(String(b.name), 'tr'));
   }
 
-  // ---------- Sıralama (sürükle) ----------
   // Yer değiştiren satırlar yumuşakça kayar: önce eski yerler ölçülür, satır
   // taşınır, sonra her satır eski yerinden yenisine animasyonla gider.
-  function kaydir(govde, degistir) {
-    const satirlar = Array.from(govde.children);
+  // `haric` (elde tutulan satır) bu animasyona katılmaz.
+  function kaydir(govde, degistir, haric) {
+    const satirlar = Array.from(govde.children).filter(r => r !== haric);
     const once = new Map(satirlar.map(r => [r, r.getBoundingClientRect().top]));
     degistir();
     satirlar.forEach(r => {
@@ -1397,47 +1397,95 @@
     });
   }
 
-  // Sürüklenen satır, üzerinden geçtiği satırın yerine canlı olarak geçer;
-  // diğer satırlar kendiliğinden kayar. Sıra bırakınca bir kez kaydedilir.
+  // ---------- Sıralama (sürükle) ----------
+  // Tarayıcının yarı saydam kopyası kullanılmaz: tutulan satırın kendisi
+  // imleçle birlikte kayar, üzerinden geçtiği satırlar yumuşakça yer açar.
+  // Farede satırın her yerinden, dokunmatik ekranda ⋮⋮ tutamağından tutulur.
+  // Sıra bırakınca bir kez kaydedilir.
+  let suruklemeBitti = false;
+  // Sürükleme bitince ardından gelen tıklama satırı açmasın.
+  window.addEventListener('click', e => {
+    if (!suruklemeBitti) return;
+    suruklemeBitti = false;
+    e.stopPropagation(); e.preventDefault();
+  }, true);
+
   function satirSuruklemeBagla() {
     const satirlar = Array.from(document.querySelectorAll('#view tr[draggable="true"]'));
-    if (!satirlar.length) return;
-    let tasinan = null, ilkSira = '';
-    const kimlik = r => r.dataset.klasor || r.dataset.kayit || r.dataset.id || '';
-    const siraOku = govde => Array.from(govde.children).map(kimlik).join(',');
     satirlar.forEach(satir => {
-      satir.addEventListener('dragstart', e => {
-        if (state.q) { e.preventDefault(); bildir('Arama açıkken sıralama kapalı. Aramayı temizleyin.', 'err'); return; }
-        tasinan = satir;
-        ilkSira = siraOku(satir.parentElement);
-        if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', kimlik(satir)); }
-        satir.classList.add('tasiyor');
-      });
-      satir.addEventListener('dragover', e => {
-        if (!tasinan || tasinan === satir || satir.parentElement !== tasinan.parentElement) return;
-        e.preventDefault();
-        // Kayan satırın üzerindeyken yeniden yer değiştirme: ileri geri titremesin.
-        if (satir.style.transform) return;
-        const kutu = satir.getBoundingClientRect();
-        const once = e.clientY < kutu.top + kutu.height / 2;
-        const hedef = once ? satir : satir.nextSibling;
-        if (hedef !== tasinan && hedef !== tasinan.nextSibling) kaydir(satir.parentElement, () => satir.parentElement.insertBefore(tasinan, hedef));
-      });
-      satir.addEventListener('drop', e => { if (tasinan) e.preventDefault(); });
-      satir.addEventListener('dragend', async () => {
-        satir.classList.remove('tasiyor');
-        Array.from(satir.parentElement.children).forEach(x => { x.style.transition = ''; x.style.transform = ''; });
-        const r = tasinan; tasinan = null;
-        if (!r) return;
-        const govde = r.parentElement;
-        if (siraOku(govde) === ilkSira) return;
-        // Satır `data-klasor` taşıyorsa yayın klasörüdür (radio_folders),
-        // `data-kayit` taşıyorsa çalma listesi kaydıdır (brand_playlist_tracks),
-        // yalnız `data-id` taşıyorsa klasör parçasıdır (radio_tracks).
-        const tur = r.dataset.klasor ? 'folder' : (r.dataset.kayit ? 'playlist' : 'track');
-        await sirayiKaydet(Array.from(govde.children).map(kimlik).filter(Boolean), tur);
-      });
+      satir.draggable = false;
+      satir.addEventListener('pointerdown', e => suruklemeBasla(e, satir));
     });
+  }
+
+  function suruklemeBasla(e, satir) {
+    if (e.button !== 0) return;
+    if (e.target.closest('button, a, input, select, textarea, label')) return;
+    const tutamak = e.target.closest('.drag');
+    if (e.pointerType !== 'mouse' && !tutamak) return;
+    if (state.q) {
+      if (tutamak) bildir('Arama açıkken sıralama kapalı. Aramayı temizleyin.', 'err');
+      return;
+    }
+    const govde = satir.parentElement;
+    const kimlik = r => r.dataset.klasor || r.dataset.kayit || r.dataset.id || '';
+    const siraOku = () => Array.from(govde.children).map(kimlik).join(',');
+    const ilkSira = siraOku();
+    const y0 = e.clientY;
+    let taban = y0, aktif = false;
+    if (tutamak) e.preventDefault();
+
+    const yerDegistir = (oncesine, komsu, y) => {
+      const eski = satir.offsetTop;
+      kaydir(govde, () => oncesine ? govde.insertBefore(satir, komsu) : govde.insertBefore(komsu, satir), satir);
+      taban += satir.offsetTop - eski;
+      satir.style.transform = 'translateY(' + (y - taban) + 'px)';
+    };
+    const hareket = ev => {
+      if (!aktif) {
+        if (Math.abs(ev.clientY - y0) < 6) return;
+        aktif = true;
+        satir.classList.add('tasiyor');
+        document.body.classList.add('siraliyor');
+      }
+      ev.preventDefault();
+      satir.style.transform = 'translateY(' + (ev.clientY - taban) + 'px)';
+      const kutu = satir.getBoundingClientRect();
+      const merkez = kutu.top + kutu.height / 2;
+      const sonraki = satir.nextElementSibling, onceki = satir.previousElementSibling;
+      if (sonraki && !sonraki.style.transform) {
+        const k = sonraki.getBoundingClientRect();
+        if (merkez > k.top + k.height / 2) return yerDegistir(false, sonraki, ev.clientY);
+      }
+      if (onceki && !onceki.style.transform) {
+        const k = onceki.getBoundingClientRect();
+        if (merkez < k.top + k.height / 2) return yerDegistir(true, onceki, ev.clientY);
+      }
+    };
+    const bitir = async () => {
+      window.removeEventListener('pointermove', hareket);
+      window.removeEventListener('pointerup', bitir);
+      window.removeEventListener('pointercancel', bitir);
+      if (!aktif) return;
+      suruklemeBitti = true;
+      setTimeout(() => { suruklemeBitti = false; }, 300);
+      document.body.classList.remove('siraliyor');
+      satir.style.transition = 'transform .18s cubic-bezier(.2,.7,.3,1)';
+      satir.style.transform = 'translateY(0)';
+      setTimeout(() => {
+        satir.classList.remove('tasiyor');
+        satir.style.transition = ''; satir.style.transform = '';
+      }, 200);
+      if (siraOku() === ilkSira) return;
+      // Satır `data-klasor` taşıyorsa yayın klasörüdür (radio_folders),
+      // `data-kayit` taşıyorsa çalma listesi kaydıdır (brand_playlist_tracks),
+      // yalnız `data-id` taşıyorsa klasör parçasıdır (radio_tracks).
+      const tur = satir.dataset.klasor ? 'folder' : (satir.dataset.kayit ? 'playlist' : 'track');
+      await sirayiKaydet(Array.from(govde.children).map(kimlik).filter(Boolean), tur);
+    };
+    window.addEventListener('pointermove', hareket, { passive: false });
+    window.addEventListener('pointerup', bitir);
+    window.addEventListener('pointercancel', bitir);
   }
 
   async function sirayiKaydet(idlistesi, tur) {
