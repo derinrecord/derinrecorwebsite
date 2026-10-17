@@ -1779,7 +1779,7 @@
         </div>
       </div>
       <div class="panel">
-        <h3>YAYIN KLASÖRLERİ (${D.folders.length})</h3>
+        <h3>YAYIN KLASÖRLERİ (${D.folders.length}) · ${D.tracks.filter(t => D.folders.some(f => f.id === t.folder_id)).length} ŞARKI</h3>
         <table class="klasor-kart">
           <thead><tr><th>KLASÖR</th><th>İÇERİK</th><th>DURUM</th><th>ÇALMA</th><th></th></tr></thead>
           <tbody>${satirlar || bos(5, 'Henüz klasör yok. Yukarıdan ilk klasörü oluştur.')}</tbody>

@@ -31,3 +31,7 @@ test('sıra radio_folders tablosuna yazılır, SQL dosyası RLS politikasına do
   assert.match(sql, /add column if not exists sort_order/);
   assert.doesNotMatch(sql, /create policy|drop policy|alter policy/i);
 });
+
+test('yayın klasörleri başlığı toplam şarkı sayısını gösterir', () => {
+  assert.match(ciz(true), /YAYIN KLASÖRLERİ \(2\) · 0 ŞARKI/);
+});
