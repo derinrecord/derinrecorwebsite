@@ -1378,6 +1378,25 @@
   }
 
   // ---------- Sıralama (sürükle) ----------
+  // Yer değiştiren satırlar yumuşakça kayar: önce eski yerler ölçülür, satır
+  // taşınır, sonra her satır eski yerinden yenisine animasyonla gider.
+  function kaydir(govde, degistir) {
+    const satirlar = Array.from(govde.children);
+    const once = new Map(satirlar.map(r => [r, r.getBoundingClientRect().top]));
+    degistir();
+    satirlar.forEach(r => {
+      const fark = once.get(r) - r.getBoundingClientRect().top;
+      if (!fark) return;
+      r.style.transition = 'none';
+      r.style.transform = 'translateY(' + fark + 'px)';
+      requestAnimationFrame(() => {
+        r.style.transition = 'transform .22s cubic-bezier(.2,.7,.3,1)';
+        r.style.transform = 'translateY(0)';
+        setTimeout(() => { r.style.transition = ''; r.style.transform = ''; }, 240);
+      });
+    });
+  }
+
   // Sürüklenen satır, üzerinden geçtiği satırın yerine canlı olarak geçer;
   // diğer satırlar kendiliğinden kayar. Sıra bırakınca bir kez kaydedilir.
   function satirSuruklemeBagla() {
@@ -1397,14 +1416,17 @@
       satir.addEventListener('dragover', e => {
         if (!tasinan || tasinan === satir || satir.parentElement !== tasinan.parentElement) return;
         e.preventDefault();
+        // Kayan satırın üzerindeyken yeniden yer değiştirme: ileri geri titremesin.
+        if (satir.style.transform) return;
         const kutu = satir.getBoundingClientRect();
         const once = e.clientY < kutu.top + kutu.height / 2;
         const hedef = once ? satir : satir.nextSibling;
-        if (hedef !== tasinan && hedef !== tasinan.nextSibling) satir.parentElement.insertBefore(tasinan, hedef);
+        if (hedef !== tasinan && hedef !== tasinan.nextSibling) kaydir(satir.parentElement, () => satir.parentElement.insertBefore(tasinan, hedef));
       });
       satir.addEventListener('drop', e => { if (tasinan) e.preventDefault(); });
       satir.addEventListener('dragend', async () => {
         satir.classList.remove('tasiyor');
+        Array.from(satir.parentElement.children).forEach(x => { x.style.transition = ''; x.style.transform = ''; });
         const r = tasinan; tasinan = null;
         if (!r) return;
         const govde = r.parentElement;
