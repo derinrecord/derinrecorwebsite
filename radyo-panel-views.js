@@ -1751,8 +1751,11 @@
       const adet = D.tracks.filter(t => t.folder_id === f.id).length;
       const kapaksiz = D.tracks.filter(t => t.folder_id === f.id && kapakYok(t)).length;
       const yayinda = D.broadcast.some(b => b.folder_id === f.id);
-      return `<tr class="selectable" data-act="folder-open" data-id="${esc(f.id)}">
-        <td><div class="cell-main">${kapakHucre(f.cover_path, ui, '🎵', 'gold')}
+      // Sıra sütunu (radio-klasor-sirasi.sql) kuruluysa satırlar sürüklenir.
+      const surukle = D.klasorSirasiVar;
+      return `<tr class="selectable" data-act="folder-open" data-id="${esc(f.id)}"${surukle
+        ? ` draggable="true" data-klasor="${esc(f.id)}"` : ''}>
+        <td><div class="cell-main">${surukle ? '<span class="drag" title="Sürükleyerek sırala" aria-hidden="true">⋮⋮</span>' : ''}${kapakHucre(f.cover_path, ui, '🎵', 'gold')}
           <span><b>${esc(f.name)}</b><span class="sub">${esc(f.description || 'açıklama yok')}</span></span></div></td>
         <td class="tight" data-etiket="İçerik">${adet} parça${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</td>
         <td class="tight" data-etiket="Durum">${yayinda ? chip('live', 'YAYINDA', true) : chip('off', 'beklemede')}</td>

@@ -839,7 +839,10 @@
   async function veriYukle() {
     const [brands, folders, tracks, players, broadcast, playerBroadcast, announcements, playlists, playlistTracks, coffeeAttempts, olaylar, subscriptions, plans, planItems] = await Promise.all([
       client.from('brands').select('id,name,slug,is_active,access_code,contact_name,contact_phone,contact_email,notes').order('name'),
-      client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name'),
+      // sort_order supabase/radio-klasor-sirasi.sql ile gelir; sütun yoksa
+      // eski sorguya düşülür ve klasörler ada göre sıralı kalır.
+      client.from('radio_folders').select('id,name,description,cover_path,shuffle,sort_order').order('name')
+        .then(r => r.error ? client.from('radio_folders').select('id,name,description,cover_path,shuffle').order('name') : r),
       client.from('radio_tracks').select('id,folder_id,title,storage_path,sort_order,duration_sec,cover_path').order('sort_order'),
       // player_code ve ihlal_* alanları supabase/radio-sube-kodu.sql ile gelir.
       // Dosya henüz çalıştırılmadıysa PostgREST bu alanları tanımaz ve sorgu hata
@@ -893,6 +896,8 @@
     D.kurulum = D.kurulum || {};
     D.kurulum['radio-subeye-ozel-yayin.sql'] = !playerBroadcast.error;
     D.kurulum['radio-baglanti-gecmisi.sql'] = !olaylar.error;
+    D.klasorSirasiVar = D.folders.some(f => 'sort_order' in f);
+    klasorleriSirala();
     D.kurulum['plan-takvimi.sql'] = !planItems.error;
 
     // Telefon bildirimi (supabase/radio-telegram.sql): alarmı sunucudan
@@ -1366,6 +1371,12 @@
     });
   }
 
+  // Klasörler elle verilen sıraya göre; sırası olmayanlar ada göre sonda.
+  function klasorleriSirala() {
+    const sira = f => (f.sort_order == null ? Infinity : f.sort_order);
+    D.folders.sort((a, b) => sira(a) - sira(b) || String(a.name).localeCompare(String(b.name), 'tr'));
+  }
+
   // ---------- Sıralama (sürükle) ----------
   function satirSuruklemeBagla() {
     const satirlar = Array.from(document.querySelectorAll('#view tr[draggable="true"]'));
@@ -1391,7 +1402,7 @@
         // Satır `data-kayit` taşıyorsa çalma listesi kaydıdır
         // (brand_playlist_tracks), yalnız `data-id` taşıyorsa klasör parçasıdır
         // (radio_tracks): sıra doğru tabloya yazılmalı.
-        const tur = tasinan.dataset.kayit ? 'playlist' : 'track';
+        const tur = tasinan.dataset.klasor ? 'folder' : (tasinan.dataset.kayit ? 'playlist' : 'track');
         const govde = satir.parentElement;
         const yerler = Array.from(govde.children);
         const kaynak = yerler.indexOf(tasinan), hedef = yerler.indexOf(satir);
@@ -1400,14 +1411,14 @@
         govde.insertBefore(tasinan, hedef > kaynak ? satir.nextSibling : satir);
         tasinan = null;
         const yeniSira = Array.from(govde.children)
-          .map(r => tur === 'playlist' ? r.dataset.kayit : r.dataset.id).filter(Boolean);
+          .map(r => tur === 'playlist' ? r.dataset.kayit : (tur === 'folder' ? r.dataset.klasor : r.dataset.id)).filter(Boolean);
         await sirayiKaydet(yeniSira, tur);
       });
     });
   }
 
   async function sirayiKaydet(idlistesi, tur) {
-    const tablo = tur === 'playlist' ? 'brand_playlist_tracks' : 'radio_tracks';
+    const tablo = { playlist: 'brand_playlist_tracks', folder: 'radio_folders' }[tur] || 'radio_tracks';
     const guncellemeler = idlistesi.map((id, i) => yazDogrula(
       client.from(tablo).update({ sort_order: i }).eq('id', id), 'Sıra kaydedilemedi'));
     const sonuclar = await Promise.all(guncellemeler);
@@ -1416,6 +1427,9 @@
     // Bellekteki sıra da güncellenir ki yeni çizim doğru sırayı göstersin.
     if (tur === 'playlist') {
       D.playlistTracks.forEach(x => { const i = idlistesi.indexOf(x.id); if (i > -1) x.sort_order = i; });
+    } else if (tur === 'folder') {
+      D.folders.forEach(f => { const i = idlistesi.indexOf(f.id); if (i > -1) f.sort_order = i; });
+      klasorleriSirala();
     } else {
       D.tracks.forEach(t => { const i = idlistesi.indexOf(t.id); if (i > -1) t.sort_order = i; });
     }
@@ -2204,9 +2218,10 @@
       case 'folder-add': {
         const ad = el('folder-name').value.trim();
         if (!ad) return hata('Klasör adı gerekli.');
-        const { error } = await client.from('radio_folders').insert({
-          name: ad, description: el('folder-desc').value.trim() || null
-        });
+        const yeni = { name: ad, description: el('folder-desc').value.trim() || null };
+        // Sıra sütunu kuruluysa yeni klasör listenin sonuna eklenir.
+        if (D.klasorSirasiVar) yeni.sort_order = D.folders.reduce((m, f) => Math.max(m, f.sort_order == null ? -1 : f.sort_order), -1) + 1;
+        const { error } = await client.from('radio_folders').insert(yeni);
         if (error) return hata('Klasör oluşturulamadı: ' + error.message);
         await yenile(false); bildir('Klasör oluşturuldu.');
         return;
