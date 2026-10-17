@@ -2502,27 +2502,20 @@
         return;
       }
       case 'playlist-add': {
-        const ad = el('playlist-name').value.trim();
+        // Liste adı seçilen kaynak klasörden gelir; ayrıca ad sorulmaz.
         const kaynak = el('playlist-source').value;
-        if (!ad) return hata('Liste adı gerekli.');
-        let folderId = kaynak;
-        if (!folderId) {
-          const { data: klasor, error: klasorHata } = await client.from('radio_folders').insert({ name: ad }).select('id').single();
-          if (klasorHata) return hata('Klasör oluşturulamadı: ' + klasorHata.message);
-          folderId = klasor.id;
-        }
+        const klasor = D.folders.find(f => f.id === kaynak);
+        if (!klasor) return hata('Kaynak klasör seçin.');
         const { data: liste, error } = await client.from('brand_playlists')
-          .insert({ brand_id: id, name: ad, folder_id: folderId }).select('id').single();
+          .insert({ brand_id: id, name: klasor.name, folder_id: kaynak }).select('id').single();
         if (error) return hata('Liste oluşturulamadı: ' + error.message);
-        if (kaynak) {
-          const parcalar = D.tracks.filter(t => t.folder_id === kaynak);
-          if (parcalar.length) {
-            await client.from('brand_playlist_tracks').insert(
-              parcalar.map((t, i) => ({ playlist_id: liste.id, track_id: t.id, sort_order: i })));
-          }
+        const parcalar = D.tracks.filter(t => t.folder_id === kaynak);
+        if (parcalar.length) {
+          await client.from('brand_playlist_tracks').insert(
+            parcalar.map((t, i) => ({ playlist_id: liste.id, track_id: t.id, sort_order: i })));
         }
         await yenile(false);
-        bildir(kaynak ? 'Liste oluşturuldu ve parça sırası kopyalandı.' : 'Boş liste oluşturuldu.');
+        bildir('Liste oluşturuldu ve parça sırası kopyalandı.');
         return;
       }
 

@@ -2224,14 +2224,12 @@
         </table>
         <hr class="divider">
         <div class="form-grid">
-          <div class="field"><label for="playlist-name">YENİ LİSTE ADI</label>
-            <input id="playlist-name" placeholder="Örn. Akşam Akışı" autocomplete="off"></div>
           <div class="field"><label for="playlist-source">KAYNAK KLASÖR</label>
-            <select id="playlist-source"><option value="">Boş liste oluştur</option>
-              ${D.folders.map(f => `<option value="${esc(f.id)}">${esc(f.name)} klasöründen kopyala</option>`).join('')}</select></div>
+            <select id="playlist-source"><option value="">Klasör seçin</option>
+              ${D.folders.map(f => `<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('')}</select></div>
           <button class="btn primary" data-act="playlist-add" data-id="${esc(b.id)}" type="button">LİSTE OLUŞTUR</button>
         </div>
-        <span class="sub" id="playlist-msg">Kaynak klasör seçilirse parçalar bu markaya özel sırayla kopyalanır.</span>
+        <span class="sub" id="playlist-msg">Liste, seçilen klasörün adını alır; parçalar bu markaya özel sırayla kopyalanır.</span>
       </div>
 
       ${katliBolum({
