@@ -1,4 +1,7 @@
 (() => {
+  // Üyelik onayında kabul edilen hukuki metin sürümleri (sayfalardaki "Sürüm" ile aynı).
+  const SOZLESME_SURUM = '2026-10-04';
+  const AYDINLATMA_SURUM = '2026-10-04';
   const config = window.DERIN_CONFIG || {};
   const configured = Boolean(config.supabaseUrl && config.supabasePublishableKey && window.supabase);
   const state = { client: null, user: null, profile: null, configured };
@@ -119,7 +122,7 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
     if (!overlay) { overlay = document.createElement('div'); overlay.className = 'auth-overlay'; document.body.append(overlay); }
     if (!configured) { overlay.innerHTML = '<section class="auth-card"><button class="auth-close">KAPAT</button><h2>HESAP SİSTEMİ HAZIRLANIYOR</h2><p>Yönetici, Supabase bağlantı bilgilerini ekledikten sonra e-posta ve şifreyle kayıt/giriş açılacak.</p></section>'; overlay.hidden=false; overlay.querySelector('.auth-close').onclick=()=>overlay.hidden=true; return; }
     const signup = mode === 'signup';
-    overlay.innerHTML = `<section class="auth-card"><button class="auth-close" type="button">KAPAT</button><h2>${signup ? 'ANTRENÖR KAYDI' : 'HESABINA GİR'}</h2><p>${signup ? 'Kaydın yönetici onayından sonra demo erişimin açılır.' : 'Demo notlarına ulaşmak için giriş yap.'}</p><form class="auth-form">${signup ? '<label>AD SOYAD<input name="name" autocomplete="name" required></label>' : ''}<label>E-POSTA<input name="email" type="email" autocomplete="email" required></label><label>ŞİFRE<input name="password" type="password" minlength="8" autocomplete="${signup ? 'new-password' : 'current-password'}" required></label><button class="auth-submit">${signup ? 'KAYIT OL' : 'GİRİŞ YAP'}</button></form><button class="auth-switch" type="button">${signup ? 'Zaten hesabın var mı? Giriş yap' : 'Hesabın yok mu? Antrenör olarak kayıt ol'}</button>${signup ? '' : '<button class="auth-switch auth-forgot" type="button">Şifreni mi unuttun?</button>'}<p class="auth-message"></p></section>`;
+    overlay.innerHTML = `<section class="auth-card"><button class="auth-close" type="button">KAPAT</button><h2>${signup ? 'ANTRENÖR KAYDI' : 'HESABINA GİR'}</h2><p>${signup ? 'Kaydın yönetici onayından sonra demo erişimin açılır.' : 'Demo notlarına ulaşmak için giriş yap.'}</p><form class="auth-form">${signup ? '<label>AD SOYAD<input name="name" autocomplete="name" required></label>' : ''}<label>E-POSTA<input name="email" type="email" autocomplete="email" required></label><label>ŞİFRE<input name="password" type="password" minlength="8" autocomplete="${signup ? 'new-password' : 'current-password'}" required></label>${signup ? '<label class="auth-onay"><input type="checkbox" name="onay" required><span><a href="kullanici-sozlesmesi.html" target="_blank" rel="noopener">Kullanıcı Sözleşmesi</a>’ni okudum ve kabul ediyorum; <a href="aydinlatma-metni.html" target="_blank" rel="noopener">Aydınlatma Metni</a>’ni okudum.</span></label>' : ''}<button class="auth-submit">${signup ? 'KAYIT OL' : 'GİRİŞ YAP'}</button></form><button class="auth-switch" type="button">${signup ? 'Zaten hesabın var mı? Giriş yap' : 'Hesabın yok mu? Antrenör olarak kayıt ol'}</button>${signup ? '' : '<button class="auth-switch auth-forgot" type="button">Şifreni mi unuttun?</button>'}<p class="auth-message"></p></section>`;
     overlay.hidden = false;
     overlay.querySelector('.auth-close').onclick = () => overlay.hidden = true;
     overlay.querySelector('.auth-switch').onclick = () => openAuth(signup ? 'login' : 'signup');
@@ -139,7 +142,11 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
     overlay.querySelector('.auth-form').onsubmit = async event => {
       event.preventDefault(); const form = new FormData(event.currentTarget), message = overlay.querySelector('.auth-message'); message.textContent = 'Kontrol ediliyor…';
       const email = String(form.get('email')).trim(), password = String(form.get('password'));
-      const result = signup ? await state.client.auth.signUp({ email, password, options: { data: { full_name: String(form.get('name')).trim() } } }) : await state.client.auth.signInWithPassword({ email, password });
+      // Üyelik onayı: sözleşme kutusu işaretlenmeden hesap açılmaz; kabul edilen
+      // metin sürümleri ve zamanı hesabın kayıt bilgisine yazılır (kanıt).
+      if (signup && !form.get('onay')) { message.textContent = 'Kayıt için Kullanıcı Sözleşmesi’ni kabul etmen gerekiyor.'; return; }
+      const onay = { sozlesme_surum: SOZLESME_SURUM, aydinlatma_surum: AYDINLATMA_SURUM, kabul_at: new Date().toISOString() };
+      const result = signup ? await state.client.auth.signUp({ email, password, options: { data: Object.assign({ full_name: String(form.get('name')).trim() }, onay) } }) : await state.client.auth.signInWithPassword({ email, password });
       if (result.error) {
         message.textContent = result.error.message;
         if (!signup && /confirm|onay|verified/i.test(result.error.message)) {
