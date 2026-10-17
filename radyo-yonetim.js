@@ -1378,41 +1378,42 @@
   }
 
   // ---------- Sıralama (sürükle) ----------
+  // Sürüklenen satır, üzerinden geçtiği satırın yerine canlı olarak geçer;
+  // diğer satırlar kendiliğinden kayar. Sıra bırakınca bir kez kaydedilir.
   function satirSuruklemeBagla() {
     const satirlar = Array.from(document.querySelectorAll('#view tr[draggable="true"]'));
     if (!satirlar.length) return;
-    let tasinan = null;
+    let tasinan = null, ilkSira = '';
+    const kimlik = r => r.dataset.klasor || r.dataset.kayit || r.dataset.id || '';
+    const siraOku = govde => Array.from(govde.children).map(kimlik).join(',');
     satirlar.forEach(satir => {
-      satir.addEventListener('dragstart', () => {
-        if (state.q) { bildir('Arama açıkken sıralama kapalı. Aramayı temizleyin.', 'err'); return; }
+      satir.addEventListener('dragstart', e => {
+        if (state.q) { e.preventDefault(); bildir('Arama açıkken sıralama kapalı. Aramayı temizleyin.', 'err'); return; }
         tasinan = satir;
+        ilkSira = siraOku(satir.parentElement);
+        if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', kimlik(satir)); }
         satir.classList.add('tasiyor');
       });
-      satir.addEventListener('dragend', () => {
-        satir.classList.remove('tasiyor');
-        tasinan = null;
-      });
       satir.addEventListener('dragover', e => {
-        if (!tasinan || tasinan === satir) return;
+        if (!tasinan || tasinan === satir || satir.parentElement !== tasinan.parentElement) return;
         e.preventDefault();
+        const kutu = satir.getBoundingClientRect();
+        const once = e.clientY < kutu.top + kutu.height / 2;
+        const hedef = once ? satir : satir.nextSibling;
+        if (hedef !== tasinan && hedef !== tasinan.nextSibling) satir.parentElement.insertBefore(tasinan, hedef);
       });
-      satir.addEventListener('drop', async e => {
-        e.preventDefault();
-        if (!tasinan || tasinan === satir) return;
-        // Satır `data-kayit` taşıyorsa çalma listesi kaydıdır
-        // (brand_playlist_tracks), yalnız `data-id` taşıyorsa klasör parçasıdır
-        // (radio_tracks): sıra doğru tabloya yazılmalı.
-        const tur = tasinan.dataset.klasor ? 'folder' : (tasinan.dataset.kayit ? 'playlist' : 'track');
-        const govde = satir.parentElement;
-        const yerler = Array.from(govde.children);
-        const kaynak = yerler.indexOf(tasinan), hedef = yerler.indexOf(satir);
-        if (kaynak < 0 || hedef < 0) return;
-        govde.removeChild(tasinan);
-        govde.insertBefore(tasinan, hedef > kaynak ? satir.nextSibling : satir);
-        tasinan = null;
-        const yeniSira = Array.from(govde.children)
-          .map(r => tur === 'playlist' ? r.dataset.kayit : (tur === 'folder' ? r.dataset.klasor : r.dataset.id)).filter(Boolean);
-        await sirayiKaydet(yeniSira, tur);
+      satir.addEventListener('drop', e => { if (tasinan) e.preventDefault(); });
+      satir.addEventListener('dragend', async () => {
+        satir.classList.remove('tasiyor');
+        const r = tasinan; tasinan = null;
+        if (!r) return;
+        const govde = r.parentElement;
+        if (siraOku(govde) === ilkSira) return;
+        // Satır `data-klasor` taşıyorsa yayın klasörüdür (radio_folders),
+        // `data-kayit` taşıyorsa çalma listesi kaydıdır (brand_playlist_tracks),
+        // yalnız `data-id` taşıyorsa klasör parçasıdır (radio_tracks).
+        const tur = r.dataset.klasor ? 'folder' : (r.dataset.kayit ? 'playlist' : 'track');
+        await sirayiKaydet(Array.from(govde.children).map(kimlik).filter(Boolean), tur);
       });
     });
   }
