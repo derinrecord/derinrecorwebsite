@@ -2163,7 +2163,7 @@
       ${geriCubugu('markalar', 'MARKALARA DÖN', [b.name,
         subeler.length + ' şube · ' + listeler.length + ' liste',
         k.ad || 'yayın atanmadı'])}
-      <div class="panel" style="margin-bottom:18px">
+      <div class="panel genel-yayin" style="margin-bottom:18px">
         <h3>GENEL YAYIN</h3>
         <p class="panel-sub">Markanın bütün şubeleri bu akışı çalar. Bir şubeye kendi yayınını verdiyseniz (<b>Canlı durum › Yayın başlat</b> ekranında şubeyi seçerek) yalnız o şube buradan ayrılır. Marka pasife alınırsa şubelerde çalan yayın en geç bir dakika içinde durur ve şube ekranı “Yayın şu an kapalı” der; markayı yeniden yayına aldığınızda şubeler kendiliğinden açılır.</p>
         <div class="row" style="margin-bottom:16px">
