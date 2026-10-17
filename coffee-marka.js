@@ -388,7 +388,7 @@ function ciz(brand, plist) {
             <path d="M15 15l6 6"/><path d="M4 4l5 5"/>
           </svg>
         </button>
-        <div class="mk-vol">🔊<input type="range" id="mk-ses" min="0" max="100" value="100" aria-label="Ses"></div>
+        <div class="mk-vol"><button class="mk-sustur" id="mk-sustur" type="button" aria-label="Sesi kapat" aria-pressed="false"><svg class="mk-vol-ikon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 9.5h3.6L11.5 5v14l-4.9-4.5H3z" fill="currentColor"/><path class="ses-dalga" d="M15 9.2a4 4 0 0 1 0 5.6M17.8 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke="#cb2468" stroke-width="2.2" stroke-linecap="round"/><path class="ses-carpi" d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke="#cb2468" stroke-width="2.2" stroke-linecap="round"/></svg></button><input type="range" id="mk-ses" min="0" max="100" value="100" aria-label="Ses"></div>
       </div>
       <p class="mk-sub" id="mk-durum" style="margin-top:14px"></p>
     </div>
@@ -524,6 +524,14 @@ function bagla() {
     if (i >= 0) gecisCal(i);
   };
   byId('mk-ses').oninput = e => { seviye = Number(e.target.value) / 100; iptalFade(); audio.volume = seviye; };
+  // Simgeye basınca ses tamamen kapanır, yeniden basınca açılır. Sessiz
+  // durum da ses kontrolüne bildirilir (panelde ses kapalı görünür).
+  byId('mk-sustur').onclick = e => {
+    audio.muted = !audio.muted;
+    e.currentTarget.setAttribute('aria-pressed', String(audio.muted));
+    e.currentTarget.setAttribute('aria-label', audio.muted ? 'Sesi aç' : 'Sesi kapat');
+    sesDegisti();
+  };
   byId('mk-seek').addEventListener('input', () => { surukluyor = true; });
   byId('mk-seek').addEventListener('change', e => {
     surukluyor = false;

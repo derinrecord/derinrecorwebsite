@@ -1127,7 +1127,7 @@
           <span class="p-time" id="p-dur">0:00</span>
         </div>
       </div>
-      <div class="p-vol">🔊<input type="range" id="p-vol" min="0" max="100" value="100" aria-label="Ses"></div>
+      <div class="p-vol"><button class="p-sustur" id="p-sustur" type="button" aria-label="Sesi kapat" aria-pressed="false"><svg class="p-vol-ikon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 9.5h3.6L11.5 5v14l-4.9-4.5H3z" fill="currentColor"/><path class="ses-dalga" d="M15 9.2a4 4 0 0 1 0 5.6M17.8 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke="#cb2468" stroke-width="2.2" stroke-linecap="round"/><path class="ses-carpi" d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke="#cb2468" stroke-width="2.2" stroke-linecap="round"/></svg></button><input type="range" id="p-vol" min="0" max="100" value="100" aria-label="Ses"></div>
       <button class="btn sm" id="p-close" type="button">KAPAT</button>`;
     ses = new Audio();
     el('p-toggle').onclick = () => {
@@ -1138,6 +1138,11 @@
     el('p-next').onclick = () => cal((calmaIdx + 1) % calmaListesi.length);
     el('p-prev').onclick = () => cal((calmaIdx - 1 + calmaListesi.length) % calmaListesi.length);
     el('p-vol').oninput = e => { ses.volume = e.target.value / 100; };
+    el('p-sustur').onclick = e => {
+      ses.muted = !ses.muted;
+      e.currentTarget.setAttribute('aria-pressed', String(ses.muted));
+      e.currentTarget.setAttribute('aria-label', ses.muted ? 'Sesi aç' : 'Sesi kapat');
+    };
     el('p-seek').oninput = e => { if (ses.duration) ses.currentTime = (e.target.value / 1000) * ses.duration; };
     el('p-close').onclick = () => { ses.pause(); el('player').classList.remove('open'); };
     el('p-now').onclick = () => {
