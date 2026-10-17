@@ -843,9 +843,4 @@ small.sd-calar{color:var(--live)}small.sd-takildi{color:var(--warn)}small.sd-ses
 .drawer .chip{background:none;border-color:transparent;padding-left:0}
 .drawer{background:#0f0e11;border-left:1px solid rgba(244,241,233,.08)}
 .view .tiles{gap:28px}
-/* Genel yayın: satırlar arası ferah, düğme altında boşluk. */
-.view .genel-yayin{padding-bottom:40px}
-.view .genel-yayin > h3{margin-bottom:22px}
-.view .genel-yayin > .row{margin:0 0 24px!important;gap:16px 20px}
-.view .genel-yayin > .row:last-of-type{margin:34px 0 0!important}
 .view .tile b{font-size:30px}
