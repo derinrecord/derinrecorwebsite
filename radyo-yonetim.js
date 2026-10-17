@@ -2365,40 +2365,32 @@
         return;
       }
       case 'track-move': {
+        // Parçayı başka bir yayın klasörüne taşır. Markaların listelerine
+        // önceden kopyalanmış parçalar etkilenmez.
         const t = D.tracks.find(x => x.id === id);
         if (!t) return;
-        const secenekler = D.brands
-          .map(b => ({ b, listeler: D.playlists.filter(p => p.brand_id === b.id) }))
-          .filter(x => x.listeler.length);
-        if (!secenekler.length) return hata('Önce bir markaya çalma listesi eklemelisiniz.');
+        const hedefler = D.folders.filter(f => f.id !== t.folder_id);
+        if (!hedefler.length) return hata('Taşınacak başka klasör yok.');
         pencere({
-          baslik: 'Başka listeye ekle',
-          onayMetni: 'LİSTEYE EKLE',
+          baslik: 'Başka klasöre taşı',
+          onayMetni: 'TAŞI',
           govde: `
-            <p>“${esc(V.clean(t.title))}” hangi markanın listesine eklensin? Parça genel klasöründe olduğu gibi kalır.</p>
-            <div class="field" style="margin-bottom:12px"><label for="tasi-marka">MARKA</label>
-              <select id="tasi-marka">${secenekler.map(x => `<option value="${esc(x.b.id)}">${esc(x.b.name)}</option>`).join('')}</select></div>
-            <div class="field"><label for="tasi-liste">ÇALMA LİSTESİ</label>
-              <select id="tasi-liste"></select></div>`,
+            <p>“${esc(V.clean(t.title))}” hangi klasöre taşınsın? Parça bu klasörden çıkar, seçilen klasörün sonuna eklenir.</p>
+            <div class="field"><label for="tasi-klasor">HEDEF KLASÖR</label>
+              <select id="tasi-klasor">${hedefler.map(f => `<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('')}</select></div>`,
           onOnay: async () => {
-            const playlistId = el('tasi-liste').value;
-            if (!playlistId) return;
-            const mevcut = D.playlistTracks.filter(x => x.playlist_id === playlistId);
-            if (mevcut.some(x => x.track_id === t.id)) return hata('Bu parça zaten o listede var.');
-            const { error } = await client.from('brand_playlist_tracks').insert({
-              playlist_id: playlistId, track_id: t.id, sort_order: mevcut.length
-            });
-            if (error) return hata('Listeye eklenemedi: ' + error.message);
-            await yenile(false); bildir('Parça markanın listesine eklendi.');
+            const klasorId = el('tasi-klasor').value;
+            if (!klasorId) return;
+            const sira = D.tracks.filter(x => x.folder_id === klasorId)
+              .reduce((m, x) => Math.max(m, x.sort_order == null ? -1 : x.sort_order), -1) + 1;
+            const sorun = await yazDogrula(
+              client.from('radio_tracks').update({ folder_id: klasorId, sort_order: sira }).eq('id', t.id),
+              'Parça taşınamadı');
+            if (sorun) return hata(sorun);
+            const klasor = D.folders.find(f => f.id === klasorId);
+            await yenile(false); bildir('Parça “' + (klasor ? klasor.name : 'klasör') + '” klasörüne taşındı.');
           }
         });
-        const markaSec = el('tasi-marka'), listeSec = el('tasi-liste');
-        const doldur = () => {
-          const x = secenekler.find(s => s.b.id === markaSec.value);
-          listeSec.innerHTML = (x ? x.listeler : []).map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
-        };
-        markaSec.onchange = doldur;
-        doldur();
         return;
       }
       case 'track-del': {
