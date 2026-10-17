@@ -523,15 +523,23 @@ function bagla() {
     const i = sonraki(-1);
     if (i >= 0) gecisCal(i);
   };
-  byId('mk-ses').oninput = e => { seviye = Number(e.target.value) / 100; iptalFade(); audio.volume = seviye; };
-  // Simgeye basınca ses tamamen kapanır, yeniden basınca açılır. Sessiz
-  // durum da ses kontrolüne bildirilir (panelde ses kapalı görünür).
-  byId('mk-sustur').onclick = e => {
-    audio.muted = !audio.muted;
-    e.currentTarget.setAttribute('aria-pressed', String(audio.muted));
-    e.currentTarget.setAttribute('aria-label', audio.muted ? 'Sesi aç' : 'Sesi kapat');
+  // Simgeye basınca ses tamamen kapanır ve kaydırıcı en sola gelir; yeniden
+  // basınca önceki seviyeye döner. Sessiz durum ses kontrolüne bildirilir
+  // (panelde ses kapalı görünür). Kapalıyken kaydırıcı oynatılırsa ses açılır.
+  const sustur = kapali => {
+    audio.muted = kapali;
+    const d = byId('mk-sustur');
+    d.setAttribute('aria-pressed', String(kapali));
+    d.setAttribute('aria-label', kapali ? 'Sesi aç' : 'Sesi kapat');
+    byId('mk-ses').value = kapali ? 0 : Math.round(seviye * 100);
     sesDegisti();
   };
+  byId('mk-ses').oninput = e => {
+    const deger = Number(e.target.value);
+    if (audio.muted) { if (!deger) return; seviye = deger / 100; sustur(false); }
+    seviye = deger / 100; iptalFade(); audio.volume = seviye;
+  };
+  byId('mk-sustur').onclick = () => sustur(!audio.muted);
   byId('mk-seek').addEventListener('input', () => { surukluyor = true; });
   byId('mk-seek').addEventListener('change', e => {
     surukluyor = false;

@@ -1137,12 +1137,23 @@
     };
     el('p-next').onclick = () => cal((calmaIdx + 1) % calmaListesi.length);
     el('p-prev').onclick = () => cal((calmaIdx - 1 + calmaListesi.length) % calmaListesi.length);
-    el('p-vol').oninput = e => { ses.volume = e.target.value / 100; };
-    el('p-sustur').onclick = e => {
-      ses.muted = !ses.muted;
-      e.currentTarget.setAttribute('aria-pressed', String(ses.muted));
-      e.currentTarget.setAttribute('aria-label', ses.muted ? 'Sesi aç' : 'Sesi kapat');
+    // Simgeye basınca ses kapanır ve kaydırıcı en sola gelir; yeniden basınca
+    // önceki seviyeye döner. Kapalıyken kaydırıcı oynatılırsa ses açılır.
+    let sonSeviye = 100;
+    const sustur = kapali => {
+      ses.muted = kapali;
+      const d = el('p-sustur');
+      d.setAttribute('aria-pressed', String(kapali));
+      d.setAttribute('aria-label', kapali ? 'Sesi aç' : 'Sesi kapat');
+      el('p-vol').value = kapali ? 0 : sonSeviye;
     };
+    el('p-vol').oninput = e => {
+      const deger = Number(e.target.value);
+      if (deger) sonSeviye = deger;
+      ses.volume = deger / 100;
+      if (ses.muted && deger) sustur(false);
+    };
+    el('p-sustur').onclick = () => sustur(!ses.muted);
     el('p-seek').oninput = e => { if (ses.duration) ses.currentTime = (e.target.value / 1000) * ses.duration; };
     el('p-close').onclick = () => { ses.pause(); el('player').classList.remove('open'); };
     el('p-now').onclick = () => {
