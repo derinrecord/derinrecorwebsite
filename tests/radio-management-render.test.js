@@ -241,15 +241,18 @@ test('paylaşılan kapak dosyası başka kayıt kullanırken silinmez', () => {
   assert.ok(klasorSil.includes('new Set('), 'aynı görsel bir kez denenmeli');
 });
 
-test('toplu kapak görseli bir kez yükler ve seçili parçalara bağlar', () => {
-  ['toplu-kapak', 'toplu-aralik', 'toplu-kapaksiz', 'toplu-temizle'].forEach(act =>
+test('toplu düzenleme kapak, sanatçı ve krediyi seçili parçalara tek komutla yazar', () => {
+  ['toplu-duzenle', 'toplu-aralik', 'toplu-kapaksiz', 'toplu-temizle'].forEach(act =>
     assert.ok(source.includes(`case '${act}'`), `${act} işlenmeli`));
-  const kayit = source.slice(source.indexOf('async function topluKapakKaydet'), source.indexOf('function onaySor'));
+  const kayit = source.slice(source.indexOf('async function topluDuzenleKaydet'), source.indexOf('function onaySor'));
   assert.equal((kayit.match(/kapakYukle\(/g) || []).length, 1, 'görsel tek kez yüklenmeli');
-  assert.ok(kayit.includes(".update({ cover_path: yol }).in('id', ids)"), 'seçili parçalar tek komutla güncellenmeli');
-  assert.ok(kayit.includes('await kapakDosyaSil(yol)'), 'kayıt tutmazsa yüklenen görsel geri silinmeli');
+  assert.ok(kayit.includes(".update(degisiklik).in('id', ids)"), 'seçili parçalar tek komutla güncellenmeli');
+  ['degisiklik.sanatci = sanatci', 'degisiklik.kredi = kredi', 'degisiklik.cover_path = yol'].forEach(p =>
+    assert.ok(kayit.includes(p), p));
+  assert.ok(kayit.includes('if (yol) await kapakDosyaSil(yol)'), 'kayıt tutmazsa yüklenen görsel geri silinmeli');
   assert.ok(kayit.includes('for (const eski of eskiler) await kapakDosyaSil(eski)'), 'eski kapaklar temizlenmeli');
   assert.ok(kayit.includes('topluPencereyiGeriAc'), 'eksik seçimde işaretlemeler kaybolmamalı');
+  assert.ok(kayit.includes('if (!dosya && !sanatci && !kredi)'), 'boş form hiçbir şey yazmamalı');
 });
 
 test('liste bildirimi kurulumu SQL dosyası olarak depoda', () => {

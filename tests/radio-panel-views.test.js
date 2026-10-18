@@ -2017,17 +2017,20 @@ test('ses dalgası ÇALIYOR etiketinin içinde; ses kapalıysa etiket sorunu yaz
   assert.ok(kapali.includes('chip danger chip-dalga') && kapali.includes('SES KAPALI</span>'));
 });
 
-test('toplu kapak penceresi parçaları tablodaki numaralarla listeler', () => {
+test('toplu düzenleme penceresi parçaları tablodaki numaralarla listeler', () => {
   const parcalar = [
-    { id: 'a', title: 'Birinci', cover_path: 'tracks/x.jpg' },
+    { id: 'a', title: 'Birinci', cover_path: 'tracks/x.jpg', sanatci: 'HoliznaCC0' },
     { id: 'b', title: 'İkinci', cover_path: null },
     { id: 'c', title: '<b>Üçüncü</b>', cover_path: null }
   ];
-  const html = V.topluKapakPenceresi(parcalar, 'Lofi-Chill · 3 parça');
+  const html = V.topluDuzenlePenceresi(parcalar, 'Lofi-Chill · 3 parça', true);
   assert.equal((html.match(/type="checkbox"/g) || []).length, 3);
   assert.match(html, /value="b" data-no="2"/);
   assert.match(html, /03 · &lt;b&gt;Üçüncü&lt;\/b&gt;/, 'parça adı kaçışlanmalı');
-  assert.match(html, /kapağı var — seçilirse değişir/);
-  ['toplu-bas', 'toplu-son', 'kapak-file', 'toplu-sayi'].forEach(id => assert.ok(html.includes(`id="${id}"`), id));
+  assert.match(html, /kapağı var · HoliznaCC0/);
+  ['toplu-bas', 'toplu-son', 'kapak-file', 'toplu-sayi', 'toplu-sanatci', 'toplu-kredi'].forEach(id => assert.ok(html.includes(`id="${id}"`), id));
   ['toplu-aralik', 'toplu-kapaksiz', 'toplu-temizle'].forEach(act => assert.ok(html.includes(`data-act="${act}"`), act));
+  // Kredi SQL'i kurulmadıysa sanatçı/kredi alanları çıkmaz.
+  const krediYok = V.topluDuzenlePenceresi(parcalar, '', false);
+  assert.ok(!krediYok.includes('toplu-sanatci') && !krediYok.includes('toplu-kredi'));
 });

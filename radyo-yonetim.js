@@ -320,17 +320,19 @@
     }
   }
 
-  // Toplu kapak: görsel bir kez yüklenir, işaretli parçaların hepsine bağlanır.
-  // Parçaların eski kapakları ancak artık hiçbir kayıt kullanmıyorsa silinir.
-  function topluKapakAc(f) {
+  // Toplu düzenleme: işaretli parçalara kapak, sanatçı ve kredi notu tek
+  // seferde yazılır; boş alan değişmez. Görsel bir kez yüklenir. Parçaların
+  // eski kapakları ancak artık hiçbir kayıt kullanmıyorsa silinir.
+  function topluDuzenleAc(f) {
     const parcalar = D.tracks.filter(t => t.folder_id === f.id)
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     if (!parcalar.length) return bildir('Bu klasörde parça yok.');
+    const krediVar = !!(D.kurulum && D.kurulum['parca-kredi.sql']);
     pencere({
-      baslik: 'Toplu kapak',
-      govde: V.topluKapakPenceresi(parcalar, f.name + ' · ' + parcalar.length + ' parça'),
-      onayMetni: 'SEÇİLENLERE YERLEŞTİR',
-      onOnay: () => topluKapakKaydet(parcalar),
+      baslik: 'Toplu düzenle',
+      govde: V.topluDuzenlePenceresi(parcalar, f.name + ' · ' + parcalar.length + ' parça', krediVar),
+      onayMetni: 'SEÇİLENLERE UYGULA',
+      onOnay: () => topluDuzenleKaydet(parcalar),
       onKapat: () => kapakOnizlemeBirak()
     });
     kapakSecimiBagla();
@@ -348,36 +350,49 @@
     if (yazi) yazi.textContent = adet ? adet + ' parça seçildi.' : 'Hiç parça seçilmedi.';
   }
 
-  // Onay düğmesi pencereyi kayıttan önce kapatır. Görsel ya da parça seçimi
-  // eksikse pencereyi seçimler yerinde kalacak şekilde yeniden açarız: 50
-  // parçalık işaretleme bir eksik yüzünden kaybolmasın.
+  // Onay düğmesi pencereyi kayıttan önce kapatır. Bir şey eksikse pencereyi
+  // seçimler yerinde kalacak şekilde yeniden açarız: 50 parçalık işaretleme
+  // bir eksik yüzünden kaybolmasın.
   function topluPencereyiGeriAc(parcalar, mesaj) {
-    modalOnay = () => topluKapakKaydet(parcalar);
+    modalOnay = () => topluDuzenleKaydet(parcalar);
     modalKapat = () => kapakOnizlemeBirak();
     el('modal-wrap').classList.add('open');
     bildir(mesaj);
   }
 
-  async function topluKapakKaydet(parcalar) {
+  async function topluDuzenleKaydet(parcalar) {
     const giris = el('kapak-file');
     const dosya = giris && giris.files && giris.files[0];
-    if (!dosya) return topluPencereyiGeriAc(parcalar, 'Önce bir görsel seç.');
+    const sanatci = el('toplu-sanatci') ? el('toplu-sanatci').value.trim() : '';
+    const kredi = el('toplu-kredi') ? el('toplu-kredi').value.trim() : '';
+    if (!dosya && !sanatci && !kredi) return topluPencereyiGeriAc(parcalar, 'Değiştirilecek bir şey seç: kapak, sanatçı ya da kredi.');
     const ids = topluKutular().filter(k => k.checked).map(k => k.value);
     if (!ids.length) return topluPencereyiGeriAc(parcalar, 'Hiç parça seçilmedi.');
     try {
-      const { yol, hata: yuklemeHatasi } = await kapakYukle(dosya, 'tracks');
-      if (yuklemeHatasi) return hata(yuklemeHatasi);
-      const eskiler = [...new Set(parcalar.filter(t => ids.includes(t.id) && t.cover_path).map(t => t.cover_path))];
+      const degisiklik = {};
+      if (sanatci) degisiklik.sanatci = sanatci;
+      if (kredi) degisiklik.kredi = kredi;
+      let yol = null;
+      if (dosya) {
+        const yukleme = await kapakYukle(dosya, 'tracks');
+        if (yukleme.hata) return hata(yukleme.hata);
+        yol = yukleme.yol;
+        degisiklik.cover_path = yol;
+      }
+      const eskiler = yol
+        ? [...new Set(parcalar.filter(t => ids.includes(t.id) && t.cover_path).map(t => t.cover_path))]
+        : [];
       const { data, error } = await client.from('radio_tracks')
-        .update({ cover_path: yol }).in('id', ids).select('id');
+        .update(degisiklik).in('id', ids).select('id');
       if (error || !data || !data.length) {
-        await kapakDosyaSil(yol);
-        return hata('Kapak kaydedilemedi: ' + (error ? error.message : 'kayıt bulunamadı ya da bu işlem için yetkiniz yok.'));
+        if (yol) await kapakDosyaSil(yol);
+        return hata('Kaydedilemedi: ' + (error ? error.message : 'kayıt bulunamadı ya da bu işlem için yetkiniz yok.'));
       }
       for (const eski of eskiler) await kapakDosyaSil(eski);
       pencereKapat();
       await yenile(false);
-      bildir(data.length + ' parçaya kapak yerleştirildi.');
+      const neler = [yol && 'kapak', sanatci && 'sanatçı', kredi && 'kredi'].filter(Boolean).join(', ');
+      bildir(data.length + ' parçaya ' + neler + ' yazıldı.');
     } finally {
       kapakOnizlemeBirak();
     }
@@ -2477,9 +2492,9 @@
         });
         return;
       }
-      case 'toplu-kapak': {
+      case 'toplu-duzenle': {
         const f = D.folders.find(x => x.id === state.openFolder);
-        if (f) topluKapakAc(f);
+        if (f) topluDuzenleAc(f);
         return;
       }
       case 'toplu-aralik': {

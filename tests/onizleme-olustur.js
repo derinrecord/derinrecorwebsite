@@ -451,6 +451,7 @@ if (senaryo === 'toplu-kapak') {
   const tracks = adlar.map((ad, i) => ({ id: 't' + i, folder_id: 'f1', title: ad, storage_path: 'f1/' + i + '.mp3', sort_order: i,
     duration_sec: 140 + i * 3, cover_path: i < 12 ? 'tracks/t' + i + '.jpg' : null }));
   const D = {
+    kurulum: { 'parca-kredi.sql': true },
     brands: [], folders: [{ id: 'f1', name: 'Lofi-Chill', description: null, cover_path: null, shuffle: true }],
     tracks, players: [], broadcast: [], announcements: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: [],
     playlists: [], playlistTracks: []
@@ -460,9 +461,10 @@ if (senaryo === 'toplu-kapak') {
     accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '', now: () => Date.now(), saglikSonuc: () => null
   };
   const gorunum = V.gorunum({ nav: 'icerik', sub: 'klasorler', openFolder: 'f1', openBrand: null, openPlaylist: null, q: '' }, D, ui);
-  let pencereHtml = V.topluKapakPenceresi(tracks, 'Lofi-Chill · ' + tracks.length + ' parça')
+  let pencereHtml = V.topluDuzenlePenceresi(tracks, 'Lofi-Chill · ' + tracks.length + ' parça', true)
     .replace('src="" alt="" hidden', 'src="' + kapak + '" alt=""')
     .replace('id="kapak-bos" style', 'id="kapak-bos" hidden style')
+    .replace('id="toplu-sanatci"', 'id="toplu-sanatci" value="HoliznaCC0"')
     .replace('placeholder="İlk"', 'value="13" placeholder="İlk"').replace('placeholder="Son"', 'value="20" placeholder="Son"');
   for (let i = 13; i <= 20; i++) pencereHtml = pencereHtml.replace('data-no="' + i + '"', 'data-no="' + i + '" checked');
   pencereHtml = pencereHtml.replace('Hiç parça seçilmedi.', '8 parça seçildi.');
@@ -482,9 +484,9 @@ ${modal ? '.modal-wrap{display:flex}' : ''}
 </head>
 <body><div class="view">${gorunum.html}</div>
 ${modal ? `<div class="modal-wrap open"><div class="modal">
-  <h3>Toplu kapak</h3>
+  <h3>Toplu düzenle</h3>
   <div class="modal-body">${pencereHtml}</div>
-  <div class="modal-actions"><button class="btn" type="button">VAZGEÇ</button><button class="btn primary" type="button">SEÇİLENLERE YERLEŞTİR</button></div>
+  <div class="modal-actions"><button class="btn" type="button">VAZGEÇ</button><button class="btn primary" type="button">SEÇİLENLERE UYGULA</button></div>
 </div></div>
 <script>document.querySelector('#toplu-liste [data-no="13"]').closest('label').scrollIntoView({ block: 'nearest' });</script>` : ''}
 </body>

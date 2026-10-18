@@ -1835,8 +1835,8 @@
       <div class="panel" style="margin-bottom:18px">
         <h3>PARÇALAR (${liste.length})${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</h3>
         ${liste.length > 1 ? `<div class="row" style="margin:0 0 14px">
-          <button class="btn sm" data-act="toplu-kapak" type="button">TOPLU KAPAK</button>
-          <span class="sub">Bir görseli birden çok parçaya tek seferde yerleştir.</span>
+          <button class="btn sm" data-act="toplu-duzenle" type="button">TOPLU DÜZENLE</button>
+          <span class="sub">Kapağı${kurulumVar(D, 'parca-kredi.sql') ? ', sanatçıyı ve krediyi' : ''} birden çok parçaya tek seferde yaz.</span>
         </div>` : ''}
         <table>
           <thead><tr><th>#</th><th></th><th>PARÇA</th><th>SÜRE</th><th></th></tr></thead>
@@ -2984,22 +2984,27 @@
         : ''}`;
   }
 
-  // Toplu kapak: bir görsel seçilir, klasördeki parçalar işaretlenir (tek tek,
-  // "13'ten 64'e" gibi bir aralıkla ya da yalnız kapaksızlar) ve görsel
-  // depoya bir kez yüklenip işaretli bütün parçalara bağlanır. Numaralar
-  // parça tablosundaki sıra numaralarıyla aynıdır.
-  function topluKapakPenceresi(parcalar, alt) {
+  // Toplu düzenleme: klasördeki parçalar işaretlenir (tek tek, "13'ten 64'e"
+  // gibi bir aralıkla ya da yalnız kapaksızlar) ve doldurulan alanlar işaretli
+  // bütün parçalara yazılır. Görsel depoya bir kez yüklenip hepsine bağlanır.
+  // Boş bırakılan alan değişmez. Numaralar parça tablosundakilerle aynıdır.
+  function topluDuzenlePenceresi(parcalar, alt, krediVar) {
     return `
-      <div style="text-align:center;margin-bottom:14px">
-        <span id="kapak-kutu" style="display:inline-grid;place-items:center;width:150px;height:150px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.07)">
-          <img id="kapak-onizleme" src="" alt="" hidden style="width:100%;height:100%;object-fit:cover">
-          <span id="kapak-bos" style="font-size:36px;opacity:.45">♪</span>
-        </span>
-        <p class="sub" style="margin:8px 0 0">${esc(alt || '')}</p>
-      </div>
-      <div class="field"><label for="kapak-file">GÖRSEL SEÇ</label>
-        <input id="kapak-file" type="file" accept="image/*"></div>
-      <p class="sub" id="kapak-msg" style="margin-bottom:14px">Görsel depoya bir kez yüklenir ve işaretlediğin bütün parçalara bağlanır.</p>
+      <p class="sub" style="margin:0 0 14px">${esc(alt || '')} · Boş bıraktığın alan parçalarda değişmez.</p>
+      <div class="field"><label for="kapak-file">KAPAK</label>
+        <div class="row" style="gap:12px;align-items:center;flex-wrap:nowrap">
+          <span id="kapak-kutu" style="display:inline-grid;place-items:center;flex:0 0 auto;width:72px;height:72px;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.07)">
+            <img id="kapak-onizleme" src="" alt="" hidden style="width:100%;height:100%;object-fit:cover">
+            <span id="kapak-bos" style="font-size:24px;opacity:.45">♪</span>
+          </span>
+          <input id="kapak-file" type="file" accept="image/*" style="min-width:0">
+        </div></div>
+      <p class="sub" id="kapak-msg" style="margin:6px 0 14px">Görsel depoya bir kez yüklenir ve işaretlediğin bütün parçalara bağlanır.</p>
+      ${krediVar ? `
+      <div class="field"><label for="toplu-sanatci">SANATÇI</label>
+        <input id="toplu-sanatci" placeholder="Örn. HoliznaCC0" autocomplete="off"></div>
+      <div class="field"><label for="toplu-kredi">KREDİ NOTU</label>
+        <textarea id="toplu-kredi" rows="2" placeholder="Örn. Music by HoliznaCC0 · CC0 (kamu malı)"></textarea></div>` : ''}
       <div class="field"><label>PARÇALARI SEÇ</label>
         <div class="row" style="gap:8px;flex-wrap:wrap">
           <input id="toplu-bas" type="number" inputmode="numeric" min="1" max="${parcalar.length}" placeholder="İlk" aria-label="İlk parça numarası" style="width:78px">
@@ -3012,7 +3017,10 @@
       <div class="tick-list" id="toplu-liste" style="margin-top:10px">
         ${parcalar.map((t, i) => `<label>
           <input type="checkbox" value="${esc(t.id)}" data-no="${i + 1}">
-          <span><b>${String(i + 1).padStart(2, '0')} · ${esc(clean(t.title))}</b><span class="sub">${t.cover_path ? 'kapağı var — seçilirse değişir' : 'kapak yok'}</span></span>
+          <span><b>${String(i + 1).padStart(2, '0')} · ${esc(clean(t.title))}</b><span class="sub">${[
+            t.cover_path ? 'kapağı var' : 'kapak yok',
+            krediVar ? (t.sanatci ? esc(t.sanatci) : 'sanatçı yok') : ''
+          ].filter(Boolean).join(' · ')}</span></span>
         </label>`).join('')}
       </div>
       <p class="sub" id="toplu-sayi" style="margin-top:8px">Hiç parça seçilmedi.</p>`;
@@ -3114,7 +3122,7 @@
     kurulumSeridi: kurulumSeridi,
     kapakYok: kapakYok,
     kapakPenceresi: kapakPenceresi,
-    topluKapakPenceresi: topluKapakPenceresi,
+    topluDuzenlePenceresi: topluDuzenlePenceresi,
     subeListePenceresi: subeListePenceresi,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu,
