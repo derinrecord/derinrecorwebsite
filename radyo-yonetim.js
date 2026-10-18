@@ -230,10 +230,30 @@
   }
 
   // Değiştirilen ya da kaldırılan kapağın dosyasını depodan sileriz; yoksa
-  // depoda kimsenin görmediği eski görseller birikir.
+  // depoda kimsenin görmediği eski görseller birikir. Toplu kapakta tek görsel
+  // birden çok parçaya bağlanır: dosyayı hâlâ kullanan bir kayıt varsa
+  // silmeyiz, yoksa tek parçanın kapağını değiştirmek ötekilerin kapağını da
+  // yok ederdi. Bu yüzden silme, kayıt güncellendikten/silindikten SONRA çağrılır.
+  const KAPAK_TABLOLARI = ['radio_tracks', 'radio_folders', 'brand_playlists', 'brands'];
+
+  async function kapakKullaniliyor(yol) {
+    for (const tablo of KAPAK_TABLOLARI) {
+      const { count, error } = await client.from(tablo)
+        .select('id', { count: 'exact', head: true }).eq('cover_path', yol);
+      // Kurulmamış sütun (marka kapağı SQL'i çalışmadıysa) sorun değil; başka
+      // bir hatada emin olamadığımız için dosyayı silmeyiz.
+      if (error) { if (error.code === '42703') continue; return true; }
+      if (count > 0) return true;
+    }
+    return false;
+  }
+
   async function kapakDosyaSil(yol) {
     if (!yol) return;
-    try { await window.DerinR2.sil(KAPAK_BUCKET, [yol]); } catch { /* dosya yoksa sorun değil */ }
+    try {
+      if (await kapakKullaniliyor(yol)) return;
+      await window.DerinR2.sil(KAPAK_BUCKET, [yol]);
+    } catch { /* dosya yoksa sorun değil */ }
   }
 
   // s: { baslik, alt, kapak (depo yolu), onEk (depo klasörü), kaydet(yol), kaldir() }
@@ -246,6 +266,12 @@
       onOnay: () => kapakKaydet(s),
       onKapat: () => { kapakOnizlemeBirak(); kapakKaldir = null; }
     });
+    kapakSecimiBagla();
+  }
+
+  // Pencere içindeki görsel seçicisi: seçilen görseli kaydetmeden önce gösterir.
+  // Tek kapak ve toplu kapak pencereleri aynı alanları kullanır.
+  function kapakSecimiBagla() {
     const giris = el('kapak-file');
     const onizleme = el('kapak-onizleme');
     const bos = el('kapak-bos');
@@ -291,6 +317,69 @@
     } finally {
       kapakOnizlemeBirak();
       kapakKaldir = null;
+    }
+  }
+
+  // Toplu kapak: görsel bir kez yüklenir, işaretli parçaların hepsine bağlanır.
+  // Parçaların eski kapakları ancak artık hiçbir kayıt kullanmıyorsa silinir.
+  function topluKapakAc(f) {
+    const parcalar = D.tracks.filter(t => t.folder_id === f.id)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    if (!parcalar.length) return bildir('Bu klasörde parça yok.');
+    pencere({
+      baslik: 'Toplu kapak',
+      govde: V.topluKapakPenceresi(parcalar, f.name + ' · ' + parcalar.length + ' parça'),
+      onayMetni: 'SEÇİLENLERE YERLEŞTİR',
+      onOnay: () => topluKapakKaydet(parcalar),
+      onKapat: () => kapakOnizlemeBirak()
+    });
+    kapakSecimiBagla();
+    el('toplu-liste').onchange = topluSayiYaz;
+  }
+
+  function topluKutular() {
+    const liste = el('toplu-liste');
+    return liste ? Array.from(liste.querySelectorAll('input[type=checkbox]')) : [];
+  }
+
+  function topluSayiYaz() {
+    const adet = topluKutular().filter(k => k.checked).length;
+    const yazi = el('toplu-sayi');
+    if (yazi) yazi.textContent = adet ? adet + ' parça seçildi.' : 'Hiç parça seçilmedi.';
+  }
+
+  // Onay düğmesi pencereyi kayıttan önce kapatır. Görsel ya da parça seçimi
+  // eksikse pencereyi seçimler yerinde kalacak şekilde yeniden açarız: 50
+  // parçalık işaretleme bir eksik yüzünden kaybolmasın.
+  function topluPencereyiGeriAc(parcalar, mesaj) {
+    modalOnay = () => topluKapakKaydet(parcalar);
+    modalKapat = () => kapakOnizlemeBirak();
+    el('modal-wrap').classList.add('open');
+    bildir(mesaj);
+  }
+
+  async function topluKapakKaydet(parcalar) {
+    const giris = el('kapak-file');
+    const dosya = giris && giris.files && giris.files[0];
+    if (!dosya) return topluPencereyiGeriAc(parcalar, 'Önce bir görsel seç.');
+    const ids = topluKutular().filter(k => k.checked).map(k => k.value);
+    if (!ids.length) return topluPencereyiGeriAc(parcalar, 'Hiç parça seçilmedi.');
+    try {
+      const { yol, hata: yuklemeHatasi } = await kapakYukle(dosya, 'tracks');
+      if (yuklemeHatasi) return hata(yuklemeHatasi);
+      const eskiler = [...new Set(parcalar.filter(t => ids.includes(t.id) && t.cover_path).map(t => t.cover_path))];
+      const { data, error } = await client.from('radio_tracks')
+        .update({ cover_path: yol }).in('id', ids).select('id');
+      if (error || !data || !data.length) {
+        await kapakDosyaSil(yol);
+        return hata('Kapak kaydedilemedi: ' + (error ? error.message : 'kayıt bulunamadı ya da bu işlem için yetkiniz yok.'));
+      }
+      for (const eski of eskiler) await kapakDosyaSil(eski);
+      pencereKapat();
+      await yenile(false);
+      bildir(data.length + ' parçaya kapak yerleştirildi.');
+    } finally {
+      kapakOnizlemeBirak();
     }
   }
 
@@ -2325,13 +2414,15 @@
           const yollar = parcalar.flatMap(t => Ses.parcalariCoz(t.storage_path).map(p => p.path));
           await window.DerinR2.sil('radio-audio', yollar);
         }
-        // Kapaklar da birlikte gitsin: klasörün ve parçaların görselleri
-        // depoda sahipsiz kalmasın.
-        await kapakDosyaSil(f && f.cover_path);
-        for (const t of parcalar) await kapakDosyaSil(t.cover_path);
         await client.from('radio_tracks').delete().eq('folder_id', id);
         const silmeSorunu = await yazDogrula(
           client.from('radio_folders').delete().eq('id', id), 'Klasör silinemedi');
+        // Kapaklar da birlikte gitsin: klasörün ve parçaların görselleri depoda
+        // sahipsiz kalmasın. Kayıtlar silindikten sonra ve her görsel bir kez:
+        // toplu kapakta 50 parça aynı dosyayı paylaşabilir, başka bir kayıt
+        // hâlâ kullanıyorsa kapakDosyaSil dosyayı bırakır.
+        const kapaklar = [...new Set([f && f.cover_path, ...parcalar.map(t => t.cover_path)].filter(Boolean))];
+        for (const kapak of kapaklar) await kapakDosyaSil(kapak);
         if (silmeSorunu) {
           // Veritabanı kuralı adıyla konuşmasın: yönetici ne yapacağını görsün.
           if (/player_broadcast_check/.test(silmeSorunu)) {
@@ -2384,6 +2475,37 @@
             pencereKapat(); await yenile(false); bildir('Kapak kaldırıldı.');
           } : null
         });
+        return;
+      }
+      case 'toplu-kapak': {
+        const f = D.folders.find(x => x.id === state.openFolder);
+        if (f) topluKapakAc(f);
+        return;
+      }
+      case 'toplu-aralik': {
+        const bas = parseInt(el('toplu-bas').value, 10);
+        const son = parseInt(el('toplu-son').value, 10);
+        if (!bas || !son) return bildir('İlk ve son parça numarasını yaz.');
+        const alt = Math.min(bas, son), ust = Math.max(bas, son);
+        topluKutular().forEach(k => {
+          const no = Number(k.dataset.no);
+          if (no >= alt && no <= ust) k.checked = true;
+        });
+        // Seçilen aralığın başı listede görünsün (uzun klasörlerde aşağıda kalır).
+        const ilk = topluKutular().find(k => Number(k.dataset.no) === alt);
+        if (ilk) ilk.closest('label').scrollIntoView({ block: 'nearest' });
+        topluSayiYaz();
+        return;
+      }
+      case 'toplu-kapaksiz': {
+        const kapaksiz = new Set(D.tracks.filter(t => !t.cover_path).map(t => t.id));
+        topluKutular().forEach(k => { if (kapaksiz.has(k.value)) k.checked = true; });
+        topluSayiYaz();
+        return;
+      }
+      case 'toplu-temizle': {
+        topluKutular().forEach(k => { k.checked = false; });
+        topluSayiYaz();
         return;
       }
       case 'kapak-sil': {
@@ -2503,10 +2625,11 @@
           onayMetni: 'PARÇAYI SİL'
         })) return;
         if (Ses) await window.DerinR2.sil('radio-audio', Ses.parcalariCoz(hedef.dataset.path || (t && t.storage_path)).map(p => p.path));
-        if (t && t.cover_path) await kapakDosyaSil(t.cover_path);
         const sorun = await yazDogrula(
           client.from('radio_tracks').delete().eq('id', id), 'Parça silinemedi');
         if (sorun) return hata(sorun);
+        // Kayıt silindikten sonra: görseli başka parça kullanıyorsa dosya kalır.
+        if (t && t.cover_path) await kapakDosyaSil(t.cover_path);
         await yenile(false); bildir('Parça silindi.');
         return;
       }

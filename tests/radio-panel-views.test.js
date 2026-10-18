@@ -2016,3 +2016,18 @@ test('ses dalgası ÇALIYOR etiketinin içinde; ses kapalıysa etiket sorunu yaz
   const kapali = V.yayinHucresi({ ...temel, ses_seviyesi: 0 }, k, simdi, { players: [] });
   assert.ok(kapali.includes('chip danger chip-dalga') && kapali.includes('SES KAPALI</span>'));
 });
+
+test('toplu kapak penceresi parçaları tablodaki numaralarla listeler', () => {
+  const parcalar = [
+    { id: 'a', title: 'Birinci', cover_path: 'tracks/x.jpg' },
+    { id: 'b', title: 'İkinci', cover_path: null },
+    { id: 'c', title: '<b>Üçüncü</b>', cover_path: null }
+  ];
+  const html = V.topluKapakPenceresi(parcalar, 'Lofi-Chill · 3 parça');
+  assert.equal((html.match(/type="checkbox"/g) || []).length, 3);
+  assert.match(html, /value="b" data-no="2"/);
+  assert.match(html, /03 · &lt;b&gt;Üçüncü&lt;\/b&gt;/, 'parça adı kaçışlanmalı');
+  assert.match(html, /kapağı var — seçilirse değişir/);
+  ['toplu-bas', 'toplu-son', 'kapak-file', 'toplu-sayi'].forEach(id => assert.ok(html.includes(`id="${id}"`), id));
+  ['toplu-aralik', 'toplu-kapaksiz', 'toplu-temizle'].forEach(act => assert.ok(html.includes(`data-act="${act}"`), act));
+});

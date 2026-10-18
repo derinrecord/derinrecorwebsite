@@ -213,8 +213,43 @@ test('parça ya da klasör silinince kapak dosyası da temizlenir', () => {
   // ya da yeni bir adım girmesi bu korumayı düşürmemeli.
   const klasorBas = source.indexOf("case 'folder-del'");
   const klasorSil = source.slice(klasorBas, source.indexOf("case '", klasorBas + 10));
-  assert.ok(klasorSil.includes('kapakDosyaSil(f && f.cover_path)'));
-  assert.ok(klasorSil.includes('for (const t of parcalar) await kapakDosyaSil(t.cover_path)'));
+  assert.ok(klasorSil.includes('f && f.cover_path'), 'klasörün kendi kapağı da temizlenmeli');
+  assert.ok(klasorSil.includes('parcalar.map(t => t.cover_path)'), 'parçaların kapakları temizlenmeli');
+  assert.ok(klasorSil.includes('for (const kapak of kapaklar) await kapakDosyaSil(kapak)'));
+});
+
+// Toplu kapakta tek görsel birçok parçaya bağlanır. Dosya, kayıtlar
+// güncellendikten/silindikten SONRA ve ancak hiçbir kayıt kullanmıyorsa
+// silinmeli; yoksa tek parçanın kapağını değiştirmek ötekileri de bozardı.
+test('paylaşılan kapak dosyası başka kayıt kullanırken silinmez', () => {
+  const sil = source.slice(source.indexOf('async function kapakDosyaSil'));
+  assert.ok(sil.slice(0, 300).includes('await kapakKullaniliyor(yol)'), 'silmeden önce kullanım denetlenmeli');
+  const kullanim = source.slice(source.indexOf('async function kapakKullaniliyor'), source.indexOf('async function kapakDosyaSil'));
+  assert.match(source, /KAPAK_TABLOLARI = \['radio_tracks', 'radio_folders', 'brand_playlists', 'brands'\]/);
+  assert.ok(kullanim.includes(".eq('cover_path', yol)"));
+  assert.ok(kullanim.includes('return true'), 'emin olunamazsa dosya bırakılmalı');
+
+  const parcaBas = source.indexOf("case 'track-del'");
+  const parcaSil = source.slice(parcaBas, source.indexOf("case '", parcaBas + 10));
+  assert.ok(parcaSil.indexOf(".delete().eq('id', id)") < parcaSil.indexOf('kapakDosyaSil(t.cover_path)'),
+    'parça kaydı kapak dosyasından önce silinmeli');
+
+  const klasorBas = source.indexOf("case 'folder-del'");
+  const klasorSil = source.slice(klasorBas, source.indexOf("case '", klasorBas + 10));
+  assert.ok(klasorSil.indexOf("from('radio_folders').delete()") < klasorSil.indexOf('await kapakDosyaSil(kapak)'),
+    'klasör kayıtları kapak dosyalarından önce silinmeli');
+  assert.ok(klasorSil.includes('new Set('), 'aynı görsel bir kez denenmeli');
+});
+
+test('toplu kapak görseli bir kez yükler ve seçili parçalara bağlar', () => {
+  ['toplu-kapak', 'toplu-aralik', 'toplu-kapaksiz', 'toplu-temizle'].forEach(act =>
+    assert.ok(source.includes(`case '${act}'`), `${act} işlenmeli`));
+  const kayit = source.slice(source.indexOf('async function topluKapakKaydet'), source.indexOf('function onaySor'));
+  assert.equal((kayit.match(/kapakYukle\(/g) || []).length, 1, 'görsel tek kez yüklenmeli');
+  assert.ok(kayit.includes(".update({ cover_path: yol }).in('id', ids)"), 'seçili parçalar tek komutla güncellenmeli');
+  assert.ok(kayit.includes('await kapakDosyaSil(yol)'), 'kayıt tutmazsa yüklenen görsel geri silinmeli');
+  assert.ok(kayit.includes('for (const eski of eskiler) await kapakDosyaSil(eski)'), 'eski kapaklar temizlenmeli');
+  assert.ok(kayit.includes('topluPencereyiGeriAc'), 'eksik seçimde işaretlemeler kaybolmamalı');
 });
 
 test('liste bildirimi kurulumu SQL dosyası olarak depoda', () => {

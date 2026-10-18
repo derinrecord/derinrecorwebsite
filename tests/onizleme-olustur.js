@@ -440,6 +440,60 @@ body{background:#0b0b0d;padding:22px;display:block}
   return;
 }
 
+// "toplu-kapak" modu klasör sayfasındaki TOPLU KAPAK düğmesini ve açılan
+// pencereyi (görsel seçilmiş, 13–20 aralığı işaretli) önizler.
+if (senaryo === 'toplu-kapak') {
+  const V = require(path.join(kok, 'radyo-panel-views.js'));
+  const kapak = 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#1b2350"/><circle cx="56" cy="22" r="10" fill="#f6e7c4"/><rect y="56" width="80" height="24" fill="#0b0f2a"/></svg>');
+  const adlar = ['Chimera', 'Echoes', 'Esoteric', 'Eternal', 'Euphoria', 'Falling', 'Lullaby', 'Melatonin', 'Opal', 'Roots', 'Vanilla Sky', 'Vibrations',
+    'Before Everything', 'Birds', 'Break From Reality', 'Bubbles', 'Calm Currents', 'Canon Event', 'Color Of A Soul', 'Complicated Feelings', 'Doodles', 'Down Time'];
+  const tracks = adlar.map((ad, i) => ({ id: 't' + i, folder_id: 'f1', title: ad, storage_path: 'f1/' + i + '.mp3', sort_order: i,
+    duration_sec: 140 + i * 3, cover_path: i < 12 ? 'tracks/t' + i + '.jpg' : null }));
+  const D = {
+    brands: [], folders: [{ id: 'f1', name: 'Lofi-Chill', description: null, cover_path: null, shuffle: true }],
+    tracks, players: [], broadcast: [], announcements: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: [],
+    playlists: [], playlistTracks: []
+  };
+  const ui = {
+    cover: () => kapak, ses: p => p, anons: p => p, playerBase: () => '',
+    accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '', now: () => Date.now(), saglikSonuc: () => null
+  };
+  const gorunum = V.gorunum({ nav: 'icerik', sub: 'klasorler', openFolder: 'f1', openBrand: null, openPlaylist: null, q: '' }, D, ui);
+  let pencereHtml = V.topluKapakPenceresi(tracks, 'Lofi-Chill · ' + tracks.length + ' parça')
+    .replace('src="" alt="" hidden', 'src="' + kapak + '" alt=""')
+    .replace('id="kapak-bos" style', 'id="kapak-bos" hidden style')
+    .replace('placeholder="İlk"', 'value="13" placeholder="İlk"').replace('placeholder="Son"', 'value="20" placeholder="Son"');
+  for (let i = 13; i <= 20; i++) pencereHtml = pencereHtml.replace('data-no="' + i + '"', 'data-no="' + i + '" checked');
+  pencereHtml = pencereHtml.replace('Hiç parça seçilmedi.', '8 parça seçildi.');
+  const modal = process.argv[4] === 'pencere';
+  const sayfa = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — toplu kapak</title>
+<style>
+${oku('radyo-panel.css')}
+body{background:#0b0b0d;padding:22px;display:block}
+.view{max-width:1080px;margin:0 auto}
+${modal ? '.modal-wrap{display:flex}' : ''}
+</style>
+</head>
+<body><div class="view">${gorunum.html}</div>
+${modal ? `<div class="modal-wrap open"><div class="modal">
+  <h3>Toplu kapak</h3>
+  <div class="modal-body">${pencereHtml}</div>
+  <div class="modal-actions"><button class="btn" type="button">VAZGEÇ</button><button class="btn primary" type="button">SEÇİLENLERE YERLEŞTİR</button></div>
+</div></div>
+<script>document.querySelector('#toplu-liste [data-no="13"]').closest('label').scrollIntoView({ block: 'nearest' });</script>` : ''}
+</body>
+</html>`;
+  fs.writeFileSync(ciktiYolu, sayfa);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · toplu kapak');
+  return;
+}
+
 // "marka" modu marka panelini (coffee-marka) önizler: erişim kodunun kilidi ve
 // sunumun kendisi. Sayfa yalnız okur ve listeleri gösterir; hangi listelerin
 // çalacağını yönetim belirler. Gerçek sayfa gömülür, yalnız sunucu taklit edilir.

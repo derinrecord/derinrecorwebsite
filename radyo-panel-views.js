@@ -1834,6 +1834,10 @@
       </div>
       <div class="panel" style="margin-bottom:18px">
         <h3>PARÇALAR (${liste.length})${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</h3>
+        ${liste.length > 1 ? `<div class="row" style="margin:0 0 14px">
+          <button class="btn sm" data-act="toplu-kapak" type="button">TOPLU KAPAK</button>
+          <span class="sub">Bir görseli birden çok parçaya tek seferde yerleştir.</span>
+        </div>` : ''}
         <table>
           <thead><tr><th>#</th><th></th><th>PARÇA</th><th>SÜRE</th><th></th></tr></thead>
           <tbody>${satirlar || bos(5, liste.length ? 'Aramayla eşleşen parça yok.' : 'Bu klasörde henüz parça yok.')}</tbody>
@@ -2980,6 +2984,40 @@
         : ''}`;
   }
 
+  // Toplu kapak: bir görsel seçilir, klasördeki parçalar işaretlenir (tek tek,
+  // "13'ten 64'e" gibi bir aralıkla ya da yalnız kapaksızlar) ve görsel
+  // depoya bir kez yüklenip işaretli bütün parçalara bağlanır. Numaralar
+  // parça tablosundaki sıra numaralarıyla aynıdır.
+  function topluKapakPenceresi(parcalar, alt) {
+    return `
+      <div style="text-align:center;margin-bottom:14px">
+        <span id="kapak-kutu" style="display:inline-grid;place-items:center;width:150px;height:150px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.07)">
+          <img id="kapak-onizleme" src="" alt="" hidden style="width:100%;height:100%;object-fit:cover">
+          <span id="kapak-bos" style="font-size:36px;opacity:.45">♪</span>
+        </span>
+        <p class="sub" style="margin:8px 0 0">${esc(alt || '')}</p>
+      </div>
+      <div class="field"><label for="kapak-file">GÖRSEL SEÇ</label>
+        <input id="kapak-file" type="file" accept="image/*"></div>
+      <p class="sub" id="kapak-msg" style="margin-bottom:14px">Görsel depoya bir kez yüklenir ve işaretlediğin bütün parçalara bağlanır.</p>
+      <div class="field"><label>PARÇALARI SEÇ</label>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <input id="toplu-bas" type="number" inputmode="numeric" min="1" max="${parcalar.length}" placeholder="İlk" aria-label="İlk parça numarası" style="width:78px">
+          <span class="sub">–</span>
+          <input id="toplu-son" type="number" inputmode="numeric" min="1" max="${parcalar.length}" placeholder="Son" aria-label="Son parça numarası" style="width:78px">
+          <button class="btn sm" data-act="toplu-aralik" type="button">ARALIĞI SEÇ</button>
+          <button class="btn sm" data-act="toplu-kapaksiz" type="button">KAPAKSIZLARI SEÇ</button>
+          <button class="btn sm" data-act="toplu-temizle" type="button">TEMİZLE</button>
+        </div></div>
+      <div class="tick-list" id="toplu-liste" style="margin-top:10px">
+        ${parcalar.map((t, i) => `<label>
+          <input type="checkbox" value="${esc(t.id)}" data-no="${i + 1}">
+          <span><b>${String(i + 1).padStart(2, '0')} · ${esc(clean(t.title))}</b><span class="sub">${t.cover_path ? 'kapağı var — seçilirse değişir' : 'kapak yok'}</span></span>
+        </label>`).join('')}
+      </div>
+      <p class="sub" id="toplu-sayi" style="margin-top:8px">Hiç parça seçilmedi.</p>`;
+  }
+
   // ---------- Parça detayı (pencere içeriği) ----------
   function parcaDetay(t, alt, kapakUrl) {
     return `<div style="text-align:center">
@@ -3076,6 +3114,7 @@
     kurulumSeridi: kurulumSeridi,
     kapakYok: kapakYok,
     kapakPenceresi: kapakPenceresi,
+    topluKapakPenceresi: topluKapakPenceresi,
     subeListePenceresi: subeListePenceresi,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu,
