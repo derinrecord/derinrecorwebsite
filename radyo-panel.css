@@ -843,4 +843,6 @@ small.sd-calar{color:var(--live)}small.sd-takildi{color:var(--warn)}small.sd-ses
 .drawer .chip{background:none;border-color:transparent;padding-left:0}
 .drawer{background:#0f0e11;border-left:1px solid rgba(244,241,233,.08)}
 .view .tiles{gap:28px}
+.ayni-liste{margin:10px 0 0;padding-left:18px;max-height:220px;overflow:auto;color:var(--txt)}
+.ayni-liste li{margin:4px 0}
 .view .tile b{font-size:30px}

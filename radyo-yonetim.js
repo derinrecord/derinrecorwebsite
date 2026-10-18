@@ -1405,8 +1405,38 @@
     if (!dosyalar.length) return hata('Önce dosya seçin.');
     if (!Ses) return hata('Ses yükleme yardımcıları yüklenemedi (audio-file-types.js).');
 
+    // Aynı şarkı uyarısı: klasörde aynı adla duran dosyalar yüklemeden önce
+    // gösterilir. YİNE DE DEĞİŞTİR derse eski şarkının ses dosyası yenisiyle
+    // değişir (kayıt, sıra, kapak ve markalardaki listeler aynen kalır).
+    // Seçimde iki kez geçen dosyanın yalnız ilki yüklenir.
+    const adOf = ad => V.clean(ad).replace(/\.[^.]+$/, '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
+    const klasordekiler = new Map(D.tracks.filter(t => t.folder_id === folderId).map(t => [adOf(t.title || ''), t]));
+    const gorulen = new Set();
+    const degisecek = new Map();
+    let ciftler = 0;
+    dosyalar.slice().forEach(d => {
+      const ad = adOf(d.name);
+      if (gorulen.has(ad)) { dosyalar.splice(dosyalar.indexOf(d), 1); ciftler++; return; }
+      gorulen.add(ad);
+      if (klasordekiler.has(ad)) degisecek.set(d, klasordekiler.get(ad));
+    });
+    if (degisecek.size) {
+      const tamam = await new Promise(res => {
+        pencere({
+          baslik: degisecek.size === 1 ? 'Bu şarkı zaten var' : degisecek.size + ' şarkı zaten var',
+          govde: `<p>Şu ${degisecek.size === 1 ? 'şarkı' : 'şarkılar'} bu klasörde zaten var:</p>
+            <ul class="ayni-liste">${Array.from(degisecek.keys()).map(d => `<li>${esc(V.clean(d.name))}</li>`).join('')}</ul>
+            <p class="sub">Değiştirirsen eski ses dosyası silinir, yenisi aynı yerde çalar.</p>`,
+          onayMetni: 'YİNE DE DEĞİŞTİR', kapatMetni: 'VAZGEÇ',
+          onOnay: () => res(true),
+          onKapat: () => res(false)
+        });
+      });
+      if (!tamam) { bildir('Yükleme iptal edildi.'); return; }
+    }
+
     const baslangic = Date.now();
-    let biten = 0, atlanan = 0, ilkHata = '';
+    let biten = 0, atlanan = 0, degisen = 0, ilkHata = '';
     const mevcut = D.tracks.filter(t => t.folder_id === folderId).length;
 
     for (const dosya of dosyalar) {
@@ -1432,9 +1462,24 @@
       }
 
       const sure = await sureOku(dosya);
+      const eski = degisecek.get(dosya);
+      if (eski) {
+        const sorun = await yazDogrula(client.from('radio_tracks')
+          .update({ storage_path: sonuc.path, duration_sec: sure }).eq('id', eski.id), 'Şarkı değiştirilemedi');
+        if (sorun) {
+          atlanan++;
+          ilkHata = ilkHata || sorun;
+          await window.DerinR2.sil('radio-audio', Ses.parcalariCoz(sonuc.path).map(p => p.path));
+          continue;
+        }
+        if (eski.storage_path) await window.DerinR2.sil('radio-audio', Ses.parcalariCoz(eski.storage_path).map(p => p.path));
+        degisen++;
+        biten++;
+        continue;
+      }
       const { error } = await client.from('radio_tracks').insert({
         folder_id: folderId, title: taban, storage_path: sonuc.path,
-        sort_order: mevcut + biten, duration_sec: sure
+        sort_order: mevcut + biten - degisen, duration_sec: sure
       });
       if (error) {
         atlanan++;
@@ -1452,8 +1497,9 @@
     const kutu = el('track-drop');
     if (kutu) kutu.classList.remove('secili');
     await yenile(false);
-    if (atlanan) hata(`${biten} parça yüklendi (${saniye} sn) · ${atlanan} dosya atlandı — ${ilkHata}`);
-    else bildir(`${biten} parça yüklendi (${saniye} sn).`);
+    const ozet = `${biten - degisen} parça yüklendi${degisen ? `, ${degisen} parça değiştirildi` : ''}${ciftler ? `, seçimde iki kez geçen ${ciftler} dosya bir kez alındı` : ''} (${saniye} sn)`;
+    if (atlanan) hata(`${ozet} · ${atlanan} dosya atlandı — ${ilkHata}`);
+    else bildir(ozet + '.');
   }
 
   function sureOku(dosya) {
