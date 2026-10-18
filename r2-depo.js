@@ -23,7 +23,9 @@
   const ONEK = {
     'radio-audio': 'radyo/',
     'radio-covers': 'kapak/',
-    'radio-announcements': 'anons/'
+    'radio-announcements': 'anons/',
+    'project-audio': 'proje/',
+    'dj-audio': 'dj/'
   };
 
   // Her yol parçası ayrı kodlanır; "/" ayıraç olarak kalmalı.
@@ -36,6 +38,15 @@
     if (!yol) return null;
     if (/^https?:\/\//i.test(yol)) return yol; // zaten tam adres
     return TABAN + kodla(anahtar(kova, yol));
+  }
+
+  // Gizli kovalar (project-audio / dj-audio) için kısa ömürlü imzalı okuma
+  // adresi ister. Radyo kovaları muzik.derinrecord.com'dan herkese açık
+  // okunduğu için adres() yeterli; bu fonksiyon yalnız gizli kovaların
+  // çalma/indirme adreslerini üretir (api'de islem: 'oku').
+  async function korumaliAdres(kova, yol) {
+    if (!yol) return null;
+    return imzaAl(anahtar(kova, yol), 'oku');
   }
 
   async function oturumBelirteci() {
@@ -92,6 +103,7 @@
     return hatalar.length ? { error: { message: hatalar.join('; ') } } : { error: null };
   }
 
-  window.DerinR2 = { TABAN, ONEK, adres, yukle, sil };
-  if (typeof module !== 'undefined') module.exports = window.DerinR2;
+  const api = { TABAN, ONEK, adres, korumaliAdres, yukle, sil };
+  if (typeof window !== 'undefined') window.DerinR2 = api;
+  if (typeof module !== 'undefined') module.exports = api;
 })();

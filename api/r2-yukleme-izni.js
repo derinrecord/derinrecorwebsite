@@ -20,7 +20,13 @@ const SUPABASE_ANON = 'sb_publishable_FrRGXIb3-x8-Lzx1Ijg75w_teFbP2oa';
 // İzin verilen klasörler. Panel yalnızca bu öneklere dokunabilir.
 const IZINLI_ONEK = ['radyo/', 'kapak/', 'anons/', 'dj/', 'proje/'];
 
-const SURE = 300; // adresin geçerlilik süresi (saniye)
+// İmzalı okuma ('oku') yalnız bu klasörlerde anlam taşır: radyo kovaları
+// muzik.derinrecord.com'dan imzasız okunuyor; gizli kovalar (proje/dj)
+// RLS'e benzer yetkilendirme ister.
+const OKU_ONEK = ['proje/', 'dj/'];
+
+const SURE = 300; // yükleme/silme adresinin geçerlilik süresi (saniye)
+const OKU_SURE = 600; // imzalı okuma (GET) adresinin geçerlilik süresi (saniye)
 
 // --- AWS imza yardımcıları (R2, S3 ile uyumlu) ---
 const hmac = (key, str) => crypto.createHmac('sha256', key).update(str, 'utf8').digest();
@@ -28,8 +34,23 @@ const sha256hex = str => crypto.createHash('sha256').update(str, 'utf8').digest(
 // RFC 3986: encodeURIComponent'in kaçırdığı karakterleri de kodlar
 const enc = s => encodeURIComponent(s).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 
-function imzaliAdres({ accessKeyId, secretAccessKey, bucket, key, host, yontem }) {
-  const bolge = 'auto', servis = 's3';
+// Antrenörün kimliğini belirteçten Supabase'e doğrulatır. JWT gövdesini burada
+// okuyup 'sub' alanına güvenmek değildir: imzayı yalnız Supabase doğrular,
+// yanıtın id'si gerçek kullanıcının kimliğidir. Token geçersizse null.
+async function kullaniciId(sifre) {
+  try {
+    const yanit = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { apikey: SUPABASE_ANON, Authorization: sifre }
+    });
+    if (!yanit.ok) return null;
+    const govde = await yanit.json().catch(() => null);
+    return govde && govde.id ? String(govde.id) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function imzaliAdres({ accessKeyId, secretAccessKey, bucket, key, host, yontem }) {  const bolge = 'auto', servis = 's3';
 
   const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
   const gun = amzDate.slice(0, 8);
@@ -91,10 +112,6 @@ module.exports = async (req, res) => {
     res.status(502).json({ hata: 'Yetki doğrulanamadı.' });
     return;
   }
-  if (!yonetici) {
-    res.status(403).json({ hata: 'Bu işlem için yönetici olmanız gerekiyor.' });
-    return;
-  }
 
   // Gövde
   let govde = req.body;
@@ -102,7 +119,7 @@ module.exports = async (req, res) => {
   const key = String((govde && govde.key) || '');
   const islem = String((govde && govde.islem) || 'yukle');
 
-  if (islem !== 'yukle' && islem !== 'sil') {
+  if (islem !== 'yukle' && islem !== 'sil' && islem !== 'oku') {
     res.status(400).json({ hata: 'Geçersiz işlem.' });
     return;
   }
@@ -117,6 +134,37 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // İşleme göre yetkilendirme:
+  // - yukle/sil: eski davranış, yalnızca yönetici.
+  // - oku: yönetici her gizli klasörü; antrenör yalnız kendi proje klasörünü.
+  //   Antrenörün kimliği belirteçle Supabase'e doğrulatılır — imzasız JWT
+  //   gövdesi burada okunmaz, karar Supabase tarafında verilir.
+  if (islem === 'oku') {
+    if (!OKU_ONEK.some(o => key.startsWith(o))) {
+      res.status(403).json({ hata: 'Bu klasör imzalı okumaya kapalı.' });
+      return;
+    }
+    if (!yonetici) {
+      if (key.startsWith('dj/')) {
+        res.status(403).json({ hata: 'DJ deposu yalnızca yöneticilerce okunabilir.' });
+        return;
+      }
+      const kimlik = await kullaniciId(auth);
+      if (!kimlik) {
+        res.status(401).json({ hata: 'Oturum doğrulanamadı.' });
+        return;
+      }
+      if (key.split('/')[1] !== kimlik) {
+        res.status(403).json({ hata: 'Bu proje klasörü size ait değil.' });
+        return;
+      }
+    }
+  } else if (!yonetici) {
+    res.status(403).json({ hata: 'Bu işlem için yönetici olmanız gerekiyor.' });
+    return;
+  }
+
+  const saniye = islem === 'oku' ? OKU_SURE : SURE;
   const adres = imzaliAdres({
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
@@ -125,8 +173,8 @@ module.exports = async (req, res) => {
     // Yükleme ve silme yalnızca S3 ucuna yapılabilir. R2'nin özel alan adları
     // (muzik.derinrecord.com) sadece okuma içindir; PUT/DELETE kabul etmezler.
     host: `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    yontem: islem === 'sil' ? 'DELETE' : 'PUT'
+    yontem: islem === 'sil' ? 'DELETE' : islem === 'oku' ? 'GET' : 'PUT'
   });
 
-  res.status(200).json({ adres, key, islem, saniye: SURE });
+  res.status(200).json({ adres, key, islem, saniye });
 };
