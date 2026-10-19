@@ -249,7 +249,9 @@
     </div>`;
   }
 
-  async function signed(path){const r=await client.storage.from('project-audio').createSignedUrl(path,3600);return r.data?.signedUrl;}
+  // Çalma/indirme adresleri: gizli proje kovası R2'de, kısa ömürlü imzalı
+  // okuma adresiyle açılır (api'de islem:'oku', en çok 10 dakika geçerli).
+  async function signed(path){ try{ return await window.DerinR2.korumaliAdres('project-audio',path); }catch{ return null; } }
 
   // Ses dosyası yardımcıları tek kaynaktan gelir: audio-file-types.js
   // (aynı modül tests/audio-file-types.test.js ile doğrulanıyor).
@@ -356,17 +358,13 @@
     }
   }
 
-  // Tek noktadan yükleme: hata mesajını hint ile birleştirir, MIME reddinde bir kez nötr tip ile dener.
+  // Tek noktadan yükleme: hata mesajını hint ile birleştirir. MIME kısıtı artık
+  // R2 tarafında yoktur; tek deneme yeterlidir.
   // tip: parça yüklerken dilim Blob'unun tipini açıkça geçmek için (Blob'da dosya adı yoktur).
   async function yukleSes(path,file,tip){
-    const ct=tip||sesTipi(file);
-    const ilk=await client.storage.from('project-audio').upload(path,file,{contentType:ct,upsert:false});
-    if(!ilk.error)return {path,error:null};
-    if(/mime|content.?type/i.test(ilk.error.message||'')){
-      const ikinci=await client.storage.from('project-audio').upload(path,file,{contentType:'application/octet-stream',upsert:false});
-      if(!ikinci.error)return {path,error:null};
-    }
-    return {path,error:new Error([ilk.error.message,storageHint(ilk.error.message)].filter(Boolean).join(' — '))};
+    const son=await window.DerinR2.yukle('project-audio',path,file,tip||sesTipi(file));
+    if(son.error)return {path,error:new Error([son.error.message,storageHint(son.error.message)].filter(Boolean).join(' — '))};
+    return {path,error:null};
   }
 
   // ---------- Parçalı yükleme (50 MiB'lik tek nesne sınırı için) ----------
@@ -381,7 +379,7 @@
   async function yukleSesParcali(temelYol,file,ilerleme){
     const sonuc=await Ses.parcaliYukle({
       yukle:(yol,dilim,tip)=>yukleSes(yol,dilim,tip),
-      sil:yollar=>client.storage.from('project-audio').remove(yollar)
+      sil:yollar=>window.DerinR2.sil('project-audio',yollar)
     },temelYol,file,ilerleme);
     if(sonuc.error){
       sonHataDetay.yol=sonuc.yol; sonHataDetay.parca=`${sonuc.parca}/${sonuc.toplam}`; sonHataDetay.mesaj=sonuc.error.message;
@@ -482,8 +480,7 @@
   async function yanDosyaOku(yol){
     if(!Dalga)return null;
     try{
-      const r=await client.storage.from('project-audio').createSignedUrl(yanDosya(yol),600);
-      const u=r.data?.signedUrl; if(!u)return null;
+      const u=await signed(yanDosya(yol)); if(!u)return null;
       const c=await fetch(u); if(!c.ok)return null;
       return Dalga.coz(await c.text());
     }catch{ return null; }
@@ -491,8 +488,8 @@
   async function yanDosyaYaz(yol,veri){
     if(!Dalga||!veri)return;
     try{
-      await client.storage.from('project-audio').upload(yanDosya(yol),new Blob([Dalga.kodla(veri)],{type:'application/octet-stream'}),
-        {contentType:'application/octet-stream',upsert:true});
+      // PUT aynı yola tekrar yazmayı (eski upsert:true davranışını) karşılar.
+      await window.DerinR2.yukle('project-audio',yanDosya(yol),new Blob([Dalga.kodla(veri)],{type:'application/octet-stream'}),'application/octet-stream');
     }catch{ /* yazılamazsa sayfa bir dahaki açılışta yine çıkarır */ }
   }
 
@@ -1462,9 +1459,9 @@
         status.textContent='İndirildi.';
         return;
       }
-      const {data,error}=await client.storage.from('project-audio').createSignedUrl(b.dataset.path,600,{download:ad});
-      if(error){bildir('İndirilemedi: '+error.message,'hata');return;}
-      const a=document.createElement('a'); a.href=data.signedUrl; a.download=ad; a.click();
+      const url=await signed(b.dataset.path);
+      if(!url){bildir('İndirilemedi: ses adresi alınamadı.','hata');return;}
+      const a=document.createElement('a'); a.href=url; a.download=ad; a.click();
     });
 
     root.querySelectorAll('[data-trackdel]').forEach(button=>button.onclick=async()=>{
@@ -1472,7 +1469,7 @@
       button.disabled=true;
       try{
         await tekSatir(client.from('project_tracks').delete().eq('id',button.dataset.trackdel),'Parça bulunamadı ya da silme yetkiniz yok.');
-        await client.storage.from('project-audio').remove(sesYollari(button.dataset.path));
+        await window.DerinR2.sil('project-audio',sesYollari(button.dataset.path));
         bildir('Parça silindi.','ok');
         openTrackId=null; detail={};
         await load();
@@ -1682,9 +1679,9 @@
         status.textContent='İndirildi.';
         return;
       }
-      const {data,error}=await client.storage.from('project-audio').createSignedUrl(b.dataset.path,600,{download:ad});
-      if(error){bildir('İndirilemedi: '+error.message,'hata');return;}
-      const a=document.createElement('a'); a.href=data.signedUrl; a.download=ad; a.click();
+      const url=await signed(b.dataset.path);
+      if(!url){bildir('İndirilemedi: ses adresi alınamadı.','hata');return;}
+      const a=document.createElement('a'); a.href=url; a.download=ad; a.click();
     });
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Proje silinecek. Emin misiniz?'))return;
@@ -1719,7 +1716,7 @@
       try{
         await tekSatir(client.from('project_tracks').delete().eq('id',button.dataset.trackdel),'Parça bulunamadı ya da silme yetkiniz yok.');
         // Parçalı dosyada tüm parçaları sil.
-        await client.storage.from('project-audio').remove(sesYollari(button.dataset.path));
+        await window.DerinR2.sil('project-audio',sesYollari(button.dataset.path));
         bildir('Parça silindi.','ok'); load();
       }catch(error){bildir('Parça silinemedi: '+error.message,'hata');}
       finally{button.disabled=false;}
@@ -1739,7 +1736,7 @@
       try{ await tekSatir(client.from('project_tracks').update({audio_path:up.path,version:(tr.version||1)+1}).eq('id',tid),'Varyasyon kaydedilemedi.'); }
       catch(error){ bildir('Varyasyon kaydedilemedi: '+error.message,'hata'); return; }
       // Yeni sürüm yazıldıktan sonra eski dosyayı (ve parçalarını) temizle.
-      if(eskiParcalar.length){ try{ await client.storage.from('project-audio').remove(eskiParcalar); }catch{} }
+      if(eskiParcalar.length){ try{ await window.DerinR2.sil('project-audio',eskiParcalar); }catch{} }
       await client.from('project_feedback').insert({project_id:proj.id,author_id:me,kind:'system',
         body:`Parçanız düzenlenmiş haliyle gönderildi (v${(tr.version||1)+1} · ${tr.label||'parça'}). Lütfen inceleyiniz.`});
       bildir('Varyasyon gönderildi, antrenöre bildirildi.','ok');

@@ -69,6 +69,15 @@ function runPage(options = {}) {
     addEventListener() {},
     devicePixelRatio: 1,
     matchMedia: () => ({ matches: false, addEventListener() {} }),
+    // Proje sesleri artık R2'de: ağa gerçekten çıkmayan sahte depo.
+    DerinR2: {
+      TABAN: 'http://localhost/',
+      ONEK: { 'project-audio': 'proje/' },
+      adres: () => null,
+      korumaliAdres: async () => null,
+      yukle: async () => ({ data: { path: null }, error: null }),
+      sil: async () => ({ error: null })
+    },
     DerinAuth: {
       ready: Promise.resolve(),
       configured: !!options.admin,

@@ -543,16 +543,13 @@
       }
       const syncKart = fileRow.querySelector('#us-sync');
       const up = await Ses.parcaliYukle({
+        // Parçalar artık Cloudflare R2'ye (proje/ klasörü) gider; hata biçimi
+        // parcaliYukle sözleşmesiyle aynı kalır ({error}).
         yukle: async (yol, dilim, tip) => {
-          const ilk = await client.storage.from('project-audio').upload(yol, dilim, { contentType: tip, upsert: false });
-          if (!ilk.error) return { error: null };
-          if (/mime|content.?type/i.test(ilk.error.message || '')) {
-            const ikinci = await client.storage.from('project-audio').upload(yol, dilim, { contentType: 'application/octet-stream', upsert: false });
-            if (!ikinci.error) return { error: null };
-          }
-          return { error: new Error(ilk.error.message) };
+          const son = await window.DerinR2.yukle('project-audio', yol, dilim, tip);
+          return { error: son.error || null };
         },
-        sil: yollar => client.storage.from('project-audio').remove(yollar)
+        sil: yollar => window.DerinR2.sil('project-audio', yollar)
       }, `${contactId}/${hedefProje}-${Date.now()}`, file, (i, n) => {
         if (syncKart) {
           const pct = Math.round((i - 1) / n * 100);

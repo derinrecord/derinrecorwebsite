@@ -30,23 +30,16 @@
   // yerine açık bir uyarı verilir; sessizce ham yüklemeye düşülmez.
   const sesHazir = () => !!(Ses && Ses.parcaliYukle && Ses.parcalariCoz);
 
-  const djDepo = () => client.storage.from('dj-audio');
-
-  // Kova belirli bir MIME listesiyle kısıtlanmışsa tarayıcının bildirdiği tip
-  // reddedilir; bu durumda jenerik tip ile bir kez daha denenir.
+  // DJ deposu artık Cloudflare R2'de: yükleme/silme imzalı S3 ucuyla,
+  // çalma imzalı okuma (korumaliAdres) adresiyle yapılır.
+  // R2 MIME kısıtlaması uygulamaz; tek deneme yeterlidir.
   async function djYukle(yol, dilim, tip) {
-    const ilk = await djDepo().upload(yol, dilim, { contentType: tip || 'audio/mpeg', upsert: false });
-    if (!ilk.error) return { path: yol, error: null };
-    if (/mime|content.?type/i.test(ilk.error.message || '')) {
-      const ikinci = await djDepo().upload(yol, dilim, { contentType: 'application/octet-stream', upsert: false });
-      if (!ikinci.error) return { path: yol, error: null };
-      return { path: null, error: ikinci.error };
-    }
-    return { path: null, error: ilk.error };
+    const son = await window.DerinR2.yukle('dj-audio', yol, dilim, tip || 'audio/mpeg');
+    return son.error ? { path: null, error: son.error } : { path: yol, error: null };
   }
   const imzaliUrl = async path => {
-    const { data, error } = await djDepo().createSignedUrl(path, 3600);
-    return error ? null : data.signedUrl;
+    try { return await window.DerinR2.korumaliAdres('dj-audio', path); }
+    catch { return null; }
   };
 
   // Parçalı dosya tek bir nesne gibi çalınamaz: parçalar indirilip tarayıcıda
@@ -754,7 +747,7 @@
         const taban = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
         const up = await Ses.parcaliYukle({
           yukle: djYukle,
-          sil: yollar => djDepo().remove(yollar)
+          sil: yollar => window.DerinR2.sil('dj-audio', yollar)
         }, taban, file, (i, n) => {
           msg.textContent = n > 1
             ? `Ses yükleniyor… parça ${i}/${n} (${Ses.boyut(file.size)})`
@@ -844,7 +837,7 @@
       // Parçalı yüklemede dosya birden çok nesnedir: hepsi birlikte silinir.
       if (t?.audio_path) {
         const yollar = sesHazir() ? Ses.parcalariCoz(t.audio_path).map(p => p.path) : [t.audio_path];
-        await djDepo().remove(yollar);
+        await window.DerinR2.sil('dj-audio', yollar);
       }
       // Supabase hiçbir satırı etkilemeyen silmede hata döndürmez: kayıt
       // yerinde kalırken ekran silinmiş sanırdı. Silinen satırı geri isteriz.

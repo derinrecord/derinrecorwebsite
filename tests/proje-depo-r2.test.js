@@ -54,3 +54,47 @@ test('mevcut yükleme/silme akışı değişmeden kalır', () => {
   assert.ok(depo.includes("'radio-covers': 'kapak/'"), 'kapak haritası korunmalı');
   assert.ok(depo.includes("'radio-announcements': 'anons/'"), 'anons haritası korunmalı');
 });
+
+// ---------- Görev 2: kodu R2'ye bağlama ----------
+
+test('proye/dj kova çağrıları artık Supabase storage dosyanın içinde yok', () => {
+  for (const ad of ['projects.js', 'chat.js', 'harmonic-mixer.js']) {
+    const icerik = oku(ad);
+    assert.ok(!icerik.includes("storage.from('project-audio')"), ad + ' artık Supabase proje kovasına erişmemeli');
+    assert.ok(!icerik.includes("storage.from('dj-audio')"), ad + ' artık Supabase dj kovasına erişmemeli');
+    assert.ok(icerik.includes('DerinR2'), ad + ' R2 depo kütüphanesini (r2-depo.js) kullanmalı');
+  }
+});
+
+test('çalma/indirme imzalı okuma (korumaliAdres), yükleme/silme DerinR2 ile bağlanır', () => {
+  const pro = oku('projects.js');
+  assert.ok(/korumaliAdres\('project-audio'/.test(pro), 'projects.js çalma/indirme korumalı okuma adresiyle olmalı');
+  assert.ok(/DerinR2\.yukle\('project-audio'/.test(pro), 'projects.js yüklemesi DerinR2 ile olmalı');
+  assert.ok(/DerinR2\.sil\('project-audio'/.test(pro), 'projects.js silmesi DerinR2 ile olmalı');
+  const chat = oku('chat.js');
+  assert.ok(/DerinR2\.yukle\('project-audio'/.test(chat), 'chat.js müzik gönderimi DerinR2 ile olmalı');
+  assert.ok(/DerinR2\.sil\('project-audio'/.test(chat), 'chat.js silmesi DerinR2 ile olmalı');
+  const mix = oku('harmonic-mixer.js');
+  assert.ok(/DerinR2\.yukle\('dj-audio'/.test(mix), 'harmonic-mixer yükleme DerinR2 ile olmalı');
+  assert.ok(/korumaliAdres\('dj-audio'/.test(mix), 'harmonic-mixer çalma korumalı okuma adresiyle olmalı');
+  assert.ok(/DerinR2\.sil\('dj-audio'/.test(mix), 'harmonic-mixer silmesi DerinR2 ile olmalı');
+});
+
+test('r2-depo.js v2, R2 kullanan üç sayfada sayfa betiğinden önce yüklenir', () => {
+  const ciftler = [
+    ['chat.html', 'chat.js?v='],
+    ['my-projects.html', 'projects.js?v='],
+    ['harmonic-mixer.html', 'harmonic-mixer.js?v=']
+  ];
+  for (const [ad, betik] of ciftler) {
+    const html = oku(ad);
+    assert.ok(html.includes('r2-depo.js?v=2'), ad + ' r2-depo.js?v=2 yüklemeli');
+    const depoAni = html.indexOf('r2-depo.js?v=2');
+    const betikAni = html.indexOf(betik);
+    assert.ok(betikAni >= 0 && depoAni < betikAni, ad + ' tarafında r2-depo.js ' + betik + "'ten önce gelmeli");
+  }
+  // Sayfa betik sürümleri değişen JS'te yükseltilmiş olmalı.
+  assert.ok(/projects\.js\?v=202610/.test(oku('my-projects.html')), 'projects.js sürümü artırılmış olmalı');
+  assert.ok(/chat\.js\?v=28/.test(oku('chat.html')), 'chat.js sürümü artırılmış olmalı');
+  assert.ok(/harmonic-mixer\.js\?v=12/.test(oku('harmonic-mixer.html')), 'harmonic-mixer.js sürümü artırılmış olmalı');
+});
