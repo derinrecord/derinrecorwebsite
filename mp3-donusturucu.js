@@ -83,7 +83,7 @@
       return;
     }
 
-    durum.textContent = 'Yönetici: ' + (profile.full_name || user.email || '');
+    durum.hidden = true;
     uygulama.hidden = false;
     dugmeleriBagla();
     formuBagla();
