@@ -43,6 +43,14 @@ test('yönetim panelinden bağlantı verilir', () => {
   assert.match(admin, /<h2>MP3 DÖNÜŞTÜRÜCÜ<\/h2>/, 'panel başlığı görünmeli');
 });
 
+test('kaydırmalı hesap menüsünde yalnız yöneticiye görünür', () => {
+  const auth = oku('auth.js');
+  const satir = auth.split('\n').find(s => s.includes("account-menu-links').innerHTML"));
+  const [yonetici, herkes] = satir.split("' : '");
+  assert.ok(yonetici.includes('href="mp3-donusturucu.html"'), 'yönetici menüsünde olmalı');
+  assert.ok(!herkes.includes('mp3-donusturucu.html'), 'antrenör menüsünde olmamalı');
+});
+
 test('sayfa çıktı biçimlerini ve klasörü doğru anlatır', () => {
   const html = oku('mp3-donusturucu.html');
   assert.match(html, /WAV 24-bit \/ 48 kHz/);
