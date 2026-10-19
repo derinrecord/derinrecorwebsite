@@ -43,6 +43,15 @@ test('yönetim panelinden bağlantı verilir', () => {
   assert.match(admin, /<h2>MP3 DÖNÜŞTÜRÜCÜ<\/h2>/, 'panel başlığı görünmeli');
 });
 
+test('tek kutu: link yapıştırılır ve yerel araca devredilir', () => {
+  const html = oku('mp3-donusturucu.html');
+  const js = oku('mp3-donusturucu.js');
+  assert.match(html, /id="mp3-link"[^>]*placeholder="Buraya bağlantıyı yapıştırın"/, 'yapıştırma kutusu olmalı');
+  assert.match(html, /type="submit">DÖNÜŞTÜR</, 'DÖNÜŞTÜR düğmesi olmalı');
+  assert.match(js, /http:\/\/127\.0\.0\.1:47823/, 'yerel araca yönlendirilmeli');
+  assert.match(js, /location\.href = ARAC \+ '\/\?url=' \+ encodeURIComponent/, 'link araça aktarılmalı');
+});
+
 test('kaydırmalı hesap menüsünde yalnız yöneticiye görünür', () => {
   const auth = oku('auth.js');
   const satir = auth.split('\n').find(s => s.includes("account-menu-links').innerHTML"));

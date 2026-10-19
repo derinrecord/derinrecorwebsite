@@ -1,11 +1,11 @@
-// MP3 Dönüştürücü — yalnız yöneticiye açık kurulum/kullanım sayfası.
+// MP3 Dönüştürücü — yalnız yöneticiye açık giriş sayfası.
 //
-// Sayfa dönüştürme yapmaz: linki MP3 + WAV'a çeviren araç kullanıcının
-// Mac'inde çalışır (~/bin/derin-ses-al). Burada yalnız araç kuruluysa nasıl
-// kullanılacağı ve yeni bir Mac'te nasıl kurulacağı anlatılır. Sunucuya ses
-// yüklenmez, hiçbir link indirilmez.
+// Kutuyu doldurup DÖNÜŞTÜR'e basınca link, Mac'te çalışan yerel araca
+// (http://127.0.0.1:47823) devredilir; indirme ve dönüştürme orada yapılır.
+// Bu sayfa hiçbir ses yüklemez, dış servise istek atmaz.
 (() => {
   const byId = id => document.getElementById(id);
+  const ARAC = 'http://127.0.0.1:47823';
 
   async function kopyala(metin) {
     try {
@@ -40,6 +40,28 @@
     });
   }
 
+  function formuBagla() {
+    const form = byId('mp3-form');
+    const link = byId('mp3-link');
+    const uyari = byId('mp3-uyari');
+    if (!form || !link) return;
+    form.addEventListener('submit', olay => {
+      olay.preventDefault();
+      const deger = link.value.trim();
+      if (!/^https?:\/\//i.test(deger)) {
+        if (uyari) {
+          uyari.hidden = false;
+          uyari.textContent = 'Geçerli bir http(s) bağlantısı yapıştır.';
+        }
+        link.focus();
+        return;
+      }
+      if (uyari) uyari.hidden = true;
+      // Dönüştürme yerel araçta yapılır; sayfa yalnız linki devreder.
+      location.href = ARAC + '/?url=' + encodeURIComponent(deger);
+    });
+  }
+
   async function baslat() {
     const durum = byId('mp3-durum');
     const uygulama = byId('mp3-uygulama');
@@ -64,6 +86,7 @@
     durum.textContent = 'Yönetici: ' + (profile.full_name || user.email || '');
     uygulama.hidden = false;
     dugmeleriBagla();
+    formuBagla();
   }
 
   window.addEventListener('derin:authchange', baslat);
