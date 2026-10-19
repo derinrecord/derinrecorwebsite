@@ -1,0 +1,26 @@
+<!doctype html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>MP3 Dönüştürücü — Derin Record</title><link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"><meta name="robots" content="noindex"><link rel="stylesheet" href="branch.css"><link rel="stylesheet" href="auth.css?v=20261017"><link rel="stylesheet" href="glass.css?v=2" /><style>
+.mp3-adim{display:grid;gap:.35rem;margin:0 0 1.2rem;padding:1rem 1.2rem;background:var(--glass-bg);border:1px solid var(--glass-line);border-radius:18px;-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
+.mp3-adim b{font:800 .72rem/1 Arial,sans-serif;letter-spacing:.08em;color:var(--yellow,#f4d43e)}
+.mp3-adim span{opacity:.82;font-size:.92rem;line-height:1.5}
+.mp3-komut{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:.4rem 0 0}
+.mp3-komut code{flex:1;min-width:0;padding:.7rem .9rem;border-radius:12px;background:rgba(0,0,0,.45);border:1px solid var(--glass-line);font:.8rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;color:#f7e9a6;overflow-x:auto;white-space:nowrap}
+.mp3-kopyala{padding:.62rem 1rem;border:0;border-radius:12px;background:linear-gradient(145deg,#e6c840,#b8992a);color:#111;font:800 .7rem/1 Arial,sans-serif;letter-spacing:.06em;cursor:pointer}
+.mp3-kopyala:active{transform:translateY(1px)}
+.mp3-not{font-size:.8rem;opacity:.65;margin-top:1.4rem}
+</style>
+  <link rel="stylesheet" href="mobil.css?v=1">
+</head><body><div class="noise"></div><header class="header"><a class="home" href="admin.html"><span>←</span> YÖNETİM</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header><main class="admin-main"><p class="eyebrow">YÖNETİCİ ALANI</p><h1>MP3<br><span>DÖNÜŞTÜRÜCÜ.</span></h1><p id="mp3-durum">Yetki kontrol ediliyor…</p>
+<section id="mp3-uygulama" hidden>
+  <div class="mp3-adim"><b>NE YAPAR</b><span>Bir link verirsin (YouTube, SoundCloud ya da doğrudan ses adresi); sesi indirir ve Ableton/Logic'e hazır iki dosya bırakır: <strong>WAV 24-bit / 48 kHz</strong> ve <strong>MP3 320 kbps</strong>. Dosyalar <code>~/Music/Derin Record</code> klasörüne <em>Sanatçı - Başlık</em> adıyla düşer.</span></div>
+  <div class="mp3-adim"><b>1 · KULLAN</b><span>Masaüstündeki <strong>Derin Ses Al</strong> kısayoluna çift tıkla, linki yapıştır, Enter. Terminalden aynı iş:</span>
+    <div class="mp3-komut"><code id="mp3-kullanim">~/bin/derin-ses-al "https://..."</code><button class="mp3-kopyala" type="button" data-kopya="mp3-kullanim">KOPYALA</button></div>
+  </div>
+  <div class="mp3-adim"><b>2 · İLK KURULUM (başka bir Mac)</b><span>İndirici tek dosyadır, Homebrew gerekmez:</span>
+    <div class="mp3-komut"><code id="mp3-kurulum">mkdir -p ~/bin &amp;&amp; curl -fL -o ~/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos &amp;&amp; chmod +x ~/bin/yt-dlp</code><button class="mp3-kopyala" type="button" data-kopya="mp3-kurulum">KOPYALA</button></div>
+  </div>
+  <div class="mp3-adim"><b>3 · GÜNCELLE</b><span>YouTube tarafı zaman zaman değişir; indirme hata verirse önce bunu koş:</span>
+    <div class="mp3-komut"><code id="mp3-guncelle">~/bin/yt-dlp -U</code><button class="mp3-kopyala" type="button" data-kopya="mp3-guncelle">KOPYALA</button></div>
+  </div>
+  <p class="mp3-not">Bu sayfa hiçbir ses yüklemez; dönüştürme yalnızca senin Mac'inde çalışır. Yalnızca hakkına sahip olduğun içerik için kullan.</p>
+</section>
+</main><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="auth.js?v=20261019a"></script><script src="mp3-donusturucu.js?v=1"></script></body></html>
