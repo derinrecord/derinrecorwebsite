@@ -1,0 +1,733 @@
+/* Derin Record — telefon kullanım katmanı
+   Yalnızca dar ekranlarda (<=760px) devreye girer; masaüstü görünümü değişmez.
+   Amaç: tek elle kullanım, kaybolmayan menü, üst üste binmeyen hero,
+   en az 44px dokunma hedefleri, iOS yakınlaştırmasını önleyen form alanları
+   ve çentik / ana çubuk güvenli alanları. */
+
+@media (max-width: 760px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: 84px;
+  }
+
+  body {
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  button,
+  a,
+  label,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--yellow, #d8bb2c);
+    outline-offset: 3px;
+  }
+
+  /* ---------- Ana sayfa başlığı: tek satır ---------- */
+  .site-header {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    width: calc(100% - 16px) !important;
+    padding: 8px 10px !important;
+    gap: 8px !important;
+    border-radius: 16px !important;
+    z-index: 30 !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
+  }
+
+  .site-header .wordmark {
+    order: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    min-height: 44px !important;
+    font-size: 17px !important;
+    letter-spacing: -1.1px !important;
+    flex: 0 0 auto !important;
+  }
+
+  .site-header .wordmark b {
+    font-size: 21px;
+  }
+
+  .site-header .account-actions {
+    order: 2 !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    gap: 6px !important;
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+    display: flex !important;
+  }
+
+  .site-header .account-button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 44px !important;
+    padding: 0 12px !important;
+    font-size: 11px !important;
+    letter-spacing: .04em !important;
+    white-space: nowrap !important;
+    border-radius: 12px !important;
+  }
+
+  /* Kayıt, giriş penceresindeki "Antrenör olarak kayıt ol" bağlantısında var. */
+  .site-header .account-actions .secondary {
+    display: none !important;
+  }
+
+  .site-header .account-actions [data-login] {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .site-header .menu-toggle {
+    display: grid !important;
+    place-content: center !important;
+    order: 3 !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    border-radius: 12px !important;
+    align-self: center !important;
+  }
+
+  /* ---------- Mobil menü: başlığın altından açılan panel ---------- */
+  .site-header nav {
+    position: fixed !important;
+    top: calc(env(safe-area-inset-top, 0px) + 70px) !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: calc(100dvh - 88px - env(safe-area-inset-bottom, 0px)) !important;
+    padding: 8px !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    order: 0 !important;
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    border-radius: 18px !important;
+    border: 1px solid rgba(255, 255, 255, .24) !important;
+    background: #21171f !important;
+    color: var(--cream, #f4f1e9) !important;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, .55) !important;
+    transform: translateY(-10px) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: transform .2s ease, opacity .2s ease, visibility .2s ease;
+  }
+
+  .site-header nav.open {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    display: flex !important;
+  }
+
+  .site-header nav a {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    min-height: 48px !important;
+    padding: 0 14px !important;
+    border: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, .12) !important;
+    border-radius: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    letter-spacing: .02em !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    max-width: none !important;
+  }
+
+  .site-header nav a:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .site-header nav .nav-cta {
+    justify-content: center !important;
+    min-height: 48px !important;
+    margin: 8px 0 0 !important;
+    padding: 0 14px !important;
+    border-radius: 12px !important;
+    background: var(--yellow, #d8bb2c) !important;
+    color: #111 !important;
+    text-align: center;
+  }
+
+  body.menu-open {
+    overflow: hidden;
+  }
+
+  body.menu-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    background: rgba(6, 5, 8, .55);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+
+  /* ---------- Ana sayfa hero: metin ve kaset üst üste binmez ---------- */
+  .hero {
+    min-height: 0;
+    padding: 34px 7vw 28px;
+  }
+
+  body:has(.hero-video) .hero {
+    padding: 104px 6vw 36px;
+  }
+
+  .hero h1 {
+    font-size: clamp(40px, 11.5vw, 64px);
+    line-height: .82;
+  }
+
+  .hero-copy {
+    width: 100%;
+    margin-left: 0;
+    padding: 10px 12px 6px;
+    background: none;
+    text-shadow: 0 2px 16px rgba(0, 0, 0, .65);
+  }
+
+  .hero-text {
+    max-width: none;
+    margin: 16px 0 20px;
+    font-size: 15.5px;
+    line-height: 1.5;
+  }
+
+  .hero-actions {
+    gap: 12px;
+  }
+
+  .hero-actions .button {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 18px;
+  }
+
+  .hero-actions .text-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .hero-art {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: min(74vw, 310px);
+    margin: 24px auto 0;
+  }
+
+  .hero-art img {
+    max-height: 300px;
+    border-radius: 18px;
+    object-fit: contain;
+  }
+
+  .tape-label {
+    margin-top: -26px;
+    padding: 8px 11px;
+    font-size: 9px;
+    letter-spacing: .08em;
+  }
+
+  .equalizer {
+    height: 38px;
+    margin-top: 16px;
+  }
+
+  .hero-count {
+    display: none;
+  }
+
+  .hero-stamp {
+    display: none !important;
+  }
+
+  /* Mobil veri ve pil: video yerine poster + renk katmanı kalır. */
+  .hero-video {
+    display: none;
+  }
+
+  /* ---------- Bölüm boşlukları ve kartlar ---------- */
+  .corporate,
+  .manifesto,
+  .services,
+  .season,
+  .demos,
+  footer {
+    padding: 56px 6vw;
+  }
+
+  .demos-heading {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .demos-heading p:last-child {
+    max-width: none;
+  }
+
+  .cassette-grid {
+    margin-top: 30px;
+    gap: 12px;
+  }
+
+  .cassette-card {
+    padding: 12px 10px;
+  }
+
+  .cassette-card:nth-child(even) {
+    transform: none;
+  }
+
+  .service-list {
+    margin-top: 28px;
+  }
+
+  .service-list article {
+    padding: 18px 16px;
+  }
+
+  .manifesto-grid {
+    gap: 20px;
+  }
+
+  .statement-image,
+  .services-image,
+  .season-poster {
+    width: 100%;
+  }
+
+  .contact-grid {
+    margin: 28px 0 40px;
+    gap: 12px;
+  }
+
+  .contact-grid a {
+    min-height: 48px;
+  }
+
+  footer h2 {
+    font-size: clamp(34px, 10vw, 64px);
+  }
+
+  /* ---------- Alt sayfa başlığı: tek satır ---------- */
+  .header {
+    position: sticky;
+    top: max(8px, env(safe-area-inset-top));
+    width: calc(100% - 16px);
+    margin: 8px auto 0;
+    padding: 8px 10px;
+    gap: 8px;
+    border-radius: 16px;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .header .home {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 10.5px;
+    letter-spacing: .05em;
+    white-space: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .header .home span {
+    font-size: 16px;
+    margin-right: 4px;
+  }
+
+  .header .wordmark {
+    font-size: 16px;
+    letter-spacing: -.9px;
+    flex: 0 0 auto;
+  }
+
+  .header .wordmark b {
+    font-size: 19px;
+  }
+
+  .header > .account-actions {
+    order: 3;
+    flex: 0 0 auto;
+    margin-left: 0;
+    gap: 4px;
+    flex-wrap: nowrap;
+  }
+
+  .header .account-button {
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 10px;
+    letter-spacing: .03em;
+  }
+
+  .header .account-actions .secondary {
+    display: none !important;
+  }
+
+  .header .account-actions [data-login] {
+    max-width: 128px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---------- Branş sayfaları: demo oynatıcı ---------- */
+  .hero .eyebrow {
+    font-size: 10.5px;
+    letter-spacing: .16em;
+  }
+
+  .hero h1,
+  .track-title {
+    overflow-wrap: break-word;
+  }
+
+  .track-area {
+    padding: 38px 6vw 56px;
+  }
+
+  .track-area h2 {
+    margin-bottom: 20px;
+    font-size: 13px;
+    line-height: 1.45;
+    letter-spacing: .04em;
+  }
+
+  .player-list {
+    gap: 16px;
+  }
+
+  .track {
+    padding: 18px;
+    gap: 16px;
+  }
+
+  .track-title {
+    font-size: clamp(30px, 8.5vw, 47px);
+  }
+
+  .track-note {
+    font-size: 13px;
+  }
+
+  .track-info {
+    padding-right: 0;
+  }
+
+  .cassette {
+    width: min(70%, 230px);
+  }
+
+  .player-controls {
+    grid-template-columns: 58px 1fr;
+    gap: 8px;
+  }
+
+  .player-controls .play {
+    width: 58px;
+    height: 58px;
+    min-width: 58px;
+  }
+
+  .seek {
+    height: 48px;
+  }
+
+  .seek::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    margin-top: -7px;
+  }
+
+  .seek::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+  }
+
+  .time {
+    font-size: 11px;
+  }
+
+  /* ---------- Haberler ve müzik isteği başlıkları ---------- */
+  .news-main,
+  .music-main {
+    padding: 32px 6vw 48px;
+  }
+
+  .news-main h1,
+  .music-main h1 {
+    font-size: clamp(2.4rem, 11vw, 5rem);
+    line-height: .82;
+    overflow-wrap: break-word;
+  }
+
+  .news-intro,
+  .music-lead {
+    font-size: 15px;
+  }
+
+  .news-grid {
+    margin-top: 22px;
+  }
+
+  .news-card {
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .news-card a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .music-card {
+    padding: 18px;
+    box-shadow: 8px 8px 0 var(--pink, #cb2468);
+  }
+
+  /* ---------- Sabit aksiyonlar: içeriği kapatmayan küçük daireler ---------- */
+  .float-actions {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    gap: 10px;
+  }
+
+  .float-teklif,
+  .float-wa {
+    width: 52px !important;
+    height: 52px !important;
+    min-height: 52px;
+    padding: 0 !important;
+    gap: 0;
+    border-radius: 50% !important;
+    justify-content: center;
+  }
+
+  .float-teklif span,
+  .float-wa span {
+    display: none;
+  }
+
+  .float-teklif svg,
+  .float-wa svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .float-teklif-menu {
+    right: 0;
+    bottom: 62px;
+    min-width: 230px;
+    max-width: calc(100vw - 24px);
+  }
+
+  .float-teklif-menu a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    white-space: normal;
+    font-size: 12px;
+  }
+
+  /* ---------- Formlar: iOS odaklanınca yakınlaştırmaz ---------- */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+
+  textarea {
+    min-height: 96px;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 22px;
+    height: 22px;
+  }
+
+  input[type="range"] {
+    min-height: 44px;
+  }
+
+  .button,
+  .corporate-cta,
+  .nav-cta,
+  .account-button,
+  .cf-toggle button,
+  .cf-plan button,
+  .music-card button,
+  .arena-profile,
+  .upload,
+  #license-form button,
+  .feedback button,
+  .note-box button {
+    min-height: 44px;
+  }
+
+  /* glass.css bazı sayfalarda auth.css'ten sonra yükleniyor; giriş düğmesi
+     şeffaf kalıp okunmuyordu. Mobilde sarı zemin ve koyu yazı sabitlenir. */
+  .account-button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 44px !important;
+    background: var(--yellow, #d8bb2c) !important;
+    border-color: var(--yellow, #d8bb2c) !important;
+    color: #111 !important;
+    font-size: 12px !important;
+  }
+
+  .account-button.secondary {
+    background: transparent !important;
+    color: var(--yellow, #d8bb2c) !important;
+  }
+
+  /* ---------- Kafe sayfası ---------- */
+  .cf-hero {
+    padding: 24px 0 32px !important;
+  }
+
+  .cf-hero h1 {
+    font-size: clamp(34px, 9.5vw, 58px) !important;
+  }
+
+  .cf-hero p {
+    font-size: 15px !important;
+    line-height: 1.65 !important;
+  }
+
+  .cf-toggle button {
+    min-height: 44px;
+    padding: 0 18px;
+  }
+
+  /* Radyo paneli kapı düğmesi */
+  .btn {
+    min-height: 44px;
+  }
+
+  /* ---------- Haber kartı bağlantıları ---------- */
+  .olympics-countdown a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* ---------- Beyan sayfası ---------- */
+  .license-main {
+    padding: 24px 5vw 40px !important;
+  }
+
+  .license-main h1 {
+    font-size: clamp(2.4rem, 11vw, 5rem);
+    overflow-wrap: break-word;
+  }
+
+  /* Sabit aksiyon düğmeleri son içeriği kapatmasın. */
+  body:has(.float-actions) {
+    padding-bottom: 80px;
+  }
+
+  /* ---------- Geniş tablolar yatay kaydırılır ---------- */
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ---------- Sabit oynatıcı çubuğu ---------- */
+  .sp-player {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: calc(100% - 16px);
+    padding: 10px 12px;
+    border-radius: 16px;
+  }
+
+  .sp-btns button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .page-footer {
+    padding: 22px 6vw calc(22px + env(safe-area-inset-bottom));
+    font-size: 10px;
+  }
+}
+
+/* ---------- Küçük telefonlar (320–360px) ---------- */
+@media (max-width: 360px) {
+  .site-header .wordmark {
+    font-size: 15px;
+  }
+
+  .site-header .account-button {
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .header .wordmark {
+    display: none;
+  }
+
+  .header .home {
+    font-size: 9px;
+    letter-spacing: .02em;
+    padding: 0 6px;
+  }
+
+  .news-main h1,
+  .music-main h1 {
+    font-size: clamp(2rem, 11vw, 3rem);
+  }
+
+  .hero h1 {
+    font-size: clamp(36px, 11.5vw, 52px);
+  }
+}

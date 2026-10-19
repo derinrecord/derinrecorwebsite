@@ -38,16 +38,9 @@
   function renderAccount() {
     const actions = document.querySelector('.account-actions'); if (!actions) return;
     const button = actions.querySelector('[data-login]'), signup = actions.querySelector('[data-signup]'), coachAction = actions.querySelector('.coach-action'), menu = document.querySelector('.account-menu');
-    const header = actions.closest('.site-header');
-    const navigation = header?.querySelector('nav'), menuToggle = header?.querySelector('.menu-toggle');
-    const setNavigation = visible => {
-      if (!navigation || !menuToggle) return;
-      navigation.hidden = !visible; menuToggle.hidden = !visible;
-      if (!visible) { navigation.classList.remove('open'); menuToggle.setAttribute('aria-expanded', 'false'); }
-    };
-    if (!configured) { setNavigation(false); coachAction.hidden = true; button.textContent = 'HESAP SİSTEMİ'; button.classList.add('secondary'); signup.hidden = true; button.onclick = () => openAuth('login'); return; }
-    if (!state.user) { setNavigation(false); coachAction.hidden = true; button.textContent = 'GİRİŞ YAP'; button.classList.remove('secondary'); signup.hidden = false; return; }
-    setNavigation(true);
+    // Menü artık ziyaretçiye de açık; gizleme kararı burada verilmez (mobil menü mobil.css + script.js).
+    if (!configured) { coachAction.hidden = true; button.textContent = 'HESAP SİSTEMİ'; button.classList.add('secondary'); signup.hidden = true; button.onclick = () => openAuth('login'); return; }
+    if (!state.user) { coachAction.hidden = true; button.textContent = 'GİRİŞ YAP'; button.classList.remove('secondary'); signup.hidden = false; return; }
     signup.hidden = true; coachAction.hidden = false;
     button.textContent = `${(state.profile?.full_name || state.user.email || 'HESABIM').toUpperCase()} · HESABIM`;
     menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a>`;
@@ -71,12 +64,7 @@
       + '.account-button[data-sayac]{position:relative}'
       + '.account-button[data-sayac]::after{content:attr(data-sayac);position:absolute;top:-9px;right:-9px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#cb2468;color:#fff;font:800 .62rem/19px Arial,sans-serif;letter-spacing:0;text-align:center;box-sizing:border-box;box-shadow:0 0 0 2px #0b0b0d;animation:bildirimGeldi .5s ease}'
       + '@keyframes bildirimGeldi{0%{transform:scale(.4)}60%{transform:scale(1.2)}100%{transform:scale(1)}}'
-      + '@media(prefers-reduced-motion:reduce){.account-button[data-sayac]::after{animation:none}}'
-      // Telefonda başlık tek satıra sığmıyordu: HESABIM düğmesi ekrandan taşıp sayfayı
-      // sağa-sola kaydırıyordu. Dar ekranda hesap düğmeleri ikinci satıra, sağa iner.
-      + '@media(max-width:600px){.header:has(.account-actions){flex-wrap:wrap;row-gap:10px}'
-      + '.header>.account-actions{order:3;flex:1 1 100%;min-width:0;justify-content:flex-end;margin-left:0}'
-      + '.header>.account-actions .account-button{white-space:nowrap}}';
+      + '@media(prefers-reduced-motion:reduce){.account-button[data-sayac]::after{animation:none}}';
     (document.head || document.body).appendChild(st);
   }
   function sayaclariYaz() {
