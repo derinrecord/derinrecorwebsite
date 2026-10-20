@@ -14,7 +14,7 @@
   .ses-baslik{margin:0 0 .7rem;font:900 clamp(30px,6vw,52px)/1.02 Arial,sans-serif;letter-spacing:-.02em;color:#fff}
   .ses-baslik span{color:var(--yellow)}
   .ses-alt{margin:0 0 clamp(22px,4vw,36px);max-width:36rem;color:var(--muted);font-size:1.02rem}
-  .ses-form{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+  .ses-form{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin-top:clamp(20px,4vw,32px)}
   .ses-alan{flex:1 1 320px;display:flex;align-items:center;gap:10px;padding:0 16px;min-height:60px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:14px;transition:border-color .18s,box-shadow .18s}
   .ses-alan:focus-within{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(230,200,64,.16)}
   .ses-alan svg{flex:none;opacity:.5}
@@ -46,7 +46,6 @@
 
   <main>
     <h1 class="ses-baslik">Linki <span>MP3 + WAV</span>'a dönüştür</h1>
-    <p class="ses-alt">YouTube, SoundCloud ya da doğrudan ses adresi. Sesi <strong>WAV 24-bit / 48 kHz</strong> ve <strong>MP3 320 kbps</strong> olarak Mac'ine indirir; hiçbir şey sunucuya gitmez.</p>
 
     <p class="ses-durum" id="mp3-durum">Yetki kontrol ediliyor…</p>
 
@@ -60,7 +59,7 @@
       </form>
       <p class="ses-uyari" id="mp3-uyari" hidden></p>
 
-      <div class="ses-adim"><b>ARAÇ AÇIK MI</b><p>Dönüştürme bu Mac'te çalışır. Masaüstündeki <strong>Derin Ses Al</strong> kısayoluna çift tıkla; tarayıcıda dönüştürücü açılır. Terminalden başlatmak için:</p>
+      <div class="ses-adim"><b>ARAÇ AÇIK MI</b><p>Dönüştürme bu Mac'te çalışır; ses <strong>WAV 24-bit / 48 kHz</strong> ve <strong>MP3 320 kbps</strong> olarak <code>~/Music/Derin Record</code> klasörüne yazılır. Masaüstündeki <strong>Derin Ses Al</strong> kısayoluna çift tıkla; tarayıcıda dönüştürücü açılır. Terminalden başlatmak için:</p>
         <div class="ses-komut"><code id="mp3-sunucu">~/bin/derin-ses-sunucu</code><button class="ses-kopyala" type="button" data-kopya="mp3-sunucu">KOPYALA</button></div>
       </div>
       <div class="ses-adim"><b>TERMİNALDEN</b><p>Aynı işi tek satırda yapar, dosyaları aynı klasöre bırakır:</p>
@@ -73,7 +72,6 @@
   </main>
 
   <footer class="ses-altbilgi">
-    Dosyalar <code>~/Music/Derin Record</code> klasörüne yazılır. Yalnızca hakkına sahip olduğun içerik için kullan.<br>
     <a href="admin.html">← yönetim</a>
   </footer>
 </div>
