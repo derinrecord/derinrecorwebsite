@@ -52,6 +52,15 @@ test('tek kutu: link yapıştırılır ve yerel araca devredilir', () => {
   assert.match(js, /location\.href = ARAC \+ '\/\?url=' \+ encodeURIComponent/, 'link araça aktarılmalı');
 });
 
+test('şemasız yapıştırılan link kabul edilir (https:// yoksa eklenir)', () => {
+  const html = oku('mp3-donusturucu.html');
+  const js = oku('mp3-donusturucu.js');
+  assert.ok(!/type="url"/.test(html), 'tarayıcının yerleşik URL denetimi şemasız linki engellememeli');
+  assert.match(js, /function linkiDuzenle/, 'girdi düzenleyicisi bulunmalı');
+  assert.match(js, /'https:\/\/' \+ adres/, 'şema yoksa https:// eklenmeli');
+  assert.match(js, /linkiDuzenle\(link\.value\)/, 'kutu değeri düzenleyiciden geçmeli');
+});
+
 test('kaydırmalı hesap menüsünde yalnız yöneticiye görünür', () => {
   const auth = oku('auth.js');
   const satir = auth.split('\n').find(s => s.includes("account-menu-links').innerHTML"));

@@ -7,6 +7,17 @@
   const byId = id => document.getElementById(id);
   const ARAC = 'http://127.0.0.1:47823';
 
+  // Kopyalanan link çoğu zaman "https://" olmadan ya da bir paylaşım
+  // metninin içinde gelir ("Şunu dinle: …"). Şemayı ekleyip metnin içinden
+  // adresi ayıklarız; kutu da düzeltilmiş hâli gösterir.
+  function linkiDuzenle(ham) {
+    const metin = String(ham || '').replace(/\s+/g, ' ').trim();
+    const bulunan = metin.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?::\d+)?(?:\/\S*)?/i);
+    if (!bulunan) return '';
+    const adres = bulunan[0].replace(/[.,;:!?)\]}'"]+$/, '');
+    return /^https?:\/\//i.test(adres) ? adres : 'https://' + adres;
+  }
+
   async function kopyala(metin) {
     try {
       await navigator.clipboard.writeText(metin);
@@ -47,15 +58,16 @@
     if (!form || !link) return;
     form.addEventListener('submit', olay => {
       olay.preventDefault();
-      const deger = link.value.trim();
-      if (!/^https?:\/\//i.test(deger)) {
+      const deger = linkiDuzenle(link.value);
+      if (!deger) {
         if (uyari) {
           uyari.hidden = false;
-          uyari.textContent = 'Geçerli bir http(s) bağlantısı yapıştır.';
+          uyari.textContent = 'Bağlantı anlaşılmadı. Adresi olduğu gibi yapıştır.';
         }
         link.focus();
         return;
       }
+      link.value = deger;
       if (uyari) uyari.hidden = true;
       // Dönüştürme yerel araçta yapılır; sayfa yalnız linki devreder.
       location.href = ARAC + '/?url=' + encodeURIComponent(deger);
