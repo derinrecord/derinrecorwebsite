@@ -1444,7 +1444,7 @@
       const yuzde = Math.round((biten / dosyalar.length) * 100);
       mesaj.textContent = `Yükleniyor… ${biten + 1}/${dosyalar.length} · %${yuzde}`;
       bar.hidden = false;
-      bar.firstElementChild.style.width = yuzde + '%';
+      bar.firstElementChild.style.transform = 'scaleX(' + (yuzde / 100) + ')';
 
       const taban = V.clean(dosya.name).replace(/\.[^.]+$/, '');
       const temelYol = `${folderId}/${Date.now()}-${slugify(taban) || 'parca'}`;
@@ -1491,7 +1491,7 @@
     }
 
     const saniye = Math.round((Date.now() - baslangic) / 1000);
-    bar.firstElementChild.style.width = '100%';
+    bar.firstElementChild.style.transform = 'scaleX(1)';
     setTimeout(() => { bar.hidden = true; }, 600);
     giris.value = '';
     const kutu = el('track-drop');
