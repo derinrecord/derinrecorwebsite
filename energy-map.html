@@ -1,4 +1,82 @@
-<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Enerji & Tempo — Derin Record</title><link rel="stylesheet" href="branch.css"><link rel="stylesheet" href="auth.css?v=20261017"><link rel="stylesheet" href="energy-map.css">
-  <link rel="stylesheet" href="mobil.css?v=1">
-</head><body><div class="noise"></div><header class="header"><a class="home" href="index.html">← ANA SAYFA</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header><main class="energy-main"><p class="eyebrow">MÜZİK ANALİZİ</p><h1>ENERJİ &<br><span>TEMPO HARİTASI.</span></h1><p id="energy-status">Ses dosyanı seçerek analizi başlat.</p><section id="energy-app"><label class="upload">SES DOSYASI SEÇ<input id="audio-file" type="file" accept="audio/*"></label><audio id="audio" controls></audio><section class="arena-panel" aria-labelledby="arena-title"><div><p class="eyebrow">ARENA AKUSTİĞİ</p><h2 id="arena-title">SALON ÖN İZLEMESİ</h2><p id="arena-description">Önce kendi ses dosyanı seç. Sonra oynatırken salon profillerini karşılaştır.</p></div><div class="arena-controls" role="group" aria-label="Akustik profili"><button type="button" class="arena-profile is-active" data-profile="studio" aria-pressed="true">STÜDYO</button><button type="button" class="arena-profile" data-profile="training" aria-pressed="false">ANTRENMAN SALONU</button><button type="button" class="arena-profile" data-profile="competition" aria-pressed="false">YARIŞMA SALONU</button></div><p class="arena-note">Profil tuşları seçtiğin ses dosyasına anında EQ ve yankı uygular. Bu araç dinleme amaçlı bir simülasyondur.</p></section><div class="stats"><b><small>ORTALAMA ENERJİ</small><span id="avg">—</span></b><b><small>TAHMİNİ TEMPO</small><span id="bpm">—</span></b><b><small>SÜRE</small><span id="duration">—</span></b></div><div class="chart-wrap"><canvas id="energy-chart" aria-label="Akustik enerji eğrisi ve canlı spektrum"></canvas><p>Enerji eğrisi parçanın tamamını; oynatma sırasında hareketli spektrum anlık frekansları gösterir.</p></div></section></main><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="auth.js?v=20261019b"></script><script src="energy-map.js?v=5"></script></body></html>
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Enerji Haritası — Derin Record</title>
+<meta name="description" content="Bir performans müziğinin enerji eğrisini gör: ortalama enerji, tempo ve en yoğun bölüm.">
+<link rel="stylesheet" href="branch.css">
+<link rel="stylesheet" href="auth.css?v=20261017">
+<link rel="stylesheet" href="energy-map.css?v=7">
+<link rel="stylesheet" href="mobil.css?v=1">
 <link rel="stylesheet" href="glass.css?v=2" />
+</head>
+<body>
+<div class="noise"></div>
+<header class="header"><a class="home" href="index.html">← ANA SAYFA</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
+<main class="analiz">
+  <div class="analiz-bas">
+    <h1>Parçanın enerji eğrisi</h1>
+    <p class="analiz-aciklama">Ses dosyanı yükle. Grafik, parçanın nerede yükselip nerede düştüğünü gösterir; tempo ve en yoğun bölüm altta okunur.</p>
+    <div class="dosya">
+      <label class="dosya-sec">Ses dosyası seç
+        <input id="audio-file" type="file" accept="audio/*">
+      </label>
+      <p class="dosya-adi" id="dosya-adi">Dosya seçilmedi</p>
+    </div>
+  </div>
+
+  <section class="bant" id="bant" aria-labelledby="bant-baslik">
+    <header class="bant-ust">
+      <h2 id="bant-baslik">Analiz bekleniyor</h2>
+      <p class="bant-durum" id="energy-status" role="status"></p>
+    </header>
+
+    <div class="bant-grafik">
+      <canvas id="energy-chart" role="img" tabindex="0" aria-label="Parçanın enerji dağılım grafiği"></canvas>
+      <div class="bant-bos" id="bant-bos">
+        <p>Ses dosyasını buraya bırak</p>
+        <small>ya da yukarıdan seç — mp3, m4a, wav</small>
+      </div>
+      <p class="ekran-okuyucu" id="enerji-okuma" aria-live="polite"></p>
+    </div>
+
+    <div class="bant-alt">
+      <div class="oynatici">
+        <button type="button" class="oynat" id="oynat" aria-label="Parçayı oynat" disabled>▶</button>
+        <input class="konum" id="konum" type="range" min="0" max="1000" step="1" value="0" aria-label="Parçadaki konum" disabled>
+        <p class="zaman"><span id="gecen">0:00</span> / <span id="sure">0:00</span></p>
+      </div>
+      <ul class="anahtar">
+        <li><span class="isaret isaret-cubuk" aria-hidden="true"></span>enerji</li>
+        <li><span class="isaret isaret-ort" aria-hidden="true"></span>ortalama</li>
+        <li><span class="isaret isaret-tepe" aria-hidden="true"></span>en yoğun bölüm</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sayaclar" aria-label="Ölçümler">
+    <div class="sayac"><p>Ortalama enerji</p><b id="avg">—</b></div>
+    <div class="sayac"><p>Tempo</p><b><span id="bpm">—</span><em class="birim" id="bpm-birim" hidden>BPM</em></b></div>
+    <div class="sayac"><p>En yoğun bölüm</p><b id="tepe">—</b></div>
+    <div class="bantlar">
+      <p class="bantlar-not">Sürenin enerji bantlarına dağılımı</p>
+      <div class="bantlar-cizgi" id="bantlar-cizgi">
+        <i data-band="dusuk"></i><i data-band="orta"></i><i data-band="yuksek"></i>
+      </div>
+      <p class="bantlar-yazi">
+        <span data-band-yazi="dusuk">düşük —</span>
+        <span data-band-yazi="orta">orta —</span>
+        <span data-band-yazi="yuksek">yüksek —</span>
+      </p>
+    </div>
+  </section>
+
+  <audio id="audio" preload="metadata" hidden></audio>
+</main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js?v=20261019b"></script>
+<script src="energy-map.js?v=13"></script>
+</body>
+</html>
