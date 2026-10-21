@@ -65,3 +65,89 @@
     padding: 0 8px;
   }
 }
+
+.dil-ayarlar[hidden] { display: none !important; }
+.dil-ayarlar {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  justify-items: end;
+}
+.dil-ayarlar-perde {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  background: rgba(0, 0, 0, 0.62);
+  cursor: pointer;
+}
+.dil-ayarlar-panel {
+  position: relative;
+  width: min(92vw, 340px);
+  height: 100%;
+  padding: 28px 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  background: #111216;
+  color: #f4f1e9;
+  border-left: 1px solid rgba(255,255,255,.16);
+  box-shadow: -24px 0 60px rgba(0,0,0,.35);
+  animation: dil-panel-giris .22s ease-out;
+}
+.dil-ayarlar-ust {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(255,255,255,.16);
+}
+.dil-ayarlar-ust h2 {
+  margin: 0;
+  font: 800 18px/1.1 inherit;
+  letter-spacing: .12em;
+}
+.dil-ayarlar-kapat {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font: 300 28px/1 inherit;
+  cursor: pointer;
+}
+.dil-ayarlar-dil {
+  margin: 28px 0 0;
+  padding: 0;
+  border: 0;
+}
+.dil-ayarlar-dil legend {
+  margin-bottom: 12px;
+  color: rgba(244,241,233,.62);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+.dil-ayarlar-secenek {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  cursor: pointer;
+}
+.dil-ayarlar-secenek input { accent-color: var(--yellow, #d8bb2c); }
+.dil-ayarlar-secenek:has(input:checked) { color: var(--yellow, #d8bb2c); }
+.dil-ayarlar :focus-visible {
+  outline: 2px solid var(--yellow, #d8bb2c);
+  outline-offset: 3px;
+}
+@keyframes dil-panel-giris { from { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .dil-ayarlar-panel { animation: none; }
+}
