@@ -5,32 +5,21 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const KOK = path.join(__dirname, '..');
 const oku = d => fs.readFileSync(path.join(KOK, d), 'utf8');
 
-// İngilizce desteği olan tanıtım sayfaları.
-const SAYFALAR = [
-  'index.html',
-  'aerobik.html',
-  'akrobatik.html',
-  'artistik.html',
-  'ritmik.html',
-  'cocuk-fitness.html',
-  'news.html',
-  'ses-tasarimi.html',
-  'energy-map.html'
-];
+const URETIM_SAYFALARI = execFileSync('git', ['ls-files', '*.html'], {
+  cwd: KOK,
+  encoding: 'utf8'
+}).trim().split('\n').filter(Boolean).filter(dosya =>
+  !dosya.startsWith('tests/') && !dosya.startsWith('graphify-out/')
+);
 
-// Otomatik mod: metinler data-i18n ile işaretlenmez, Türkçe dize sözlükte aranır.
-const OTOMATIK_SAYFALAR = [
-  'admin.html', 'ajanlar.html', 'aydinlatma-metni.html', 'bildirimler.html',
-  'cerez-politikasi.html', 'coffee-marka.html', 'coffee.html',
-  'gizlilik-politikasi.html', 'harmonic-mixer.html', 'kullanici-sozlesmesi.html',
-  'kullanicilar.html', 'license.html', 'mp3-donusturucu.html',
-  'music-request.html', 'my-projects.html', 'project-flow.html',
-  'radyo-yonetim.html', 'sifre-yenile.html', 'taleplerim.html'
-];
+// Açık anahtarlı ve otomatik mod sayfaları depodaki gerçek üretim envanterinden türetilir.
+const ANAHTARLI_SAYFALAR = URETIM_SAYFALARI.filter(sayfa => /data-i18n(?:=|-)/.test(oku(sayfa)));
+const OTOMATIK_SAYFALAR = URETIM_SAYFALARI.filter(sayfa => /data-dil-otomatik/.test(oku(sayfa)));
 
 // Bu anahtarlar HTML'de değil, JS içinden metin olarak çağrılır.
 const DINAMIK = [
@@ -60,7 +49,7 @@ test('İngilizce sözlük okunabiliyor ve boş değer içermiyor', () => {
 
 test('sayfalardaki her data-i18n anahtarının İngilizcesi var', () => {
   const eksik = [];
-  SAYFALAR.forEach(sayfa => {
+  ANAHTARLI_SAYFALAR.forEach(sayfa => {
     const html = oku(sayfa);
     const bulunan = html.matchAll(/data-i18n(?:-etiket|-yerine|-alt)?="([^"]+)"/g);
     for (const [, anahtar] of bulunan) {
@@ -72,7 +61,7 @@ test('sayfalardaki her data-i18n anahtarının İngilizcesi var', () => {
 
 test('sözlükte kullanılmayan anahtar kalmaz', () => {
   const kullanilan = new Set(DINAMIK);
-  [...SAYFALAR, ...OTOMATIK_SAYFALAR].forEach(sayfa => {
+  URETIM_SAYFALARI.forEach(sayfa => {
     const html = oku(sayfa);
     for (const [, anahtar] of html.matchAll(/data-i18n(?:-etiket|-yerine|-alt)?="([^"]+)"/g)) {
       kullanilan.add(anahtar);
@@ -97,8 +86,22 @@ test('İngilizce değerlerde Türkçe harf kalmaz', () => {
   assert.deepEqual(kalan, [], 'çevrilmemiş metin: ' + kalan.join(' | '));
 });
 
+test('bütün üretim sayfaları dil sözleşmesini taşır', () => {
+  const eksik = URETIM_SAYFALARI.flatMap(sayfa => {
+    const html = oku(sayfa);
+    const hata = [];
+    if (!/<html lang="tr"/.test(html)) hata.push('lang');
+    if (!/data-baslik-en="[^"]+"/.test(html)) hata.push('data-baslik-en');
+    if (!/<script src="dil\.js\?v=\d+" defer><\/script>/.test(html)) hata.push('dil.js');
+    if (!/<link rel="stylesheet" href="dil\.css\?v=\d+"/.test(html)) hata.push('dil.css');
+    if (!/data-dil-otomatik|data-i18n=/.test(html)) hata.push('çeviri modu');
+    return hata.map(ad => `${sayfa} → ${ad}`);
+  });
+  assert.deepEqual(eksik, []);
+});
+
 test('her sayfa dil motorunu ve stilini yükler', () => {
-  [...SAYFALAR, ...OTOMATIK_SAYFALAR].forEach(sayfa => {
+  URETIM_SAYFALARI.forEach(sayfa => {
     const html = oku(sayfa);
     assert.match(html, /<script src="dil\.js\?v=\d+" defer><\/script>/, sayfa + ' dil.js yüklemeli');
     assert.match(html, /<link rel="stylesheet" href="dil\.css\?v=\d+"/, sayfa + ' dil.css yüklemeli');
@@ -114,7 +117,7 @@ test('otomatik mod sayfaları işaretli ve İngilizce başlıklı', () => {
 });
 
 test('sayfalar Türkçe varsayılanı ve İngilizce başlığı korur', () => {
-  SAYFALAR.forEach(sayfa => {
+  ANAHTARLI_SAYFALAR.forEach(sayfa => {
     const html = oku(sayfa);
     assert.match(html, /<html lang="tr"/, sayfa + ' lang="tr" ile açılmalı');
     if (/<title>/.test(html)) {
