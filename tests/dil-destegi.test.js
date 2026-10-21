@@ -101,6 +101,14 @@ test('bütün üretim sayfaları dil sözleşmesini taşır', () => {
   assert.deepEqual(eksik, []);
 });
 
+test('meta açıklaması bulunan sayfalar İngilizce karşılığını taşır', () => {
+  const eksik = URETIM_SAYFALARI.filter(sayfa => {
+    const html = oku(sayfa);
+    return /<meta name="description"/.test(html) && !/<meta name="description"[^>]*data-en="[^"]+"/.test(html);
+  });
+  assert.deepEqual(eksik, []);
+});
+
 test('her sayfa dil motorunu ve stilini yükler', () => {
   URETIM_SAYFALARI.forEach(sayfa => {
     const html = oku(sayfa);
