@@ -1,176 +1,74 @@
-/* Ayarlar düğmesi — her sayfada aynı dil çekmecesini açar. */
-.dil-ayarlar-ac {
+/* Kompakt dil seçimi — logonun hemen altında görünür. */
+.dil-sarma {
+  display: inline-flex;
+  position: relative;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: flex-start;
+  gap: 0;
+  flex: 0 0 auto;
+}
+
+.dil-sarma .wordmark {
+  order: 0;
+  flex: 0 0 auto;
+}
+
+.dil-dugme {
+  position: absolute;
+  top: 59px;
+  left: 0;
+  order: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
-  height: 30px;
-  padding: 0 10px;
-  border: 1px solid currentColor;
+  min-width: 38px;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, .38);
   border-radius: 999px;
-  background: none;
+  background: rgba(11, 11, 13, .22);
   color: inherit;
-  font: inherit;
-  font-size: 11px;
+  font-family: inherit;
+  font-size: 10px;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: .14em;
   line-height: 1;
-  opacity: 0.7;
+  opacity: .82;
   cursor: pointer;
-  transition: opacity 0.2s, border-color 0.2s, color 0.2s;
+  transition: opacity .2s, border-color .2s, color .2s, background .2s;
   -webkit-tap-highlight-color: transparent;
 }
-.dil-ayarlar-ac:hover,
-.dil-ayarlar-ac:focus-visible {
+
+.dil-dugme:hover,
+.dil-dugme:focus-visible {
   opacity: 1;
   border-color: var(--yellow, #d8bb2c);
   color: var(--yellow, #d8bb2c);
-}
-.dil-ayarlar-ac:focus-visible {
-  outline: 2px solid var(--yellow, #d8bb2c);
-  outline-offset: 3px;
-}
-#nav .dil-ayarlar-ac,
-.site-header nav .dil-ayarlar-ac {
-  height: 37px;
-  padding: 0 14px;
-}
-.dil-sarma {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.header > .dil-sarma {
-  margin-left: auto;
-}
-.dil-ayarlar-ac-sabit {
-  position: fixed;
-  top: 22px;
-  right: 5vw;
-  z-index: 60;
-  background: rgba(11, 11, 13, 0.55);
-  color: #f4f1e9;
-}
-@media (max-width: 760px) {
-  #nav .dil-ayarlar-ac {
-    align-self: flex-start;
-    min-width: 52px;
-  }
-  .dil-sarma {
-    gap: 12px;
-  }
-  .dil-ayarlar-ac {
-    min-width: 36px;
-    height: 28px;
-    padding: 0 8px;
-  }
+  background: rgba(11, 11, 13, .42);
 }
 
-.dil-ayarlar[hidden] { display: none !important; }
-.dil-ayarlar {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: grid;
-  justify-items: end;
-}
-.dil-ayarlar-perde {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  border: 0;
-  background: rgba(0, 0, 0, 0.62);
-  cursor: pointer;
-}
-.dil-ayarlar-panel {
-  position: relative;
-  width: min(92vw, 340px);
-  height: 100%;
-  padding: 28px 24px;
-  box-sizing: border-box;
-  overflow-y: auto;
-  background: #111216;
-  color: #f4f1e9;
-  border-left: 1px solid rgba(255,255,255,.16);
-  box-shadow: -24px 0 60px rgba(0,0,0,.35);
-  animation: dil-panel-giris .22s ease-out;
-}
-.dil-ayarlar-ust {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding-bottom: 22px;
-  border-bottom: 1px solid rgba(255,255,255,.16);
-}
-.dil-ayarlar-ust h2 {
-  margin: 0;
-  font-family: inherit;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: .12em;
-}
-.dil-ayarlar-kapat {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 1px solid rgba(255,255,255,.3);
-  border-radius: 50%;
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  font-size: 28px;
-  font-weight: 300;
-  line-height: 1;
-  cursor: pointer;
-}
-.dil-ayarlar-dil {
-  margin: 28px 0 0;
-  padding: 0;
-  border: 0;
-}
-.dil-ayarlar-dil legend {
-  margin-bottom: 12px;
-  color: rgba(244,241,233,.62);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .16em;
-}
-.dil-ayarlar-secenek {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 52px;
-  border-bottom: 1px solid rgba(255,255,255,.1);
-  cursor: pointer;
-}
-.dil-ayarlar-secenek input { accent-color: var(--yellow, #d8bb2c); }
-.dil-ayarlar-secenek:has(input:checked) { color: var(--yellow, #d8bb2c); }
-.account-menu-links .account-menu-settings {
-  width: 100%;
-  padding: .7rem .6rem;
-  border: 0;
-  border-radius: 10px;
-  background: rgba(255,255,255,.05);
-  color: #fff;
-  text-align: left;
-  font: 700 .72rem/1 Arial, sans-serif;
-  letter-spacing: .05em;
-  cursor: pointer;
-}
-.account-menu-links .account-menu-settings:hover,
-.account-menu-links .account-menu-settings:focus-visible {
-  background: rgba(255,45,150,.18);
-  color: #ff8fd6;
-}
-.dil-ayarlar :focus-visible {
+.dil-dugme:focus-visible {
   outline: 2px solid var(--yellow, #d8bb2c);
   outline-offset: 3px;
 }
-@keyframes dil-panel-giris { from { transform: translateX(100%); } }
-@media (prefers-reduced-motion: reduce) {
-  .dil-ayarlar-panel { animation: none; }
+
+.dil-dugme-sabit {
+  position: fixed;
+  top: 22px;
+  left: 5vw;
+  z-index: 60;
+  background: rgba(11, 11, 13, .55);
+  color: #f4f1e9;
+}
+
+@media (max-width: 760px) {
+  .dil-sarma { gap: 5px; }
+  .dil-dugme {
+    position: static;
+    min-width: 34px;
+    min-height: 24px;
+    padding: 0 7px;
+    font-size: 9px;
+  }
 }

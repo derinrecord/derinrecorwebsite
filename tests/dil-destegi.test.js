@@ -182,14 +182,13 @@ test('dil motoru seçimi kalıcı saklar ve düğme üretir', () => {
   assert.match(dilKaynagi, /localStorage\.setItem\(DEPO/, 'seçim localStorage’a yazılmalı');
   assert.match(dilKaynagi, /localStorage\.getItem\(DEPO/, 'seçim geri okunmalı');
   assert.match(dilKaynagi, /URLSearchParams\(location\.search\)\.get\('dil'\)/, '?dil= bağlantısı desteklenmeli');
-  assert.match(dilKaynagi, /className = 'dil-ayarlar-ac'/, 'Ayarlar düğmesi oluşturulmalı');
+  assert.match(dilKaynagi, /className = 'dil-dugme'/, 'kompakt dil düğmesi oluşturulmalı');
   assert.match(dilKaynagi, /window\.DerinDil =/, 'global API yayınlanmalı');
 });
 
-test('Ayarlar genel gezinme ve hesap çekmecesinden açılır', () => {
-  assert.match(authKaynagi, /data-settings/);
-  assert.match(authKaynagi, /DerinDil\?\.ayarlariAc|DerinDil\.ayarlariAc/);
-  assert.match(authKaynagi, /shell\.ayarlar/);
-  assert.match(authKaynagi, /document\.querySelector\('\.dil-ayarlar-ac'\)/, 'panel kapanınca odak görünür Ayarlar düğmesine dönmeli');
+test('Ayarlar çekmecesi kaldırılmış ve dil doğrudan logo altından değiştirilir', () => {
+  assert.doesNotMatch(authKaynagi, /data-settings/);
+  assert.doesNotMatch(dilKaynagi, /dil-ayarlar-paneli/);
+  assert.match(dilKaynagi, /sarma\.append\(marka, dugme\)/, 'dil düğmesi logo altında aynı grupta olmalı');
   assert.match(dilKaynagi, /'shell\.beniHatirla': 'Remember me'/, 'girişte Beni Hatırla seçeneği İngilizceye çevrilmeli');
 });

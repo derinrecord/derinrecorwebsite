@@ -119,12 +119,12 @@ function ortam({ search = '', language = 'en-US', depoHata = false, automatic = 
   return { window, document, localStorage, kayit, olaylar, gozlemciler };
 }
 
-test('kayıtlı tercih yoksa tarayıcı dili İngilizce olsa da Türkçe açılır ve Ayarlar APIsi hazırdır', () => {
+test('kayıtlı tercih yoksa Türkçe açılır ve logonun altında kompakt dil düğmesi hazırlanır', () => {
   const { window, document } = ortam({ language: 'en-US' });
   assert.equal(document.documentElement.lang, 'tr');
-  assert.equal(typeof window.DerinDil.ayarlariAc, 'function');
-  assert.equal(typeof window.DerinDil.ayarlariKapat, 'function');
-  assert.ok(document.querySelector('#dil-ayarlar-paneli'));
+  assert.equal(window.DerinDil.ayarlariAc, undefined);
+  assert.equal(document.querySelector('#dil-ayarlar-paneli'), null);
+  assert.equal(document.querySelector('.dil-dugme').textContent, 'EN');
 });
 
 test('dil parametresi kaydı geçersiz kılar ve depo kapalıyken Türkçe açılış bozulmaz', () => {
@@ -134,39 +134,14 @@ test('dil parametresi kaydı geçersiz kılar ve depo kapalıyken Türkçe açı
   assert.equal(gizli.document.documentElement.lang, 'tr');
 });
 
-test('English seçimi saklanır, uygulanır ve derin:dil olayı yayınlanır', () => {
+test('kompakt düğme dili değiştirir, seçimi saklar ve hedef dili gösterir', () => {
   const { window, document, kayit, olaylar } = ortam();
-  window.DerinDil.ayarlariAc();
-  const english = document.querySelector('[value="en"]');
-  english.checked = true;
-  english.dispatchEvent({ type: 'change' });
+  document.querySelector('.dil-dugme').click();
   assert.equal(kayit.get('derin-dil'), 'en');
   assert.equal(document.documentElement.lang, 'en');
+  assert.equal(document.querySelector('.dil-dugme').textContent, 'TR');
   assert.equal(olaylar.at(-1).type, 'derin:dil');
   assert.equal(olaylar.at(-1).detail, 'en');
-});
-
-test('Escape paneli kapatır ve odağı açan düğmeye geri verir', () => {
-  const { window, document } = ortam();
-  const tetikleyici = document.createElement('button');
-  document.body.appendChild(tetikleyici);
-  tetikleyici.focus();
-  window.DerinDil.ayarlariAc(tetikleyici);
-  const panel = document.querySelector('#dil-ayarlar-paneli');
-  assert.equal(panel.hidden, false);
-  document.dispatchEvent({ type: 'keydown', key: 'Escape', preventDefault() {} });
-  assert.equal(panel.hidden, true);
-  assert.equal(document.activeElement, tetikleyici);
-});
-
-test('panel başlığı ve dil etiketi açık panelde seçilen dile geçer', () => {
-  const { window, document } = ortam();
-  window.DerinDil.ayarlariAc();
-  assert.equal(document.querySelector('h2').textContent, 'AYARLAR');
-  assert.equal(document.querySelector('legend').textContent, 'DİL');
-  window.DerinDil.uygula('en');
-  assert.equal(document.querySelector('h2').textContent, 'SETTINGS');
-  assert.equal(document.querySelector('legend').textContent, 'LANGUAGE');
 });
 
 test('otomatik mod sonradan eklenen metni çevirir ve option değerini Türkçe tutar', async () => {

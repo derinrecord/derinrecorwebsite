@@ -196,11 +196,6 @@
     'shell.cikis': 'LOG OUT',
     'shell.kapat': 'Close',
     'shell.hesapSistemi': 'ACCOUNT SYSTEM',
-    'shell.ayarlar': 'SETTINGS',
-    'ayarlar.baslik': 'SETTINGS',
-    'ayarlar.dil': 'LANGUAGE',
-    'ayarlar.turkce': 'Turkish',
-    'ayarlar.ingilizce': 'English',
     'shell.kullanicilar': 'USERS',
     'shell.bildirimler': 'NOTIFICATIONS',
     'shell.taleplerim': 'MY REQUESTS',
@@ -640,12 +635,7 @@
     'sd.basarisiz': 'Bir şeyler ters gitti, lütfen tekrar dene ya da WhatsApp/telefon ile ulaş.',
 
     'hesap.hesabim': 'HESABIM',
-    'shell.ayarlar': 'AYARLAR',
     'shell.beniHatirla': 'Beni hatırla',
-    'ayarlar.baslik': 'AYARLAR',
-    'ayarlar.dil': 'DİL',
-    'ayarlar.turkce': 'Türkçe',
-    'ayarlar.ingilizce': 'English',
     'auth.sozlesme': 'Kullanıcı Sözleşmesi',
     'auth.aydinlatma': 'Aydınlatma Metni',
     'auth.onay': '{sozlesme}’ni okudum ve kabul ediyorum; {aydinlatma}’ni okudum.',
@@ -666,8 +656,6 @@
   let trBaslik = '';
   let trAciklama = '';
   let dugme = null;
-  let ayarlar = null;
-  let sonTetikleyici = null;
 
   const aktif = () => document.documentElement.getAttribute('data-dil') === 'en';
 
@@ -815,143 +803,36 @@
     }
 
     if (dugme) {
-      dugme.textContent = metin('shell.ayarlar', 'AYARLAR');
-      const etiket = metin('shell.ayarlar', 'AYARLAR');
+      dugme.textContent = ing ? 'TR' : 'EN';
+      const etiket = ing ? 'Türkçeye geç' : 'Switch to English';
       dugme.setAttribute('aria-label', etiket);
       dugme.setAttribute('title', etiket);
-    }
-
-    if (ayarlar) {
-      ayarlar.radyolar.forEach(radyo => { radyo.checked = radyo.getAttribute('value') === (ing ? 'en' : 'tr'); });
-      ayarlar.baslik.textContent = metin('ayarlar.baslik', 'AYARLAR');
-      ayarlar.etiket.textContent = metin('ayarlar.dil', 'DİL');
-      ayarlar.secenekler[0].textContent = metin('ayarlar.turkce', 'Türkçe');
-      ayarlar.secenekler[1].textContent = metin('ayarlar.ingilizce', 'English');
-      ayarlar.perde.setAttribute('aria-label', ing ? 'Close settings' : 'Ayarları kapat');
-      ayarlar.kapat.setAttribute('aria-label', ing ? 'Close' : 'Kapat');
     }
 
     if (OTOMATIK) otomatikUygula();
   }
 
-  function ayarlariKapat() {
-    if (!ayarlar || ayarlar.kok.hidden) return;
-    ayarlar.kok.hidden = true;
-    if (dugme) dugme.setAttribute('aria-expanded', 'false');
-    const hedef = sonTetikleyici;
-    sonTetikleyici = null;
-    if (hedef && typeof hedef.focus === 'function') hedef.focus();
-  }
-
-  function ayarlariAc(tetikleyici) {
-    if (!ayarlar) ayarlarKur();
-    sonTetikleyici = tetikleyici || document.activeElement || dugme;
-    ayarlar.kok.hidden = false;
-    if (dugme) dugme.setAttribute('aria-expanded', 'true');
-    const secili = ayarlar.radyolar.find(radyo => radyo.checked) || ayarlar.radyolar[0];
-    if (secili && typeof secili.focus === 'function') secili.focus();
-  }
-
-  function ayarlarKur() {
-    const kok = document.createElement('div');
-    kok.id = 'dil-ayarlar-paneli';
-    kok.className = 'dil-ayarlar';
-    kok.hidden = true;
-    kok.setAttribute('data-dil-yok', '');
-
-    const perde = document.createElement('button');
-    perde.type = 'button';
-    perde.className = 'dil-ayarlar-perde';
-    perde.setAttribute('aria-label', 'Ayarları kapat');
-
-    const panel = document.createElement('aside');
-    panel.className = 'dil-ayarlar-panel';
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-modal', 'true');
-    panel.setAttribute('aria-labelledby', 'dil-ayarlar-baslik');
-
-    const ust = document.createElement('div');
-    ust.className = 'dil-ayarlar-ust';
-    const baslik = document.createElement('h2');
-    baslik.id = 'dil-ayarlar-baslik';
-    baslik.textContent = 'AYARLAR';
-    const kapat = document.createElement('button');
-    kapat.type = 'button';
-    kapat.className = 'dil-ayarlar-kapat';
-    kapat.textContent = '×';
-    kapat.setAttribute('aria-label', 'Kapat');
-    ust.append(baslik, kapat);
-
-    const alan = document.createElement('fieldset');
-    alan.className = 'dil-ayarlar-dil';
-    const etiket = document.createElement('legend');
-    etiket.textContent = 'DİL';
-    alan.appendChild(etiket);
-    const secenekler = [];
-    const radyolar = [['tr', 'Türkçe'], ['en', 'English']].map(([kod, ad]) => {
-      const satir = document.createElement('label');
-      satir.className = 'dil-ayarlar-secenek';
-      const radyo = document.createElement('input');
-      radyo.type = 'radio';
-      radyo.setAttribute('name', 'derin-dil-secimi');
-      radyo.setAttribute('value', kod);
-      radyo.checked = dilSec() === kod;
-      const yazi = document.createElement('span');
-      yazi.textContent = ad;
-      secenekler.push(yazi);
-      satir.append(radyo, yazi);
-      alan.appendChild(satir);
-      radyo.addEventListener('change', () => {
-        if (!radyo.checked) return;
-        try { localStorage.setItem(DEPO, kod); } catch (e) { /* gizli mod */ }
-        uygula(kod);
-        document.dispatchEvent(new CustomEvent('derin:dil', { detail: kod }));
-      });
-      return radyo;
-    });
-    panel.append(ust, alan);
-    kok.append(perde, panel);
-    document.body.appendChild(kok);
-    ayarlar = { kok, panel, perde, baslik, kapat, etiket, radyolar, secenekler };
-
-    perde.addEventListener('click', ayarlariKapat);
-    kapat.addEventListener('click', ayarlariKapat);
-    document.addEventListener('keydown', olay => {
-      if (kok.hidden) return;
-      if (olay.key === 'Escape') { olay.preventDefault(); ayarlariKapat(); return; }
-      if (olay.key !== 'Tab') return;
-      const odaklar = [kapat, ...radyolar];
-      const ilk = odaklar[0], son = odaklar[odaklar.length - 1];
-      if (olay.shiftKey && document.activeElement === ilk) { olay.preventDefault(); son.focus(); }
-      else if (!olay.shiftKey && document.activeElement === son) { olay.preventDefault(); ilk.focus(); }
-    });
-  }
-
   function dugmeKur() {
     dugme = document.createElement('button');
     dugme.type = 'button';
-    dugme.className = 'dil-ayarlar-ac';
+    dugme.className = 'dil-dugme';
     dugme.setAttribute('data-dil-yok', '');
-    dugme.setAttribute('aria-controls', 'dil-ayarlar-paneli');
-    dugme.setAttribute('aria-expanded', 'false');
-    dugme.addEventListener('click', () => ayarlariAc(dugme));
+    dugme.addEventListener('click', () => {
+      const yeni = aktif() ? 'tr' : 'en';
+      try { localStorage.setItem(DEPO, yeni); } catch (e) { /* gizli mod */ }
+      uygula(yeni);
+      document.dispatchEvent(new CustomEvent('derin:dil', { detail: yeni }));
+    });
 
-    const nav = document.querySelector('#nav, .site-header nav, header nav');
-    if (nav) {
-      const cta = nav.querySelector('.nav-cta');
-      nav.insertBefore(dugme, cta || null);
-      return;
-    }
     const marka = document.querySelector('header .wordmark');
     if (marka && marka.parentNode) {
       const sarma = document.createElement('div');
       sarma.className = 'dil-sarma';
       marka.parentNode.insertBefore(sarma, marka);
-      sarma.appendChild(dugme);
-      sarma.appendChild(marka);
+      sarma.append(marka, dugme);
       return;
     }
-    dugme.classList.add('dil-ayarlar-ac-sabit');
+    dugme.classList.add('dil-dugme-sabit');
     document.body.appendChild(dugme);
   }
 
@@ -960,12 +841,9 @@
     metin,
     cevir,
     otomatik: OTOMATIK,
-    uygula,
-    ayarlariAc,
-    ayarlariKapat
+    uygula
   };
 
-  ayarlarKur();
   dugmeKur();
   const baslangic = dilSec();
   uygula(baslangic);
