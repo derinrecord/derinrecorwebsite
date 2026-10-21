@@ -105,7 +105,10 @@
 }
 .dil-ayarlar-ust h2 {
   margin: 0;
-  font: 800 18px/1.1 inherit;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
   letter-spacing: .12em;
 }
 .dil-ayarlar-kapat {
@@ -118,7 +121,10 @@
   border-radius: 50%;
   background: transparent;
   color: inherit;
-  font: 300 28px/1 inherit;
+  font-family: inherit;
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
   cursor: pointer;
 }
 .dil-ayarlar-dil {

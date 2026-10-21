@@ -217,6 +217,7 @@
     'shell.girisBaslik': 'SIGN IN TO YOUR ACCOUNT',
     'shell.kayitAciklama': 'Your demo access opens after an administrator approves your registration.',
     'shell.girisAciklama': 'Sign in to reach the demo notes.',
+    'shell.beniHatirla': 'Remember me',
     'shell.adSoyad': 'FULL NAME',
     'shell.eposta': 'EMAIL',
     'shell.sifre': 'PASSWORD',
@@ -640,6 +641,7 @@
 
     'hesap.hesabim': 'HESABIM',
     'shell.ayarlar': 'AYARLAR',
+    'shell.beniHatirla': 'Beni hatırla',
     'ayarlar.baslik': 'AYARLAR',
     'ayarlar.dil': 'DİL',
     'ayarlar.turkce': 'Türkçe',
