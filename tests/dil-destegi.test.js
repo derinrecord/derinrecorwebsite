@@ -190,5 +190,6 @@ test('Ayarlar genel gezinme ve hesap çekmecesinden açılır', () => {
   assert.match(authKaynagi, /data-settings/);
   assert.match(authKaynagi, /DerinDil\?\.ayarlariAc|DerinDil\.ayarlariAc/);
   assert.match(authKaynagi, /shell\.ayarlar/);
+  assert.match(authKaynagi, /document\.querySelector\('\.dil-ayarlar-ac'\)/, 'panel kapanınca odak görünür Ayarlar düğmesine dönmeli');
   assert.match(dilKaynagi, /'shell\.beniHatirla': 'Remember me'/, 'girişte Beni Hatırla seçeneği İngilizceye çevrilmeli');
 });
