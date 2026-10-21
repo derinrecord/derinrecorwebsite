@@ -5,20 +5,22 @@
   const config = window.DERIN_CONFIG || {};
   const configured = Boolean(config.supabaseUrl && config.supabasePublishableKey && window.supabase);
   const HATIRLA_ANAHTARI = 'derin-auth-hatirla';
-  let hatirlaTercihi = localStorage.getItem(HATIRLA_ANAHTARI) === '1';
+  const kaliciDepo = typeof localStorage === 'undefined' ? null : localStorage;
+  const geciciDepo = typeof sessionStorage === 'undefined' ? null : sessionStorage;
+  let hatirlaTercihi = kaliciDepo?.getItem(HATIRLA_ANAHTARI) === '1';
   const oturumDeposu = {
     getItem(anahtar) {
-      return hatirlaTercihi ? localStorage.getItem(anahtar) : sessionStorage.getItem(anahtar);
+      return (hatirlaTercihi ? kaliciDepo : geciciDepo)?.getItem(anahtar) ?? null;
     },
     setItem(anahtar, deger) {
-      const aktifDepo = hatirlaTercihi ? localStorage : sessionStorage;
-      const digerDepo = hatirlaTercihi ? sessionStorage : localStorage;
-      aktifDepo.setItem(anahtar, deger);
-      digerDepo.removeItem(anahtar);
+      const aktifDepo = hatirlaTercihi ? kaliciDepo : geciciDepo;
+      const digerDepo = hatirlaTercihi ? geciciDepo : kaliciDepo;
+      aktifDepo?.setItem(anahtar, deger);
+      digerDepo?.removeItem(anahtar);
     },
     removeItem(anahtar) {
-      localStorage.removeItem(anahtar);
-      sessionStorage.removeItem(anahtar);
+      kaliciDepo?.removeItem(anahtar);
+      geciciDepo?.removeItem(anahtar);
     }
   };
   const state = { client: null, user: null, profile: null, configured };
