@@ -7,7 +7,7 @@
 <meta name="description" content="Bir performans müziğinin enerji eğrisini gör: ortalama enerji, tempo ve en yoğun bölüm.">
 <link rel="stylesheet" href="branch.css">
 <link rel="stylesheet" href="auth.css?v=20261017">
-<link rel="stylesheet" href="energy-map.css?v=7">
+<link rel="stylesheet" href="energy-map.css?v=15">
 <link rel="stylesheet" href="mobil.css?v=1">
 <link rel="stylesheet" href="glass.css?v=2" />
 </head>
@@ -16,24 +16,59 @@
 <header class="header"><a class="home" href="index.html">← ANA SAYFA</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
 <main class="analiz">
   <div class="analiz-bas">
-    <h1>Parçanın enerji eğrisi</h1>
-    <p class="analiz-aciklama">Ses dosyanı yükle. Grafik, parçanın nerede yükselip nerede düştüğünü gösterir; tempo ve en yoğun bölüm altta okunur.</p>
+    <div class="analiz-tanitim">
+      <p class="ust-etiket">[ analiz ]</p>
+      <div class="baslik-satir">
+        <h1>Parçanın enerji eğrisi</h1>
+        <button type="button" class="bilgi-dugme" id="bilgi-dugme" aria-expanded="false" aria-controls="analiz-bilgi" aria-label="Nasıl çalıştığını göster"><span aria-hidden="true">i</span></button>
+      </div>
+      <p class="analiz-aciklama" id="analiz-bilgi" hidden>Ses dosyanı yükle. Grafik, parçanın nerede yükselip nerede düştüğünü gösterir; ölçümler panelin üstünde okunur.</p>
+    </div>
     <div class="dosya">
       <label class="dosya-sec">Ses dosyası seç
         <input id="audio-file" type="file" accept="audio/*">
       </label>
-      <p class="dosya-adi" id="dosya-adi">Dosya seçilmedi</p>
     </div>
   </div>
 
-  <section class="bant" id="bant" aria-labelledby="bant-baslik">
-    <header class="bant-ust">
-      <h2 id="bant-baslik">Analiz bekleniyor</h2>
-      <p class="bant-durum" id="energy-status" role="status"></p>
+  <section class="konsol" id="bant" aria-labelledby="bant-baslik">
+    <div class="konsol-serit" aria-hidden="true"></div>
+
+    <header class="konsol-ust">
+      <div class="konsol-ad">
+        <p class="konsol-etiket">enerji haritası</p>
+        <h2 id="bant-baslik">Analiz bekleniyor</h2>
+        <p class="dosya-kunye" id="dosya-adi" hidden></p>
+        <p class="bant-durum" id="energy-status" role="status"></p>
+      </div>
+      <ul class="olcumler" aria-label="Ölçümler">
+        <li><span>ortalama</span><b id="avg">—</b></li>
+        <li><span>tempo</span><b><span id="bpm">—</span><em class="birim" id="bpm-birim" hidden>BPM</em></b></li>
+        <li><span>tepe</span><b id="tepe">—</b></li>
+      </ul>
     </header>
+
+    <div class="konsol-satir">
+      <ul class="anahtar">
+        <li><i class="isaret isaret-cubuk" aria-hidden="true"></i>enerji</li>
+        <li><i class="isaret isaret-ort" aria-hidden="true"></i>ortalama</li>
+        <li><i class="isaret isaret-tepe" aria-hidden="true"></i>en yoğun</li>
+      </ul>
+      <div class="bantlar">
+        <div class="bantlar-cizgi" id="bantlar-cizgi" aria-hidden="true">
+          <i data-band="dusuk"></i><i data-band="orta"></i><i data-band="yuksek"></i>
+        </div>
+        <p class="bantlar-yazi">
+          <span data-band-yazi="dusuk">düşük —</span>
+          <span data-band-yazi="orta">orta —</span>
+          <span data-band-yazi="yuksek">yüksek —</span>
+        </p>
+      </div>
+    </div>
 
     <div class="bant-grafik">
       <canvas id="energy-chart" role="img" tabindex="0" aria-label="Parçanın enerji dağılım grafiği"></canvas>
+      <span class="oynat-imlec" id="oynat-imlec" aria-hidden="true"></span>
       <div class="bant-bos" id="bant-bos">
         <p>Ses dosyasını buraya bırak</p>
         <small>ya da yukarıdan seç — mp3, m4a, wav</small>
@@ -47,28 +82,7 @@
         <input class="konum" id="konum" type="range" min="0" max="1000" step="1" value="0" aria-label="Parçadaki konum" disabled>
         <p class="zaman"><span id="gecen">0:00</span> / <span id="sure">0:00</span></p>
       </div>
-      <ul class="anahtar">
-        <li><span class="isaret isaret-cubuk" aria-hidden="true"></span>enerji</li>
-        <li><span class="isaret isaret-ort" aria-hidden="true"></span>ortalama</li>
-        <li><span class="isaret isaret-tepe" aria-hidden="true"></span>en yoğun bölüm</li>
-      </ul>
-    </div>
-  </section>
-
-  <section class="sayaclar" aria-label="Ölçümler">
-    <div class="sayac"><p>Ortalama enerji</p><b id="avg">—</b></div>
-    <div class="sayac"><p>Tempo</p><b><span id="bpm">—</span><em class="birim" id="bpm-birim" hidden>BPM</em></b></div>
-    <div class="sayac"><p>En yoğun bölüm</p><b id="tepe">—</b></div>
-    <div class="bantlar">
-      <p class="bantlar-not">Sürenin enerji bantlarına dağılımı</p>
-      <div class="bantlar-cizgi" id="bantlar-cizgi">
-        <i data-band="dusuk"></i><i data-band="orta"></i><i data-band="yuksek"></i>
-      </div>
-      <p class="bantlar-yazi">
-        <span data-band-yazi="dusuk">düşük —</span>
-        <span data-band-yazi="orta">orta —</span>
-        <span data-band-yazi="yuksek">yüksek —</span>
-      </p>
+      <p class="oynatici-not">grafiğe tıkla · ok tuşlarıyla gez</p>
     </div>
   </section>
 
@@ -77,6 +91,6 @@
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js?v=20261019b"></script>
-<script src="energy-map.js?v=13"></script>
+<script src="energy-map.js?v=20"></script>
 </body>
 </html>

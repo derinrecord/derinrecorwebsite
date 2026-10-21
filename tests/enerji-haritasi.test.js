@@ -21,8 +21,8 @@ test('salon önizlemesi ve canlı spektrum geri gelmez', () => {
     assert.ok(!/arena/i.test(icerik), ad + ' → salon önizlemesi izi olmamalı');
     assert.ok(!/spektrum/i.test(icerik), ad + ' → spektrum izi olmamalı');
   });
-  // Ses zinciri (yankı + filtre) ve animasyon döngüsü tamamen çıkarıldı.
-  ['getByteFrequencyData', 'createConvolver', 'createBiquadFilter', 'requestAnimationFrame'].forEach(ad =>
+  // Ses zinciri (yankı + filtre) ve canlı spektrum tamamen çıkarıldı.
+  ['getByteFrequencyData', 'createConvolver', 'createBiquadFilter'].forEach(ad =>
     assert.ok(!js.includes(ad), 'energy-map.js → ' + ad + ' kullanılmamalı'));
 });
 
@@ -49,6 +49,36 @@ test('sürükle-bırak ve özel oynatıcı bağlı', () => {
     assert.ok(js.includes(olay), 'energy-map.js → ' + olay + ' dinlenmeli'));
   assert.match(html, /id="oynat"/, 'oynat düğmesi olmalı');
   assert.match(html, /id="konum"[^>]*type="range"/, 'konum kaydırıcısı olmalı');
+});
+
+test('oynatma imleci kare kare akar, duraklayınca durur', () => {
+  // timeupdate saniyede ~4 kez geldiği için imleç sıçrıyordu; artık yalnız
+  // oynatma sırasında dönen tek bir döngü imleci ve dolguyu ilerletir.
+  assert.match(js, /requestAnimationFrame\(kareCiz\)/, 'imleç döngüsü olmalı');
+  assert.match(js, /cancelAnimationFrame/, 'duraklayınca döngü iptal edilmeli');
+  assert.match(js, /if \(audio\.paused\)/, 'döngü çalmıyorken kendini durdurmalı');
+  assert.match(html, /id="oynat-imlec"/, 'imleç kendi katmanında olmalı');
+  assert.match(css, /\.oynat-imlec\s*\{/, 'imleç stili tanımlı olmalı');
+  assert.match(css, /will-change: transform/, 'imleç transform ile kaydırılmalı');
+});
+
+test('tanıtım açıklaması (i) düğmesiyle açılıp kapanır', () => {
+  // Bilgi yazısı sürekli görünmek yerine (i) düğmesinin arkasında durur.
+  assert.match(
+    html,
+    /id="bilgi-dugme"[^>]*aria-expanded="false"[^>]*aria-controls="analiz-bilgi"/,
+    '(i) düğmesi kapalı başlamalı ve açıklamayı işaret etmeli'
+  );
+  assert.match(html, /id="analiz-bilgi"[^>]*hidden/, 'açıklama başta gizli olmalı');
+  assert.match(js, /aria-expanded/, 'düğme durumu güncellenmeli');
+  assert.match(js, /bilgiMetni\.hidden = !acik/, 'açıklama gizlenip gösterilmeli');
+  assert.match(js, /Escape/, 'Escape ile kapanabilmeli');
+  // Simge, marka oynatıcısındaki pembe bilgi işaretiyle (.mk-info) aynı dilde.
+  const blok = css.match(/\.bilgi-dugme\s*\{([\s\S]*?)\}/);
+  assert.ok(blok, '(i) düğmesi stili tanımlı olmalı');
+  assert.match(blok[1], /background:\s*var\(--pink\)/, 'simge pembe olmalı');
+  assert.match(blok[1], /color:\s*var\(--cream\)/, 'i harfi krem olmalı');
+  assert.match(blok[1], /font-style:\s*normal/, 'marka işareti eğik olmamalı');
 });
 
 test('stil ve betik dosyaları sürüm etiketiyle yüklenir', () => {

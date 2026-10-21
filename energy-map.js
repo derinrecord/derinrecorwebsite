@@ -19,22 +19,45 @@
   const sureEl = document.querySelector('#sure');
   const oynatBtn = document.querySelector('#oynat');
   const konum = document.querySelector('#konum');
+  const oynatImlec = document.querySelector('#oynat-imlec');
   const bantCizgi = [...document.querySelectorAll('#bantlar-cizgi i')];
   const bantYazi = Object.fromEntries(
     [...document.querySelectorAll('[data-band-yazi]')].map(el => [el.dataset.bandYazi, el])
   );
 
+  /* ---------------- tanıtım açıklaması (i) ---------------- */
+
+  const bilgiDugme = document.querySelector('#bilgi-dugme');
+  const bilgiMetni = document.querySelector('#analiz-bilgi');
+  if (bilgiDugme && bilgiMetni) {
+    const bilgiAyarla = acik => {
+      bilgiDugme.setAttribute('aria-expanded', String(acik));
+      bilgiDugme.setAttribute('aria-label', acik ? 'Açıklamayı kapat' : 'Nasıl çalıştığını göster');
+      bilgiMetni.hidden = !acik;
+    };
+    bilgiDugme.addEventListener('click', () =>
+      bilgiAyarla(bilgiDugme.getAttribute('aria-expanded') !== 'true')
+    );
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || bilgiDugme.getAttribute('aria-expanded') !== 'true') return;
+      bilgiAyarla(false);
+      bilgiDugme.focus();
+    });
+  }
+
   const DILIM = 160;
+  const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
   const renk = {
-    zemin: '#f4f1e9',
-    izgara: 'rgba(11, 11, 13, .09)',
-    ayrac: 'rgba(11, 11, 13, .2)',
-    taban: 'rgba(11, 11, 13, .5)',
-    eksen: 'rgba(11, 11, 13, .5)',
-    metin: '#4a443f',
-    ortalama: '#a8800c',
+    zemin: '#0f0e12',
+    izgara: 'rgba(244, 241, 233, .07)',
+    dikey: 'rgba(244, 241, 233, .08)',
+    taban: 'rgba(244, 241, 233, .3)',
+    eksen: '#6f6a75',
+    metin: '#b9b4bd',
+    ortalama: '#f4f1e9',
     tepe: '#cb2468',
-    imlec: '#ff352e'
+    vurgu: '#f4f1e9',
+    ipucu: '#17151a'
   };
 
   const durum_ = { values: [], average: 0, duration: 0, peakStart: 0, peakSpan: 8, hover: -1, hazir: false };
@@ -56,139 +79,231 @@
 
   function olcum() {
     const w = canvas.clientWidth || 640;
-    const h = canvas.clientHeight || 360;
+    const h = canvas.clientHeight || 330;
     const dpr = Math.min(3, window.devicePixelRatio || 1);
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const sol = 4;
-    const sag = w - (w < 480 ? 34 : 44);
-    const ust = 20;
-    const alt = h - 30;
+    // Çubuklar panelin iki kenarına dayanır: grafik tam genişlik, altta zaman şeridi.
+    const sol = 0;
+    const sag = w;
+    const ust = 16;
+    const alt = h - 26;
     return { w, h, sol, sag, ust, alt, gw: sag - sol, gh: alt - ust };
   }
 
   const y = (deger, m) => m.alt - deger * m.gh;
 
+  // Dar ekranda ölçü bölmesi sayısı azalır: etiketler üst üste binmesin.
+  const bolme = m => (m.gw < 520 ? 4 : 8);
+
   function izgara(m) {
+    // Taban halesi: zemine derinlik veren çok hafif pembe ışık.
+    const hale = ctx.createRadialGradient(
+      m.gw / 2, m.alt, 0,
+      m.gw / 2, m.alt, Math.max(m.gw * 0.55, 180)
+    );
+    hale.addColorStop(0, 'rgba(203, 36, 104, .18)');
+    hale.addColorStop(.55, 'rgba(203, 36, 104, .06)');
+    hale.addColorStop(1, 'rgba(203, 36, 104, 0)');
+    ctx.fillStyle = hale;
+    ctx.fillRect(m.sol, m.ust, m.gw, m.gh);
+
+    ctx.lineWidth = 1;
+    const adim = bolme(m);
+
+    // yatay ölçü çizgileri
+    ctx.strokeStyle = renk.izgara;
     [0.25, 0.5, 0.75].forEach(oran => {
       const py = Math.round(y(oran, m)) + .5;
-      ctx.strokeStyle = renk.izgara;
-      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(m.sol, py);
       ctx.lineTo(m.sag, py);
       ctx.stroke();
     });
 
-    // düşük / orta / yüksek band ayraçları
-    ctx.strokeStyle = renk.ayrac;
-    ctx.setLineDash([3, 6]);
-    [0.33, 0.66].forEach(oran => {
-      const py = Math.round(y(oran, m)) + .5;
-      ctx.beginPath();
-      ctx.moveTo(m.sol, py);
-      ctx.lineTo(m.sag, py);
-      ctx.stroke();
+    // dikey ölçü çizgileri: kesikli, ölçüm cihazı ızgarası gibi
+    const dikeyX = [];
+    for (let i = 1; i < adim; i++) dikeyX.push(Math.round(m.sol + (m.gw * i) / adim) + .5);
+    ctx.strokeStyle = renk.dikey;
+    ctx.setLineDash([2, 6]);
+    ctx.beginPath();
+    dikeyX.forEach(px => {
+      ctx.moveTo(px, m.ust);
+      ctx.lineTo(px, m.alt);
     });
+    ctx.stroke();
     ctx.setLineDash([]);
 
-    if (!durum_.values.length) return;
-
-    ctx.strokeStyle = renk.taban;
-    ctx.lineWidth = 1.5;
+    // kesişim düğümleri: ince artı işaretleri
+    ctx.strokeStyle = 'rgba(244, 241, 233, .24)';
     ctx.beginPath();
-    ctx.moveTo(m.sol, Math.round(m.alt) + .5);
-    ctx.lineTo(m.sag, Math.round(m.alt) + .5);
+    [0.25, 0.5, 0.75].forEach(oran => {
+      const py = Math.round(y(oran, m)) + .5;
+      dikeyX.forEach(px => {
+        ctx.moveTo(px - 2.5, py);
+        ctx.lineTo(px + 2.5, py);
+        ctx.moveTo(px, py - 2.5);
+        ctx.lineTo(px, py + 2.5);
+      });
+    });
+    ctx.stroke();
+
+    // taban çizgisi
+    ctx.strokeStyle = renk.taban;
+    const py = Math.round(m.alt) + .5;
+    ctx.beginPath();
+    ctx.moveTo(m.sol, py);
+    ctx.lineTo(m.sag, py);
+    ctx.stroke();
+
+    // zaman bölmelerinde kısa tikler
+    ctx.strokeStyle = 'rgba(244, 241, 233, .22)';
+    ctx.beginPath();
+    for (let i = 0; i <= adim; i++) {
+      const px = Math.min(m.sag - 1, Math.round(m.sol + (m.gw * i) / adim)) + .5;
+      ctx.moveTo(px, m.alt + 1);
+      ctx.lineTo(px, m.alt + 5);
+    }
+    ctx.stroke();
+
+    // üst ölçüm rayı: ince hat + düzenli tikler
+    const ray = m.ust - 7;
+    ctx.strokeStyle = 'rgba(244, 241, 233, .16)';
+    ctx.beginPath();
+    ctx.moveTo(m.sol, ray + .5);
+    ctx.lineTo(m.sag, ray + .5);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(244, 241, 233, .13)';
+    ctx.beginPath();
+    for (let x = 0; x <= m.gw; x += 16) {
+      const px = Math.min(m.sag - 1, Math.round(m.sol + x)) + .5;
+      ctx.moveTo(px, ray + .5);
+      ctx.lineTo(px, ray + (x % 96 === 0 ? 5.5 : 2.5));
+    }
     ctx.stroke();
   }
 
-  function olcek(m) {
-    ctx.font = '600 10px Arial, Helvetica, sans-serif';
-    ctx.fillStyle = renk.eksen;
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    [['yüksek', 0.83], ['orta', 0.5], ['düşük', 0.17]].forEach(([etiket, oran]) => {
-      ctx.fillText(etiket, m.w - 4, y(oran, m));
-    });
+  /* Çubukların üzerine ince yatay tarama çizgileri: LED/ölçüm ekranı dokusu.
+     Koyu çizgiler sütunları böler, seyrek açık çizgiler derinlik verir. */
+  function tarama(m) {
+    ctx.fillStyle = 'rgba(11, 10, 14, .5)';
+    for (let yy = m.alt - 2; yy > m.ust; yy -= 3) ctx.fillRect(m.sol, yy, m.gw, 1);
+    ctx.fillStyle = 'rgba(244, 241, 233, .045)';
+    for (let yy = m.alt - 2; yy > m.ust; yy -= 12) ctx.fillRect(m.sol, yy, m.gw, 1);
+  }
 
+  function zamanEkseni(m) {
     if (!durum_.duration) return;
-
-    const adim = 8;
+    const adim = bolme(m);
+    ctx.font = `600 9px ${MONO}`;
+    ctx.fillStyle = renk.eksen;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     for (let i = 0; i <= adim; i++) {
       const px = m.sol + (m.gw * i) / adim;
-      const buyuk = i % 2 === 0;
-      ctx.strokeStyle = buyuk ? 'rgba(11,11,13,.38)' : 'rgba(11,11,13,.2)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(px, m.alt + 4);
-      ctx.lineTo(px, m.alt + (buyuk ? 10 : 7));
-      ctx.stroke();
-      if (buyuk) {
-        ctx.fillStyle = renk.eksen;
-        const lx = Math.min(m.sag - 12, Math.max(m.sol + 12, px));
-        ctx.fillText(zaman((durum_.duration * i) / adim), lx, m.h - 6);
-      }
+      const lx = Math.min(m.sag - 16, Math.max(m.sol + 16, px));
+      ctx.fillText(zaman((durum_.duration * i) / adim), lx, m.h - 8);
     }
+    ctx.textAlign = 'left';
   }
 
   function cubuklar(m) {
     const { values } = durum_;
     const slot = m.gw / DILIM;
-    const kalinlik = Math.max(1, slot * 0.68);
-    const dolgu = ctx.createLinearGradient(0, m.ust, 0, m.alt);
-    dolgu.addColorStop(0, '#2c2824');
-    dolgu.addColorStop(1, '#0b0b0d');
+    const kalinlik = Math.max(1, Math.round(slot * 0.62));
+
+    // Sarı taban → pembe orta → kırmızı tepe: kısa çubuklar sarı, uzunlar kırmızı uçlu.
+    const dolgu = ctx.createLinearGradient(0, m.alt, 0, m.ust);
+    dolgu.addColorStop(0, '#e6cb35');
+    dolgu.addColorStop(0.42, '#d8bb2c');
+    dolgu.addColorStop(0.74, '#cb2468');
+    dolgu.addColorStop(1, '#ff352e');
     ctx.fillStyle = dolgu;
 
+    // Neon hale: sütun siluetinin çevresine pembe ışık. Gövde zemin renginde
+    // doldurulur, böylece yalnızca kenarlardaki bulanıklık görünür.
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 53, 46, .75)';
+    ctx.shadowBlur = Math.min(16, Math.max(8, m.gh * 0.06));
+    ctx.fillStyle = renk.zemin;
+    ctx.beginPath();
     values.forEach((deger, i) => {
       const h = Math.max(0.012, deger) * m.gh;
       const bx = m.sol + i * slot + (slot - kalinlik) / 2;
-      ctx.fillRect(bx, m.alt - h, kalinlik, h);
+      ctx.rect(bx, m.alt - h, kalinlik, h);
+    });
+    ctx.fill();
+    ctx.restore();
+
+    // Üstü yuvarlatılmış ince sütunlar (yuvarlatma desteklenmezse düz çubuk).
+    const cubuk = (bx, by, w, h) => {
+      const r = Math.min(2, w / 2, h);
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') ctx.roundRect(bx, by, w, h, [r, r, 0, 0]);
+      else ctx.rect(bx, by, w, h);
+      ctx.fill();
+    };
+
+    let vurguX = -1;
+    values.forEach((deger, i) => {
+      const h = Math.max(0.012, deger) * m.gh;
+      const bx = m.sol + i * slot + (slot - kalinlik) / 2;
+      cubuk(bx, m.alt - h, kalinlik, h);
+      if (i === durum_.hover) vurguX = bx;
     });
 
-    // en yoğun bölüm: taban çizgisinin altında pembe işaret
-    ctx.fillStyle = renk.tepe;
-    ctx.fillRect(m.sol + durum_.peakStart * slot, m.alt + 1, durum_.peakSpan * slot, 3);
+    // LED ucu: tepe noktaları sıcak bir kontur çizgisi gibi parlar.
+    ctx.fillStyle = 'rgba(255, 246, 214, .88)';
+    values.forEach((deger, i) => {
+      const h = Math.max(0.012, deger) * m.gh;
+      if (h < 3) return;
+      const bx = m.sol + i * slot + (slot - kalinlik) / 2;
+      ctx.fillRect(bx, m.alt - h, kalinlik, 1.5);
+    });
+
+    // Üzerinde gezinilen dilim kremle öne çıkar.
+    if (vurguX >= 0) {
+      const h = Math.max(0.012, values[durum_.hover]) * m.gh;
+      ctx.fillStyle = renk.vurgu;
+      cubuk(vurguX, m.alt - h, kalinlik, h);
+    }
+
+    // en yoğun bölüm: tabanın altında köşeli ölçü işareti
+    const px0 = m.sol + durum_.peakStart * slot;
+    const px1 = px0 + Math.max(5, durum_.peakSpan * slot);
+    ctx.fillStyle = 'rgba(203, 36, 104, .9)';
+    ctx.fillRect(px0, m.alt + 2, px1 - px0, 2);
+    ctx.fillRect(px0, m.alt + 2, 1.5, 6);
+    ctx.fillRect(px1 - 1.5, m.alt + 2, 1.5, 6);
 
     // ortalama
     const ay = Math.round(y(durum_.average, m)) + .5;
     ctx.strokeStyle = renk.ortalama;
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 5]);
+    ctx.globalAlpha = .55;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
     ctx.beginPath();
     ctx.moveTo(m.sol, ay);
     ctx.lineTo(m.sag, ay);
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
 
     const etiket = `ort. ${yuzde(durum_.average)}`;
-    ctx.font = '700 10px Arial, Helvetica, sans-serif';
-    const genislik = ctx.measureText(etiket).width + 10;
-    ctx.fillStyle = renk.zemin;
-    ctx.fillRect(m.sol, ay - 16, genislik, 13);
+    ctx.font = `700 9px ${MONO}`;
+    const genislik = ctx.measureText(etiket).width + 14;
+    const ly = Math.max(m.ust, ay - 14);
+    ctx.fillStyle = renk.ipucu;
+    ctx.fillRect(m.sol + 10, ly, genislik, 14);
+    ctx.strokeStyle = 'rgba(244, 241, 233, .35)';
+    ctx.strokeRect(m.sol + 10.5, ly + .5, genislik - 1, 13);
     ctx.fillStyle = renk.ortalama;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(etiket, m.sol + 5, ay - 9.5);
-  }
-
-  function oynatmaCizgisi(m) {
-    if (!durum_.hazir || !durum_.duration) return;
-    const oran = Math.min(1, Math.max(0, audio.currentTime / durum_.duration));
-    const px = Math.min(m.sag - 1, Math.max(m.sol + 1, Math.round(m.sol + m.gw * oran))) + .5;
-    ctx.strokeStyle = renk.imlec;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(px, m.ust - 6);
-    ctx.lineTo(px, m.alt);
-    ctx.stroke();
-    ctx.fillStyle = renk.imlec;
-    ctx.fillRect(px - 3, m.ust - 10, 6, 6);
+    ctx.fillText(etiket, m.sol + 17, ly + 7.5);
   }
 
   function imlec(m) {
@@ -198,7 +313,7 @@
     const cx = Math.round(m.sol + i * slot + slot / 2) + .5;
     const deger = durum_.values[i];
 
-    ctx.strokeStyle = 'rgba(11,11,13,.35)';
+    ctx.strokeStyle = 'rgba(244, 241, 233, .28)';
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 4]);
     ctx.beginPath();
@@ -207,23 +322,25 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    ctx.fillStyle = renk.tepe;
+    const py = y(deger, m);
+    ctx.fillStyle = renk.vurgu;
     ctx.beginPath();
-    ctx.arc(cx, y(deger, m), 3.5, 0, Math.PI * 2);
+    ctx.arc(cx, py, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
     const metin = `${zaman((durum_.duration * i) / DILIM)} · ${yuzde(deger)}`;
-    ctx.font = '700 11px Arial, Helvetica, sans-serif';
-    const genislik = ctx.measureText(metin).width + 18;
-    const bx = Math.min(Math.max(cx - genislik / 2, m.sol), m.sag - genislik);
-    ctx.fillStyle = '#0b0b0d';
-    ctx.fillRect(bx, m.ust - 4, genislik, 22);
-    ctx.fillStyle = renk.tepe;
-    ctx.fillRect(bx, m.ust - 4, 3, 22);
-    ctx.fillStyle = '#f4f1e9';
+    ctx.font = `700 10px ${MONO}`;
+    const genislik = ctx.measureText(metin).width + 16;
+    const bx = Math.min(Math.max(cx - genislik / 2, m.sol + 2), m.sag - genislik - 2);
+    const by = Math.max(m.ust, py - 30);
+    ctx.fillStyle = renk.ipucu;
+    ctx.fillRect(bx, by, genislik, 20);
+    ctx.strokeStyle = 'rgba(244, 241, 233, .4)';
+    ctx.strokeRect(bx + .5, by + .5, genislik - 1, 19);
+    ctx.fillStyle = renk.vurgu;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(metin, bx + genislik / 2 + 1.5, m.ust + 7.5);
+    ctx.fillText(metin, bx + genislik / 2, by + 10.5);
   }
 
   function okumaYaz(i) {
@@ -242,11 +359,11 @@
     ctx.clearRect(0, 0, m.w, m.h);
     ctx.fillStyle = renk.zemin;
     ctx.fillRect(0, 0, m.w, m.h);
-    if (!durum_.values.length) return;
     izgara(m);
+    if (!durum_.values.length) return;
     cubuklar(m);
-    olcek(m);
-    oynatmaCizgisi(m);
+    tarama(m);
+    zamanEkseni(m);
     imlec(m);
   }
 
@@ -345,6 +462,37 @@
 
   /* ---------------- arayüz ---------------- */
 
+  function ilerlemeYaz() {
+    const oran = durum_.duration ? Math.min(1, Math.max(0, audio.currentTime / durum_.duration)) : 0;
+    konum.style.setProperty('--ilerleme', `${(oran * 100).toFixed(2)}%`);
+    if (oynatImlec) {
+      const gen = canvas.clientWidth || 0;
+      const px = Math.min(Math.max(0, gen - 2), oran * gen);
+      oynatImlec.style.transform = `translate3d(${px.toFixed(2)}px, 0, 0)`;
+    }
+  }
+
+  // timeupdate saniyede ~4 kez geldiği için bar sıçrıyordu. Çalarken imleç ve
+  // dolgu her karede bu döngüyle ilerler; durunca döngü tamamen kapanır.
+  let kare = 0;
+  function kareCiz() {
+    if (audio.paused) {
+      kare = 0;
+      return;
+    }
+    ilerlemeYaz();
+    kare = requestAnimationFrame(kareCiz);
+  }
+  function akisBaslat() {
+    if (kare) return;
+    kare = requestAnimationFrame(kareCiz);
+  }
+  function akisDur() {
+    if (kare) cancelAnimationFrame(kare);
+    kare = 0;
+    ilerlemeYaz();
+  }
+
   function boyutYaz(bytes) {
     if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1).replace('.', ',')} MB`;
     return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -372,6 +520,8 @@
     durum_.peakStart = 0;
     durum_.hover = -1;
     durum_.hazir = false;
+    akisDur();
+    panel.classList.remove('hazir');
     avgEl.textContent = '—';
     bpmEl.textContent = '—';
     bpmBirim.hidden = true;
@@ -380,13 +530,15 @@
     sureEl.textContent = '0:00';
     konum.value = '0';
     konum.disabled = true;
+    konum.style.setProperty('--ilerleme', '0%');
     oynatBtn.disabled = true;
     oynatBtn.textContent = '▶';
     oynatBtn.setAttribute('aria-label', 'Parçayı oynat');
     bosKatman.hidden = false;
     if (okuma) okuma.textContent = '';
     baslik.textContent = 'Analiz bekleniyor';
-    dosyaAdi.textContent = 'Dosya seçilmedi';
+    dosyaAdi.textContent = '';
+    dosyaAdi.hidden = true;
     bantCizgi.forEach(el => { el.style.flex = '0 0 0%'; });
     if (bantYazi.dusuk) bantYazi.dusuk.textContent = 'düşük —';
     if (bantYazi.orta) bantYazi.orta.textContent = 'orta —';
@@ -419,12 +571,15 @@
       sureEl.textContent = zaman(durum_.duration);
       baslik.textContent = secilen.name;
       dosyaAdi.textContent = `${zaman(durum_.duration)} · ${boyutYaz(secilen.size)}`;
+      dosyaAdi.hidden = false;
       bantlariYaz();
       bosKatman.hidden = true;
       konum.disabled = false;
       konum.value = '0';
+      ilerlemeYaz();
       oynatBtn.disabled = false;
       durum_.hazir = true;
+      panel.classList.add('hazir');
       durum.textContent = 'Bir noktaya tıkla; parça oradan çalsın.';
       canvas.setAttribute(
         'aria-label',
@@ -480,8 +635,10 @@
   audio.addEventListener('play', () => {
     oynatBtn.textContent = '❚❚';
     oynatBtn.setAttribute('aria-label', 'Parçayı duraklat');
+    akisBaslat();
   });
   const durduruldu = () => {
+    akisDur();
     oynatBtn.textContent = '▶';
     oynatBtn.setAttribute('aria-label', 'Parçayı oynat');
   };
@@ -489,20 +646,21 @@
   audio.addEventListener('ended', () => {
     durduruldu();
     konum.value = '1000';
-    draw();
+    ilerlemeYaz();
   });
 
   audio.addEventListener('timeupdate', () => {
     if (!durum_.duration) return;
     gecenEl.textContent = zaman(audio.currentTime);
     konum.value = String(Math.round((audio.currentTime / durum_.duration) * 1000));
-    draw();
+    // İmleç ve dolgu kare döngüsünde ilerliyor; burada yalnız süre yazılır.
   });
 
   konum.addEventListener('input', () => {
     if (!durum_.duration) return;
     audio.currentTime = (Number(konum.value) / 1000) * durum_.duration;
     gecenEl.textContent = zaman(audio.currentTime);
+    ilerlemeYaz();
     draw();
   });
 
@@ -574,7 +732,10 @@
     draw();
   });
 
-  window.addEventListener('resize', draw);
+  window.addEventListener('resize', () => {
+    draw();
+    ilerlemeYaz();
+  });
   sifirla();
   draw();
 })();
