@@ -33,6 +33,12 @@ test('sayfa tek grafik çizer, sesi gizli tutar', () => {
   assert.ok(!/<audio[^>]*controls/.test(html), 'tarayıcının kendi oynatıcısı gösterilmemeli');
   assert.match(js, /decodeAudioData/, 'ses dosyası Web Audio ile çözülmeli');
   assert.match(js, /DILIM = 160/, 'grafik 160 dilime bölünmeli');
+  // Grafik sütun dizisi değil, genel enerji akışını özetleyen ince bir hat.
+  assert.match(js, /quadraticCurveTo/, 'eğri düzgün yaylarla çizilmeli');
+  assert.match(js, /shadowBlur/, 'hat neon hale ile çizilmeli');
+  assert.ok(!js.includes('closePath'), 'alan kapatılıp boyanmamalı');
+  assert.match(html, /isaret-egri/, 'gösterge işareti hat olmalı');
+  assert.match(css, /\.isaret-egri\s*\{/, 'hat işareti stilli olmalı');
 });
 
 test('grafik klavye ve ekran okuyucu ile okunabilir', () => {

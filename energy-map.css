@@ -321,10 +321,13 @@
 .anahtar li::after { content: "]"; }
 
 .isaret { display: inline-block; flex: 0 0 auto; }
-.isaret-cubuk {
-  width: 8px;
-  height: 11px;
-  background: linear-gradient(180deg, #ff352e, #cb2468 55%, #d8bb2c);
+/* Enerji artık dolgusuz bir neon hattı: işaret de ince çizgiyi anlatır. */
+.isaret-egri {
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: #ff352e;
+  box-shadow: 0 0 6px rgba(255, 53, 46, .85);
 }
 .isaret-ort {
   width: 18px;
@@ -396,7 +399,7 @@
   pointer-events: none;
   background:
     linear-gradient(180deg, rgba(244, 241, 233, .05), transparent 16%),
-    radial-gradient(115% 95% at 50% 118%, rgba(203, 36, 104, .16), transparent 64%);
+    radial-gradient(115% 95% at 50% 118%, rgba(203, 36, 104, .06), transparent 62%);
 }
 
 canvas {

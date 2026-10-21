@@ -96,6 +96,14 @@
 
   const y = (deger, m) => m.alt - deger * m.gh;
 
+  // Görüntü için yumuşatma: beş komşu dilimin ağırlıklı ortalaması. Tek tek
+  // vuruşlar eğriyi testereye çevirmesin; parçanın genel akışı okunsun.
+  // Ölçülen değerler (ortalama, bantlar, hover metni) ham kalır.
+  const yumusakDeger = (i, v) => {
+    const d = k => v[Math.min(v.length - 1, Math.max(0, i + k))] ?? v[i];
+    return (d(-2) + 2 * d(-1) + 3 * v[i] + 2 * d(1) + d(2)) / 9;
+  };
+
   // Dar ekranda ölçü bölmesi sayısı azalır: etiketler üst üste binmesin.
   const bolme = m => (m.gw < 520 ? 4 : 8);
 
@@ -105,8 +113,8 @@
       m.gw / 2, m.alt, 0,
       m.gw / 2, m.alt, Math.max(m.gw * 0.55, 180)
     );
-    hale.addColorStop(0, 'rgba(203, 36, 104, .18)');
-    hale.addColorStop(.55, 'rgba(203, 36, 104, .06)');
+    hale.addColorStop(0, 'rgba(203, 36, 104, .10)');
+    hale.addColorStop(.55, 'rgba(203, 36, 104, .03)');
     hale.addColorStop(1, 'rgba(203, 36, 104, 0)');
     ctx.fillStyle = hale;
     ctx.fillRect(m.sol, m.ust, m.gw, m.gh);
@@ -186,15 +194,6 @@
     ctx.stroke();
   }
 
-  /* Çubukların üzerine ince yatay tarama çizgileri: LED/ölçüm ekranı dokusu.
-     Koyu çizgiler sütunları böler, seyrek açık çizgiler derinlik verir. */
-  function tarama(m) {
-    ctx.fillStyle = 'rgba(11, 10, 14, .5)';
-    for (let yy = m.alt - 2; yy > m.ust; yy -= 3) ctx.fillRect(m.sol, yy, m.gw, 1);
-    ctx.fillStyle = 'rgba(244, 241, 233, .045)';
-    for (let yy = m.alt - 2; yy > m.ust; yy -= 12) ctx.fillRect(m.sol, yy, m.gw, 1);
-  }
-
   function zamanEkseni(m) {
     if (!durum_.duration) return;
     const adim = bolme(m);
@@ -210,66 +209,58 @@
     ctx.textAlign = 'left';
   }
 
-  function cubuklar(m) {
+  // Enerji eğrisi: 160 dilimin hafifçe yumuşatılmış zarfı, dolgulu bir alan
+  // olarak çizilir. Sütunlar tek tek vuruşları (transient) andırıyordu; bu
+  // görünüm parçanın genel enerji akışını özetler.
+  function egri(m) {
     const { values } = durum_;
     const slot = m.gw / DILIM;
-    const kalinlik = Math.max(1, Math.round(slot * 0.62));
+    const noktalar = values.map((_, i) => ({
+      x: m.sol + i * slot + slot / 2,
+      y: y(Math.max(0.012, yumusakDeger(i, values)), m)
+    }));
 
-    // Sarı taban → pembe orta → kırmızı tepe: kısa çubuklar sarı, uzunlar kırmızı uçlu.
-    const dolgu = ctx.createLinearGradient(0, m.alt, 0, m.ust);
-    dolgu.addColorStop(0, '#e6cb35');
-    dolgu.addColorStop(0.42, '#d8bb2c');
-    dolgu.addColorStop(0.74, '#cb2468');
-    dolgu.addColorStop(1, '#ff352e');
-    ctx.fillStyle = dolgu;
-
-    // Neon hale: sütun siluetinin çevresine pembe ışık. Gövde zemin renginde
-    // doldurulur, böylece yalnızca kenarlardaki bulanıklık görünür.
-    ctx.save();
-    ctx.shadowColor = 'rgba(255, 53, 46, .75)';
-    ctx.shadowBlur = Math.min(16, Math.max(8, m.gh * 0.06));
-    ctx.fillStyle = renk.zemin;
-    ctx.beginPath();
-    values.forEach((deger, i) => {
-      const h = Math.max(0.012, deger) * m.gh;
-      const bx = m.sol + i * slot + (slot - kalinlik) / 2;
-      ctx.rect(bx, m.alt - h, kalinlik, h);
-    });
-    ctx.fill();
-    ctx.restore();
-
-    // Üstü yuvarlatılmış ince sütunlar (yuvarlatma desteklenmezse düz çubuk).
-    const cubuk = (bx, by, w, h) => {
-      const r = Math.min(2, w / 2, h);
+    // Noktaların orta noktalarından geçen kuadratik yaylar: keskin köşe yok.
+    const yolCiz = () => {
       ctx.beginPath();
-      if (typeof ctx.roundRect === 'function') ctx.roundRect(bx, by, w, h, [r, r, 0, 0]);
-      else ctx.rect(bx, by, w, h);
-      ctx.fill();
+      ctx.moveTo(noktalar[0].x, noktalar[0].y);
+      for (let i = 1; i < noktalar.length - 1; i++) {
+        const a = noktalar[i];
+        const b = noktalar[i + 1];
+        ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
+      }
+      const son = noktalar[noktalar.length - 1];
+      ctx.lineTo(son.x, son.y);
     };
 
-    let vurguX = -1;
-    values.forEach((deger, i) => {
-      const h = Math.max(0.012, deger) * m.gh;
-      const bx = m.sol + i * slot + (slot - kalinlik) / 2;
-      cubuk(bx, m.alt - h, kalinlik, h);
-      if (i === durum_.hover) vurguX = bx;
-    });
-
-    // LED ucu: tepe noktaları sıcak bir kontur çizgisi gibi parlar.
-    ctx.fillStyle = 'rgba(255, 246, 214, .88)';
-    values.forEach((deger, i) => {
-      const h = Math.max(0.012, deger) * m.gh;
-      if (h < 3) return;
-      const bx = m.sol + i * slot + (slot - kalinlik) / 2;
-      ctx.fillRect(bx, m.alt - h, kalinlik, 1.5);
-    });
-
-    // Üzerinde gezinilen dilim kremle öne çıkar.
-    if (vurguX >= 0) {
-      const h = Math.max(0.012, values[durum_.hover]) * m.gh;
-      ctx.fillStyle = renk.vurgu;
-      cubuk(vurguX, m.alt - h, kalinlik, h);
+    // Üzerinde gezinilen dilim: ince ölçüm kolonu.
+    if (durum_.hover >= 0 && durum_.hover < DILIM) {
+      ctx.fillStyle = 'rgba(244, 241, 233, .06)';
+      ctx.fillRect(m.sol + durum_.hover * slot, m.ust, slot, m.gh);
     }
+
+    // Hat: dolgusuz, ince neon çizgi. Referanstaki gibi parçanın enerji
+    // hattı okunur; alan boyanmadığı için grafik dalga yığını gibi durmaz.
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 53, 46, .85)';
+    ctx.shadowBlur = Math.min(18, Math.max(10, m.gh * 0.07));
+    ctx.strokeStyle = '#ff352e';
+    ctx.lineWidth = 1.8;
+    yolCiz();
+    ctx.stroke();
+    ctx.restore();
+
+    // Çizginin hemen altında çok soluk bir sıcaklık: hattı zeminden ayırır.
+    ctx.save();
+    ctx.globalAlpha = .16;
+    ctx.strokeStyle = '#ff8a5c';
+    ctx.lineWidth = 4;
+    yolCiz();
+    ctx.stroke();
+    ctx.restore();
 
     // en yoğun bölüm: tabanın altında köşeli ölçü işareti
     const px0 = m.sol + durum_.peakStart * slot;
@@ -322,10 +313,15 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    const py = y(deger, m);
+    // Nokta, parlak eğri kenarından ayrışsın diye koyu disk + krem çekirdek.
+    const py = y(yumusakDeger(i, durum_.values), m);
+    ctx.fillStyle = 'rgba(15, 14, 18, .85)';
+    ctx.beginPath();
+    ctx.arc(cx, py, 4, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = renk.vurgu;
     ctx.beginPath();
-    ctx.arc(cx, py, 2.5, 0, Math.PI * 2);
+    ctx.arc(cx, py, 2.4, 0, Math.PI * 2);
     ctx.fill();
 
     const metin = `${zaman((durum_.duration * i) / DILIM)} · ${yuzde(deger)}`;
@@ -361,8 +357,7 @@
     ctx.fillRect(0, 0, m.w, m.h);
     izgara(m);
     if (!durum_.values.length) return;
-    cubuklar(m);
-    tarama(m);
+    egri(m);
     zamanEkseni(m);
     imlec(m);
   }
