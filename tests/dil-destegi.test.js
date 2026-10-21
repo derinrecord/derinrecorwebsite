@@ -160,11 +160,22 @@ test('otomatik mod JS içerikli sayfalarda da çalışır', () => {
   assert.match(dilKaynagi, /setAttribute\('value', kirp\)/);
 });
 
-test('hukuki metinler İngilizce arayüzde Türkçe kaldığını açıkça söyler', () => {
+test('hukuki metinler Türkçe bağlayıcı ve tam İngilizce bilgilendirme blokları taşır', () => {
   ['gizlilik-politikasi.html', 'cerez-politikasi.html', 'kullanici-sozlesmesi.html', 'aydinlatma-metni.html'].forEach(sayfa => {
-    assert.match(oku(sayfa), /class="hk-dil-not" data-dil-yok/, sayfa + ' İngilizce not taşımalı');
+    const html = oku(sayfa);
+    assert.match(html, /class="hk-metin hk-tr"/, sayfa + ' Türkçe bağlayıcı blok taşımalı');
+    assert.match(html, /class="hk-metin hk-en" lang="en" data-dil-yok/, sayfa + ' İngilizce bilgilendirme bloğu taşımalı');
+    assert.match(html, /The Turkish version is legally binding/, sayfa + ' bağlayıcı sürümü açıklamalı');
+    const trBaslangic = html.indexOf('<div class="hk-metin hk-tr">');
+    const enBaslangic = html.indexOf('<div class="hk-metin hk-en"');
+    const trBlok = html.slice(trBaslangic, enBaslangic);
+    const enBlok = html.slice(enBaslangic, html.indexOf('</main>', enBaslangic));
+    assert.equal((enBlok.match(/<h2>/g) || []).length, (trBlok.match(/<h2>/g) || []).length, sayfa + ' İngilizce bölüm sayısı Türkçe ile eşleşmeli');
   });
-  assert.match(oku('hukuki.css'), /html\[data-dil="en"\] \.hk-dil-not/, 'not yalnızca İngilizce arayüzde görünmeli');
+  const css = oku('hukuki.css');
+  assert.match(css, /\.hk-en\s*\{[^}]*display:\s*none/s, 'İngilizce blok varsayılan olarak gizli olmalı');
+  assert.match(css, /html\[data-dil="en"\] \.hk-tr\s*\{[^}]*display:\s*none/s, 'İngilizce arayüzde Türkçe blok gizlenmeli');
+  assert.match(css, /html\[data-dil="en"\] \.hk-en\s*\{[^}]*display:\s*block/s, 'İngilizce arayüzde İngilizce blok görünmeli');
 });
 
 test('dil motoru seçimi kalıcı saklar ve düğme üretir', () => {
