@@ -14,9 +14,13 @@ function eslesir(el, secici) {
   return el.tagName.toLowerCase() === secici.toLowerCase();
 }
 
-function ortam({ search = '', language = 'en-US', depoHata = false } = {}) {
+function ortam({ search = '', language = 'en-US', depoHata = false, automatic = false } = {}) {
   const olaylar = [];
   const kayit = new Map();
+  const gozlemciler = [];
+  class MetinDugumu {
+    constructor(nodeValue) { this.nodeType = 3; this.nodeValue = nodeValue; this.parentElement = null; }
+  }
   class Eleman {
     constructor(tagName) {
       this.tagName = tagName.toUpperCase();
@@ -42,7 +46,15 @@ function ortam({ search = '', language = 'en-US', depoHata = false } = {}) {
     }
     getAttribute(ad) { return this.attributes.has(ad) ? this.attributes.get(ad) : null; }
     hasAttribute(ad) { return this.attributes.has(ad); }
-    appendChild(cocuk) { cocuk.parentNode = this; this.children.push(cocuk); return cocuk; }
+    appendChild(cocuk) {
+      const onceki = this.children[this.children.length - 1];
+      if (onceki) onceki.nextSibling = cocuk;
+      cocuk.parentNode = this;
+      cocuk.parentElement = this;
+      cocuk.nextSibling = null;
+      this.children.push(cocuk);
+      return cocuk;
+    }
     append(...cocuklar) { cocuklar.forEach(cocuk => this.appendChild(cocuk)); }
     insertBefore(cocuk, once) {
       cocuk.parentNode = this;
@@ -57,17 +69,23 @@ function ortam({ search = '', language = 'en-US', depoHata = false } = {}) {
     querySelector(secici) { return this.querySelectorAll(secici)[0] || null; }
     querySelectorAll(secici) {
       const sonuc = [];
-      const gez = kok => kok.children.forEach(cocuk => { if (eslesir(cocuk, secici)) sonuc.push(cocuk); gez(cocuk); });
+      const gez = kok => (kok.children || []).forEach(cocuk => {
+        if (cocuk.nodeType !== 1) return;
+        if (eslesir(cocuk, secici)) sonuc.push(cocuk);
+        gez(cocuk);
+      });
       gez(this);
       return sonuc;
     }
     closest() { return null; }
+    get firstChild() { return this.children[0] || null; }
     get classList() {
       return { add: ad => { if (!this.className.split(/\s+/).includes(ad)) this.className = `${this.className} ${ad}`.trim(); } };
     }
   }
 
   const documentElement = new Eleman('html');
+  if (automatic) documentElement.setAttribute('data-dil-otomatik', '');
   const body = new Eleman('body');
   documentElement.appendChild(body);
   const document = {
@@ -76,6 +94,7 @@ function ortam({ search = '', language = 'en-US', depoHata = false } = {}) {
     title: 'Derin Record',
     activeElement: body,
     createElement: ad => new Eleman(ad),
+    createTextNode: yazi => new MetinDugumu(yazi),
     querySelector: secici => documentElement.querySelector(secici),
     querySelectorAll: secici => documentElement.querySelectorAll(secici),
     addEventListener(tur, fn) { if (!this._listeners) this._listeners = new Map(); if (!this._listeners.has(tur)) this._listeners.set(tur, []); this._listeners.get(tur).push(fn); },
@@ -86,14 +105,18 @@ function ortam({ search = '', language = 'en-US', depoHata = false } = {}) {
     setItem(anahtar, deger) { if (depoHata) throw new Error('storage kapalı'); kayit.set(anahtar, String(deger)); }
   };
   const window = {};
+  class MutationObserver {
+    constructor(callback) { this.callback = callback; gozlemciler.push(this); }
+    observe() {}
+  }
   const context = {
     window, document, localStorage,
     location: { search }, navigator: { language }, URLSearchParams,
     CustomEvent: class { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } },
-    setTimeout, clearTimeout
+    setTimeout, clearTimeout, MutationObserver
   };
   vm.runInNewContext(KAYNAK, context);
-  return { window, document, localStorage, kayit, olaylar };
+  return { window, document, localStorage, kayit, olaylar, gozlemciler };
 }
 
 test('kayıtlı tercih yoksa tarayıcı dili İngilizce olsa da Türkçe açılır ve Ayarlar APIsi hazırdır', () => {
@@ -144,4 +167,23 @@ test('panel başlığı ve dil etiketi açık panelde seçilen dile geçer', () 
   window.DerinDil.uygula('en');
   assert.equal(document.querySelector('h2').textContent, 'SETTINGS');
   assert.equal(document.querySelector('legend').textContent, 'LANGUAGE');
+});
+
+test('otomatik mod sonradan eklenen metni çevirir ve option değerini Türkçe tutar', async () => {
+  const { window, document, gozlemciler } = ortam({ search: '?dil=en', automatic: true });
+  const div = document.createElement('div');
+  const divYazi = document.createTextNode('Henüz proje yok.');
+  div.appendChild(divYazi);
+  const option = document.createElement('option');
+  const optionYazi = document.createTextNode('Antrenör');
+  option.appendChild(optionYazi);
+  document.body.append(div, option);
+  gozlemciler[0].callback([{ type: 'childList', addedNodes: [div, option] }]);
+  await new Promise(resolve => setTimeout(resolve, 40));
+  assert.equal(divYazi.nodeValue, 'No projects yet.');
+  assert.equal(optionYazi.nodeValue, 'Coach');
+  assert.equal(option.getAttribute('value'), 'Antrenör');
+  window.DerinDil.uygula('tr');
+  assert.equal(divYazi.nodeValue, 'Henüz proje yok.');
+  assert.equal(optionYazi.nodeValue, 'Antrenör');
 });
