@@ -64,7 +64,11 @@
     if (!state.user) { coachAction.hidden = true; button.textContent = dilMetni('shell.giris', 'GİRİŞ YAP'); button.classList.remove('secondary'); signup.hidden = false; coachAction.textContent = dilMetni('shell.arastir', 'MÜZİĞİNİ ARAŞTIR'); return; }
     signup.hidden = true; coachAction.hidden = false;
     button.textContent = `${(state.profile?.full_name || state.user.email || dilMetni('hesap.hesabim', 'HESABIM')).toUpperCase()} · ${dilMetni('hesap.hesabim', 'HESABIM')}`;
-    menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a><a href="mp3-donusturucu.html">MP3 DÖNÜŞTÜRÜCÜ</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a>`;
+    menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a><a href="mp3-donusturucu.html">MP3 DÖNÜŞTÜRÜCÜ</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a><button class="account-menu-settings" type="button" data-settings>${dilMetni('shell.ayarlar', 'AYARLAR')}</button>`;
+    menu.querySelector('[data-settings]').addEventListener('click', event => {
+      closeMenu(menu);
+      window.DerinDil?.ayarlariAc(event.currentTarget);
+    });
     menuLinkleriniCevir(menu);
     menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || dilMetni('hesap.hesabim', 'HESABIM');
     sayaclariYaz();

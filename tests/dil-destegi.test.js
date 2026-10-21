@@ -30,6 +30,7 @@ const DINAMIK = [
 ];
 
 const dilKaynagi = oku('dil.js');
+const authKaynagi = oku('auth.js');
 const enBlok = dilKaynagi.slice(dilKaynagi.indexOf('const EN = {'), dilKaynagi.indexOf('const METIN = {'));
 const metinBlok = dilKaynagi.slice(dilKaynagi.indexOf('const METIN = {'), dilKaynagi.indexOf('const TR = {'));
 
@@ -162,6 +163,12 @@ test('dil motoru seçimi kalıcı saklar ve düğme üretir', () => {
   assert.match(dilKaynagi, /localStorage\.setItem\(DEPO/, 'seçim localStorage’a yazılmalı');
   assert.match(dilKaynagi, /localStorage\.getItem\(DEPO/, 'seçim geri okunmalı');
   assert.match(dilKaynagi, /URLSearchParams\(location\.search\)\.get\('dil'\)/, '?dil= bağlantısı desteklenmeli');
-  assert.match(dilKaynagi, /className = 'dil-dugme'/, 'düğme oluşturulmalı');
+  assert.match(dilKaynagi, /className = 'dil-ayarlar-ac'/, 'Ayarlar düğmesi oluşturulmalı');
   assert.match(dilKaynagi, /window\.DerinDil =/, 'global API yayınlanmalı');
+});
+
+test('Ayarlar genel gezinme ve hesap çekmecesinden açılır', () => {
+  assert.match(authKaynagi, /data-settings/);
+  assert.match(authKaynagi, /DerinDil\?\.ayarlariAc|DerinDil\.ayarlariAc/);
+  assert.match(authKaynagi, /shell\.ayarlar/);
 });

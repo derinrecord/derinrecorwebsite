@@ -1,5 +1,5 @@
-/* Dil düğmesi — her sayfada başlıkta duran küçük TR/EN anahtarı. */
-.dil-dugme {
+/* Ayarlar düğmesi — her sayfada aynı dil çekmecesini açar. */
+.dil-ayarlar-ac {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -20,18 +20,18 @@
   transition: opacity 0.2s, border-color 0.2s, color 0.2s;
   -webkit-tap-highlight-color: transparent;
 }
-.dil-dugme:hover,
-.dil-dugme:focus-visible {
+.dil-ayarlar-ac:hover,
+.dil-ayarlar-ac:focus-visible {
   opacity: 1;
   border-color: var(--yellow, #d8bb2c);
   color: var(--yellow, #d8bb2c);
 }
-.dil-dugme:focus-visible {
+.dil-ayarlar-ac:focus-visible {
   outline: 2px solid var(--yellow, #d8bb2c);
   outline-offset: 3px;
 }
-#nav .dil-dugme,
-.site-header nav .dil-dugme {
+#nav .dil-ayarlar-ac,
+.site-header nav .dil-ayarlar-ac {
   height: 37px;
   padding: 0 14px;
 }
@@ -43,7 +43,7 @@
 .header > .dil-sarma {
   margin-left: auto;
 }
-.dil-dugme-sabit {
+.dil-ayarlar-ac-sabit {
   position: fixed;
   top: 22px;
   right: 5vw;
@@ -52,14 +52,14 @@
   color: #f4f1e9;
 }
 @media (max-width: 760px) {
-  #nav .dil-dugme {
+  #nav .dil-ayarlar-ac {
     align-self: flex-start;
     min-width: 52px;
   }
   .dil-sarma {
     gap: 12px;
   }
-  .dil-dugme {
+  .dil-ayarlar-ac {
     min-width: 36px;
     height: 28px;
     padding: 0 8px;
@@ -143,6 +143,23 @@
 }
 .dil-ayarlar-secenek input { accent-color: var(--yellow, #d8bb2c); }
 .dil-ayarlar-secenek:has(input:checked) { color: var(--yellow, #d8bb2c); }
+.account-menu-links .account-menu-settings {
+  width: 100%;
+  padding: .7rem .6rem;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,.05);
+  color: #fff;
+  text-align: left;
+  font: 700 .72rem/1 Arial, sans-serif;
+  letter-spacing: .05em;
+  cursor: pointer;
+}
+.account-menu-links .account-menu-settings:hover,
+.account-menu-links .account-menu-settings:focus-visible {
+  background: rgba(255,45,150,.18);
+  color: #ff8fd6;
+}
 .dil-ayarlar :focus-visible {
   outline: 2px solid var(--yellow, #d8bb2c);
   outline-offset: 3px;

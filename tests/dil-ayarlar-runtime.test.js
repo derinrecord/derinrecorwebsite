@@ -135,3 +135,13 @@ test('Escape paneli kapatır ve odağı açan düğmeye geri verir', () => {
   assert.equal(panel.hidden, true);
   assert.equal(document.activeElement, tetikleyici);
 });
+
+test('panel başlığı ve dil etiketi açık panelde seçilen dile geçer', () => {
+  const { window, document } = ortam();
+  window.DerinDil.ayarlariAc();
+  assert.equal(document.querySelector('h2').textContent, 'AYARLAR');
+  assert.equal(document.querySelector('legend').textContent, 'DİL');
+  window.DerinDil.uygula('en');
+  assert.equal(document.querySelector('h2').textContent, 'SETTINGS');
+  assert.equal(document.querySelector('legend').textContent, 'LANGUAGE');
+});

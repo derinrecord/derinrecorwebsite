@@ -196,6 +196,11 @@
     'shell.cikis': 'LOG OUT',
     'shell.kapat': 'Close',
     'shell.hesapSistemi': 'ACCOUNT SYSTEM',
+    'shell.ayarlar': 'SETTINGS',
+    'ayarlar.baslik': 'SETTINGS',
+    'ayarlar.dil': 'LANGUAGE',
+    'ayarlar.turkce': 'Turkish',
+    'ayarlar.ingilizce': 'English',
     'shell.kullanicilar': 'USERS',
     'shell.bildirimler': 'NOTIFICATIONS',
     'shell.taleplerim': 'MY REQUESTS',
@@ -575,6 +580,11 @@
     'sd.basarisiz': 'Bir şeyler ters gitti, lütfen tekrar dene ya da WhatsApp/telefon ile ulaş.',
 
     'hesap.hesabim': 'HESABIM',
+    'shell.ayarlar': 'AYARLAR',
+    'ayarlar.baslik': 'AYARLAR',
+    'ayarlar.dil': 'DİL',
+    'ayarlar.turkce': 'Türkçe',
+    'ayarlar.ingilizce': 'English',
     'auth.sozlesme': 'Kullanıcı Sözleşmesi',
     'auth.aydinlatma': 'Aydınlatma Metni',
     'auth.onay': '{sozlesme}’ni okudum ve kabul ediyorum; {aydinlatma}’ni okudum.',
@@ -744,14 +754,20 @@
     }
 
     if (dugme) {
-      dugme.textContent = ing ? 'TR' : 'EN';
-      const etiket = ing ? 'Türkçeye geç' : 'Switch to English';
+      dugme.textContent = metin('shell.ayarlar', 'AYARLAR');
+      const etiket = metin('shell.ayarlar', 'AYARLAR');
       dugme.setAttribute('aria-label', etiket);
       dugme.setAttribute('title', etiket);
     }
 
     if (ayarlar) {
       ayarlar.radyolar.forEach(radyo => { radyo.checked = radyo.getAttribute('value') === (ing ? 'en' : 'tr'); });
+      ayarlar.baslik.textContent = metin('ayarlar.baslik', 'AYARLAR');
+      ayarlar.etiket.textContent = metin('ayarlar.dil', 'DİL');
+      ayarlar.secenekler[0].textContent = metin('ayarlar.turkce', 'Türkçe');
+      ayarlar.secenekler[1].textContent = metin('ayarlar.ingilizce', 'English');
+      ayarlar.perde.setAttribute('aria-label', ing ? 'Close settings' : 'Ayarları kapat');
+      ayarlar.kapat.setAttribute('aria-label', ing ? 'Close' : 'Kapat');
     }
 
     if (OTOMATIK) otomatikUygula();
@@ -810,6 +826,7 @@
     const etiket = document.createElement('legend');
     etiket.textContent = 'DİL';
     alan.appendChild(etiket);
+    const secenekler = [];
     const radyolar = [['tr', 'Türkçe'], ['en', 'English']].map(([kod, ad]) => {
       const satir = document.createElement('label');
       satir.className = 'dil-ayarlar-secenek';
@@ -820,6 +837,7 @@
       radyo.checked = dilSec() === kod;
       const yazi = document.createElement('span');
       yazi.textContent = ad;
+      secenekler.push(yazi);
       satir.append(radyo, yazi);
       alan.appendChild(satir);
       radyo.addEventListener('change', () => {
@@ -833,7 +851,7 @@
     panel.append(ust, alan);
     kok.append(perde, panel);
     document.body.appendChild(kok);
-    ayarlar = { kok, panel, kapat, radyolar };
+    ayarlar = { kok, panel, perde, baslik, kapat, etiket, radyolar, secenekler };
 
     perde.addEventListener('click', ayarlariKapat);
     kapat.addEventListener('click', ayarlariKapat);
@@ -851,14 +869,11 @@
   function dugmeKur() {
     dugme = document.createElement('button');
     dugme.type = 'button';
-    dugme.className = 'dil-dugme';
+    dugme.className = 'dil-ayarlar-ac';
     dugme.setAttribute('data-dil-yok', '');
-    dugme.addEventListener('click', () => {
-      const yeni = aktif() ? 'tr' : 'en';
-      try { localStorage.setItem(DEPO, yeni); } catch (e) { /* gizli mod */ }
-      uygula(yeni);
-      document.dispatchEvent(new CustomEvent('derin:dil', { detail: yeni }));
-    });
+    dugme.setAttribute('aria-controls', 'dil-ayarlar-paneli');
+    dugme.setAttribute('aria-expanded', 'false');
+    dugme.addEventListener('click', () => ayarlariAc(dugme));
 
     const nav = document.querySelector('#nav, .site-header nav, header nav');
     if (nav) {
@@ -875,7 +890,7 @@
       sarma.appendChild(marka);
       return;
     }
-    dugme.classList.add('dil-dugme-sabit');
+    dugme.classList.add('dil-ayarlar-ac-sabit');
     document.body.appendChild(dugme);
   }
 
