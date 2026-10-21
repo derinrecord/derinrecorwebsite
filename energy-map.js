@@ -1,4 +1,6 @@
 (() => {
+  // Dil: metinler dil.js sözlüğünden gelir; İngilizce seçiliyken çevrilir.
+  const C = metin => (window.DerinDil && window.DerinDil.cevir ? window.DerinDil.cevir(metin) : metin);
   const dosyaGirdi = document.querySelector('#audio-file');
   const audio = document.querySelector('#audio');
   const canvas = document.querySelector('#energy-chart');
@@ -32,7 +34,7 @@
   if (bilgiDugme && bilgiMetni) {
     const bilgiAyarla = acik => {
       bilgiDugme.setAttribute('aria-expanded', String(acik));
-      bilgiDugme.setAttribute('aria-label', acik ? 'Açıklamayı kapat' : 'Nasıl çalıştığını göster');
+      bilgiDugme.setAttribute('aria-label', C(acik ? 'Açıklamayı kapat' : 'Nasıl çalıştığını göster'));
       bilgiMetni.hidden = !acik;
     };
     bilgiDugme.addEventListener('click', () =>
@@ -283,7 +285,7 @@
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
 
-    const etiket = `ort. ${yuzde(durum_.average)}`;
+    const etiket = `${C('ort.')} ${yuzde(durum_.average)}`;
     ctx.font = `700 9px ${MONO}`;
     const genislik = ctx.measureText(etiket).width + 14;
     const ly = Math.max(m.ust, ay - 14);
@@ -347,7 +349,7 @@
     }
     const deger = durum_.values[i];
     const bant = deger < 0.33 ? 'düşük' : deger < 0.66 ? 'orta' : 'yüksek';
-    okuma.textContent = `${zaman((durum_.duration * i) / DILIM)}, enerji ${yuzde(deger)}, ${bant}.`;
+    okuma.textContent = `${zaman((durum_.duration * i) / DILIM)}, ${C('enerji')} ${yuzde(deger)}, ${C(bant)}.`;
   }
 
   function draw() {
@@ -502,7 +504,7 @@
     bantCizgi.forEach(el => {
       el.style.flex = `0 0 ${(sayim[el.dataset.band] / toplam) * 100}%`;
     });
-    const bantAdi = { dusuk: 'düşük', orta: 'orta', yuksek: 'yüksek' };
+    const bantAdi = { dusuk: C('düşük'), orta: C('orta'), yuksek: C('yüksek') };
     Object.entries(sayim).forEach(([ad, adet]) => {
       if (bantYazi[ad]) bantYazi[ad].textContent = `${bantAdi[ad]} ${yuzde(adet / toplam)}`;
     });
@@ -528,21 +530,21 @@
     konum.style.setProperty('--ilerleme', '0%');
     oynatBtn.disabled = true;
     oynatBtn.textContent = '▶';
-    oynatBtn.setAttribute('aria-label', 'Parçayı oynat');
+    oynatBtn.setAttribute('aria-label', C('Parçayı oynat'));
     bosKatman.hidden = false;
     if (okuma) okuma.textContent = '';
-    baslik.textContent = 'Analiz bekleniyor';
+    baslik.textContent = C('Analiz bekleniyor');
     dosyaAdi.textContent = '';
     dosyaAdi.hidden = true;
     bantCizgi.forEach(el => { el.style.flex = '0 0 0%'; });
-    if (bantYazi.dusuk) bantYazi.dusuk.textContent = 'düşük —';
-    if (bantYazi.orta) bantYazi.orta.textContent = 'orta —';
-    if (bantYazi.yuksek) bantYazi.yuksek.textContent = 'yüksek —';
+    if (bantYazi.dusuk) bantYazi.dusuk.textContent = `${C('düşük')} —`;
+    if (bantYazi.orta) bantYazi.orta.textContent = `${C('orta')} —`;
+    if (bantYazi.yuksek) bantYazi.yuksek.textContent = `${C('yüksek')} —`;
   }
 
   async function analizEt(secilen) {
     if (!secilen) return;
-    durum.textContent = 'Analiz ediliyor…';
+    durum.textContent = C('Analiz ediliyor…');
     try {
       if (!engine) engine = new (window.AudioContext || window.webkitAudioContext)();
       if (engine.state === 'suspended') await engine.resume();
@@ -575,15 +577,15 @@
       oynatBtn.disabled = false;
       durum_.hazir = true;
       panel.classList.add('hazir');
-      durum.textContent = 'Bir noktaya tıkla; parça oradan çalsın.';
+      durum.textContent = C('Bir noktaya tıkla; parça oradan çalsın.');
       canvas.setAttribute(
         'aria-label',
-        `Enerji dağılım grafiği: ortalama ${yuzde(durum_.average)}, tempo ${bpm ? `yaklaşık ${bpm} BPM` : 'ölçülemedi'}, en yoğun bölüm ${zaman((durum_.duration * durum_.peakStart) / DILIM)}. Ok tuşlarıyla bölümleri gez.`
+        C('Enerji dağılım grafiği') + `: ${C('ortalama')} ${yuzde(durum_.average)}, ${C('tempo')} ${bpm ? `${C('yaklaşık')} ${bpm} BPM` : C('ölçülemedi')}, ${C('en yoğun')} ${C('bölüm')} ${zaman((durum_.duration * durum_.peakStart) / DILIM)}. ${C('Ok tuşlarıyla bölümleri gez.')}`
       );
       draw();
     } catch (error) {
       sifirla();
-      durum.textContent = 'Bu dosya analiz edilemedi. Başka bir ses dosyası dene.';
+      durum.textContent = C('Bu dosya analiz edilemedi. Başka bir ses dosyası dene.');
       draw();
     }
   }
@@ -620,7 +622,7 @@
       try {
         await audio.play();
       } catch (error) {
-        durum.textContent = 'Parça başlatılamadı. Dosyayı yeniden seç.';
+        durum.textContent = C('Parça başlatılamadı. Dosyayı yeniden seç.');
       }
     } else {
       audio.pause();
@@ -629,13 +631,13 @@
 
   audio.addEventListener('play', () => {
     oynatBtn.textContent = '❚❚';
-    oynatBtn.setAttribute('aria-label', 'Parçayı duraklat');
+    oynatBtn.setAttribute('aria-label', C('Parçayı duraklat'));
     akisBaslat();
   });
   const durduruldu = () => {
     akisDur();
     oynatBtn.textContent = '▶';
-    oynatBtn.setAttribute('aria-label', 'Parçayı oynat');
+    oynatBtn.setAttribute('aria-label', C('Parçayı oynat'));
   };
   audio.addEventListener('pause', durduruldu);
   audio.addEventListener('ended', () => {
@@ -731,6 +733,20 @@
     draw();
     ilerlemeYaz();
   });
+
+  // Dil değişince panel yazıları yeniden kurulur (bant adları, durum, etiketler).
+  document.addEventListener('derin:dil', () => {
+    if (durum_.hazir) {
+      bantlariYaz();
+      durum.textContent = C('Bir noktaya tıkla; parça oradan çalsın.');
+    } else {
+      sifirla();
+    }
+    oynatBtn.setAttribute('aria-label', C(audio.paused ? 'Parçayı oynat' : 'Parçayı duraklat'));
+    if (bilgiDugme) bilgiDugme.setAttribute('aria-label', C(bilgiDugme.getAttribute('aria-expanded') === 'true' ? 'Açıklamayı kapat' : 'Nasıl çalıştığını göster'));
+    draw();
+  });
+
   sifirla();
   draw();
 })();

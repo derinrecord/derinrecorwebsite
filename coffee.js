@@ -1,5 +1,6 @@
 (() => {
   const byId = id => document.getElementById(id);
+  const dilMetni = (anahtar, varsayilan) => (window.DerinDil && window.DerinDil.metin ? window.DerinDil.metin(anahtar, varsayilan) : varsayilan);
   const client = window.supabase.createClient(
     window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
 
@@ -8,11 +9,11 @@
     const company = byId('cf-company').value.trim();
     const name = byId('cf-name').value.trim();
     const email = byId('cf-email').value.trim();
-    if (!company || !name || !email) { msg.style.color = '#ffb3b3'; msg.textContent = 'Şirket, yetkili ve e-posta alanları gerekli.'; return; }
+    if (!company || !name || !email) { msg.style.color = '#ffb3b3'; msg.textContent = dilMetni('cf.alanlar', 'Şirket, yetkili ve e-posta alanları gerekli.'); return; }
 
     byId('cf-send').disabled = true;
     msg.style.color = '#6ee7b0';
-    msg.textContent = 'Gönderiliyor…';
+    msg.textContent = dilMetni('cf.gonderiliyor', 'Gönderiliyor…');
 
     const { error } = await client.from('coffee_requests').insert({
       company, contact_name: name, email,
@@ -21,8 +22,8 @@
       message: byId('cf-note').value.trim() || null
     });
 
-    if (error) { msg.style.color = '#ffb3b3'; msg.textContent = 'Gönderilemedi: ' + error.message; byId('cf-send').disabled = false; return; }
-    msg.textContent = 'Talebiniz alındı. En kısa sürede size dönüş yapacağız.';
+    if (error) { msg.style.color = '#ffb3b3'; msg.textContent = dilMetni('cf.hata', 'Gönderilemedi: ') + error.message; byId('cf-send').disabled = false; return; }
+    msg.textContent = dilMetni('cf.tesekkur', 'Talebiniz alındı. En kısa sürede size dönüş yapacağız.');
     ['cf-company','cf-name','cf-email','cf-phone','cf-branch','cf-note'].forEach(i => byId(i).value = '');
     byId('cf-send').disabled = false;
   };
@@ -49,9 +50,14 @@
   if (!fiyatlar && toggle) toggle.style.display = 'none';
 
   const tl = n => Number(n).toLocaleString('tr-TR');
+  // Sayı + birim dile göre kurulur (İngilizcede tekil/çoğul ayrımı var).
+  const ing = () => !!(window.DerinDil && window.DerinDil.dil() === 'en');
+  const sube = (n, tekil) => (ing() ? (n === 1 || tekil ? 'branch' : 'branches') : 'şube');
   const aralik = p => p.max_branch
-    ? (p.min_branch === p.max_branch ? `${p.min_branch} şube` : `${p.min_branch}-${p.max_branch} şube`)
-    : `${p.min_branch}+ şube`;
+    ? (p.min_branch === p.max_branch
+      ? `${p.min_branch} ${sube(Number(p.min_branch))}`
+      : `${p.min_branch}-${p.max_branch} ${sube(0)}`)
+    : `${p.min_branch}+ ${sube(0)}`;
 
   let yillik = false;
 
@@ -60,15 +66,15 @@
       const f = fiyatlar && fiyatlar.find(x => x.id === p.id);
       const fiyat = f ? (yillik ? (f.yearly_price || f.monthly_price * 12) : f.monthly_price) : 0;
       const birim = yillik
-        ? (p.per_branch ? ' / şube / yıl' : ' / yıl')
-        : (p.per_branch ? ' / şube / ay' : ' / ay');
+        ? (p.per_branch ? ` / ${sube(1, true)} / ${ing() ? 'year' : 'yıl'}` : ` / ${ing() ? 'year' : 'yıl'}`)
+        : (p.per_branch ? ` / ${sube(1, true)} / ${ing() ? 'month' : 'ay'}` : ` / ${ing() ? 'month' : 'ay'}`);
       return `
       <article class="cf-plan${p.id === 'zincir' ? ' one' : ''}">
         ${p.id === 'zincir' ? '<span class="cf-rozet">EN ÇOK TERCİH EDİLEN</span>' : ''}
         <h3>${p.name}</h3>
         <p class="cf-branch">${aralik(p)}</p>
         ${f
-          ? `<p class="cf-price"><b>${tl(fiyat)}</b> TL<span>${birim}</span></p>`
+          ? `<p class="cf-price"><b>${tl(fiyat)}</b> ${ing() ? 'TRY' : 'TL'}<span>${birim}</span></p>`
           : `<p class="cf-price"><b style="font-size:20px">Teklif alın</b></p>`}
         <ul>${(p.features || []).map(x => `<li>${x}</li>`).join('')}</ul>
         <button data-plan="${p.id}">7 GÜN ÜCRETSİZ DENE</button>
@@ -85,6 +91,9 @@
       document.getElementById('cf-company')?.focus();
     });
   };
+
+  // Dil değişince plan kartları yeniden çizilir (sayı + birim metni dile bağlı).
+  document.addEventListener('derin:dil', () => { if (typeof ciz === 'function') ciz(); });
 
   const ay = document.getElementById('cf-ay');
   const yil = document.getElementById('cf-yil');

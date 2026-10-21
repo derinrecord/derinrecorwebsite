@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" data-baslik-en="Sound Design &amp; Film Scoring — Derin Record">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#17131a" />
     <title>Ses Tasarımı &amp; Film Scoring — Derin Record</title>
-    <meta name="description" content="Derin Record — filmler için ses tasarımı ve film scoring çalışmaları." />
+    <meta name="description" content="Derin Record — filmler için ses tasarımı ve film scoring çalışmaları." data-en="Derin Record — sound design and film scoring work for film and advertising." />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Ses Tasarımı & Film Scoring — Derin Record" />
     <meta property="og:description" content="Sinema ve reklam projeleri için ses tasarımı ve film scoring üretimi." />
@@ -87,11 +87,12 @@
 </style>
   
   <link rel="stylesheet" href="mobil.css?v=1">
+  <link rel="stylesheet" href="dil.css?v=9">
 </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
     <header class="header">
-      <a class="home" href="index.html"><span>&larr;</span> ANA SAYFA</a>
+      <a class="home" href="index.html" data-i18n="ortak.anaSayfa"><span>&larr;</span> ANA SAYFA</a>
       <div class="wordmark">DERİN<br />RECORD<b>&bull;</b></div>
     </header>
     <main class="admin-main">
@@ -103,24 +104,24 @@
             <img src="assets/sound-design/Ads%C4%B1z%20tasar%C4%B1m1.png" alt="Derin Record stüdyosunda ses tasarımı çalışması" />
           </div>
           <div class="sd-hero-copy">
-            <p class="eyebrow">DERİN RECORD × SES TASARIMI</p>
+            <p class="eyebrow" data-i18n="sd.etiket">DERİN RECORD × SES TASARIMI</p>
             <h1 class="sd-hero-title"><span class="sd-t1">FILM SCORING</span><span class="sd-amp">&amp;</span><span class="sd-t2">SOUND DESIGN</span></h1>
-            <p class="corporate-lead">
+            <p class="corporate-lead" data-i18n="sd.metin">
               Sinema ve reklam projeleri için ses tasarımı ve film scoring üretiyoruz.
               Görüntüye eşlik eden atmosferden, sahneyi taşıyan orkestrasyona kadar tüm ses dünyasını
               kendi stüdyomuzda kuruyoruz.
             </p>
             <div class="sd-cta-row">
-              <a class="sd-btn" href="#projeler">İŞLERİ İNCELE →</a>
-              <a class="sd-btn sd-btn-ghost" href="#iletisim">TEKLİF AL →</a>
+              <a class="sd-btn" href="#projeler" data-i18n="sd.cta1">İŞLERİ İNCELE →</a>
+              <a class="sd-btn sd-btn-ghost" href="#iletisim" data-i18n="sd.cta2">TEKLİF AL →</a>
             </div>
           </div>
         </div>
       </section>
 
       <section class="sd-projects" id="projeler">
-        <p class="eyebrow">SEÇİLİ İŞLER</p>
-        <h2>PERDEDE<br /><span>DUYULAN İŞLER.</span></h2>
+        <p class="eyebrow" data-i18n="sd.proje.etiket">SEÇİLİ İŞLER</p>
+        <h2 data-i18n="sd.proje.baslik">PERDEDE<br /><span>DUYULAN İŞLER.</span></h2>
         <div class="sd-grid">
           <div class="sd-card" data-video="1Det9SdiRmOYBL6R2XanFG-qngyexbZE_" data-title="Megatron">
             <img src="assets/sound-design/IMG_5831_Original.jpg" alt="Megatron ses tasarımı kapak görseli" loading="lazy" />
@@ -151,7 +152,7 @@
       <div class="sd-modal-box">
         <div class="sd-modal-head">
           <span id="sd-modal-title"></span>
-          <button id="sd-modal-close">KAPAT</button>
+          <button id="sd-modal-close" data-i18n="sd.kapat">KAPAT</button>
         </div>
         <div class="sd-frame">
           <iframe id="sd-modal-iframe" src="" allow="autoplay" allowfullscreen></iframe>
@@ -160,31 +161,31 @@
     </div>
 
     <footer id="iletisim">
-      <p class="section-kicker">BAĞLANTI</p>
-      <h2>PROJENİ<br /><span>KONUŞALIM.</span></h2>
+      <p class="section-kicker" data-i18n="sd.footer.kicker">BAĞLANTI</p>
+      <h2 data-i18n="sd.footer.baslik">PROJENİ<br /><span>KONUŞALIM.</span></h2>
       
 <div class="sd-form-panel">
-  <div class="sd-form-pill"><span></span>HIZLI TEKLİF</div>
+  <div class="sd-form-pill"><span></span><span data-i18n="sd.form.etiket">HIZLI TEKLİF</span></div>
   <form class="sd-form" id="sd-request-form">
   <div class="sd-row">
-    <input type="text" name="contact_name" placeholder="Ad Soyad" required />
-    <input type="email" name="email" placeholder="E-posta" required />
+    <input type="text" name="contact_name" placeholder="Ad Soyad" data-i18n-yerine="sd.form.ad" required />
+    <input type="email" name="email" placeholder="E-posta" data-i18n-yerine="sd.form.eposta" required />
   </div>
   <div class="sd-row">
-    <input type="tel" name="phone" placeholder="Telefon (opsiyonel)" />
+    <input type="tel" name="phone" placeholder="Telefon (opsiyonel)" data-i18n-yerine="sd.form.tel" />
     <select name="project_type" required>
-      <option value="" disabled selected>Proje türü</option>
-      <option value="sound_design">Ses Tasarımı</option>
-      <option value="film_scoring">Film Scoring</option>
-      <option value="both">İkisi de</option>
+      <option value="" disabled selected data-i18n="sd.form.tur">Proje türü</option>
+      <option value="sound_design" data-i18n="sd.form.tur1">Ses Tasarımı</option>
+      <option value="film_scoring" data-i18n="sd.form.tur2">Film Scoring</option>
+      <option value="both" data-i18n="sd.form.tur3">İkisi de</option>
     </select>
   </div>
-  <textarea name="message" placeholder="Projenden kısaca bahset..."></textarea>
-  <button type="submit" class="sd-btn">TALEBİ GÖNDER →</button>
+  <textarea name="message" placeholder="Projenden kısaca bahset..." data-i18n-yerine="sd.form.mesaj"></textarea>
+  <button type="submit" class="sd-btn" data-i18n="sd.form.gonder">TALEBİ GÖNDER →</button>
   <p class="sd-form-msg" id="sd-form-msg"></p>
 </form>
 </div>
-<p class="footer-end">DERİN RECORD <span>&bull;</span> SES TASARIMI & FİLM SCORING</p>
+<p class="footer-end" data-i18n="sd.footer.son">DERİN RECORD <span>&bull;</span> SES TASARIMI & FİLM SCORING</p>
     </footer>
 
     <script>
@@ -216,6 +217,9 @@
   var form = document.getElementById('sd-request-form');
   var msg = document.getElementById('sd-form-msg');
   if(!form) return;
+  function dilMetin(anahtar, varsayilan){
+    return (window.DerinDil && window.DerinDil.metin) ? window.DerinDil.metin(anahtar, varsayilan) : varsayilan;
+  }
   form.addEventListener('submit', function(e){
     e.preventDefault();
     var btn = form.querySelector('button[type="submit"]');
@@ -227,12 +231,12 @@
       message: form.message.value.trim() || null
     };
     if(!data.contact_name || !data.email || !data.project_type){
-      msg.textContent = 'Lütfen zorunlu alanları doldur.';
+      msg.textContent = dilMetin('sd.hata', 'Lütfen zorunlu alanları doldur.');
       msg.className = 'sd-form-msg err';
       return;
     }
     btn.disabled = true;
-    btn.textContent = 'GÖNDERİLİYOR...';
+    btn.textContent = dilMetin('sd.gonderiliyor', 'GÖNDERİLİYOR...');
     fetch(SUPABASE_URL + '/rest/v1/sound_design_requests', {
       method: 'POST',
       headers: {
@@ -244,19 +248,20 @@
       body: JSON.stringify(data)
     }).then(function(res){
       if(!res.ok) throw new Error('fail');
-      msg.textContent = 'Teşekkürler! En kısa sürede dönüş yapacağız.';
+      msg.textContent = dilMetin('sd.tesekkur', 'Teşekkürler! En kısa sürede dönüş yapacağız.');
       msg.className = 'sd-form-msg ok';
       form.reset();
     }).catch(function(){
-      msg.textContent = 'Bir şeyler ters gitti, lütfen tekrar dene ya da WhatsApp/telefon ile ulaş.';
+      msg.textContent = dilMetin('sd.basarisiz', 'Bir şeyler ters gitti, lütfen tekrar dene ya da WhatsApp/telefon ile ulaş.');
       msg.className = 'sd-form-msg err';
     }).finally(function(){
       btn.disabled = false;
-      btn.textContent = 'TALEBİ GÖNDER →';
+      btn.textContent = dilMetin('sd.form.gonder', 'TALEBİ GÖNDER →');
     });
   });
 })();
 </script>
+  <script src="dil.js?v=9" defer></script>
   <!-- Ziyaretçi ölçümü (Vercel Web Analytics): çerez kullanmaz, kişisel veri tutmaz. -->
   <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
   <script defer src="/_vercel/insights/script.js"></script>

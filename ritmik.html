@@ -1,25 +1,26 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" data-baslik-en="Rhythmic Demo — Derin Record">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Ritmik Demo — Derin Record</title>
-  <meta name="description" content="Ritmik cimnastik için özel üretilmiş demo müzikler — Derin Record.">
+  <meta name="description" content="Ritmik cimnastik için özel üretilmiş demo müzikler — Derin Record." data-en="Demo music produced for rhythmic gymnastics — Derin Record.">
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
   <link rel="stylesheet" href="branch.css?v=2"><link rel="stylesheet" href="feedback.css"><link rel="stylesheet" href="auth.css?v=20261017"> 
   <link rel="stylesheet" href="glass.css?v=2" />
   <link rel="stylesheet" href="mobil.css?v=1">
+  <link rel="stylesheet" href="dil.css?v=9">
 </head>
 <body>
   <div class="noise"></div>
-  <header class="header"><a class="home" href="index.html#demolar"><span>←</span> DEMOLARA DÖN</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
+  <header class="header"><a class="home" href="index.html#demolar" data-i18n="ortak.demolaraDon"><span>←</span> DEMOLARA DÖN</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
   <main>
-    <section class="hero"><p class="eyebrow">04 — BRANŞ DEMOSU</p><h1>RİTMİK<br><span>CİMNASTİK.</span></h1><p>Zarafet, güçlü geçişler ve dinamik vuruşlar için hazırlanmış Ritmik Cimnastik demosu.</p></section>
-    <section class="track-area"><h2>DEMO KASETLERİ — OYNAT VE AKIŞI İSTEDİĞİN YERDEN BAŞLAT</h2><div class="player-list">
-      <article class="track" data-demo-key="akrobatik-horon-kafkas"><div class="cassette"><i></i><b>DERİN</b><em>RECORD</em><i></i></div><div class="track-info"><span class="track-type">RİTMİK CİMNASTİK</span><h2 class="track-title">HORON KAFKAS</h2><p class="track-note">Demo track · Güçlü geçişler, keskin vuruşlar.</p></div><div class="player-controls"><button class="play" data-media="#horon" aria-label="Demoyu dinle">▶</button><input class="seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="Horon Kafkas içinde ilerle"><span class="time">0:00 / --:--</span></div><audio id="horon" preload="metadata"><source src="assets/audio/akrobatik-horon-kafkas.wav" type="audio/wav"></audio></article>
+    <section class="hero"><p class="eyebrow" data-i18n="brans.eyebrow04">04 — BRANŞ DEMOSU</p><h1 data-i18n="ritmik.baslik">RİTMİK<br><span>CİMNASTİK.</span></h1><p data-i18n="ritmik.metin">Zarafet, güçlü geçişler ve dinamik vuruşlar için hazırlanmış Ritmik Cimnastik demosu.</p></section>
+    <section class="track-area"><h2 data-i18n="brans.kasetBaslik">DEMO KASETLERİ — OYNAT VE AKIŞI İSTEDİĞİN YERDEN BAŞLAT</h2><div class="player-list">
+      <article class="track" data-demo-key="akrobatik-horon-kafkas"><div class="cassette"><i></i><b>DERİN</b><em>RECORD</em><i></i></div><div class="track-info"><span class="track-type" data-i18n="ritmik.tur">RİTMİK CİMNASTİK</span><h2 class="track-title">HORON KAFKAS</h2><p class="track-note" data-i18n="ritmik.not">Demo track · Güçlü geçişler, keskin vuruşlar.</p></div><div class="player-controls"><button class="play" data-media="#horon" aria-label="Demoyu dinle" data-i18n-etiket="brans.dinle">▶</button><input class="seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="Horon Kafkas içinde ilerle" data-i18n-etiket="ritmik.ilerle"><span class="time">0:00 / --:--</span></div><audio id="horon" preload="metadata"><source src="assets/audio/akrobatik-horon-kafkas.wav" type="audio/wav"></audio></article>
     </div></section>
   </main>
   <footer class="page-footer">DERİN RECORD <span>•</span> ALL GYMNASTIC MUSIC</footer>
-  <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="auth.js?v=20261019b"></script><script src="player.js?v=2"></script><script src="fig-catalog.js"></script><script src="feedback.js?v=3"></script>
+  <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="auth.js?v=20261021c"></script><script src="player.js?v=2"></script><script src="fig-catalog.js"></script><script src="feedback.js?v=3"></script><script src="dil.js?v=9" defer></script>
   <!-- Ziyaretçi ölçümü (Vercel Web Analytics): çerez kullanmaz, kişisel veri tutmaz. -->
   <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
   <script defer src="/_vercel/insights/script.js"></script>

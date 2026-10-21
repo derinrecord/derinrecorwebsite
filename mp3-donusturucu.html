@@ -1,4 +1,4 @@
-<!doctype html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>MP3 Dönüştürücü — Derin Record</title><link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"><meta name="robots" content="noindex"><link rel="stylesheet" href="auth.css?v=20261017"><link rel="stylesheet" href="mobil.css?v=1"><style>
+<!doctype html><html lang="tr" data-dil-otomatik data-baslik-en="MP3 Converter — Derin Record"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>MP3 Dönüştürücü — Derin Record</title><link rel="icon" type="image/svg+xml" href="favicon.svg?v=2"><meta name="robots" content="noindex"><link rel="stylesheet" href="auth.css?v=20261017"><link rel="stylesheet" href="mobil.css?v=1"><style>
   :root{--yellow:#e6c840;--ink:#0d0b10;--panel:#161219;--line:rgba(255,255,255,.12);--muted:rgba(255,255,255,.62)}
   *{box-sizing:border-box}
   html,body{margin:0;min-height:100%}
@@ -36,6 +36,7 @@
   .ses-altbilgi a{color:rgba(255,255,255,.62)}
   @media(max-width:560px){.ses-gonder{flex:1 1 100%}}
 </style>
+<link rel="stylesheet" href="dil.css?v=9">
 </head>
 <body>
 <div class="ses-kap">
@@ -45,7 +46,7 @@
   </header>
 
   <main>
-    <h1 class="ses-baslik">Linki <span>MP3 + WAV</span>'a dönüştür</h1>
+    <h1 class="ses-baslik" data-i18n="mp3.baslik">Linki <span>MP3 + WAV</span>'a dönüştür</h1>
 
     <p class="ses-durum" id="mp3-durum">Yetki kontrol ediliyor…</p>
 
@@ -59,13 +60,13 @@
       </form>
       <p class="ses-uyari" id="mp3-uyari" hidden></p>
 
-      <div class="ses-adim"><b>ARAÇ AÇIK MI</b><p>Dönüştürme bu Mac'te çalışır; ses <strong>WAV 24-bit / 48 kHz</strong> ve <strong>MP3 320 kbps</strong> olarak <code>~/Music/Derin Record</code> klasörüne yazılır. Masaüstündeki <strong>Derin Ses Al</strong> kısayoluna çift tıkla; tarayıcıda dönüştürücü açılır. Terminalden başlatmak için:</p>
+      <div class="ses-adim"><b>ARAÇ AÇIK MI</b><p data-i18n="mp3.arac">Dönüştürme bu Mac'te çalışır; ses <strong>WAV 24-bit / 48 kHz</strong> ve <strong>MP3 320 kbps</strong> olarak <code>~/Music/Derin Record</code> klasörüne yazılır. Masaüstündeki <strong>Derin Ses Al</strong> kısayoluna çift tıkla; tarayıcıda dönüştürücü açılır. Terminalden başlatmak için:</p>
         <div class="ses-komut"><code id="mp3-sunucu">~/bin/derin-ses-sunucu</code><button class="ses-kopyala" type="button" data-kopya="mp3-sunucu">KOPYALA</button></div>
       </div>
-      <div class="ses-adim"><b>TERMİNALDEN</b><p>Aynı işi tek satırda yapar, dosyaları aynı klasöre bırakır:</p>
+      <div class="ses-adim"><b>TERMİNALDEN</b><p data-i18n="mp3.terminal">Aynı işi tek satırda yapar, dosyaları aynı klasöre bırakır:</p>
         <div class="ses-komut"><code id="mp3-kullanim">~/bin/derin-ses-al "https://..."</code><button class="ses-kopyala" type="button" data-kopya="mp3-kullanim">KOPYALA</button></div>
       </div>
-      <div class="ses-adim"><b>GÜNCELLE</b><p>Link okunamazsa indiriciyi güncelle:</p>
+      <div class="ses-adim"><b>GÜNCELLE</b><p data-i18n="mp3.guncelle">Link okunamazsa indiriciyi güncelle:</p>
         <div class="ses-komut"><code id="mp3-guncelle">~/bin/yt-dlp -U</code><button class="ses-kopyala" type="button" data-kopya="mp3-guncelle">KOPYALA</button></div>
       </div>
     </section>
@@ -78,7 +79,8 @@
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
-<script src="auth.js?v=20261019b"></script>
+<script src="auth.js?v=20261021c"></script>
 <script src="mp3-donusturucu.js?v=4"></script>
+<script src="dil.js?v=9" defer></script>
 </body>
 </html>

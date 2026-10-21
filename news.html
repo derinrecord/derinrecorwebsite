@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" data-baslik-en="Latest News — Derin Record">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Güncel Haberler — Derin Record</title>
-  <meta name="description" content="Cimnastik dünyasından güncel haberler, yarışma takvimleri ve LA28 Olimpiyat geri sayımı." />
+  <meta name="description" content="Cimnastik dünyasından güncel haberler, yarışma takvimleri ve LA28 Olimpiyat geri sayımı." data-en="Current news from the gymnastics world, competition calendars and the LA28 Olympic countdown." />
   <meta property="og:title" content="Güncel Haberler — Derin Record" />
   <meta property="og:image" content="assets/new-season.png" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -16,30 +16,32 @@
   <link rel="stylesheet" href="olympics-countdown.css">
   <link rel="stylesheet" href="news-fitness.css">
   <link rel="stylesheet" href="mobil.css?v=1">
+  <link rel="stylesheet" href="dil.css?v=9">
 </head>
 <body>
   <div class="noise"></div>
-  <header class="header"><a class="home" href="index.html"><span>←</span> ANA SAYFA</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
+  <header class="header"><a class="home" href="index.html" data-i18n="ortak.anaSayfa"><span>←</span> ANA SAYFA</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
   <main class="news-main">
-    <p class="eyebrow">YARIŞMA TAKİBİ</p>
-    <h1>GÜNCEL<br><span>HABERLER.</span></h1>
-    <p class="news-intro">Türkiye’den dünyaya cimnastik takvimini ve resmi duyuruları tek yerde takip et.</p>
-    <section class="olympics-countdown" aria-label="Los Angeles 2028 Olimpiyatları geri sayımı">
-      <div><p>OLİMPİYATLAR</p><h2>LA28’E<br><span>GERİ SAYIM.</span></h2><a href="https://la28.org/en/newsroom/LA28_Announces_Games_Dates.html" target="_blank" rel="noreferrer">14 TEMMUZ 2028 ↗</a></div>
-      <div class="countdown-grid" aria-live="polite"><div><strong data-days>—</strong><span>GÜN</span></div><div><strong data-hours>—</strong><span>SAAT</span></div><div><strong data-minutes>—</strong><span>DAKİKA</span></div><div><strong data-seconds>—</strong><span>SANİYE</span></div></div>
+    <p class="eyebrow" data-i18n="haber.etiket">YARIŞMA TAKİBİ</p>
+    <h1 data-i18n="haber.baslik">GÜNCEL<br><span>HABERLER.</span></h1>
+    <p class="news-intro" data-i18n="haber.giris">Türkiye’den dünyaya cimnastik takvimini ve resmi duyuruları tek yerde takip et.</p>
+    <section class="olympics-countdown" aria-label="Los Angeles 2028 Olimpiyatları geri sayımı" data-i18n-etiket="haber.geri">
+      <div><p data-i18n="haber.olimp.etiket">OLİMPİYATLAR</p><h2 data-i18n="haber.olimp.baslik">LA28’E<br><span>GERİ SAYIM.</span></h2><a href="https://la28.org/en/newsroom/LA28_Announces_Games_Dates.html" target="_blank" rel="noreferrer" data-i18n="haber.olimp.tarih">14 TEMMUZ 2028 ↗</a></div>
+      <div class="countdown-grid" aria-live="polite"><div><strong data-days>—</strong><span data-i18n="haber.gun">GÜN</span></div><div><strong data-hours>—</strong><span data-i18n="haber.saat">SAAT</span></div><div><strong data-minutes>—</strong><span data-i18n="haber.dakika">DAKİKA</span></div><div><strong data-seconds>—</strong><span data-i18n="haber.saniye">SANİYE</span></div></div>
     </section>
     <section class="news-grid">
-      <article class="news-card local"><span>TÜRKİYE</span><h2>Türkiye Şampiyonaları</h2><p>Türkiye Cimnastik Federasyonu’nun resmi duyuru ve yarışma takvimini takip et.</p><a href="https://www.tcf.gov.tr/" target="_blank" rel="noreferrer">RESMİ DUYURULARI AÇ ↗</a></article>
-      <article class="news-card local"><span>ULUSAL</span><h2>Ulusal Yarışmalar</h2><p>İller, kulüpler ve yaş gruplarına göre yayımlanan ulusal yarışma bilgileri için federasyon duyurularına bak.</p><a href="https://www.tcf.gov.tr/" target="_blank" rel="noreferrer">YARIŞMA TAKVİMİ ↗</a></article>
-      <article class="news-card europe"><span>AVRUPA</span><h2>Avrupa Şampiyonaları</h2><p>2026 artistik Avrupa Şampiyonaları Zagreb’de: kadınlar 13–16 Ağustos, erkekler 19–23 Ağustos.</p><a href="https://www.gymnastics.sport/site/events/detail.php?id=18233" target="_blank" rel="noreferrer">ETKİNLİK DETAYI ↗</a></article>
-      <article class="news-card world"><span>DÜNYA</span><h2>Dünya Şampiyonaları</h2><p>54. Artistik Cimnastik Dünya Şampiyonası 17–25 Ekim 2026’da Rotterdam’da düzenleniyor.</p><a href="https://www.gymnastics.sport/site/events/detail.php?id=17247" target="_blank" rel="noreferrer">ETKİNLİK DETAYI ↗</a></article>
-      <article class="news-card fitness"><span>ÇOCUK FITNESS · TÜRKİYE</span><h2>Türkiye Haberleri</h2><p>Çocuk Fitness Türkiye Şampiyonası, seçmeler ve sonuç duyurularını federasyon kanallarından takip et.</p><a href="https://tvgfbf.gov.tr/" target="_blank" rel="noreferrer">TÜRKİYE DUYURULARI ↗</a></article>
-      <article class="news-card fitness"><span>ÇOCUK FITNESS · AVRUPA</span><h2>Avrupa Haberleri</h2><p>Avrupa’daki Çocuk Fitness ve Fit Kid organizasyonlarına ait duyurular bu bölümden takip edilecek.</p><a href="https://ifbb.com/" target="_blank" rel="noreferrer">AVRUPA DUYURULARI ↗</a></article>
-      <article class="news-card fitness"><span>ÇOCUK FITNESS · DÜNYA</span><h2>Dünya Haberleri</h2><p>IFBB World Children Fitness Championship ile ilgili resmi dünya şampiyonası duyuru ve sonuçlarını takip et.</p><a href="https://ifbb.com/event/ifbb-world-championships-in-children-fitness-3/" target="_blank" rel="noreferrer">DÜNYA ŞAMPİYONASI ↗</a></article>
+      <article class="news-card local"><span data-i18n="haber.k1.etiket">TÜRKİYE</span><h2 data-i18n="haber.k1.baslik">Türkiye Şampiyonaları</h2><p data-i18n="haber.k1.metin">Türkiye Cimnastik Federasyonu’nun resmi duyuru ve yarışma takvimini takip et.</p><a href="https://www.tcf.gov.tr/" target="_blank" rel="noreferrer" data-i18n="haber.k1.link">RESMİ DUYURULARI AÇ ↗</a></article>
+      <article class="news-card local"><span data-i18n="haber.k2.etiket">ULUSAL</span><h2 data-i18n="haber.k2.baslik">Ulusal Yarışmalar</h2><p data-i18n="haber.k2.metin">İller, kulüpler ve yaş gruplarına göre yayımlanan ulusal yarışma bilgileri için federasyon duyurularına bak.</p><a href="https://www.tcf.gov.tr/" target="_blank" rel="noreferrer" data-i18n="haber.k2.link">YARIŞMA TAKVİMİ ↗</a></article>
+      <article class="news-card europe"><span data-i18n="haber.k3.etiket">AVRUPA</span><h2 data-i18n="haber.k3.baslik">Avrupa Şampiyonaları</h2><p data-i18n="haber.k3.metin">2026 artistik Avrupa Şampiyonaları Zagreb’de: kadınlar 13–16 Ağustos, erkekler 19–23 Ağustos.</p><a href="https://www.gymnastics.sport/site/events/detail.php?id=18233" target="_blank" rel="noreferrer" data-i18n="haber.detay">ETKİNLİK DETAYI ↗</a></article>
+      <article class="news-card world"><span data-i18n="haber.k4.etiket">DÜNYA</span><h2 data-i18n="haber.k4.baslik">Dünya Şampiyonaları</h2><p data-i18n="haber.k4.metin">54. Artistik Cimnastik Dünya Şampiyonası 17–25 Ekim 2026’da Rotterdam’da düzenleniyor.</p><a href="https://www.gymnastics.sport/site/events/detail.php?id=17247" target="_blank" rel="noreferrer" data-i18n="haber.detay">ETKİNLİK DETAYI ↗</a></article>
+      <article class="news-card fitness"><span data-i18n="haber.k5.etiket">ÇOCUK FITNESS · TÜRKİYE</span><h2 data-i18n="haber.k5.baslik">Türkiye Haberleri</h2><p data-i18n="haber.k5.metin">Çocuk Fitness Türkiye Şampiyonası, seçmeler ve sonuç duyurularını federasyon kanallarından takip et.</p><a href="https://tvgfbf.gov.tr/" target="_blank" rel="noreferrer" data-i18n="haber.k5.link">TÜRKİYE DUYURULARI ↗</a></article>
+      <article class="news-card fitness"><span data-i18n="haber.k6.etiket">ÇOCUK FITNESS · AVRUPA</span><h2 data-i18n="haber.k6.baslik">Avrupa Haberleri</h2><p data-i18n="haber.k6.metin">Avrupa’daki Çocuk Fitness ve Fit Kid organizasyonlarına ait duyurular bu bölümden takip edilecek.</p><a href="https://ifbb.com/" target="_blank" rel="noreferrer" data-i18n="haber.k6.link">AVRUPA DUYURULARI ↗</a></article>
+      <article class="news-card fitness"><span data-i18n="haber.k7.etiket">ÇOCUK FITNESS · DÜNYA</span><h2 data-i18n="haber.k7.baslik">Dünya Haberleri</h2><p data-i18n="haber.k7.metin">IFBB World Children Fitness Championship ile ilgili resmi dünya şampiyonası duyuru ve sonuçlarını takip et.</p><a href="https://ifbb.com/event/ifbb-world-championships-in-children-fitness-3/" target="_blank" rel="noreferrer" data-i18n="haber.k7.link">DÜNYA ŞAMPİYONASI ↗</a></article>
     </section>
-    <p class="news-note">Takvimler değişebilir. Son karar ve katılım bilgileri için her zaman resmi kaynakları esas al.</p>
+    <p class="news-note" data-i18n="haber.not">Takvimler değişebilir. Son karar ve katılım bilgileri için her zaman resmi kaynakları esas al.</p>
   </main>
-  <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="auth.js?v=20261019b"></script><script src="olympics-countdown.js"></script>
+  <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="auth.js?v=20261021c"></script><script src="olympics-countdown.js"></script>
+  <script src="dil.js?v=9" defer></script>
   <!-- Ziyaretçi ölçümü (Vercel Web Analytics): çerez kullanmaz, kişisel veri tutmaz. -->
   <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
   <script defer src="/_vercel/insights/script.js"></script>

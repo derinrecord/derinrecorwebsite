@@ -10,6 +10,8 @@
   window.DerinAuth = { ...state, ready, open: () => openAuth('login'), _sayacYazisi: n => (!n || n < 1) ? '' : (n > 99 ? '99+' : String(n)) };
 
   const escapeHtml = value => String(value || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  // Dil: kısa metinler dil.js sözlüğünden gelir (TR varsayılan, EN karşılığı).
+  const dilMetni = (anahtar, varsayilan) => (window.DerinDil && window.DerinDil.metin ? window.DerinDil.metin(anahtar, varsayilan) : varsayilan);
   const emit = () => { Object.assign(window.DerinAuth, state); window.dispatchEvent(new CustomEvent('derin:authchange', { detail: state })); };
 
   function shell() {
@@ -17,11 +19,11 @@
     const header = document.querySelector('.header, .site-header');
     if (!header || document.querySelector('.account-actions')) return;
     const actions = document.createElement('div'); actions.className = 'account-actions';
-    actions.innerHTML = '<a class="account-button secondary coach-action" href="music-request.html" hidden>MÜZİĞİNİ ARAŞTIR</a><button class="account-button" type="button" data-login>GİRİŞ YAP</button><button class="account-button secondary" type="button" data-signup>KAYIT OL</button>';
+    actions.innerHTML = `<a class="account-button secondary coach-action" href="music-request.html" hidden>${dilMetni('shell.arastir', 'MÜZİĞİNİ ARAŞTIR')}</a><button class="account-button" type="button" data-login>${dilMetni('shell.giris', 'GİRİŞ YAP')}</button><button class="account-button secondary" type="button" data-signup>${dilMetni('shell.kayit', 'KAYIT OL')}</button>`;
   const menu = document.createElement('div');
   menu.className = 'account-menu';
   menu.hidden = true;
-  menu.innerHTML = '<div class="account-menu-backdrop" data-menu-close></div><aside class="account-menu-panel"><div class="account-menu-head"><span class="account-menu-name"></span><button class="account-menu-close" type="button" data-menu-close aria-label="Kapat">×</button></div><nav class="account-menu-links"></nav><button class="account-menu-logout" type="button" data-logout>ÇIKIŞ YAP</button></aside>';
+  menu.innerHTML = `<div class="account-menu-backdrop" data-menu-close></div><aside class="account-menu-panel"><div class="account-menu-head"><span class="account-menu-name"></span><button class="account-menu-close" type="button" data-menu-close aria-label="${dilMetni('shell.kapat', 'Kapat')}">×</button></div><nav class="account-menu-links"></nav><button class="account-menu-logout" type="button" data-logout>${dilMetni('shell.cikis', 'ÇIKIŞ YAP')}</button></aside>`;
   // Yönetici girişi öncesi body etiketi işaretlenir; CSS misafir ziyaretçide yönetici linkini gizler.
   const syncAdminHint = () => { document.body.classList.toggle('is-admin', state.profile?.role === 'admin'); };
   window.addEventListener('derin:authchange', syncAdminHint);
@@ -39,12 +41,13 @@
     const actions = document.querySelector('.account-actions'); if (!actions) return;
     const button = actions.querySelector('[data-login]'), signup = actions.querySelector('[data-signup]'), coachAction = actions.querySelector('.coach-action'), menu = document.querySelector('.account-menu');
     // Menü artık ziyaretçiye de açık; gizleme kararı burada verilmez (mobil menü mobil.css + script.js).
-    if (!configured) { coachAction.hidden = true; button.textContent = 'HESAP SİSTEMİ'; button.classList.add('secondary'); signup.hidden = true; button.onclick = () => openAuth('login'); return; }
-    if (!state.user) { coachAction.hidden = true; button.textContent = 'GİRİŞ YAP'; button.classList.remove('secondary'); signup.hidden = false; return; }
+    if (!configured) { coachAction.hidden = true; button.textContent = dilMetni('shell.hesapSistemi', 'HESAP SİSTEMİ'); button.classList.add('secondary'); signup.hidden = true; button.onclick = () => openAuth('login'); return; }
+    if (!state.user) { coachAction.hidden = true; button.textContent = dilMetni('shell.giris', 'GİRİŞ YAP'); button.classList.remove('secondary'); signup.hidden = false; coachAction.textContent = dilMetni('shell.arastir', 'MÜZİĞİNİ ARAŞTIR'); return; }
     signup.hidden = true; coachAction.hidden = false;
-    button.textContent = `${(state.profile?.full_name || state.user.email || 'HESABIM').toUpperCase()} · HESABIM`;
+    button.textContent = `${(state.profile?.full_name || state.user.email || dilMetni('hesap.hesabim', 'HESABIM')).toUpperCase()} · ${dilMetni('hesap.hesabim', 'HESABIM')}`;
     menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a><a href="mp3-donusturucu.html">MP3 DÖNÜŞTÜRÜCÜ</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a>`;
-    menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || 'HESABIM';
+    menuLinkleriniCevir(menu);
+    menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || dilMetni('hesap.hesabim', 'HESABIM');
     sayaclariYaz();
   }
 
@@ -73,7 +76,7 @@
     document.querySelectorAll('[data-bildirim-sayac]').forEach(el => { el.textContent = yazi; el.hidden = !yazi; });
     const dugme = document.querySelector('.account-actions [data-login]');
     if (dugme) {
-      if (yazi && state.user) { dugme.dataset.sayac = yazi; dugme.setAttribute('aria-label', `${dugme.textContent} — ${yazi} yeni bildirim`); }
+      if (yazi && state.user) { dugme.dataset.sayac = yazi; dugme.setAttribute('aria-label', dilMetni('auth.sayacEtiket', '{dugme} — {sayi} yeni bildirim').replace('{dugme}', dugme.textContent).replace('{sayi}', yazi)); }
       else { delete dugme.dataset.sayac; dugme.removeAttribute('aria-label'); }
     }
   }
@@ -105,55 +108,97 @@
   function toggleMenu() { const menu = document.querySelector('.account-menu'); if (menu) menu.hidden ? openMenu(menu) : closeMenu(menu); }
 function openMenu(menu) { menu.hidden = false; document.body.classList.add('account-menu-open'); requestAnimationFrame(() => menu.classList.add('open')); }
 function closeMenu(menu) { let done = false; const finish = () => { if (done) return; done = true; menu.hidden = true; }; menu.classList.remove('open'); document.body.classList.remove('account-menu-open'); menu.addEventListener('transitionend', finish, { once: true }); setTimeout(finish, 320); }
+  // Üyelik onayı satırı: bağlantılar korunur, cümle seçili dile göre kurulur.
+  function onaySatiri() {
+    const sozlesme = `<a href="kullanici-sozlesmesi.html" target="_blank" rel="noopener">${dilMetni('auth.sozlesme', 'Kullanıcı Sözleşmesi')}</a>`;
+    const aydinlatma = `<a href="aydinlatma-metni.html" target="_blank" rel="noopener">${dilMetni('auth.aydinlatma', 'Aydınlatma Metni')}</a>`;
+    const cumle = dilMetni('auth.onay', '{sozlesme}’ni okudum ve kabul ediyorum; {aydinlatma}’ni okudum.')
+      .replace('{sozlesme}', sozlesme).replace('{aydinlatma}', aydinlatma);
+    return `<label class="auth-onay"><input type="checkbox" name="onay" required><span>${cumle}</span></label>`;
+  }
+
+  let acikMod = null;
+
   function openAuth(mode) {
+    acikMod = mode;
     let overlay = document.querySelector('.auth-overlay');
     if (!overlay) { overlay = document.createElement('div'); overlay.className = 'auth-overlay'; document.body.append(overlay); }
-    if (!configured) { overlay.innerHTML = '<section class="auth-card"><button class="auth-close">KAPAT</button><h2>HESAP SİSTEMİ HAZIRLANIYOR</h2><p>Yönetici, Supabase bağlantı bilgilerini ekledikten sonra e-posta ve şifreyle kayıt/giriş açılacak.</p></section>'; overlay.hidden=false; overlay.querySelector('.auth-close').onclick=()=>overlay.hidden=true; return; }
+    if (!configured) { overlay.innerHTML = `<section class="auth-card"><button class="auth-close">${dilMetni('shell.kapat', 'KAPAT')}</button><h2>${dilMetni('shell.hazirlaniyor', 'HESAP SİSTEMİ HAZIRLANIYOR')}</h2><p>${dilMetni('shell.hazirlaniyorMetin', 'Yönetici, Supabase bağlantı bilgilerini ekledikten sonra e-posta ve şifreyle kayıt/giriş açılacak.')}</p></section>`; overlay.hidden=false; overlay.querySelector('.auth-close').onclick=()=>{ overlay.hidden=true; acikMod=null; }; return; }
     const signup = mode === 'signup';
-    overlay.innerHTML = `<section class="auth-card"><button class="auth-close" type="button">KAPAT</button><h2>${signup ? 'ANTRENÖR KAYDI' : 'HESABINA GİR'}</h2><p>${signup ? 'Kaydın yönetici onayından sonra demo erişimin açılır.' : 'Demo notlarına ulaşmak için giriş yap.'}</p><form class="auth-form">${signup ? '<label>AD SOYAD<input name="name" autocomplete="name" required></label>' : ''}<label>E-POSTA<input name="email" type="email" autocomplete="email" required></label><label>ŞİFRE<input name="password" type="password" minlength="8" autocomplete="${signup ? 'new-password' : 'current-password'}" required></label>${signup ? '<label class="auth-onay"><input type="checkbox" name="onay" required><span><a href="kullanici-sozlesmesi.html" target="_blank" rel="noopener">Kullanıcı Sözleşmesi</a>’ni okudum ve kabul ediyorum; <a href="aydinlatma-metni.html" target="_blank" rel="noopener">Aydınlatma Metni</a>’ni okudum.</span></label>' : ''}<button class="auth-submit">${signup ? 'KAYIT OL' : 'GİRİŞ YAP'}</button></form><button class="auth-switch" type="button">${signup ? 'Zaten hesabın var mı? Giriş yap' : 'Hesabın yok mu? Antrenör olarak kayıt ol'}</button>${signup ? '' : '<button class="auth-switch auth-forgot" type="button">Şifreni mi unuttun?</button>'}<p class="auth-message"></p></section>`;
+    overlay.innerHTML = `<section class="auth-card"><button class="auth-close" type="button">${dilMetni('shell.kapat', 'KAPAT')}</button><h2>${signup ? dilMetni('shell.kayitBaslik', 'ANTRENÖR KAYDI') : dilMetni('shell.girisBaslik', 'HESABINA GİR')}</h2><p>${signup ? dilMetni('shell.kayitAciklama', 'Kaydın yönetici onayından sonra demo erişimin açılır.') : dilMetni('shell.girisAciklama', 'Demo notlarına ulaşmak için giriş yap.')}</p><form class="auth-form">${signup ? `<label>${dilMetni('shell.adSoyad', 'AD SOYAD')}<input name="name" autocomplete="name" required></label>` : ''}<label>${dilMetni('shell.eposta', 'E-POSTA')}<input name="email" type="email" autocomplete="email" required></label><label>${dilMetni('shell.sifre', 'ŞİFRE')}<input name="password" type="password" minlength="8" autocomplete="${signup ? 'new-password' : 'current-password'}" required></label>${signup ? onaySatiri() : ''}<button class="auth-submit">${signup ? dilMetni('shell.kayit', 'KAYIT OL') : dilMetni('shell.giris', 'GİRİŞ YAP')}</button></form><button class="auth-switch" type="button">${signup ? dilMetni('shell.zatenVar', 'Zaten hesabın var mı? Giriş yap') : dilMetni('shell.yokMu', 'Hesabın yok mu? Antrenör olarak kayıt ol')}</button>${signup ? '' : `<button class="auth-switch auth-forgot" type="button">${dilMetni('shell.unuttun', 'Şifreni mi unuttun?')}</button>`}<p class="auth-message"></p></section>`;
     overlay.hidden = false;
-    overlay.querySelector('.auth-close').onclick = () => overlay.hidden = true;
+    overlay.querySelector('.auth-close').onclick = () => { overlay.hidden = true; acikMod = null; };
     overlay.querySelector('.auth-switch').onclick = () => openAuth(signup ? 'login' : 'signup');
     const forgot = overlay.querySelector('.auth-forgot');
     if (forgot) forgot.onclick = async () => {
       const message = overlay.querySelector('.auth-message');
       const emailInput = overlay.querySelector('input[name="email"]');
       const email = String(emailInput.value || '').trim();
-      if (!email) { message.textContent = 'Önce e-posta adresini yaz, sonra bu bağlantıya bas.'; emailInput.focus(); return; }
-      forgot.disabled = true; message.textContent = 'Sıfırlama bağlantısı gönderiliyor…';
+      if (!email) { message.textContent = dilMetni('shell.onceEposta', 'Önce e-posta adresini yaz, sonra bu bağlantıya bas.'); emailInput.focus(); return; }
+      forgot.disabled = true; message.textContent = dilMetni('shell.gonderiliyor', 'Sıfırlama bağlantısı gönderiliyor…');
       const { error } = await state.client.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/sifre-yenile.html` });
       forgot.disabled = false;
       message.textContent = error
         ? error.message
-        : 'Bu adres kayıtlıysa sıfırlama bağlantısı gönderildi. Gelen kutunu ve spam klasörünü kontrol et.';
+        : dilMetni('shell.sifirlamaGonderildi', 'Bu adres kayıtlıysa sıfırlama bağlantısı gönderildi. Gelen kutunu ve spam klasörünü kontrol et.');
     };
     overlay.querySelector('.auth-form').onsubmit = async event => {
-      event.preventDefault(); const form = new FormData(event.currentTarget), message = overlay.querySelector('.auth-message'); message.textContent = 'Kontrol ediliyor…';
+      event.preventDefault(); const form = new FormData(event.currentTarget), message = overlay.querySelector('.auth-message'); message.textContent = dilMetni('shell.kontrol', 'Kontrol ediliyor…');
       const email = String(form.get('email')).trim(), password = String(form.get('password'));
       // Üyelik onayı: sözleşme kutusu işaretlenmeden hesap açılmaz; kabul edilen
       // metin sürümleri ve zamanı hesabın kayıt bilgisine yazılır (kanıt).
-      if (signup && !form.get('onay')) { message.textContent = 'Kayıt için Kullanıcı Sözleşmesi’ni kabul etmen gerekiyor.'; return; }
+      if (signup && !form.get('onay')) { message.textContent = dilMetni('shell.onayGerekli', 'Kayıt için Kullanıcı Sözleşmesi’ni kabul etmen gerekiyor.'); return; }
       const onay = { sozlesme_surum: SOZLESME_SURUM, aydinlatma_surum: AYDINLATMA_SURUM, kabul_at: new Date().toISOString() };
       const result = signup ? await state.client.auth.signUp({ email, password, options: { data: Object.assign({ full_name: String(form.get('name')).trim() }, onay) } }) : await state.client.auth.signInWithPassword({ email, password });
       if (result.error) {
         message.textContent = result.error.message;
         if (!signup && /confirm|onay|verified/i.test(result.error.message)) {
-          const resendButton = document.createElement('button'); resendButton.type = 'button'; resendButton.className = 'auth-switch'; resendButton.textContent = 'ONAY E-POSTASINI YENİDEN GÖNDER';
+          const resendButton = document.createElement('button'); resendButton.type = 'button'; resendButton.className = 'auth-switch'; resendButton.textContent = dilMetni('auth.yenidenGonder', 'ONAY E-POSTASINI YENİDEN GÖNDER');
           resendButton.onclick = async () => { const resend = await state.client.auth.resend({ type:'signup', email, options:{ emailRedirectTo:`${location.origin}${location.pathname}` } }); message.textContent = resend.error ? resend.error.message : 'Yeni onay e-postası gönderildi.'; };
           message.append(document.createElement('br'), resendButton);
         }
         return;
       }
       if (signup && !result.data.session) {
-        message.innerHTML = 'Kayıt oluşturuldu. E-postandaki onay bağlantısını açtıktan sonra giriş yap. <button class="auth-switch auth-resend" type="button">ONAY E-POSTASINI YENİDEN GÖNDER</button>';
+        message.innerHTML = `${dilMetni('auth.onayBekliyor', 'Kayıt oluşturuldu. E-postandaki onay bağlantısını açtıktan sonra giriş yap.')} <button class="auth-switch auth-resend" type="button">${dilMetni('auth.yenidenGonder', 'ONAY E-POSTASINI YENİDEN GÖNDER')}</button>`;
         message.querySelector('.auth-resend').onclick = async () => {
           const resend = await state.client.auth.resend({ type:'signup', email, options:{ emailRedirectTo:`${location.origin}${location.pathname}` } });
           message.textContent = resend.error ? resend.error.message : 'Yeni onay e-postası gönderildi.';
         };
-      } else message.textContent = 'Giriş başarılı.';
-      if (result.data.session) setTimeout(() => overlay.hidden = true, 450);
+      } else message.textContent = dilMetni('shell.basarili', 'Giriş başarılı.');
+      if (result.data.session) setTimeout(() => { overlay.hidden = true; acikMod = null; }, 450);
     };
   }
+  // Menü bağlantı metinleri kaynakta Türkçe kalır (testler bunları okur);
+  // İngilizce seçiliyse görünen metin dile göre değiştirilir.
+  const MENU_ANAHTARLARI = {
+    'kullanicilar.html': ['shell.kullanicilar', 'KULLANICILAR'],
+    'bildirimler.html': ['shell.bildirimler', 'BİLDİRİMLER'],
+    'taleplerim.html': ['shell.taleplerim', 'TALEPLERİM'],
+    'radyo-yonetim.html': ['shell.radyo', 'RADYO YÖNETİMİ'],
+    'ajanlar.html': ['shell.ajanlar', 'AJANLAR'],
+    'harmonic-mixer.html': ['shell.harmonik', 'HARMONİK SET'],
+    'music-request.html': ['shell.arastir', 'MÜZİK ARAŞTIR'],
+    'mp3-donusturucu.html': ['shell.mp3', 'MP3 DÖNÜŞTÜRÜCÜ'],
+    'my-projects.html': ['shell.projelerim', 'PROJELERİM'],
+    'energy-map.html': ['shell.enerji', 'ENERJİ & TEMPO'],
+    'license.html': ['shell.licence', 'MÜZİK BEYANI']
+  };
+  function menuLinkleriniCevir(menu) {
+    menu.querySelectorAll('.account-menu-links a').forEach(link => {
+      const kayit = MENU_ANAHTARLARI[link.getAttribute('href')];
+      const ilk = link.firstChild;
+      if (kayit && ilk && ilk.nodeType === 3) ilk.nodeValue = dilMetni(kayit[0], kayit[1]);
+    });
+  }
+
+  // Dil değişince hesap kabuğu ve açık giriş penceresi yeniden çizilir.
+  document.addEventListener('derin:dil', () => {
+    renderAccount();
+    const overlay = document.querySelector('.auth-overlay');
+    if (acikMod && overlay && !overlay.hidden) openAuth(acikMod);
+  });
+
   async function loadProfile(user) {
     if (!user) { state.user=null; state.profile=null; document.body.classList.remove('is-admin'); emit(); renderAccount(); return; }
     state.user = user;

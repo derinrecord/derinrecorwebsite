@@ -16,3 +16,7 @@
 .hk-kutu p { margin: 0; font-size: 14px; }
 .hk-alt { margin-top: 44px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: 14px; }
 .hk-alt a { margin-right: 16px; }
+/* İngilizce arayüzde görünen not: bu metin şu an yalnızca Türkçe yayımlanıyor. */
+.hk-dil-not { display: none; margin: 0 0 26px; padding: 14px 16px; font-size: 14px; line-height: 1.55;
+             border: 1px solid rgba(255,255,255,.2); border-radius: 12px; background: rgba(255,255,255,.04); }
+html[data-dil="en"] .hk-dil-not { display: block; }
