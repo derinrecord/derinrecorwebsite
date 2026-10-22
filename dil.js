@@ -779,6 +779,13 @@
     'ÇALAN YERE TAŞI': 'MOVE TO PLAYHEAD',
     'SİL': 'DELETE',
     'YAPIMDA': 'IN PRODUCTION',
+    '+ YENİ PARÇA': '+ NEW TRACK',
+    'YENİ PARÇA EKLE': 'ADD NEW TRACK',
+    'Bekliyor': 'Pending',
+    'PARÇAYI SİL': 'DELETE TRACK',
+    'YÖNETİM': 'MANAGEMENT',
+    '⤓ İNDİR': '⤓ DOWNLOAD',
+    'KAYNAĞI AÇ ↗': 'OPEN SOURCE ↗',
     /* FIG hareket seçicisi (geri bildirim paneli) */
     '6–12 · Ulusal seviye': '6–12 · National level',
     '8–14 · Ulusal seviye': '8–14 · National level',

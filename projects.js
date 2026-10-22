@@ -244,7 +244,7 @@
         </select>`:''}
         <input type="text" id="proj-newfolder-name" placeholder="Proje adı (ör. Unleashed v2)" autocomplete="off">
         <input type="file" id="proj-newfolder-file" accept="${SES_ACCEPT}">
-        <p class="proj-newfolder-hint">WAV, FLAC ve MP3 desteklenir · ${dosyaBoyutu(PARCA_BOYUTU)} üzeri dosyalar kayıpsız olarak parçalara bölünüp yüklenir (tek nesne sınırı ${dosyaBoyutu(YUKLEME_SINIRI)})<br><small class="proj-surum">sürüm ${SURUM}</small></p>
+        <p class="proj-newfolder-hint">${L(`WAV, FLAC ve MP3 desteklenir · ${dosyaBoyutu(PARCA_BOYUTU)} üzeri dosyalar kayıpsız olarak parçalara bölünüp yüklenir (tek nesne sınırı ${dosyaBoyutu(YUKLEME_SINIRI)})`,`WAV, FLAC and MP3 are supported · files over ${dosyaBoyutu(PARCA_BOYUTU)} are split losslessly into parts and uploaded (single object limit ${dosyaBoyutu(YUKLEME_SINIRI)})`)}<br><small class="proj-surum">${L('sürüm','version')} ${SURUM}</small></p>
         <p class="proj-newfolder-error" id="proj-newfolder-error" role="alert">${safe(newFolderError)}</p>
         <p class="proj-newfolder-note" id="proj-newfolder-note" role="status">${safe(newFolderNote)}</p>
         <div class="proj-newfolder-actions">
