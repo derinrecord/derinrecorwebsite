@@ -7,6 +7,7 @@
   align-self: flex-start;
   gap: 0;
   flex: 0 0 auto;
+  z-index: 30;
 }
 
 .dil-sarma .wordmark {
@@ -16,8 +17,9 @@
 
 .dil-dugme {
   position: absolute;
-  top: 59px;
+  top: 69px;
   left: 0;
+  z-index: 30;
   order: 1;
   display: inline-flex;
   align-items: center;
