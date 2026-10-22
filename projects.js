@@ -2,14 +2,20 @@
   const STAGES=[{k:'approved',l:'ONAYLANDI'},{k:'started',l:'BAŞLANDI'},{k:'production',l:'YAPIM SÜRECİNDE'},{k:'finishing',l:'BİTİM AŞAMASI'},{k:'delivered',l:'TESLİM EDİLDİ'}];
   const GROUPS=[{t:'BEKLEYEN PROJELER',has:s=>s==='pending'},{t:'YAPIM SÜRECİNDE',has:s=>['approved','started','production','finishing'].includes(s)},{t:'TAMAMLANAN',has:s=>s==='delivered'}];
   const list=document.querySelector('#list'), status=document.querySelector('#s');
+  // Dil seçimi: İngilizce seçiliyse ikinci metin. Birleştirilmiş (sayı/ad içeren) metinler
+  // otomatik çeviriyle eşleşmediği için burada seçilir; dil değişince sayfa yeniden çizilir.
+  const L=(tr,en)=>document.documentElement?.getAttribute?.('data-dil')==='en'?en:tr;
+  // Branş adı (veride Türkçe saklanır) ekranda seçili dilde büyük harfle.
+  const BRANS_EN={aerobik:'AEROBIC',akrobatik:'ACROBATIC',artistik:'ARTISTIC',ritmik:'RHYTHMIC','çocuk fitness':'KIDS FITNESS','cocuk-fitness':'KIDS FITNESS',proje:'PROJECT'};
+  const bransAdi=b=>{ const ham=String(b||''); const en=BRANS_EN[ham.toLocaleLowerCase('tr-TR')]; return L(ham.toLocaleUpperCase('tr-TR'),en||ham.toUpperCase()); };
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   // "3 gün önce" gibi okunur zaman; bir haftadan eskiyse kısa tarih.
   const goreli=v=>{
     const t=new Date(v).getTime(); if(!isFinite(t))return '';
     const fark=Math.max(0,Date.now()-t), dk=Math.round(fark/6e4), sa=Math.round(fark/36e5), gn=Math.round(fark/864e5);
-    if(dk<1)return 'az önce'; if(dk<60)return dk+' dk önce'; if(sa<24)return sa+' saat önce';
-    if(gn<7)return gn+' gün önce';
-    return new Date(t).toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});
+    if(dk<1)return L('az önce','just now'); if(dk<60)return L(dk+' dk önce',dk+' min ago'); if(sa<24)return L(sa+' saat önce',sa+(sa===1?' hour ago':' hours ago'));
+    if(gn<7)return L(gn+' gün önce',gn+(gn===1?' day ago':' days ago'));
+    return new Date(t).toLocaleDateString(L('tr-TR','en-GB'),{day:'numeric',month:'long',year:'numeric'});
   };
   // "1:05,3" — işaret zamanları onda bir saniye hassasiyetle gösterilir.
   const mmssOnda=s=>{ if(!s||!isFinite(s))s=0; const t=Math.round(s*10)/10; const dk=Math.floor(t/60), sn=t-dk*60;
@@ -105,7 +111,7 @@
         else openTrackId=null;
       }
       render();
-    }catch(e){bildir('Projeler alınamadı: '+e.message,'hata');}
+    }catch(e){bildir(L('Projeler alınamadı: ','Projects could not be loaded: ')+e.message,'hata');}
     finally{busy=false;}
   }
 
@@ -121,7 +127,7 @@
       <span class="pt-no">${String(i+1).padStart(2,'0')}</span>
       <span class="pt-kaset ${renk}"><img src="assets/demo-cassette-derin-record.png" alt="" loading="lazy"></span>
       <span class="pt-ad"><strong>${safe(tr.label||'Parça')}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small></span>
-      ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${n} not — parçayı açıp klasörlerde gör">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
+      ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${L(`${n} not — parçayı açıp klasörlerde gör`,`${n} ${n===1?'note':'notes'} — open the track to see the folders`)}">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
       <span class="pt-surum${has?' hazir':''}">v${safe(tr.version||1)}</span>
       <span class="pt-ok" aria-hidden="true">→</span>
     </button>`;
@@ -151,16 +157,16 @@
     const katli=!!katliProjeler[p.id];
     const asama=p.status==='pending'?'BEKLİYOR':((STAGES.find(s=>s.k===p.status)||{}).l||'');
     const durum=p.status==='pending'?'bekliyor':p.status==='delivered'?'teslim':'yapim';
-    const kim=admin?(names[p.coach_id]||'Antrenör'):'Derin Record × sen';
+    const kim=admin?(names[p.coach_id]||L('Antrenör','Coach')):L('Derin Record × sen','Derin Record × you');
     const no=String(projects.indexOf(p)+1).padStart(2,'0');
     const notSayisi=fbs.length;
     return `<article class="proj-card${katli?' katli':''}" data-durum="${durum}">
       <div class="proj-head" data-projfold="${p.id}" role="button" tabindex="0" aria-expanded="${katli?'false':'true'}" aria-controls="proj-body-${p.id}">
         <span class="proj-no" aria-hidden="true">${no}</span>
         <div class="proj-head-main">
-          <p class="proj-kicker">${p.branch?safe(String(p.branch).toLocaleUpperCase('tr-TR'))+' · ':''}${safe(kim)}</p>
+          <p class="proj-kicker">${p.branch?safe(bransAdi(p.branch))+' · ':''}${safe(kim)}</p>
           <h3>${safe(p.title||'Proje')}</h3>
-          <p class="meta">${trs.length} parça · ${notSayisi} not · ${safe(goreli(p.updated_at||p.created_at))} güncellendi</p>
+          <p class="meta">${L(`${trs.length} parça · ${notSayisi} not · ${safe(goreli(p.updated_at||p.created_at))} güncellendi`,`${trs.length} ${trs.length===1?'track':'tracks'} · ${notSayisi} ${notSayisi===1?'note':'notes'} · updated ${safe(goreli(p.updated_at||p.created_at))}`)}</p>
         </div>
         <span class="proj-stage-chip">${asama}</span>
         <span class="proj-fold-label">${katli?'AÇ':'KATLA'}</span>
@@ -183,7 +189,7 @@
       <ul class="fb-list">${fbs.length?fbs.map(f=>{
         const t=trs.find(x=>x.id===f.track_id);
         const antrenor=f.author_id===p.coach_id;
-        const ad=antrenor?(admin?(names[p.coach_id]||'Antrenör'):'Sen'):'Derin Record';
+        const ad=antrenor?(admin?(names[p.coach_id]||L('Antrenör','Coach')):L('Sen','You')):'Derin Record';
         return `<li><span class="fb-av${antrenor?'':' stu'}" aria-hidden="true">${safe(ad.trim().charAt(0).toLocaleUpperCase('tr-TR'))}</span><div class="fb-govde">${safe(f.body)}${t?` <em>· ${safe(t.label)}</em>`:''}<small>${safe(ad)} · ${safe(goreli(f.created_at))}</small></div></li>`;
       }).join(''):'<li class="bos">Henüz not yok. İlk notu sen bırak.</li>'}</ul>
       <div class="fb-yaz"><textarea data-fb="${p.id}" rows="1" placeholder="Not yaz…" aria-label="Not yaz"></textarea>
@@ -322,7 +328,14 @@
     ].join('\n');
   }
 
+  // "Hata: ayrıntı" biçimli bildirimlerin Türkçe ön ekleri (ayrıntı sunucudan gelir).
+  const ONEK_EN={'İşlem yapılamadı: ':'Action failed: ','Geri alındı: ':'Undone: ','İşaret taşınamadı: ':'Marker could not be moved: ',
+    'Mikrofona erişilemedi: ':'Microphone is not accessible: ','Gönderilemedi: ':'Could not send: ','Parça silinemedi: ':'Track could not be deleted: ',
+    'Yükleme hatası: ':'Upload error: ','Kaydedilemedi: ':'Could not save: ','İndirme izni kaydedilemedi: ':'Download permission could not be saved: ',
+    'Proje silinemedi: ':'Project could not be deleted: ','Parça eklenemedi: ':'Track could not be added: ','Varyasyon kaydedilemedi: ':'Variation could not be saved: ',
+    'Klasör oluşturulamadı: ':'Folder could not be created: '};
   function bildir(metin,tur,eylem){
+    if(metin&&L(0,1)){ const on=Object.keys(ONEK_EN).find(k=>String(metin).startsWith(k)); if(on)metin=ONEK_EN[on]+String(metin).slice(on.length); }
     status.textContent=metin;
     if(!metin)return;
     const tip=tur||'bilgi';
@@ -741,7 +754,7 @@
     const root=document.querySelector('.track-detail'); if(!root)return;
     const D=detail.peaks;
     const rozet=root.querySelector('.td-badge');
-    if(rozet&&D&&!detail.dalgaHata)rozet.textContent=(D.hazir>=D.n&&D.n)?'DALGA FORMU HAZIR':('DALGA FORMU YÜKLENİYOR · %'+Math.floor((detail.dalgaYuzde||0)));
+    if(rozet&&D&&!detail.dalgaHata)rozet.textContent=(D.hazir>=D.n&&D.n)?L('DALGA FORMU HAZIR','WAVEFORM READY'):(L('DALGA FORMU YÜKLENİYOR · %','LOADING WAVEFORM · ')+Math.floor((detail.dalgaYuzde||0))+L('','%'));
     if(!D)return;
     const sec=seciliNokta();
     const ana=root.querySelector('.td-wave-canvas');
@@ -784,8 +797,8 @@
   }
 
   const yazarAdi=(id,project)=>{
-    if(id===me)return 'Sen';
-    if(project&&id===project.coach_id)return admin?(names[id]||'Antrenör'):'Sen';
+    if(id===me)return L('Sen','You');
+    if(project&&id===project.coach_id)return admin?(names[id]||L('Antrenör','Coach')):L('Sen','You');
     return 'Derin Record';
   };
   const GENEL='__genel';
@@ -800,7 +813,7 @@
       <span class="td-sekme-ikon">${klasorIkon}</span>
       <span class="td-sekme-no">${noktaNo(p)}</span>
       <span class="td-sekme-zaman" data-sekmezaman="${p.localId}">${mmssOnda(p.time)}</span>
-      <span class="td-sekme-durum">${p.saved?'KAYITLI':'TASLAK'}${ses?' · SESLİ':''}</span>
+      <span class="td-sekme-durum">${p.saved?L('KAYITLI','SAVED'):L('TASLAK','DRAFT')}${ses?L(' · SESLİ',' · VOICE'):''}</span>
     </button>`;
   }
 
@@ -808,7 +821,7 @@
     const n=(detail.genelNotlar||[]).length, aktif=genelSecili();
     return `<button type="button" role="tab" aria-selected="${aktif}" class="td-sekme genel${n?' saved':''}${aktif?' aktif':''}" data-tdsec="${GENEL}">
       <span class="td-sekme-ikon">${klasorIkon}</span>
-      <span class="td-sekme-no">GENEL</span>
+      <span class="td-sekme-no">${L('GENEL','GENERAL')}</span>
       <span class="td-sekme-zaman">${n}</span>
       <span class="td-sekme-durum">PARÇANIN GENELİ</span>
     </button>`;
@@ -833,7 +846,7 @@
     return `<div class="td-klasor ${p.saved?'saved':'draft'}" role="tabpanel" data-tdpoint="${p.localId}">
       <div class="td-klasor-ust">
         <div>
-          <p class="td-klasor-etiket">KLASÖR ${noktaNo(p)} · ${p.saved?('NOT · '+safe(yazarAdi(p.yazar,detail.proje).toLocaleUpperCase('tr-TR'))+(p.tarih?' · '+safe(goreli(p.tarih).toLocaleUpperCase('tr-TR')):'')):'TASLAK NOT'}</p>
+          <p class="td-klasor-etiket">${L('KLASÖR','FOLDER')} ${noktaNo(p)} · ${p.saved?(L('NOT · ','NOTE · ')+safe(yazarAdi(p.yazar,detail.proje).toLocaleUpperCase(L('tr-TR','en-GB')))+(p.tarih?' · '+safe(goreli(p.tarih).toLocaleUpperCase(L('tr-TR','en-GB'))):'')):L('TASLAK NOT','DRAFT NOTE')}</p>
           <p class="td-klasor-zaman">${!tasinabilir(p)?`<span class="td-point-time" data-klasorzaman>${mmssOnda(p.time)}</span>`
             :`<input class="td-zaman-kutu" data-klasorzaman data-tdzamanyaz inputmode="decimal" value="${mmssOnda(p.time)}" aria-label="İşaret zamanı (dakika:saniye,onda bir)" title="Zamanı yaz, işaret oraya taşınır">`}</p>
         </div>
@@ -844,11 +857,11 @@
       </div>
       <div class="td-zoom">
         <canvas class="td-zoom-canvas" data-tdzoom></canvas>
-        <div class="td-zoom-cetvel"><span data-zoombas>0:00</span><span>YAKIN PLAN · ${YAKIN_PLAN} SN</span><span data-zoomson>0:00</span></div>
+        <div class="td-zoom-cetvel"><span data-zoombas>0:00</span><span>${L(`YAKIN PLAN · ${YAKIN_PLAN} SN`,`CLOSE-UP · ${YAKIN_PLAN} S`)}</span><span data-zoomson>0:00</span></div>
       </div>
       ${tasinabilir(p)?`<div class="td-ince"><span>İNCE AYAR</span>
-        <button type="button" data-tdkaydir="-1">−1 sn</button><button type="button" data-tdkaydir="-0.1">−0,1</button>
-        <button type="button" data-tdkaydir="0.1">+0,1</button><button type="button" data-tdkaydir="1">+1 sn</button>
+        <button type="button" data-tdkaydir="-1">${L('−1 sn','−1 s')}</button><button type="button" data-tdkaydir="-0.1">${L('−0,1','−0.1')}</button>
+        <button type="button" data-tdkaydir="0.1">${L('+0,1','+0.1')}</button><button type="button" data-tdkaydir="1">${L('+1 sn','+1 s')}</button>
         <button type="button" data-tdsuana>ÇALAN YERE TAŞI</button></div>`:''}
       <textarea class="td-point-note" placeholder="Bu noktada ne değişsin? (ör. davul daha sert girsin)" data-tdpointnote="${p.localId}" ${p.saved?'disabled':''}>${safe(p.body||'')}</textarea>
       <div class="td-point-voice">
@@ -863,13 +876,13 @@
   function trackDetailView(tr,project){
     const has=!!tr.audio_path;
     const dur=detail.duration||0, cur=detail.curTime||0;
-    const branchLabel=safe((project.branch||'proje').toUpperCase());
+    const branchLabel=safe(bransAdi(project.branch||'proje'));
     const points=detail.points||[];
     if(!genelSecili()&&!seciliNokta())detail.selPointLocalId=points.length?sirali()[0].localId:GENEL;
     const draftCount=points.filter(p=>!p.saved).length;
     const savedCount=points.filter(p=>p.saved).length;
     const D=detail.peaks, dalgaTam=!!(D&&D.n&&D.hazir>=D.n), dalgaVar=!!(D&&D.hazir>0&&(detail.duration||D.duration));
-    const waveState=!has?'':(detail.dalgaHata&&!dalgaVar?'DALGA FORMU ÇIKARILAMADI':(dalgaTam?'DALGA FORMU HAZIR':('DALGA FORMU YÜKLENİYOR · %'+Math.floor(detail.dalgaYuzde||0))));
+    const waveState=!has?'':(detail.dalgaHata&&!dalgaVar?L('DALGA FORMU ÇIKARILAMADI','WAVEFORM UNAVAILABLE'):(dalgaTam?L('DALGA FORMU HAZIR','WAVEFORM READY'):(L('DALGA FORMU YÜKLENİYOR · %','LOADING WAVEFORM · ')+Math.floor(detail.dalgaYuzde||0)+L('','%'))));
     return `<div class="track-detail">
       <button type="button" class="td-back" data-tdback>← PROJELERİM</button>
       <div class="td-head">
@@ -877,7 +890,7 @@
         <div class="td-head-info">
           <p class="td-eyebrow">${branchLabel}</p>
           <h2 class="td-title">${safe(tr.label||'Parça')}</h2>
-          <p class="td-sub">${has?('v'+tr.version+' sürüm'):'Ham kaynak'} · Kaseti oynat ve ritmi hisset.</p>
+          <p class="td-sub">${has?L('v'+tr.version+' sürüm','version '+tr.version):L('Ham kaynak','Raw source')} · ${L('Kaseti oynat ve ritmi hisset.','Play the cassette and feel the rhythm.')}</p>
         </div>
         ${has?`<div class="td-player">
           <button type="button" class="td-play" data-tdplay>${detail.playing?'❚❚':'▶'}</button>
@@ -898,15 +911,19 @@
       <div class="td-shape-head">
         <div class="td-shape-sol">
           <p class="td-eyebrow">BİRLİKTE ŞEKİLLENDİRELİM</p>
-          <button type="button" class="td-bilgi-ac" data-tdbilgi aria-expanded="${bilgiAcik}" aria-controls="td-bilgi">ⓘ NASIL KULLANILIR <b aria-hidden="true">${bilgiAcik?'▴':'▾'}</b></button>
+          <button type="button" class="td-bilgi-ac" data-tdbilgi aria-expanded="${bilgiAcik}" aria-controls="td-bilgi">ⓘ ${L('NASIL KULLANILIR','HOW IT WORKS')} <b aria-hidden="true">${bilgiAcik?'▴':'▾'}</b></button>
         </div>
         ${waveState?`<span class="td-badge">${waveState}</span>`:''}
       </div>
       <div class="td-desc" id="td-bilgi"${bilgiAcik?'':' hidden'}>
-        <p><strong>Dinle:</strong> Dalgaya dokun, o yerden çalar.</p>
+        ${L(`<p><strong>Dinle:</strong> Dalgaya dokun, o yerden çalar.</p>
         <p><strong>İşaretle:</strong> Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek ya da ince ayarla kaydırabilirsin.${admin?' Kayıtlı işaretleri de taşıyabilirsin; yeni yeri kendiliğinden kaydedilir.':' Kendi kaydettiğin işaretleri de taşıyabilirsin; yeni yeri kendiliğinden kaydedilir.'}</p>
         <p><strong>Yakınlaştır:</strong> − / + düğmeleri, telefonda iki parmak, bilgisayarda Ctrl/⌘ + tekerlek. Yakınken sağa-sola sürükleyerek gezin.</p>
-        <p><strong>Renk:</strong> Alttaki yuvarlak simgeden dalganın zemin rengini seç.</p>
+        <p><strong>Renk:</strong> Alttaki yuvarlak simgeden dalganın zemin rengini seç.</p>`,
+        `<p><strong>Listen:</strong> Tap the waveform to play from that point.</p>
+        <p><strong>Mark:</strong> Press <strong>+ ADD MARKER</strong> where you want something changed; each marker keeps its note in its own folder. You can move draft markers by dragging them or with fine adjustment.${admin?' You can also move saved markers; the new position is saved automatically.':' You can also move markers you saved; the new position is saved automatically.'}</p>
+        <p><strong>Zoom:</strong> − / + buttons, two fingers on a phone, Ctrl/⌘ + scroll wheel on a computer. When zoomed in, drag left and right to move around.</p>
+        <p><strong>Colour:</strong> Choose the waveform background colour from the round icon below.</p>`)}
       </div>
 
       ${has?`
@@ -936,12 +953,12 @@
       </div>
 
       <div class="td-addbtn-row">
-        <button type="button" class="td-addbtn" data-tdaddpoint>+ İŞARET KOY · <span data-tdaddzaman>${mmss(cur)}</span></button>
-        <span class="td-legend"><i class="td-legend-dot draft"></i> taslak <i class="td-legend-dot saved"></i> kayıtlı <i class="td-legend-dot aktif"></i> açık klasör · ${draftCount} taslak · ${savedCount} kayıtlı</span>
+        <button type="button" class="td-addbtn" data-tdaddpoint>${L('+ İŞARET KOY','+ ADD MARKER')} · <span data-tdaddzaman>${mmss(cur)}</span></button>
+        <span class="td-legend"><i class="td-legend-dot draft"></i> ${L('taslak','draft')} <i class="td-legend-dot saved"></i> ${L('kayıtlı','saved')} <i class="td-legend-dot aktif"></i> ${L(`açık klasör · ${draftCount} taslak · ${savedCount} kayıtlı`,`open folder · ${draftCount} draft · ${savedCount} saved`)}</span>
       </div>
 
       <div class="td-klasorler">
-        <p class="td-klasorler-baslik">NOT KLASÖRLERİ <i>${points.length+(detail.genelNotlar||[]).length}</i></p>
+        <p class="td-klasorler-baslik">${L('NOT KLASÖRLERİ','NOTE FOLDERS')} <i>${points.length+(detail.genelNotlar||[]).length}</i></p>
         <div class="td-sekmeler" role="tablist">${genelSekmesi()}${sirali().map(klasorSekmesi).join('')}</div>
         ${genelSecili()?genelGovdesi():klasorGovdesi(seciliNokta())}
         ${points.length?'':'<p class="td-empty">İşaretli bir yere not bırakmak için dinlerken “+ İşaret koy”a bas; o not kendi klasöründe durur.</p>'}
@@ -1122,7 +1139,7 @@
       };
       try{
         await uygula(yeni);
-        bildir(`İşaret ${mmssOnda(yeni)} konumuna taşındı.`,'ok',{etiket:'GERİ AL',is:async()=>{
+        bildir(L(`İşaret ${mmssOnda(yeni)} konumuna taşındı.`,`Marker moved to ${mmssOnda(yeni)}.`),'ok',{etiket:'GERİ AL',is:async()=>{
           await uygula(eski); p.time=eski; canliKonum(p); bildir('Geri alındı: '+mmssOnda(eski),'ok');
         }});
       }catch(e){
@@ -1479,7 +1496,7 @@
 
     root.querySelectorAll('[data-newver]').forEach(inp=>inp.onchange=async()=>{
       const file=inp.files?.[0]; if(!file)return;
-      if(!sesGecerli(file)){ bildir(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,'hata'); inp.value=''; return; }
+      if(!sesGecerli(file)){ bildir(L(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,`The “${sesUzantisi(file.name)}” format is not supported. Supported audio files: ${desteklenenMetin()}.`),'hata'); inp.value=''; return; }
       bildir('Yeni varyasyon ekleniyor… ('+dosyaBoyutu(file.size)+')','bilgi');
       inp.disabled=true;
       try{
@@ -1542,7 +1559,7 @@
             : '';
         }
         if(errEl){
-          if(picked&&!sesGecerli(picked)) errEl.textContent=`“${sesUzantisi(picked.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`;
+          if(picked&&!sesGecerli(picked)) errEl.textContent=L(`“${sesUzantisi(picked.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,`The “${sesUzantisi(picked.name)}” format is not supported. Supported audio files: ${desteklenenMetin()}.`);
           else if(errEl.textContent&&(!picked||sesGecerli(picked))) errEl.textContent='';
         }
       };
@@ -1568,7 +1585,7 @@
           if(!targetCoach){ nfError('Önce bir antrenör seç.'); coachSel?.focus(); return; }
         }
         if(file&&!sesGecerli(file)){
-          nfError(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`);
+          nfError(L(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,`The “${sesUzantisi(file.name)}” format is not supported. Supported audio files: ${desteklenenMetin()}.`));
           return;
         }
         nfError('');
@@ -1694,7 +1711,7 @@
       const file=inp.files?.[0]; if(!file)return;
       const project=projects.find(p=>p.id===inp.dataset.addtrack); if(!project)return;
       if(!sesGecerli(file)){
-        bildir(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,'hata');
+        bildir(L(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,`The “${sesUzantisi(file.name)}” format is not supported. Supported audio files: ${desteklenenMetin()}.`),'hata');
         inp.value=''; return;
       }
       inp.disabled=true; bildir('Parça yükleniyor… ('+dosyaBoyutu(file.size)+')','bilgi');
@@ -1728,7 +1745,7 @@
       const tr=Object.values(tracks).flat().find(t=>t.id===tid);
       const proj=projects.find(p=>p.id===tr.project_id);
       bildir('Varyasyon yükleniyor… ('+dosyaBoyutu(file.size)+')','bilgi');
-      if(!sesGecerli(file)){ bildir(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,'hata'); inp.value=''; return; }
+      if(!sesGecerli(file)){ bildir(L(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,`The “${sesUzantisi(file.name)}” format is not supported. Supported audio files: ${desteklenenMetin()}.`),'hata'); inp.value=''; return; }
       const eskiParcalar=sesYollari(tr.audio_path);
       const up=await yukleSesParcali(`${proj.coach_id}/${tid}-${Date.now()}`,file,
         (i,n)=>{ bildir(`Varyasyon yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`,'bilgi'); });
@@ -1788,5 +1805,7 @@
     if(currentUser&&currentUser.id===me){ load(); return; }
     boot();                                            // giriş / kullanıcı değişimi
   });
+  // Dil değişince sayı/ad içeren metinler de yeni dilde çizilsin.
+  document.addEventListener('derin:dil',()=>{ if(me)render(); });
   boot();
 })();

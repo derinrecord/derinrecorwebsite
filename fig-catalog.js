@@ -1,6 +1,8 @@
 /* FIG 2025–2028: feedback labels, not an automatic difficulty/eligibility judge.
    Sources inspected 2026-09-12. Each profile retains its source and page. */
 (() => {
+  // İngilizce seçiliyse ikinci metin (sayı içeren metinler otomatik çeviriyle eşleşmez).
+  const L = (tr, en) => (document.documentElement?.getAttribute?.('data-dil') === 'en' ? en : tr);
   const base = 'https://www.gymnastics.sport/publicdir/rules/files/';
   const sources = {
     aer: base + 'en_1.1%20-%20AER%20Code%20of%20Points%202025-2028.pdf',
@@ -142,7 +144,7 @@
         const pinned = document.createElement('optgroup'); pinned.label = 'Bu noktanın mevcut seçimi'; pinned.append(new Option(chosen,chosen)); movement.prepend(pinned);
       }
       movement.value = chosen;
-      $('.element-count').textContent = query ? `${count} eşleşme · mevcut seçimin korunur` : `${count} seçenek · branşa ve yaşa göre`;
+      $('.element-count').textContent = query ? L(`${count} eşleşme · mevcut seçimin korunur`, `${count} matches · your current selection is kept`) : L(`${count} seçenek · branşa ve yaşa göre`, `${count} options · by discipline and age`);
     }
     function update(reset = true) {
       fill(category,categories(branch,age.value),category.value);
@@ -154,7 +156,7 @@
       $('.fig-info ul').replaceChildren(...current.requirements.map(text => {const li=document.createElement('li'); li.textContent=text; return li;}));
       $('.fig-explanation').textContent = current.note;
       $('.fig-source').href = current.url+'#page='+current.page;
-      $('.fig-source').textContent = `FIG kitapçığı · s.${current.page} ↗`;
+      $('.fig-source').textContent = L(`FIG kitapçığı · s.${current.page} ↗`, `FIG Code of Points · p.${current.page} ↗`);
       $('.fig-extra').hidden = !current.extraSource;
       if (current.extraSource) $('.fig-extra').href = current.extraSource;
     }

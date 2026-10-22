@@ -1,4 +1,6 @@
 (() => {
+  // İngilizce seçiliyse ikinci metin (sayı içeren metinler otomatik çeviriyle eşleşmez).
+  const L = (tr, en) => (document.documentElement?.getAttribute?.('data-dil') === 'en' ? en : tr);
   const stamp = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   // Supabase hiçbir satırı etkilemeyen yazmada hata döndürmez: not silinemez,
   // taşınamaz ama ekran başarılı sanır. Etkilenen satırı geri isteriz.
@@ -114,7 +116,7 @@
       const draft = {id:crypto.randomUUID(), number:nextNumber++, time, message:'', voice:null, ...movementValue()};
       drafts.push(draft); activeId = draft.id;
       setPosition(time); loadEditor(); renderPoints();
-      status(`${stamp(time)} için nokta ${draft.number} eklendi. Başka bir ana tıklayarak yeni nokta ekleyebilirsin.`);
+      status(L(`${stamp(time)} için nokta ${draft.number} eklendi. Başka bir ana tıklayarak yeni nokta ekleyebilirsin.`, `Point ${draft.number} added at ${stamp(time)}. Click another moment to add a new point.`));
     }
     $('.add-point').onclick = () => addPoint(selected);
     $('.remove-point').onclick = () => {
@@ -171,7 +173,7 @@
     };
     function renderPoints() {
       $('.draft-points').replaceChildren(); $('.markers').replaceChildren();
-      $('.point-count').textContent = `${drafts.length} taslak · ${notes.length} kayıtlı`;
+      $('.point-count').textContent = L(`${drafts.length} taslak · ${notes.length} kayıtlı`, `${drafts.length} draft · ${notes.length} saved`);
       [...drafts].sort((a,b) => a.time - b.time).forEach(draft => {
         const button = document.createElement('button'); button.type = 'button';
         button.className = 'draft-chip'; button.setAttribute('aria-pressed', String(draft.id === activeId));
@@ -190,7 +192,7 @@
           marker.className = `wave-marker ${point.saved ? 'is-saved' : 'is-draft'}${point.id === activeId ? ' is-active' : ''}`;
           marker.style.left = `${x / width * 100}%`; marker.style.top = `${lane * 32}px`;
           marker.textContent = point.saved ? '✓' : String(point.number);
-          marker.title = `${stamp(point.time)} · ${point.saved ? point.movement : `Taslak nokta ${point.number}`}`;
+          marker.title = `${stamp(point.time)} · ${point.saved ? point.movement : L(`Taslak nokta ${point.number}`, `Draft point ${point.number}`)}`;
           marker.setAttribute('aria-label', marker.title);
           marker.onclick = () => {
             if (point.saved) { setPosition(point.time); $('.notes').querySelector(`[data-note-id="${CSS.escape(point.id)}"]`)?.scrollIntoView({behavior:'smooth',block:'nearest'}); }
@@ -215,8 +217,8 @@
                 try {
                   await tekSatir(window.DerinAuth.client.from('feedback_notes').update({time_seconds:target.time}).eq('id', target.id), 'İşaret taşınamadı.');
                 } catch { status('İşaret taşınamadı. Tekrar dene.'); return; }
-                status(`${stamp(target.time)} noktasındaki kayıt taşındı.`); renderNotes();
-              } else { status(`Taslak nokta ${target.number} ${stamp(target.time)} konumuna taşındı.`); renderPoints(); }
+                status(L(`${stamp(target.time)} noktasındaki kayıt taşındı.`, `The note at ${stamp(target.time)} was moved.`)); renderNotes();
+              } else { status(L(`Taslak nokta ${target.number} ${stamp(target.time)} konumuna taşındı.`, `Draft point ${target.number} moved to ${stamp(target.time)}.`)); renderPoints(); }
             };
             window.addEventListener('pointermove', move); window.addEventListener('pointerup', end, {once:true});
           });
@@ -229,7 +231,7 @@
     }
     function renderNotes() {
       urls.forEach(URL.revokeObjectURL); urls = []; $('.notes').replaceChildren();
-      const heading = document.createElement('h4'); heading.textContent = `GERİ BİLDİRİMLER (${notes.length})`; $('.notes').append(heading);
+      const heading = document.createElement('h4'); heading.textContent = L(`GERİ BİLDİRİMLER (${notes.length})`, `FEEDBACK (${notes.length})`); $('.notes').append(heading);
       if (!notes.length) { const p = document.createElement('p'); p.textContent = 'Kaydettiğin notlar burada zaman sırasıyla listelenir.'; $('.notes').append(p); }
       [...notes].sort((a,b) => a.time - b.time).forEach(note => {
         const row = document.createElement('article'); row.className = 'feedback-note'; row.dataset.noteId = note.id;
@@ -265,13 +267,13 @@
           clearTimeout(recordingTimer); stream.getTracks().forEach(t => t.stop()); recordingOwner = null;
           if (chunks.length) {
             voice = new Blob(chunks, {type:recorder.mimeType}); recordingDraft.voice = voice;
-            showVoice(); status(`Nokta ${recordingDraft.number} için ses hazır. Dinleyip bu noktayı kaydet.`);
+            showVoice(); status(L(`Nokta ${recordingDraft.number} için ses hazır. Dinleyip bu noktayı kaydet.`, `Audio for point ${recordingDraft.number} is ready. Listen and save this point.`));
           } else status('Ses kaydedilemedi. Yeniden dene.');
           $('.record').textContent = '● SES KAYDINI YENİLE'; $('.save-note').disabled = false;
         };
         recorder.onerror = () => { stream.getTracks().forEach(t => t.stop()); status('Ses kaydı kesildi. Kaydı kontrol edip yeniden dene.'); };
         recorder.start(); $('.record').textContent = '■ KAYDI BİTİR';
-        status(`Nokta ${recordingDraft.number} · ${stamp(recordingDraft.time)} için kayıt yapılıyor. En fazla 2 dakika.`);
+        status(L(`Nokta ${recordingDraft.number} · ${stamp(recordingDraft.time)} için kayıt yapılıyor. En fazla 2 dakika.`, `Recording for point ${recordingDraft.number} · ${stamp(recordingDraft.time)}. Up to 2 minutes.`));
         recordingTimer = setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 120000);
       } catch { stream?.getTracks().forEach(t => t.stop()); recordingOwner = null; $('.save-note').disabled = false; status('Mikrofon açılamadı. Tarayıcı iznini kontrol et veya yazılı not ekle.'); }
       finally { $('.record').disabled = false; }
@@ -287,12 +289,13 @@
         await storage('readwrite', s => s.put(note)); notes.push(note);
         drafts = drafts.filter(d => d.id !== draft.id); activeId = drafts[0]?.id || null;
         if (active()) setPosition(active().time);
-        loadEditor(); renderNotes(); status(`${stamp(note.time)} noktasına not kaydedildi. ${drafts.length} taslak nokta kaldı.`);
+        loadEditor(); renderNotes(); status(L(`${stamp(note.time)} noktasına not kaydedildi. ${drafts.length} taslak nokta kaldı.`, `Note saved at ${stamp(note.time)}. ${drafts.length} draft point(s) left.`));
       } catch { status('Not kaydedilemedi. Taslağın korunuyor; tarayıcı depolamasını kontrol edip tekrar dene.'); }
       finally { saving = false; $('.save-note').disabled = !active(); }
     };
     storage('readonly', s => s.getAll()).then(all => { notes = all.filter(n => n.key === key); renderNotes(); }).catch(() => status('Tarayıcı depolaması kullanılamıyor; notlar kaydedilemez.'));
     metadata(); loadEditor(); draw();
+    document.addEventListener('derin:dil', () => { renderPoints(); renderNotes(); });
     window.addEventListener('beforeunload', e => { if (drafts.length || recordingOwner === panel) { e.preventDefault(); e.returnValue = ''; } });
     window.addEventListener('pagehide', () => { stream?.getTracks().forEach(t => t.stop()); clearTimeout(recordingTimer); });
   });
