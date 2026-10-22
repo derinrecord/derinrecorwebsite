@@ -496,6 +496,62 @@ ${modal ? `<div class="modal-wrap open"><div class="modal">
   return;
 }
 
+// "kaynak" modu klasör sayfasındaki KAYNAK düğmesini, durum etiketlerini ve
+// (4. bağımsız değişken "pencere" ise) tek parçanın kaynak penceresini önizler.
+if (senaryo === 'kaynak') {
+  const V = require(path.join(kok, 'radyo-panel-views.js'));
+  const kapak = 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#1b2350"/><circle cx="56" cy="22" r="10" fill="#f6e7c4"/><rect y="56" width="80" height="24" fill="#0b0f2a"/></svg>');
+  const adlar = ['Morning Brew', 'Golden Hour', 'Soft Steam', 'Velvet Roast', 'Window Seat', 'Slow Pour'];
+  const tracks = adlar.map((ad, i) => ({ id: 't' + i, folder_id: 'f1', title: ad, storage_path: 'f1/' + i + '.mp3', sort_order: i,
+    duration_sec: 150 + i * 7, cover_path: 'tracks/t' + i + '.jpg', sanatci: i === 3 ? 'HoliznaCC0' : null }));
+  const kaynaklar = {
+    t0: { kaynak: 'suno', uretim_tarihi: '2026-10-12', abonelik_acik: true, indirme_tarihi: '2026-10-12', kanit_notu: 'suno.com/song/…' },
+    t1: { kaynak: 'suno', uretim_tarihi: '2026-10-12', abonelik_acik: true, indirme_tarihi: null },
+    t2: { kaynak: 'suno', uretim_tarihi: '2026-08-03', abonelik_acik: false, indirme_tarihi: '2026-08-03' },
+    t3: { kaynak: 'fma_cc0', kanit_notu: 'freemusicarchive.org/music/holiznacc0' },
+    t4: { kaynak: 'kendi' }
+  };
+  const D = {
+    kurulum: { 'parca-kredi.sql': true, 'parca-kaynak.sql': true }, kaynaklar,
+    brands: [], folders: [{ id: 'f1', name: 'Morning Cafe', description: null, cover_path: null, shuffle: true }],
+    tracks, players: [], broadcast: [], announcements: [], coffeeAttempts: [], subscriptions: [], plans: [], requests: [],
+    playlists: [], playlistTracks: []
+  };
+  const ui = {
+    cover: () => kapak, ses: p => p, anons: p => p, playerBase: () => '',
+    accept: () => '.mp3,.wav', desteklenenler: () => 'mp3, wav', parcaNotu: () => '', now: () => Date.now(), saglikSonuc: () => null
+  };
+  const gorunum = V.gorunum({ nav: 'icerik', sub: 'klasorler', openFolder: 'f1', openBrand: null, openPlaylist: null, q: '' }, D, ui);
+  const modal = process.argv[4] === 'pencere';
+  const pencereHtml = V.parcaKaynakPenceresi(tracks[1], kaynaklar.t1);
+  const sayfa = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel — parça kaynağı</title>
+<style>
+${oku('radyo-panel.css')}
+body{background:#0b0b0d;padding:22px;display:block}
+.view{max-width:1080px;margin:0 auto}
+${modal ? '.modal-wrap{display:flex}' : ''}
+</style>
+</head>
+<body><div class="view">${gorunum.html}</div>
+${modal ? `<div class="modal-wrap open"><div class="modal">
+  <h3>Parça kaynağı</h3>
+  <div class="modal-body">${pencereHtml}</div>
+  <div class="modal-actions"><button class="btn" type="button">VAZGEÇ</button><button class="btn primary" type="button">KAYDET</button></div>
+</div></div>` : ''}
+<script>var p=document.querySelectorAll(".panel")[1]; if(p) window.scrollTo(0, p.getBoundingClientRect().top + window.scrollY - 10);</script>
+</body>
+</html>`;
+  fs.writeFileSync(ciktiYolu, sayfa);
+  console.log(path.relative(kok, ciktiYolu) + ' yazıldı · parça kaynağı');
+  return;
+}
+
 // "marka" modu marka panelini (coffee-marka) önizler: erişim kodunun kilidi ve
 // sunumun kendisi. Sayfa yalnız okur ve listeleri gösterir; hangi listelerin
 // çalacağını yönetim belirler. Gerçek sayfa gömülür, yalnız sunucu taklit edilir.

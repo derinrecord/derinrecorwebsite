@@ -328,9 +328,11 @@
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     if (!parcalar.length) return bildir('Bu klasörde parça yok.');
     const krediVar = !!(D.kurulum && D.kurulum['parca-kredi.sql']);
+    const kaynakVar = !!(D.kurulum && D.kurulum['parca-kaynak.sql']);
+    const kaynakli = parcalar.map(t => Object.assign({ kaynakKaydi: (D.kaynaklar || {})[t.id] || null }, t));
     pencere({
       baslik: 'Toplu düzenle',
-      govde: V.topluDuzenlePenceresi(parcalar, f.name + ' · ' + parcalar.length + ' parça', krediVar),
+      govde: V.topluDuzenlePenceresi(kaynakli, f.name + ' · ' + parcalar.length + ' parça', krediVar, kaynakVar),
       onayMetni: 'SEÇİLENLERE UYGULA',
       onOnay: () => topluDuzenleKaydet(parcalar),
       onKapat: () => kapakOnizlemeBirak()
@@ -365,9 +367,25 @@
     const dosya = giris && giris.files && giris.files[0];
     const sanatci = el('toplu-sanatci') ? el('toplu-sanatci').value.trim() : '';
     const kredi = el('toplu-kredi') ? el('toplu-kredi').value.trim() : '';
-    if (!dosya && !sanatci && !kredi) return topluPencereyiGeriAc(parcalar, 'Değiştirilecek bir şey seç: kapak, sanatçı ya da kredi.');
+    const deger = id => (el(id) ? el(id).value.trim() : '');
+    const kf = { kaynak: deger('toplu-kaynak-tur'), uretim: deger('toplu-kaynak-uretim'),
+      abonelik: deger('toplu-kaynak-abonelik'), indirme: deger('toplu-kaynak-indirme'), not: deger('toplu-kaynak-not') };
+    const kaynakDegisti = !!(kf.kaynak || kf.uretim || kf.abonelik || kf.indirme || kf.not);
+    if (!dosya && !sanatci && !kredi && !kaynakDegisti) return topluPencereyiGeriAc(parcalar, 'Değiştirilecek bir şey seç: kapak, sanatçı, kredi ya da kaynak.');
     const ids = topluKutular().filter(k => k.checked).map(k => k.value);
     if (!ids.length) return topluPencereyiGeriAc(parcalar, 'Hiç parça seçilmedi.');
+    // Kaynak: yalnız doldurulan alanlar yazılır (boş alan parçada değişmez).
+    let kaynakSatiri = null;
+    if (kaynakDegisti) {
+      const kontrol = V.parcaKaynakKaydi(Object.assign({}, kf, { kaynak: kf.kaynak || 'suno' }), bugunIso());
+      if (kontrol.hata) return topluPencereyiGeriAc(parcalar, kontrol.hata);
+      kaynakSatiri = {};
+      if (kf.kaynak) kaynakSatiri.kaynak = kf.kaynak;
+      if (kf.uretim) kaynakSatiri.uretim_tarihi = kf.uretim;
+      if (kf.abonelik) kaynakSatiri.abonelik_acik = kf.abonelik === 'evet';
+      if (kf.indirme) kaynakSatiri.indirme_tarihi = kf.indirme;
+      if (kf.not) kaynakSatiri.kanit_notu = kf.not;
+    }
     try {
       const degisiklik = {};
       if (sanatci) degisiklik.sanatci = sanatci;
@@ -382,20 +400,39 @@
       const eskiler = yol
         ? [...new Set(parcalar.filter(t => ids.includes(t.id) && t.cover_path).map(t => t.cover_path))]
         : [];
-      const { data, error } = await client.from('radio_tracks')
-        .update(degisiklik).in('id', ids).select('id');
-      if (error || !data || !data.length) {
-        if (yol) await kapakDosyaSil(yol);
-        return hata('Kaydedilemedi: ' + (error ? error.message : 'kayıt bulunamadı ya da bu işlem için yetkiniz yok.'));
+      let adet = 0;
+      if (Object.keys(degisiklik).length) {
+        const { data, error } = await client.from('radio_tracks')
+          .update(degisiklik).in('id', ids).select('id');
+        if (error || !data || !data.length) {
+          if (yol) await kapakDosyaSil(yol);
+          return hata('Kaydedilemedi: ' + (error ? error.message : 'kayıt bulunamadı ya da bu işlem için yetkiniz yok.'));
+        }
+        adet = data.length;
+        for (const eski of eskiler) await kapakDosyaSil(eski);
       }
-      for (const eski of eskiler) await kapakDosyaSil(eski);
+      if (kaynakSatiri) {
+        const { data, error } = await client.from('radio_track_kaynak')
+          .upsert(ids.map(id => Object.assign({ track_id: id }, kaynakSatiri)), { onConflict: 'track_id' })
+          .select('track_id');
+        if (error || !data || !data.length) {
+          return hata('Kaynak kaydedilemedi: ' + (error ? error.message : 'bu işlem için yetkiniz yok.'));
+        }
+        adet = Math.max(adet, data.length);
+      }
       pencereKapat();
       await yenile(false);
-      const neler = [yol && 'kapak', sanatci && 'sanatçı', kredi && 'kredi'].filter(Boolean).join(', ');
-      bildir(data.length + ' parçaya ' + neler + ' yazıldı.');
+      const neler = [yol && 'kapak', sanatci && 'sanatçı', kredi && 'kredi', kaynakSatiri && 'kaynak'].filter(Boolean).join(', ');
+      bildir(adet + ' parçaya ' + neler + ' yazıldı.');
     } finally {
       kapakOnizlemeBirak();
     }
+  }
+
+  // Yerel bugün, 'YYYY-MM-DD' (kaynak kaydında ileri tarih denetimi için).
+  function bugunIso() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
   function onaySor(s) {
@@ -1044,6 +1081,16 @@
         D.tracks = D.tracks.map(t => Object.assign({}, t, harita.get(t.id) || {}));
       }
     } catch { D.kurulum['parca-kredi.sql'] = false; }
+
+    // Parça kaynak kaydı (supabase/parca-kaynak.sql): ayrı tablo, yalnız
+    // yönetici okur. Kurulmadıysa KAYNAK düğmesi ve etiketleri çizilmez.
+    try {
+      const kaynak = await client.from('radio_track_kaynak')
+        .select('track_id,kaynak,uretim_tarihi,abonelik_acik,indirme_tarihi,kanit_notu');
+      D.kurulum['parca-kaynak.sql'] = !kaynak.error;
+      D.kaynaklar = {};
+      if (!kaynak.error && Array.isArray(kaynak.data)) kaynak.data.forEach(x => { D.kaynaklar[x.track_id] = x; });
+    } catch { D.kurulum['parca-kaynak.sql'] = false; D.kaynaklar = {}; }
 
     // Ses kontrolü alanları (supabase/radio-ses-kontrolu.sql). Kurulmadıysa
     // sorgu hata döner; dalga o zaman yalnız "çalıyor" bildirimine bakar.
@@ -2564,6 +2611,11 @@
         topluSayiYaz();
         return;
       }
+      case 'toplu-kaynaksiz': {
+        topluKutular().forEach(k => { if (k.dataset.kaynaksiz === '1') k.checked = true; });
+        topluSayiYaz();
+        return;
+      }
       case 'toplu-temizle': {
         topluKutular().forEach(k => { k.checked = false; });
         topluSayiYaz();
@@ -2599,6 +2651,38 @@
           client.from('radio_tracks').update({ title: yeni }).eq('id', t.id), 'Ad kaydedilemedi');
         if (sorun) return hata(sorun);
         await yenile(false); bildir('Parça adı güncellendi.');
+        return;
+      }
+      case 'track-kaynak': {
+        const t = D.tracks.find(x => x.id === id);
+        if (!t) return;
+        const mevcut = (D.kaynaklar || {})[t.id] || null;
+        const form = await new Promise(res => {
+          pencere({
+            baslik: 'Parça kaynağı',
+            govde: V.parcaKaynakPenceresi(t, mevcut),
+            onayMetni: 'KAYDET',
+            onOnay: () => {
+              const m = el('modal');
+              const oku = s => m.querySelector(s).value;
+              res({ kaynak: oku('#kaynak-tur'), uretim: oku('#kaynak-uretim'), abonelik: oku('#kaynak-abonelik'),
+                indirme: oku('#kaynak-indirme'), not: oku('#kaynak-not') });
+            },
+            onKapat: () => res(null)
+          });
+        });
+        if (!form) return;
+        const sonuc = V.parcaKaynakKaydi(form, bugunIso());
+        if (sonuc.hata) return hata(sonuc.hata);
+        // Bu tabloda "id" yok (anahtar track_id), bu yüzden yazDogrula yerine
+        // dönen satırı doğrudan denetleriz.
+        const { data: yazilan, error: yazmaHatasi } = await client.from('radio_track_kaynak')
+          .upsert(Object.assign({ track_id: t.id }, sonuc.kayit), { onConflict: 'track_id' })
+          .select('track_id');
+        if (yazmaHatasi || !yazilan || !yazilan.length) {
+          return hata('Kaynak kaydedilemedi: ' + (yazmaHatasi ? yazmaHatasi.message : 'bu işlem için yetkiniz yok.'));
+        }
+        await yenile(false); bildir('Parça kaynağı kaydedildi.');
         return;
       }
       case 'track-kredi': {

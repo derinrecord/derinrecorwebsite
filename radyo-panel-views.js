@@ -1657,6 +1657,8 @@
       aciklama: 'Çalan parçanın hangi listeden geldiğini panele bildirir.', etki: 'Canlı durum' },
     { anahtar: 'parca-kredi.sql', ad: 'Parça kredisi',
       aciklama: 'Parçaya sanatçı ve kredi notu eklenir; müşteri sunumunda parça adının altında görünür.', etki: 'Yayın klasörleri · sunum' },
+    { anahtar: 'parca-kaynak.sql', ad: 'Parça kaynak kaydı',
+      aciklama: 'Her parçanın kaynağı (Suno, FMA/CC0, kendi kaydı), üretim ve indirme tarihi; yalnız yönetici görür.', etki: 'Yayın klasörleri' },
     { anahtar: 'radio-ses-kontrolu.sql', ad: 'Ses kontrolü',
       aciklama: 'Şube ekranındaki ses seviyesini ve parçanın takılıp takılmadığını panele bildirir.', etki: 'Canlı durum · ses dalgası' },
     { anahtar: 'radio-alarm-duzeni.sql', ad: 'Alarm düzeni (70 şube)',
@@ -1795,6 +1797,9 @@
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     const toplam = liste.reduce((s, t) => s + (Number(t.duration_sec) || 0), 0);
     const kapaksiz = liste.filter(kapakYok).length;
+    const kaynakVar = kurulumVar(D, 'parca-kaynak.sql');
+    const kaynakOf = t => ((D && D.kaynaklar) || {})[t.id] || null;
+    const kaynaksiz = kaynakVar ? liste.filter(t => parcaKaynakDurumu(kaynakOf(t)).eksik).length : 0;
     const gorunen = liste.filter(t => hit(q, clean(t.title)));
 
     const satirlar = gorunen.map((t, i) => `<tr draggable="true" data-act="track-open"
@@ -1804,12 +1809,13 @@
       <td><div class="cell-main"><span class="cover">${t.cover_path
         ? `<img src="${esc(kapakYolu(t.cover_path, ui))}" alt="" loading="lazy">` : '♪'}</span>
         <span><b>${esc(clean(t.title))}</b><span class="sub">${t.sanatci ? esc(t.sanatci) : esc(t.storage_path)}</span>${kapakYok(t)
-          ? ' ' + chip('gold', 'KAPAK YOK') : ''}</span></div></td>
+          ? ' ' + chip('gold', 'KAPAK YOK') : ''}${kaynakVar ? ' ' + parcaKaynakCipi(kaynakOf(t)) : ''}</span></div></td>
       <td class="tight">${mmss(t.duration_sec)}</td>
       <td><div class="row-actions">
         <button class="btn sm" data-act="track-play" data-id="${esc(t.id)}" type="button">DİNLE</button>
         <button class="btn sm" data-act="track-rename" data-id="${esc(t.id)}" type="button">AD</button>
         <button class="btn sm" data-act="track-img" data-id="${esc(t.id)}" type="button">KAPAK</button>
+        ${kaynakVar ? `<button class="btn sm" data-act="track-kaynak" data-id="${esc(t.id)}" type="button">KAYNAK</button>` : ''}
         ${kurulumVar(D, 'parca-kredi.sql') ? `<button class="btn sm" data-act="track-kredi" data-id="${esc(t.id)}" type="button">KREDİ</button>` : ''}
         <button class="btn sm" data-act="track-move" data-id="${esc(t.id)}" type="button">TAŞI</button>
         <button class="btn sm danger" data-act="track-del" data-id="${esc(t.id)}"
@@ -1833,10 +1839,10 @@
         <div class="progress" id="up-bar" hidden><i></i></div>
       </div>
       <div class="panel" style="margin-bottom:18px">
-        <h3>PARÇALAR (${liste.length})${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</h3>
+        <h3>PARÇALAR (${liste.length})${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}${kaynaksiz ? ' ' + chip('gold', kaynaksiz + ' KAYNAK EKSİK') : ''}</h3>
         ${liste.length > 1 ? `<div class="row" style="margin:0 0 14px">
           <button class="btn sm" data-act="toplu-duzenle" type="button">TOPLU DÜZENLE</button>
-          <span class="sub">Kapağı${kurulumVar(D, 'parca-kredi.sql') ? ', sanatçıyı ve krediyi' : ''} birden çok parçaya tek seferde yaz.</span>
+          <span class="sub">Kapağı${kurulumVar(D, 'parca-kredi.sql') ? ', sanatçıyı ve krediyi' : ''}${kaynakVar ? ', kaynağı' : ''} birden çok parçaya tek seferde yaz.</span>
         </div>` : ''}
         <table>
           <thead><tr><th>#</th><th></th><th>PARÇA</th><th>SÜRE</th><th></th></tr></thead>
@@ -2984,11 +2990,84 @@
         : ''}`;
   }
 
+  // ---------- Parça kaynak kaydı (supabase/parca-kaynak.sql) ----------
+  // Yalnız yöneticinin gördüğü kanıt: parça nereden geldi, Suno'daysa o gün
+  // abonelik açık mıydı ve ne zaman indirildi.
+  const KAYNAK_TURLERI = [
+    ['suno', 'Suno'], ['fma_cc0', 'FMA / CC0'], ['kendi', 'Kendi kaydım'], ['diger', 'Diğer']
+  ];
+  const ISO_GUN = /^\d{4}-\d{2}-\d{2}$/;
+  const gunYaz = v => (ISO_GUN.test(String(v || '')) ? String(v).split('-').reverse().join('.') : '');
+
+  function parcaKaynakDurumu(k) {
+    const sonuc = (etiket, eksik, tehlike) => ({ etiket: etiket, eksik: !!eksik, tehlike: !!tehlike });
+    if (!k || !k.kaynak) return sonuc('KAYNAK YOK', true, false);
+    if (k.kaynak === 'suno') {
+      if (k.abonelik_acik === false) return sonuc('SUNO · ABONELİK YOK', false, true);
+      if (!k.uretim_tarihi || !k.indirme_tarihi || k.abonelik_acik !== true) return sonuc('SUNO · EKSİK', true, false);
+      return sonuc('SUNO · ' + gunYaz(k.uretim_tarihi), false, false);
+    }
+    if (k.kaynak === 'kendi') return sonuc('KENDİ KAYDI', false, false);
+    const ad = k.kaynak === 'fma_cc0' ? 'FMA/CC0' : 'DİĞER';
+    return k.kanit_notu ? sonuc(ad, false, false) : sonuc(ad + ' · EKSİK', true, false);
+  }
+
+  function parcaKaynakCipi(k) {
+    const d = parcaKaynakDurumu(k);
+    return chip(d.tehlike ? 'danger' : (d.eksik ? 'gold' : 'off'), d.etiket);
+  }
+
+  // Formdan gelen değerleri kayda çevirir. bugun: 'YYYY-MM-DD' (ileri tarih denetimi).
+  function parcaKaynakKaydi(f, bugun) {
+    f = f || {};
+    const tur = String(f.kaynak || '');
+    if (!KAYNAK_TURLERI.some(x => x[0] === tur)) return { hata: 'Kaynağı seç: Suno, FMA / CC0, kendi kaydın ya da diğer.' };
+    const gun = v => String(v || '').trim();
+    const uretim = gun(f.uretim), indirme = gun(f.indirme);
+    for (const v of [uretim, indirme]) {
+      if (v && !ISO_GUN.test(v)) return { hata: 'Geçerli bir tarih seç.' };
+      if (v && bugun && v > bugun) return { hata: 'İleri bir tarih girilemez.' };
+    }
+    if (uretim && indirme && indirme < uretim) return { hata: 'İndirme tarihi üretimden önce olamaz.' };
+    const abonelik = tur !== 'suno' ? null : (f.abonelik === 'evet' ? true : (f.abonelik === 'hayir' ? false : null));
+    const not = String(f.not || '').trim();
+    return { kayit: {
+      kaynak: tur, uretim_tarihi: uretim || null, abonelik_acik: abonelik,
+      indirme_tarihi: indirme || null, kanit_notu: not || null
+    } };
+  }
+
+  function kaynakSecenekleri(secili, bosMetin) {
+    return `<option value=""${secili ? '' : ' selected'}>${esc(bosMetin)}</option>` + KAYNAK_TURLERI
+      .map(x => `<option value="${x[0]}"${secili === x[0] ? ' selected' : ''}>${esc(x[1])}</option>`).join('');
+  }
+  function abonelikSecenekleri(deger, bosMetin) {
+    const v = deger === true ? 'evet' : (deger === false ? 'hayir' : '');
+    return [['', bosMetin], ['evet', 'Evet, açıktı'], ['hayir', 'Hayır, kapalıydı']]
+      .map(x => `<option value="${x[0]}"${v === x[0] ? ' selected' : ''}>${esc(x[1])}</option>`).join('');
+  }
+
+  function parcaKaynakPenceresi(t, k) {
+    k = k || {};
+    return `
+      <p class="sub" style="margin:0 0 14px">${esc(clean((t && t.title) || ''))} · Yalnız sen görürsün; müşteri sunumunda görünmez.</p>
+      <div class="field"><label for="kaynak-tur">KAYNAK</label>
+        <select id="kaynak-tur">${kaynakSecenekleri(k.kaynak || '', 'Seç…')}</select></div>
+      <div class="field"><label for="kaynak-uretim">ÜRETİM TARİHİ</label>
+        <input id="kaynak-uretim" type="date" value="${esc(k.uretim_tarihi || '')}"></div>
+      <div class="field"><label for="kaynak-abonelik">O GÜN SUNO ABONELİĞİ AÇIK MIYDI?</label>
+        <select id="kaynak-abonelik">${abonelikSecenekleri(k.abonelik_acik, 'Bilmiyorum / Suno değil')}</select></div>
+      <div class="field"><label for="kaynak-indirme">İNDİRME TARİHİ</label>
+        <input id="kaynak-indirme" type="date" value="${esc(k.indirme_tarihi || '')}"></div>
+      <div class="field"><label for="kaynak-not">KANIT NOTU</label>
+        <textarea id="kaynak-not" rows="2" placeholder="Örn. Suno şarkı linki, FMA sayfası, lisans adı">${esc(k.kanit_notu || '')}</textarea></div>`;
+  }
+
   // Toplu düzenleme: klasördeki parçalar işaretlenir (tek tek, "13'ten 64'e"
   // gibi bir aralıkla ya da yalnız kapaksızlar) ve doldurulan alanlar işaretli
   // bütün parçalara yazılır. Görsel depoya bir kez yüklenip hepsine bağlanır.
   // Boş bırakılan alan değişmez. Numaralar parça tablosundakilerle aynıdır.
-  function topluDuzenlePenceresi(parcalar, alt, krediVar) {
+  function topluDuzenlePenceresi(parcalar, alt, krediVar, kaynakVar) {
     return `
       <p class="sub" style="margin:0 0 14px">${esc(alt || '')} · Boş bıraktığın alan parçalarda değişmez.</p>
       <div class="field"><label for="kapak-file">KAPAK</label>
@@ -3005,6 +3084,17 @@
         <input id="toplu-sanatci" placeholder="Örn. HoliznaCC0" autocomplete="off"></div>
       <div class="field"><label for="toplu-kredi">KREDİ NOTU</label>
         <textarea id="toplu-kredi" rows="2" placeholder="Örn. Music by HoliznaCC0 · CC0 (kamu malı)"></textarea></div>` : ''}
+      ${kaynakVar ? `
+      <div class="field"><label for="toplu-kaynak-tur">KAYNAK (yalnız sen görürsün)</label>
+        <select id="toplu-kaynak-tur">${kaynakSecenekleri('', 'Değiştirme')}</select></div>
+      <div class="field"><label for="toplu-kaynak-uretim">ÜRETİM TARİHİ</label>
+        <input id="toplu-kaynak-uretim" type="date"></div>
+      <div class="field"><label for="toplu-kaynak-abonelik">O GÜN SUNO ABONELİĞİ AÇIK MIYDI?</label>
+        <select id="toplu-kaynak-abonelik">${abonelikSecenekleri(null, 'Değiştirme')}</select></div>
+      <div class="field"><label for="toplu-kaynak-indirme">İNDİRME TARİHİ</label>
+        <input id="toplu-kaynak-indirme" type="date"></div>
+      <div class="field"><label for="toplu-kaynak-not">KANIT NOTU</label>
+        <textarea id="toplu-kaynak-not" rows="2" placeholder="Örn. Suno oturumu linki"></textarea></div>` : ''}
       <div class="field"><label>PARÇALARI SEÇ</label>
         <div class="row" style="gap:8px;flex-wrap:wrap">
           <input id="toplu-bas" type="number" inputmode="numeric" min="1" max="${parcalar.length}" placeholder="İlk" aria-label="İlk parça numarası" style="width:78px">
@@ -3012,14 +3102,16 @@
           <input id="toplu-son" type="number" inputmode="numeric" min="1" max="${parcalar.length}" placeholder="Son" aria-label="Son parça numarası" style="width:78px">
           <button class="btn sm" data-act="toplu-aralik" type="button">ARALIĞI SEÇ</button>
           <button class="btn sm" data-act="toplu-kapaksiz" type="button">KAPAKSIZLARI SEÇ</button>
+          ${kaynakVar ? '<button class="btn sm" data-act="toplu-kaynaksiz" type="button">KAYNAĞI EKSİKLERİ SEÇ</button>' : ''}
           <button class="btn sm" data-act="toplu-temizle" type="button">TEMİZLE</button>
         </div></div>
       <div class="tick-list" id="toplu-liste" style="margin-top:10px">
         ${parcalar.map((t, i) => `<label>
-          <input type="checkbox" value="${esc(t.id)}" data-no="${i + 1}">
+          <input type="checkbox" value="${esc(t.id)}" data-no="${i + 1}"${kaynakVar && parcaKaynakDurumu(t.kaynakKaydi).eksik ? ' data-kaynaksiz="1"' : ''}>
           <span><b>${String(i + 1).padStart(2, '0')} · ${esc(clean(t.title))}</b><span class="sub">${[
             t.cover_path ? 'kapağı var' : 'kapak yok',
-            krediVar ? (t.sanatci ? esc(t.sanatci) : 'sanatçı yok') : ''
+            krediVar ? (t.sanatci ? esc(t.sanatci) : 'sanatçı yok') : '',
+            kaynakVar ? esc(parcaKaynakDurumu(t.kaynakKaydi).etiket) : ''
           ].filter(Boolean).join(' · ')}</span></span>
         </label>`).join('')}
       </div>
@@ -3123,6 +3215,9 @@
     kapakYok: kapakYok,
     kapakPenceresi: kapakPenceresi,
     topluDuzenlePenceresi: topluDuzenlePenceresi,
+    parcaKaynakDurumu: parcaKaynakDurumu,
+    parcaKaynakKaydi: parcaKaynakKaydi,
+    parcaKaynakPenceresi: parcaKaynakPenceresi,
     subeListePenceresi: subeListePenceresi,
     parcaDetay: parcaDetay,
     geriCubugu: geriCubugu,

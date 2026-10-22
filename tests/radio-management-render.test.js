@@ -252,7 +252,7 @@ test('toplu düzenleme kapak, sanatçı ve krediyi seçili parçalara tek komutl
   assert.ok(kayit.includes('if (yol) await kapakDosyaSil(yol)'), 'kayıt tutmazsa yüklenen görsel geri silinmeli');
   assert.ok(kayit.includes('for (const eski of eskiler) await kapakDosyaSil(eski)'), 'eski kapaklar temizlenmeli');
   assert.ok(kayit.includes('topluPencereyiGeriAc'), 'eksik seçimde işaretlemeler kaybolmamalı');
-  assert.ok(kayit.includes('if (!dosya && !sanatci && !kredi)'), 'boş form hiçbir şey yazmamalı');
+  assert.ok(kayit.includes('if (!dosya && !sanatci && !kredi && !kaynakDegisti)'), 'boş form hiçbir şey yazmamalı');
 });
 
 test('liste bildirimi kurulumu SQL dosyası olarak depoda', () => {
