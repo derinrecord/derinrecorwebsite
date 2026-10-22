@@ -1658,7 +1658,7 @@
     { anahtar: 'parca-kredi.sql', ad: 'Parça kredisi',
       aciklama: 'Parçaya sanatçı ve kredi notu eklenir; müşteri sunumunda parça adının altında görünür.', etki: 'Yayın klasörleri · sunum' },
     { anahtar: 'parca-kaynak.sql', ad: 'Parça kaynak kaydı',
-      aciklama: 'Her parçanın kaynağı (Suno, FMA/CC0, kendi kaydı), üretim ve indirme tarihi; yalnız yönetici görür.', etki: 'Yayın klasörleri' },
+      aciklama: 'Her parçanın kaynağı (Suno, Creative Commons, kendi kaydı), üretim ve indirme tarihi; yalnız yönetici görür.', etki: 'Yayın klasörleri' },
     { anahtar: 'radio-ses-kontrolu.sql', ad: 'Ses kontrolü',
       aciklama: 'Şube ekranındaki ses seviyesini ve parçanın takılıp takılmadığını panele bildirir.', etki: 'Canlı durum · ses dalgası' },
     { anahtar: 'radio-alarm-duzeni.sql', ad: 'Alarm düzeni (70 şube)',
@@ -2994,7 +2994,7 @@
   // Yalnız yöneticinin gördüğü kanıt: parça nereden geldi, Suno'daysa o gün
   // abonelik açık mıydı ve ne zaman indirildi.
   const KAYNAK_TURLERI = [
-    ['suno', 'Suno'], ['fma_cc0', 'FMA / CC0'], ['kendi', 'Kendi kaydım'], ['diger', 'Diğer']
+    ['suno', 'Suno'], ['cc', 'Creative Commons (FMA vb.)'], ['kendi', 'Kendi kaydım'], ['diger', 'Diğer']
   ];
   const ISO_GUN = /^\d{4}-\d{2}-\d{2}$/;
   const gunYaz = v => (ISO_GUN.test(String(v || '')) ? String(v).split('-').reverse().join('.') : '');
@@ -3008,7 +3008,7 @@
       return sonuc('SUNO · ' + gunYaz(k.uretim_tarihi), false, false);
     }
     if (k.kaynak === 'kendi') return sonuc('KENDİ KAYDI', false, false);
-    const ad = k.kaynak === 'fma_cc0' ? 'FMA/CC0' : 'DİĞER';
+    const ad = k.kaynak === 'cc' ? 'CREATIVE COMMONS' : 'DİĞER';
     return k.kanit_notu ? sonuc(ad, false, false) : sonuc(ad + ' · EKSİK', true, false);
   }
 
@@ -3021,7 +3021,7 @@
   function parcaKaynakKaydi(f, bugun) {
     f = f || {};
     const tur = String(f.kaynak || '');
-    if (!KAYNAK_TURLERI.some(x => x[0] === tur)) return { hata: 'Kaynağı seç: Suno, FMA / CC0, kendi kaydın ya da diğer.' };
+    if (!KAYNAK_TURLERI.some(x => x[0] === tur)) return { hata: 'Kaynağı seç: Suno, Creative Commons, kendi kaydın ya da diğer.' };
     const gun = v => String(v || '').trim();
     const uretim = gun(f.uretim), indirme = gun(f.indirme);
     for (const v of [uretim, indirme]) {
@@ -3060,7 +3060,7 @@
       <div class="field"><label for="kaynak-indirme">İNDİRME TARİHİ</label>
         <input id="kaynak-indirme" type="date" value="${esc(k.indirme_tarihi || '')}"></div>
       <div class="field"><label for="kaynak-not">KANIT NOTU</label>
-        <textarea id="kaynak-not" rows="2" placeholder="Örn. Suno şarkı linki, FMA sayfası, lisans adı">${esc(k.kanit_notu || '')}</textarea></div>`;
+        <textarea id="kaynak-not" rows="2" placeholder="Örn. Suno şarkı linki · ya da sanatçı + lisans (CC0, CC BY 4.0) + link">${esc(k.kanit_notu || '')}</textarea></div>`;
   }
 
   // Toplu düzenleme: klasördeki parçalar işaretlenir (tek tek, "13'ten 64'e"

@@ -16,7 +16,7 @@ const V = require('../radyo-panel-views.js');
 test('SQL ayrı tablo kurar; parça silinince kayıt da silinir', () => {
   assert.match(sql, /create table if not exists public\.radio_track_kaynak/);
   assert.match(sql, /track_id\s+uuid primary key references public\.radio_tracks\(id\) on delete cascade/);
-  assert.match(sql, /kaynak\s+text check \(kaynak in \('suno', 'fma_cc0', 'kendi', 'diger'\)\)/);
+  assert.match(sql, /kaynak\s+text check \(kaynak in \('suno', 'cc', 'kendi', 'diger'\)\)/);
   ['uretim_tarihi\\s+date', 'abonelik_acik\\s+boolean', 'indirme_tarihi\\s+date', 'kanit_notu\\s+text']
     .forEach(s => assert.match(sql, new RegExp(s), s));
   assert.ok(!/alter table public\.radio_tracks/.test(sql), 'parça tablosuna sütun eklenmemeli');
@@ -65,9 +65,9 @@ test('abonelik kapalıyken yapılan Suno parçası tehlike olarak işaretlenir',
   assert.equal(d.etiket, 'SUNO · ABONELİK YOK');
 });
 
-test('FMA ve diğer kaynaklar kanıt notu ister; kendi kaydı istemez', () => {
-  assert.equal(V.parcaKaynakDurumu({ kaynak: 'fma_cc0' }).etiket, 'FMA/CC0 · EKSİK');
-  assert.equal(V.parcaKaynakDurumu({ kaynak: 'fma_cc0', kanit_notu: 'freemusicarchive.org/x' }).etiket, 'FMA/CC0');
+test('Creative Commons ve diğer kaynaklar kanıt notu ister; kendi kaydı istemez', () => {
+  assert.equal(V.parcaKaynakDurumu({ kaynak: 'cc' }).etiket, 'CREATIVE COMMONS · EKSİK');
+  assert.equal(V.parcaKaynakDurumu({ kaynak: 'cc', kanit_notu: 'HoliznaCC0 · CC0' }).etiket, 'CREATIVE COMMONS');
   assert.equal(V.parcaKaynakDurumu({ kaynak: 'diger' }).eksik, true);
   assert.equal(V.parcaKaynakDurumu({ kaynak: 'kendi' }).etiket, 'KENDİ KAYDI');
   assert.equal(V.parcaKaynakDurumu({ kaynak: 'kendi' }).eksik, false);
@@ -82,7 +82,7 @@ test('form kaydı temizlenir; boş alan null olur', () => {
 });
 
 test('Suno dışı kaynakta abonelik bilgisi tutulmaz', () => {
-  const r = V.parcaKaynakKaydi({ kaynak: 'fma_cc0', uretim: '', abonelik: 'evet', indirme: '', not: 'link' }, '2026-10-22');
+  const r = V.parcaKaynakKaydi({ kaynak: 'cc', uretim: '', abonelik: 'evet', indirme: '', not: 'link' }, '2026-10-22');
   assert.equal(r.kayit.abonelik_acik, null);
 });
 

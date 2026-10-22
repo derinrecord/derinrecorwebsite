@@ -4,7 +4,8 @@
 -- diye sorduğunda cevap tek tıkla elde olmalı. Suno'da ticari kullanım hakkı
 -- yalnız abonelik açıkken yapılan ve indirilen şarkılar için geçerli; bu
 -- yüzden Suno parçalarında üretim günü, o gün aboneliğin açık olup olmadığı ve
--- indirme günü tutulur. FMA/CC0 ve diğer kaynaklarda kanıt notu (link, lisans).
+-- indirme günü tutulur. Creative Commons (FMA vb.; CC0, CC BY) ve diğer kaynaklarda kanıt notu
+-- (sanatçı, lisans, link).
 --
 -- NEDEN AYRI TABLO: radio_tracks'i giriş yapmış her hesap okuyabiliyor
 -- ("tracks: player reads" politikası). Kaynak bilgisi (Suno linkleri, tarihler)
@@ -24,7 +25,7 @@
 
 create table if not exists public.radio_track_kaynak (
   track_id       uuid primary key references public.radio_tracks(id) on delete cascade,
-  kaynak         text check (kaynak in ('suno', 'fma_cc0', 'kendi', 'diger')),
+  kaynak         text check (kaynak in ('suno', 'cc', 'kendi', 'diger')),
   uretim_tarihi  date,
   abonelik_acik  boolean,
   indirme_tarihi date,
@@ -37,7 +38,7 @@ comment on table public.radio_track_kaynak is
 comment on column public.radio_track_kaynak.abonelik_acik is
   'Suno parçası: üretildiği gün Suno aboneliği açık mıydı (ticari hak için gerekli).';
 comment on column public.radio_track_kaynak.kanit_notu is
-  'Suno şarkı linki, FMA sayfası, lisans adı vb.';
+  'Suno şarkı linki; Creative Commons parçada sanatçı + lisans (CC0, CC BY 4.0) + link.';
 
 create or replace function public.radio_track_kaynak_zaman()
 returns trigger language plpgsql set search_path = public as $$

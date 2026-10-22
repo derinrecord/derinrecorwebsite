@@ -509,7 +509,7 @@ if (senaryo === 'kaynak') {
     t0: { kaynak: 'suno', uretim_tarihi: '2026-10-12', abonelik_acik: true, indirme_tarihi: '2026-10-12', kanit_notu: 'suno.com/song/…' },
     t1: { kaynak: 'suno', uretim_tarihi: '2026-10-12', abonelik_acik: true, indirme_tarihi: null },
     t2: { kaynak: 'suno', uretim_tarihi: '2026-08-03', abonelik_acik: false, indirme_tarihi: '2026-08-03' },
-    t3: { kaynak: 'fma_cc0', kanit_notu: 'freemusicarchive.org/music/holiznacc0' },
+    t3: { kaynak: 'cc', kanit_notu: 'HoliznaCC0 · CC0 1.0' },
     t4: { kaynak: 'kendi' }
   };
   const D = {
