@@ -420,14 +420,27 @@
   // blob: adresiyle kaydettirilir. İmzalı R2 adresini doğrudan <a download>'a
   // vermek işe yaramaz: başka alan adındaki dosyada tarayıcı download komutunu
   // yok sayar, dosyayı sekmede açar (23 Ekim: antrenör indiremiyordu).
-  async function dosyaIndir(yol,ad){
-    status.textContent=L('İndiriliyor…','Downloading…');
-    const blob=await sesBlob(yol);
-    if(!blob){ status.textContent=''; bildir('İndirilemedi: dosya okunamadı.','hata'); return; }
+  // bicim: 'wav' ya da 'mp3'. Kaynak başka biçimdeyse tarayıcıda çevrilir
+  // (ses-donustur.js). MP3'ten WAV'a çevirmek kaliteyi artırmaz, biçimi değiştirir.
+  async function dosyaIndir(yol,ad,bicim){
+    const Donustur=window.DerinSesDonustur;
+    const BICIM=String(bicim||'').toUpperCase();
+    const yaz=t=>{ status.textContent=t; bildir(t,'bilgi'); };
+    yaz(L('İndiriliyor…','Downloading…'));
+    const kaynak=await sesBlob(yol);
+    if(!kaynak){ status.textContent=''; bildir(L('İndirilemedi: dosya okunamadı.','Download failed: the file could not be read.'),'hata'); return; }
+    let blob;
+    try{
+      if(Donustur.cevirmeGerekli(yol,bicim)) yaz(L(`${BICIM}'e çevriliyor…`,`Converting to ${BICIM}…`));
+      blob=await Donustur.cevir(kaynak,yol,bicim,y=>yaz(L(`${BICIM}'e çevriliyor… %${y}`,`Converting to ${BICIM}… ${y}%`)));
+    }catch(e){
+      status.textContent='';
+      bildir(L('Çevrilemedi: ','Conversion failed: ')+(e&&e.message||''),'hata'); return;
+    }
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download=ad; document.body.appendChild(a); a.click(); a.remove();
+    const a=document.createElement('a'); a.href=url; a.download=Donustur.dosyaAdi(ad,bicim); document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),60000);
-    status.textContent=L('İndirildi.','Downloaded.');
+    yaz(L('İndirildi.','Downloaded.'));
   }
 
   // Oynatma/analiz için tek bir URL döner: tek parçada imzalı adres, çok parçada
@@ -916,7 +929,7 @@
 
       <div class="td-tools">
         ${tr.source_url?`<a class="td-tool-link" href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">KAYNAĞI AÇ ↗</a>`:''}
-        ${(!admin && project.download_allowed && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}">⤓ İNDİR</button>` : ''}
+        ${(!admin && project.download_allowed && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="wav">⤓ WAV</button><button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="mp3">⤓ MP3</button>` : ''}
         ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="${SES_ACCEPT}" data-newver="${tr.id}" hidden></label>`:''}
         ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
       </div>
@@ -1479,9 +1492,8 @@
     });
 
     root.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
-      const ad=`${b.dataset.name}.${sesUzantisi(b.dataset.path)||'wav'}`;
       b.disabled=true;
-      try{ await dosyaIndir(b.dataset.path,ad); } finally{ b.disabled=false; }
+      try{ await dosyaIndir(b.dataset.path,b.dataset.name,b.dataset.bicim||'wav'); } finally{ b.disabled=false; }
     });
 
     root.querySelectorAll('[data-trackdel]').forEach(button=>button.onclick=async()=>{
@@ -1687,9 +1699,8 @@
     });
 
     list.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
-      const ad=`${b.dataset.name}.${sesUzantisi(b.dataset.path)||'wav'}`;
       b.disabled=true;
-      try{ await dosyaIndir(b.dataset.path,ad); } finally{ b.disabled=false; }
+      try{ await dosyaIndir(b.dataset.path,b.dataset.name,b.dataset.bicim||'wav'); } finally{ b.disabled=false; }
     });
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Proje silinecek. Emin misiniz?'))return;
