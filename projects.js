@@ -412,7 +412,22 @@
       if(!cevap.ok)return null;
       blobs.push(await cevap.blob());
     }
-    return new Blob(blobs,{type:'audio/wav'});
+    // Tür, ilk parçanın uzantısından: mp3 dosya wav diye işaretlenmesin.
+    return new Blob(blobs,{type:sesTipi({name:Ses.parcalariCoz(path)[0].path})});
+  }
+
+  // İNDİR: dosya önce fetch ile Blob olarak çekilir, sonra sayfanın kendi
+  // blob: adresiyle kaydettirilir. İmzalı R2 adresini doğrudan <a download>'a
+  // vermek işe yaramaz: başka alan adındaki dosyada tarayıcı download komutunu
+  // yok sayar, dosyayı sekmede açar (23 Ekim: antrenör indiremiyordu).
+  async function dosyaIndir(yol,ad){
+    status.textContent=L('İndiriliyor…','Downloading…');
+    const blob=await sesBlob(yol);
+    if(!blob){ status.textContent=''; bildir('İndirilemedi: dosya okunamadı.','hata'); return; }
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=ad; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    status.textContent=L('İndirildi.','Downloaded.');
   }
 
   // Oynatma/analiz için tek bir URL döner: tek parçada imzalı adres, çok parçada
@@ -1465,20 +1480,8 @@
 
     root.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
       const ad=`${b.dataset.name}.${sesUzantisi(b.dataset.path)||'wav'}`;
-      if(Ses.parcaliMi(b.dataset.path)){
-        // Parçalı dosya: tüm parçaları indirip tarayıcıda birleştirerek ver.
-        status.textContent='Parçalı dosya birleştiriliyor…';
-        const blob=await sesBlob(b.dataset.path);
-        if(!blob){bildir('İndirilemedi: parçalar okunamadı.','hata');return;}
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement('a'); a.href=url; a.download=ad; a.click();
-        setTimeout(()=>URL.revokeObjectURL(url),60000);
-        status.textContent='İndirildi.';
-        return;
-      }
-      const url=await signed(b.dataset.path);
-      if(!url){bildir('İndirilemedi: ses adresi alınamadı.','hata');return;}
-      const a=document.createElement('a'); a.href=url; a.download=ad; a.click();
+      b.disabled=true;
+      try{ await dosyaIndir(b.dataset.path,ad); } finally{ b.disabled=false; }
     });
 
     root.querySelectorAll('[data-trackdel]').forEach(button=>button.onclick=async()=>{
@@ -1685,20 +1688,8 @@
 
     list.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
       const ad=`${b.dataset.name}.${sesUzantisi(b.dataset.path)||'wav'}`;
-      if(Ses.parcaliMi(b.dataset.path)){
-        // Parçalı dosya: tüm parçaları indirip tarayıcıda birleştirerek ver.
-        status.textContent='Parçalı dosya birleştiriliyor…';
-        const blob=await sesBlob(b.dataset.path);
-        if(!blob){bildir('İndirilemedi: parçalar okunamadı.','hata');return;}
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement('a'); a.href=url; a.download=ad; a.click();
-        setTimeout(()=>URL.revokeObjectURL(url),60000);
-        status.textContent='İndirildi.';
-        return;
-      }
-      const url=await signed(b.dataset.path);
-      if(!url){bildir('İndirilemedi: ses adresi alınamadı.','hata');return;}
-      const a=document.createElement('a'); a.href=url; a.download=ad; a.click();
+      b.disabled=true;
+      try{ await dosyaIndir(b.dataset.path,ad); } finally{ b.disabled=false; }
     });
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Proje silinecek. Emin misiniz?'))return;
