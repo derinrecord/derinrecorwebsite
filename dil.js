@@ -1112,6 +1112,18 @@
     if (OTOMATIK) otomatikUygula();
   }
 
+  // Düğmenin yeri: 'alt' (logonun altı — ana sayfanın uzun başlığı), 'sag' ya
+  // da 'sol' (logonun yanı — iç sayfaların tek satırlık başlığı). Alttaki
+  // düğme başlık şeridinin dışına taşıyorsa yana geçer; sağda yer yoksa sola.
+  // o: { baslik, logo: {top,bottom,left,right}, altUst, altAlt, genislik }
+  function dugmeYeri(o) {
+    const pay = 4;
+    if (o.altAlt <= o.baslik.bottom - pay && o.altUst >= o.baslik.top) return 'alt';
+    const bosluk = 10;
+    if (o.logo.right + bosluk + o.genislik <= o.baslik.right - pay) return 'sag';
+    return 'sol';
+  }
+
   function dugmeKur() {
     dugme = document.createElement('button');
     dugme.type = 'button';
@@ -1130,6 +1142,24 @@
       sarma.className = 'dil-sarma';
       marka.parentNode.insertBefore(sarma, marka);
       sarma.append(marka, dugme);
+      const baslik = marka.closest('header');
+      // Alt yerleşimi dener, şeritten taşıyorsa logonun yanına alır.
+      const yerlestir = () => {
+        if (typeof dugme.getBoundingClientRect !== 'function' || !baslik) return;
+        sarma.classList.remove('dil-yan-sag', 'dil-yan-sol');
+        const d = dugme.getBoundingClientRect();
+        const yer = dugmeYeri({ baslik: baslik.getBoundingClientRect(), logo: marka.getBoundingClientRect(),
+          altUst: d.top, altAlt: d.bottom, genislik: d.width });
+        sarma.classList.toggle('dil-yan-sag', yer === 'sag');
+        sarma.classList.toggle('dil-yan-sol', yer === 'sol');
+      };
+      function yerlestirZamanla() { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(yerlestir); else yerlestir(); }
+      yerlestirZamanla();
+      if (typeof window.addEventListener === 'function') {
+        window.addEventListener('resize', yerlestir, { passive: true });
+        window.addEventListener('load', yerlestir);
+      }
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(yerlestir).catch(() => {});
       return;
     }
     dugme.classList.add('dil-dugme-sabit');

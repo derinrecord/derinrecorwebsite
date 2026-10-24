@@ -64,6 +64,20 @@
   color: #f4f1e9;
 }
 
+/* İç sayfaların tek satırlık başlığında düğme logonun yanında, dikey ortada;
+   logo yerinden kaymaz (dil.js · dugmeYeri). */
+.dil-sarma.dil-yan-sag .dil-dugme {
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.dil-sarma.dil-yan-sol .dil-dugme {
+  left: auto;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 @media (max-width: 760px) {
   .dil-sarma { gap: 5px; }
   .dil-dugme {
@@ -72,5 +86,17 @@
     min-height: 24px;
     padding: 0 7px;
     font-size: 9px;
+  }
+  .dil-sarma.dil-yan-sag .dil-dugme,
+  .dil-sarma.dil-yan-sol .dil-dugme {
+    position: absolute;
+  }
+  /* Logosuz sayfalar (radyo paneli, MP3 dönüştürücü): sayfanın dibine
+     düşmesin, sol alt köşede sabit dursun. */
+  .dil-dugme.dil-dugme-sabit {
+    position: fixed;
+    top: auto;
+    bottom: 16px;
+    left: 16px;
   }
 }
