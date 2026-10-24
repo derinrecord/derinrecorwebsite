@@ -1,0 +1,26 @@
+/* Branş sayfası demo yönetimi (24 Ekim) — yalnız yöneticiye görünür.
+   Kaset alanı krem zeminli; form kaset etiketi dilinde: koyu düğme, pembe sert gölge. */
+.demo-yonetim{margin:-15px 0 40px}
+.demo-yonetim-ac{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border:0;border-radius:6px;background:var(--ink,#17131a);color:#f4f1e9;font:900 12px/1 Arial,Helvetica,sans-serif;letter-spacing:.1em;box-shadow:4px 4px 0 var(--pink,#cb2468);cursor:pointer}
+.demo-yonetim-ac[aria-expanded="true"]{box-shadow:2px 2px 0 var(--pink,#cb2468);transform:translate(2px,2px)}
+.demo-yonetim-form{margin-top:18px;padding:22px;border-radius:8px;border:2px solid var(--ink,#17131a);background:#fffdf7;color:var(--ink,#17131a);max-width:560px;box-shadow:8px 8px 0 var(--pink,#cb2468)}
+.demo-yonetim-form[hidden]{display:none}
+.demo-yonetim-baslik{margin:0 0 4px;color:var(--pink,#cb2468);font-size:11px;font-weight:900;letter-spacing:.16em}
+.demo-yonetim-form label{display:block;margin-top:14px;font-size:11px;font-weight:900;letter-spacing:.1em}
+.demo-yonetim .demo-yonetim-form input:not([type=file]){display:block;width:100%;box-sizing:border-box;margin-top:7px;padding:12px 14px;border-radius:6px;border:1.5px solid rgba(23,19,26,.35)!important;background:#fff!important;color:var(--ink,#17131a)!important;font:16px/1.3 Arial,Helvetica,sans-serif}
+.demo-yonetim-form input:not([type=file]):focus{outline:none;border-color:var(--pink,#cb2468)}
+.demo-yonetim-form input[type=file]{display:block;margin-top:8px;max-width:100%;font-size:14px;color:var(--ink,#17131a)}
+.demo-ilerleme{position:relative;margin-top:16px;height:22px;border-radius:999px;background:rgba(23,19,26,.1);overflow:hidden}
+.demo-ilerleme[hidden]{display:none}
+.demo-ilerleme i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--pink,#cb2468),var(--yellow,#e3c33a));transition:width .2s}
+.demo-ilerleme span{position:relative;display:block;text-align:center;font:900 11px/22px Arial,sans-serif;color:var(--ink,#17131a)}
+.demo-mesaj{margin:12px 0 0;font-size:14px;font-weight:700;min-height:1.2em}
+.demo-mesaj:empty{min-height:0}
+.demo-mesaj.err{color:#b3123f}.demo-mesaj.ok{color:#18794e}
+.demo-yonetim-dugmeler{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.demo-yonetim-dugmeler button{min-height:44px;padding:0 18px;border-radius:6px;border:2px solid var(--ink,#17131a);background:transparent;color:var(--ink,#17131a);font:900 12px/1 Arial,sans-serif;letter-spacing:.08em;cursor:pointer;white-space:nowrap}
+.demo-yonetim-dugmeler .demo-kaydet{background:var(--ink,#17131a);color:#f4f1e9;box-shadow:3px 3px 0 var(--pink,#cb2468)}
+.demo-yonetim-dugmeler button[disabled]{opacity:.55;cursor:default}
+.demo-sil{display:inline-flex;align-items:center;margin-top:12px;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,138,138,.6);background:transparent;color:#ff9b9b;font:800 11px/1 Arial,sans-serif;letter-spacing:.1em;cursor:pointer}
+.demo-sil[disabled]{opacity:.5}
+@media (max-width:560px){.demo-yonetim-dugmeler button{flex:1;padding:0 10px}}

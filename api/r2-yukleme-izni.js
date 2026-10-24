@@ -18,7 +18,9 @@ const SUPABASE_URL = 'https://abqhakgoluntpzgfyjye.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_FrRGXIb3-x8-Lzx1Ijg75w_teFbP2oa';
 
 // İzin verilen klasörler. Panel yalnızca bu öneklere dokunabilir.
-const IZINLI_ONEK = ['radyo/', 'kapak/', 'anons/', 'dj/', 'proje/'];
+// demo/: branş sayfalarındaki demo şarkılar (24 Ekim); herkese açık okunur,
+// yalnız yönetici yükler/siler.
+const IZINLI_ONEK = ['radyo/', 'kapak/', 'anons/', 'dj/', 'proje/', 'demo/'];
 
 // İmzalı okuma ('oku') yalnız bu klasörlerde anlam taşır: radyo kovaları
 // muzik.derinrecord.com'dan imzasız okunuyor; gizli kovalar (proje/dj)

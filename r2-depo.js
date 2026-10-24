@@ -25,7 +25,8 @@
     'radio-covers': 'kapak/',
     'radio-announcements': 'anons/',
     'project-audio': 'proje/',
-    'dj-audio': 'dj/'
+    'dj-audio': 'dj/',
+    'demo-audio': 'demo/' // branş sayfası demo şarkıları (herkese açık okunur)
   };
 
   // Her yol parçası ayrı kodlanır; "/" ayıraç olarak kalmalı.
@@ -103,7 +104,10 @@
     return hatalar.length ? { error: { message: hatalar.join('; ') } } : { error: null };
   }
 
-  const api = { TABAN, ONEK, adres, korumaliAdres, yukle, sil };
+  // Yükleme yüzdesi göstermek isteyenler (demo yükleme) imzalı adresi kendisi kullanır.
+  const imzaAdresi = (kova, yol, islem) => imzaAl(anahtar(kova, yol), islem);
+
+  const api = { TABAN, ONEK, adres, korumaliAdres, yukle, sil, imzaAdresi };
   if (typeof window !== 'undefined') window.DerinR2 = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();
