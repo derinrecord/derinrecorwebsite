@@ -43,3 +43,9 @@ test('ana sayfanın altında dört hukuki metne bağlantı', () => {
   const f = oku('index.html').match(/<footer id="iletisim">[\s\S]*?<\/footer>/)[0];
   ['gizlilik-politikasi', 'aydinlatma-metni', 'kullanici-sozlesmesi', 'cerez-politikasi'].forEach(s => assert.match(f, new RegExp(`href="${s}\\.html"`), s));
 });
+
+test('Gizlilik Politikası değişiklik bölümü: e-posta sözü yok, güncel sürüm ana sayfadan', () => {
+  const h = oku('gizlilik-politikasi.html');
+  assert.doesNotMatch(h, /e-posta ile bilgilendirilir|notified by email/);
+  assert.match(h, /ana sayfanın altındaki bağlantıdan ulaşabilirsiniz/);
+});
