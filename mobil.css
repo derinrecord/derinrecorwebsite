@@ -699,6 +699,74 @@
     padding: 22px 6vw calc(22px + env(safe-area-inset-bottom));
     font-size: 10px;
   }
+
+  /* ---------- Menü simgesi: cam kutu, kademeli çizgi (24 Ekim) ----------
+     HESABIM düğmesiyle aynı boy ve köşe. Çizgiler uzundan kısaya, en alttaki
+     pembe; açıkken çarpı. Düğmedeki görünmez "MENÜ" yazısı çizgileri aşağı
+     itmesin diye yazı boyu 0. */
+  .site-header .menu-toggle {
+    width: 48px !important;
+    min-width: 48px !important;
+    height: 44px !important;
+    border-radius: 15px !important;
+    background: rgba(255, 255, 255, .1) !important;
+    border: 1px solid rgba(255, 255, 255, .3) !important;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    font-size: 0 !important;
+    line-height: 0 !important;
+    color: transparent !important;
+  }
+
+  .site-header .menu-toggle i {
+    position: relative !important;
+    width: 16px !important;
+    height: 3px !important;
+    margin-left: 8px !important;
+    border-radius: 3px;
+    background: var(--yellow, #e3c33a) !important;
+  }
+
+  .site-header .menu-toggle i::before {
+    content: "" !important;
+    position: absolute !important;
+    left: -8px !important;
+    top: -8px !important;
+    width: 24px !important;
+    height: 3px !important;
+    border-radius: 3px;
+    background: var(--yellow, #e3c33a) !important;
+    transform: none !important;
+  }
+
+  .site-header .menu-toggle i::after {
+    content: "" !important;
+    position: absolute !important;
+    left: 6px !important;
+    top: 8px !important;
+    width: 10px !important;
+    height: 3px !important;
+    border-radius: 3px;
+    background: var(--pink, #cb2468) !important;
+    transform: none !important;
+  }
+
+  .site-header .menu-toggle[aria-expanded="true"] i {
+    background: transparent !important;
+  }
+
+  .site-header .menu-toggle[aria-expanded="true"] i::before {
+    top: 0 !important;
+    transform: rotate(45deg) !important;
+  }
+
+  .site-header .menu-toggle[aria-expanded="true"] i::after {
+    top: 0 !important;
+    left: -8px !important;
+    width: 24px !important;
+    background: var(--yellow, #e3c33a) !important;
+    transform: rotate(-45deg) !important;
+  }
 }
 
 /* ---------- Küçük telefonlar (320–360px) ---------- */

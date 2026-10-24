@@ -21,7 +21,7 @@ const kural = (css, secici) => {
 test('her sayfa mobil katmanını ve güvenli alan görünümünü yükler', () => {
   for (const sayfa of SAYFALAR) {
     const html = oku(sayfa);
-    assert.match(html, /href="mobil\.css\?v=1"/, `${sayfa}: mobil.css eklenmeli`);
+    assert.match(html, /href="mobil\.css\?v=2"/, `${sayfa}: mobil.css eklenmeli`);
     assert.match(html, /viewport-fit=cover/, `${sayfa}: viewport-fit=cover olmalı`);
   }
 });
