@@ -1,0 +1,22 @@
+/* Öğretici mod (24 Ekim): aydınlanan hedef + kaset etiketi dilinde açıklama balonu. */
+.og-kok{position:fixed;inset:0;z-index:2147483000;pointer-events:none}
+.og-perde{position:absolute;inset:0;pointer-events:auto;background:transparent}
+.og-kok.og-ortada .og-perde{background:rgba(8,6,10,.72)}
+.og-isik{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(8,6,10,.72),0 0 0 3px var(--yellow,#e3c33a) inset;transition:top .3s ease,left .3s ease,width .3s ease,height .3s ease;pointer-events:none}
+.og-isik[hidden]{display:none}
+.og-balon{position:fixed;width:min(340px,calc(100vw - 32px));box-sizing:border-box;padding:18px 18px 14px;border-radius:8px;background:#f4f1e9;color:#17131a;box-shadow:6px 6px 0 var(--pink,#cb2468);pointer-events:auto;font-family:Arial,Helvetica,sans-serif;transition:top .3s ease,left .3s ease}
+.og-balon.og-orta{top:50%;left:50%;transform:translate(-50%,-50%)}
+.og-balon.og-serit{left:16px;right:16px;width:auto}
+.og-balon.og-serit.og-altta{bottom:calc(16px + env(safe-area-inset-bottom,0px));top:auto}
+.og-balon.og-serit.og-ustte{top:calc(16px + env(safe-area-inset-top,0px));bottom:auto}
+.og-sayac{margin:0 0 6px;color:var(--pink,#cb2468);font-size:11px;font-weight:900;letter-spacing:.16em}
+.og-baslik{margin:0 0 6px;font-size:18px;font-weight:900;letter-spacing:-.01em;line-height:1.15}
+.og-metin{margin:0;font-size:14px;line-height:1.5;color:#2c2730}
+.og-dugmeler{display:flex;align-items:center;gap:8px;margin-top:14px}
+.og-bosluk{flex:1}
+.og-dugmeler button{min-height:40px;padding:0 14px;border-radius:6px;border:2px solid #17131a;background:transparent;color:#17131a;font:900 11px/1 Arial,sans-serif;letter-spacing:.1em;cursor:pointer}
+.og-dugmeler .og-ileri{background:#17131a;color:#f4f1e9;box-shadow:3px 3px 0 var(--pink,#cb2468)}
+.og-dugmeler .og-atla{border-color:transparent;padding:0 4px;text-decoration:underline;text-underline-offset:3px}
+.og-dugmeler button[hidden]{display:none}
+.og-dugmeler button:focus-visible{outline:3px solid var(--yellow,#e3c33a);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.og-isik,.og-balon{transition:none}}
