@@ -45,7 +45,7 @@
       <div class="draft-points" aria-label="Seçili zaman noktaları"></div>
       <form>
         <div class="editor-heading"><strong class="editing-point">Bir nokta ekleyerek başla</strong><button class="remove-point" type="button" hidden>Bu taslağı kaldır</button></div>
-        <div class="movement-picker"><label>Hareket / geçiş<select name="movement"><option>Genel</option><option>Takla çıkışı</option><option>Denge</option><option>Atlayış</option><option>Geçiş</option><option>Final</option></select></label></div>
+        <div class="movement-picker"><label hidden style="display:none">Hareket / geçiş<select name="movement"><option>Genel</option><option>Takla çıkışı</option><option>Denge</option><option>Atlayış</option><option>Geçiş</option><option>Final</option></select></label></div>
         <label>Geri bildirimin<textarea name="message" rows="3" maxlength="2000" placeholder="Bu noktada müzikte ne değişmeli?"></textarea></label>
         <div class="note-actions"><button class="record" type="button">● SESLİ NOT KAYDET</button><button class="save-note" type="submit">BU NOKTAYI KAYDET ↗</button></div>
         <div class="voice-draft" hidden><audio controls></audio><button type="button" class="discard">Kaydı kaldır</button></div>

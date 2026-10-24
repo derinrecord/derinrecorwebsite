@@ -81,7 +81,7 @@ test('branş sayfaları demo listesini yükler; oynatıcı ve notlar listeden so
   }
   const j = oku('demo-parcalar.js');
   assert.match(j, /'player\.js\?v=2'/);
-  assert.match(j, /'feedback\.js\?v=20261022a'/);
+  assert.match(j, /'feedback\.js\?v=20261024'/);
 });
 
 test('demo-parcalar.js: yalnız yönetici formu görür; yükleme yüzdeli; silme doğrulanır', () => {

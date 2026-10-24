@@ -1,1 +1,3 @@
 .demo-cassette-image{display:block;width:100%;aspect-ratio:1.55;object-fit:contain;margin:16px 0;filter:drop-shadow(0 5px 4px rgba(0,0,0,.3));transition:transform .3s ease}.cassette-card:hover .demo-cassette-image{transform:rotate(-2deg) scale(1.04)}
+/* Her branş kasetinin zemini kendi renginde (24 Ekim, Derin seçti: A) */
+.cassette-card.renk-aerobik{background:#fe4b6a}.cassette-card.renk-akrobatik{background:#f1ece1}.cassette-card.renk-artistik{background:#3fc1c9}.cassette-card.renk-ritmik{background:#ab6ee7}.cassette-card.renk-cocuk-fitness{background:#9be15d}

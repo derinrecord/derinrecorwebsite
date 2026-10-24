@@ -8,7 +8,7 @@
     return m && BRANSLAR.includes(m[1].toLowerCase()) ? m[1].toLowerCase() : null;
   };
   const altYazi = basliklar => !basliklar.length ? 'YAKINDA'
-    : basliklar.length === 1 ? String(basliklar[0]).toLocaleUpperCase('tr-TR') : basliklar.length + ' DEMO';
+    : basliklar.length === 1 ? String(basliklar[0]) : basliklar.length + ' DEMO';
   const basliklariGuncelle = (katalog, demolar) => katalog.map(k => {
     const b = bransAnahtari(k.link_url);
     if (!b) return k;
@@ -28,7 +28,7 @@
     ? 'Demo kataloğu tablosu bu projede kurulu değil. Supabase SQL Editor’de supabase/demo-catalog.sql dosyasını bir kez çalıştırıp sayfayı yenileyin.'
     : message;
   const render = items => {
-    grid.innerHTML = items.map((item, index) => `<a class="cassette-card" href="${safeHref(item.link_url)}"><span class="card-number">${String(index + 1).padStart(2,'0')}</span><img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti"><div class="card-meta"><strong>${safe(item.branch).toUpperCase()}</strong><span>${safe(item.title).toUpperCase()} →</span></div></a>`).join('');
+    grid.innerHTML = items.map((item, index) => { const b = bransAnahtari(item.link_url); return `<a class="cassette-card${b ? ' renk-' + b : ''}" href="${safeHref(item.link_url)}"><span class="card-number">${String(index + 1).padStart(2,'0')}</span><img class="demo-cassette-image" src="assets/demo-cassette-derin-record.png" alt="Derin Record kaseti"><div class="card-meta"><strong>${safe(item.branch).toUpperCase()}</strong><span>${safe(item.title).toUpperCase()} →</span></div></a>`; }).join('');
   };
   async function init() {
     await window.DerinAuth.ready;

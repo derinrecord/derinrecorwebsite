@@ -9,7 +9,7 @@
   const BETIK = document.currentScript;
   const BRANS = BETIK && BETIK.dataset.brans;
   const D = window.DerinDemo;
-  const SONRA = ['player.js?v=2', 'feedback.js?v=20261022a'];
+  const SONRA = ['player.js?v=2', 'feedback.js?v=20261024'];
   const EN_BUYUK = 400 * 1024 * 1024; // 400 MB
 
   const betikYukle = src => new Promise(tamam => {

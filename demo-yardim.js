@@ -63,7 +63,7 @@
     var tur = TUR[d.brans] || '';
     var turAnahtar = TUR_ANAHTAR[d.brans];
     var adres = esc(guvenliAdres(d.medya_url));
-    var baslik = String(d.baslik || '').toLocaleUpperCase('tr-TR');
+    var baslik = String(d.baslik || '').toUpperCase();
     var medya = d.medya_tur === 'video'
       ? '<video id="' + id + '" preload="metadata" playsinline><source src="' + adres + '" type="video/mp4"></video>'
       : '<audio id="' + id + '" preload="metadata"><source src="' + adres + '"></audio>';
