@@ -31,6 +31,6 @@ test('mobil.css sürümü bütün sayfalarda yenilendi', () => {
   const sayfalar = fs.readdirSync(KOK).filter(d => d.endsWith('.html'));
   sayfalar.forEach(s => {
     const h = fs.readFileSync(path.join(KOK, s), 'utf8');
-    if (h.includes('mobil.css')) assert.match(h, /mobil\.css\?v=2"/, s);
+    if (h.includes('mobil.css')) assert.match(h, /mobil\.css\?v=3"/, s);
   });
 });
