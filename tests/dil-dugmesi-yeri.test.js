@@ -55,3 +55,10 @@ test('CSS: yan yerleşimlerde düğme logonun dikey ortasında, logoyu kaydırma
 test('CSS: logosuz sayfada telefonda düğme sayfanın dibine düşmez, köşede sabit kalır', () => {
   assert.match(css, /@media \(max-width: 760px\) \{[\s\S]*\.dil-dugme\.dil-dugme-sabit \{\s*position: fixed;\s*top: auto;\s*bottom: 16px;\s*left: 16px;/);
 });
+
+test('EN/TR düğmesi yalnız ana sayfada: index.html işaretli, diğer sayfalar değil', () => {
+  const sayfalar = fs.readdirSync(path.join(__dirname, '..')).filter(f => f.endsWith('.html'));
+  const isaretli = sayfalar.filter(f => /<html[^>]*\sdata-dil-dugme[\s>]/.test(fs.readFileSync(path.join(__dirname, '..', f), 'utf8')));
+  assert.deepEqual(isaretli, ['index.html']);
+  assert.match(kaynak, /if \(document\.documentElement\.hasAttribute\('data-dil-dugme'\)\) dugmeKur\(\);/);
+});

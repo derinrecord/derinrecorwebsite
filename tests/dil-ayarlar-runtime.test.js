@@ -14,7 +14,7 @@ function eslesir(el, secici) {
   return el.tagName.toLowerCase() === secici.toLowerCase();
 }
 
-function ortam({ search = '', language = 'en-US', depoHata = false, automatic = false } = {}) {
+function ortam({ search = '', language = 'en-US', depoHata = false, automatic = false, dugmeli = true } = {}) {
   const olaylar = [];
   const kayit = new Map();
   const gozlemciler = [];
@@ -86,6 +86,8 @@ function ortam({ search = '', language = 'en-US', depoHata = false, automatic = 
 
   const documentElement = new Eleman('html');
   if (automatic) documentElement.setAttribute('data-dil-otomatik', '');
+  // EN/TR düğmesi yalnız işaretli sayfada (ana sayfa: data-dil-dugme) kurulur.
+  if (dugmeli) documentElement.setAttribute('data-dil-dugme', '');
   const body = new Eleman('body');
   documentElement.appendChild(body);
   const document = {
@@ -161,4 +163,10 @@ test('otomatik mod sonradan eklenen metni çevirir ve option değerini Türkçe 
   window.DerinDil.uygula('tr');
   assert.equal(divYazi.nodeValue, 'Henüz proje yok.');
   assert.equal(optionYazi.nodeValue, 'Antrenör');
+});
+
+test('işaretsiz sayfada (ana sayfa dışı) EN/TR düğmesi kurulmaz, dil yine uygulanır', () => {
+  const { document } = ortam({ dugmeli: false, search: '?dil=en' });
+  assert.equal(document.querySelector('.dil-dugme'), null);
+  assert.equal(document.documentElement.lang, 'en');
 });

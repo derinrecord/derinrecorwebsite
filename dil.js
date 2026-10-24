@@ -1174,7 +1174,9 @@
     uygula
   };
 
-  dugmeKur();
+  // EN/TR düğmesi yalnız ana sayfada (html data-dil-dugme). Diğer sayfalarda
+  // seçilen dil hatırlanır; giriş yapanlar AYARLAR'dan da değiştirebilir.
+  if (document.documentElement.hasAttribute('data-dil-dugme')) dugmeKur();
   const baslangic = dilSec();
   uygula(baslangic);
   gozlemle();
