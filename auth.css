@@ -5,3 +5,5 @@
   letter-spacing:0;text-transform:none;color:rgba(244,241,233,.78);cursor:pointer}
 .auth-form .auth-onay input{width:18px;height:18px;min-height:0;margin:1px 0 0;padding:0;flex:0 0 auto;accent-color:#e8d15a}
 .auth-form .auth-onay a{color:#e8d15a;text-decoration:underline}
+/* HESABIM düğmesinde profil fotoğrafı (24 Ekim): solda, köşesi yuvarlak kare; yoksa baş harf */
+.account-actions .account-button.hb-fotolu{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding-top:6px!important;padding-bottom:6px!important;padding-left:6px!important;min-height:0}.account-button .hb-foto{width:30px;height:30px;flex:0 0 30px;border-radius:10px;object-fit:cover;display:block}.account-button .hb-foto[data-harf]{display:grid;place-items:center;background:#17131a;color:var(--yellow,#e3c33a)}.account-button .hb-foto[data-harf]::before{content:attr(data-harf);font:900 14px/1 Arial,Helvetica,sans-serif}@media(min-width:761px){.account-actions .account-button.hb-fotolu{padding-top:5px!important;padding-bottom:5px!important}.account-button .hb-foto{width:26px;height:26px;flex-basis:26px;border-radius:8px}}

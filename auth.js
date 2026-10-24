@@ -24,6 +24,7 @@
     }
   };
   const state = { client: null, user: null, profile: null, configured };
+  let fotoUrl = null; // HESABIM düğmesindeki profil fotoğrafının süreli bağlantısı
   let resolveReady;
   const ready = new Promise(resolve => { resolveReady = resolve; });
   window.DerinAuth = { ...state, ready, open: () => openAuth('login'), _sayacYazisi: n => (!n || n < 1) ? '' : (n > 99 ? '99+' : String(n)) };
@@ -61,10 +62,19 @@
     const actions = document.querySelector('.account-actions'); if (!actions) return;
     const button = actions.querySelector('[data-login]'), signup = actions.querySelector('[data-signup]'), coachAction = actions.querySelector('.coach-action'), menu = document.querySelector('.account-menu');
     // Menü artık ziyaretçiye de açık; gizleme kararı burada verilmez (mobil menü mobil.css + script.js).
+    button.classList.remove('hb-fotolu');
     if (!configured) { coachAction.hidden = true; button.textContent = dilMetni('shell.hesapSistemi', 'HESAP SİSTEMİ'); button.classList.add('secondary'); signup.hidden = true; button.onclick = () => openAuth('login'); return; }
     if (!state.user) { coachAction.hidden = true; button.textContent = dilMetni('shell.giris', 'GİRİŞ YAP'); button.classList.remove('secondary'); signup.hidden = false; coachAction.textContent = dilMetni('shell.arastir', 'MÜZİĞİNİ ARAŞTIR'); return; }
     signup.hidden = true; coachAction.hidden = false;
-    button.textContent = dilMetni('hesap.hesabim', 'HESABIM');
+    // HESABIM düğmesinde solda profil fotoğrafı; yoksa baş harf (24 Ekim).
+    const foto = document.createElement(fotoUrl ? 'img' : 'span');
+    foto.className = 'hb-foto';
+    if (fotoUrl) { foto.src = fotoUrl; foto.alt = ''; }
+    else foto.dataset.harf = String(state.profile?.full_name || state.user.email || '?').trim().charAt(0).toLocaleUpperCase('tr-TR') || '?';
+    foto.setAttribute('aria-hidden', 'true');
+    button.textContent = '';
+    button.append(foto, document.createTextNode(dilMetni('hesap.hesabim', 'HESABIM')));
+    button.classList.add('hb-fotolu');
     menu.querySelector('.account-menu-links').innerHTML = `${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a><a href="mp3-donusturucu.html">MP3 DÖNÜŞTÜRÜCÜ</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="profilim.html">PROFİLİM</a><a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a>`;
     menuLinkleriniCevir(menu);
     menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || dilMetni('hesap.hesabim', 'HESABIM');
@@ -227,17 +237,38 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
   });
 
   async function loadProfile(user) {
-    if (!user) { state.user=null; state.profile=null; document.body.classList.remove('is-admin'); emit(); renderAccount(); return; }
+    if (!user) { fotoUrl = null; state.user=null; state.profile=null; document.body.classList.remove('is-admin'); emit(); renderAccount(); return; }
     state.user = user;
     let profile;
     for (let attempt = 0; attempt < 3; attempt++) {
-      const { data } = await state.client.from('profiles').select('id,full_name,role').eq('id', user.id).maybeSingle();
+      let { data, error } = await state.client.from('profiles').select('id,full_name,role,avatar_path').eq('id', user.id).maybeSingle();
+      if (error) ({ data } = await state.client.from('profiles').select('id,full_name,role').eq('id', user.id).maybeSingle());
       if (data) { profile = data; break; }
       await new Promise(resolve => setTimeout(resolve, 350));
     }
     state.profile = profile || { id:user.id, full_name:user.user_metadata?.full_name || '', role:'coach' };
     emit(); renderAccount(); document.body.classList.toggle('is-admin', state.profile?.role === 'admin');
+    hesapFotosu();
   }
+  // Profil fotoğrafı gizli kovada; düğme için 1 saatlik bağlantı alınır.
+  async function hesapFotosu() {
+    const yol = state.profile?.avatar_path;
+    fotoUrl = null;
+    if (yol && state.client) {
+      try {
+        const { data } = await state.client.storage.from('profil-foto').createSignedUrl(yol, 3600);
+        fotoUrl = data?.signedUrl || null;
+      } catch (e) { fotoUrl = null; }
+    }
+    renderAccount();
+  }
+  // Profilim'de fotoğraf yüklenince ya da kaldırılınca düğme yenilenir.
+  document.addEventListener('derin:profilfoto', async () => {
+    if (!state.client || !state.user) return;
+    const { data } = await state.client.from('profiles').select('avatar_path').eq('id', state.user.id).maybeSingle();
+    if (state.profile) state.profile.avatar_path = data ? data.avatar_path : null;
+    hesapFotosu();
+  });
   async function init() {
     if (document.querySelector('.player-controls')) {
       const seekFix = document.createElement('script');

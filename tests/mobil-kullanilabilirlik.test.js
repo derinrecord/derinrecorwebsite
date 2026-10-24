@@ -84,7 +84,7 @@ test('auth.js sürümü tüm sayfalarda aynı ve güncel', () => {
   for (const sayfa of SAYFALAR) {
     const html = oku(sayfa);
     if (html.includes('auth.js')) {
-      assert.match(html, /auth\.js\?v=20261024c/, `${sayfa}: auth.js sürümü artırılmalı`);
+      assert.match(html, /auth\.js\?v=20261024d/, `${sayfa}: auth.js sürümü artırılmalı`);
     }
   }
 });

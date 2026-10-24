@@ -7,7 +7,8 @@ const path = require('node:path');
 const a = fs.readFileSync(path.join(__dirname, '..', 'auth.js'), 'utf8');
 
 test('hesap düğmesinde isim yok, yalnız HESABIM', () => {
-  assert.match(a, /button\.textContent = dilMetni\('hesap\.hesabim', 'HESABIM'\);/);
+  // 24 Ekim: solda fotoğraf (hesap-foto.test.js), yazı yalnız HESABIM.
+  assert.match(a, /button\.append\(foto, document\.createTextNode\(dilMetni\('hesap\.hesabim', 'HESABIM'\)\)\)/);
   assert.doesNotMatch(a, /button\.textContent = `\$\{\(state\.profile\?\.full_name/);
 });
 

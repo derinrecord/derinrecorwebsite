@@ -170,6 +170,7 @@
     profil.avatar_path = null;
     fotoGoster(null);
     yaz(msg, L('Fotoğraf kaldırıldı.', 'Photo removed.'), 'ok');
+    document.dispatchEvent(new CustomEvent('derin:profilfoto'));
   }
 
   async function bilgiKaydet() {
