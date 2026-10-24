@@ -28,6 +28,10 @@ test('antrenör parça detayında WAV ve MP3 için iki indirme düğmesi görür
   assert.ok(!kaynak.includes('⤓ İNDİR'), 'tek İNDİR düğmesi kalmamalı');
 });
 
+test('kaynak WAV ise WAV düğmesi ORİJİNAL olduğunu söyler', () => {
+  assert.ok(kaynak.includes("sesUzantisi(tr.audio_path)==='wav'?L('⤓ WAV · ORİJİNAL','⤓ WAV · ORIGINAL'):'⤓ WAV'"));
+});
+
 test('sayfa çeviriciyi projects.js\'ten önce yükler', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'my-projects.html'), 'utf8');
   const i = html.indexOf('<script src="ses-donustur.js?v=');
