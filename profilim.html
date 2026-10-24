@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="tr" data-dil-otomatik data-baslik-en="My Profile — Derin Record">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Profilim — Derin Record</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
+  <link rel="stylesheet" href="branch.css">
+  <link rel="stylesheet" href="glass.css?v=2" />
+  <link rel="stylesheet" href="auth.css?v=20261024">
+  <style>
+    .pf-main { max-width: 620px; margin: 0 auto; padding: 48px 20px 90px; }
+    .pf-main h1 { margin: 0 0 28px; font-size: clamp(46px, 9vw, 84px); line-height: .82; letter-spacing: -.06em; font-weight: 900; }
+    .pf-main h1 span { color: var(--pink); }
+    .pf-kart { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.12); border-radius: 18px; padding: 26px 24px; margin-bottom: 22px; }
+    .pf-kart h2 { margin: 0 0 16px; color: var(--yellow); font-size: 12px; letter-spacing: .16em; }
+    .pf-foto-sira { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .pf-foto { width: 112px; height: 112px; border-radius: 50%; flex: 0 0 auto; display: grid; place-items: center; overflow: hidden;
+      background: radial-gradient(circle at 30% 20%, rgba(203,36,104,.55), rgba(20,16,24,1) 70%); border: 2px solid rgba(232,209,90,.55);
+      font-size: 44px; font-weight: 900; color: #f4f1e9; }
+    .pf-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pf-foto-dugmeler { display: flex; gap: 10px; flex-wrap: wrap; }
+    .pf-dugme { padding: 11px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); background: transparent; color: inherit;
+      font: 700 12px/1 Arial, sans-serif; letter-spacing: .08em; cursor: pointer; }
+    .pf-dugme.ana { background: #e8d15a; border-color: #e8d15a; color: #17131a; }
+    .pf-dugme[disabled] { opacity: .55; cursor: default; }
+    .pf-not { margin: 12px 0 0; font-size: 12px; opacity: .6; line-height: 1.5; }
+    .pf-kart label { display: block; margin: 16px 0 0; font-size: 11px; letter-spacing: .1em; opacity: .75; }
+    .pf-kart input:not([type=file]) { width: 100%; margin-top: 7px; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.35); color: inherit; font: inherit; font-size: 15px; box-sizing: border-box; }
+    .pf-kart input:focus { outline: none; border-color: rgba(232,209,90,.6); }
+    .pf-kart label.pf-dugme { display: inline-flex; align-items: center; margin: 0; font-size: 12px; opacity: 1; letter-spacing: .08em; }
+    .pf-foto-dugmeler { align-items: center; }
+    .pf-kart .pf-msg:empty { min-height: 0; margin: 0; }
+    .pf-kart input[readonly] { opacity: .6; }
+    .pf-iki { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+    .pf-kaydet-sira { margin-top: 22px; display: flex; justify-content: flex-end; }
+    .pf-msg { margin: 12px 0 0; font-size: 14px; line-height: 1.5; min-height: 1.2em; }
+    .pf-msg.err { color: #ff8a8a; } .pf-msg.ok { color: #8ae2a4; }
+    @media (max-width: 560px) { .pf-iki { grid-template-columns: 1fr; } .pf-main { padding-top: 32px; } .pf-kaydet-sira .pf-dugme { width: 100%; } }
+  </style>
+  <link rel="stylesheet" href="mobil.css?v=1">
+  <link rel="stylesheet" href="dil.css?v=2026102401">
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="header">
+    <a class="home" href="index.html"><span>←</span> ANA SAYFA</a>
+    <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+  </header>
+  <main class="pf-main">
+    <p class="eyebrow">HESAP</p>
+    <h1>PROFİ<span>LİM.</span></h1>
+    <p id="pf-durum" class="pf-msg">Hesap kontrol ediliyor…</p>
+
+    <div id="pf-icerik" hidden>
+      <section class="pf-kart">
+        <h2>PROFİL FOTOĞRAFI</h2>
+        <div class="pf-foto-sira">
+          <div class="pf-foto" id="pf-foto" aria-hidden="true">?</div>
+          <div>
+            <div class="pf-foto-dugmeler">
+              <label class="pf-dugme ana" for="pf-foto-sec">FOTOĞRAF SEÇ</label>
+              <input id="pf-foto-sec" type="file" accept="image/*" hidden>
+              <button class="pf-dugme" id="pf-foto-kaldir" type="button" hidden>KALDIR</button>
+            </div>
+            <p class="pf-not">Fotoğrafını yalnız sen ve Derin Record görür.</p>
+          </div>
+        </div>
+        <p id="pf-foto-msg" class="pf-msg"></p>
+      </section>
+
+      <section class="pf-kart">
+        <h2>BİLGİLERİM</h2>
+        <label>AD SOYAD<input id="pf-ad" autocomplete="name" maxlength="80"></label>
+        <div class="pf-iki">
+          <label>KULÜP<input id="pf-kulup" autocomplete="organization" maxlength="80"></label>
+          <label>ŞEHİR<input id="pf-sehir" autocomplete="address-level2" maxlength="60"></label>
+        </div>
+        <label>TELEFON / WHATSAPP<input id="pf-telefon" type="tel" autocomplete="tel" inputmode="tel" placeholder="+90 5xx xxx xx xx"></label>
+        <label>E-POSTA<input id="pf-eposta" readonly></label>
+        <div class="pf-kaydet-sira"><button class="pf-dugme ana" id="pf-kaydet" type="button">KAYDET</button></div>
+        <p id="pf-bilgi-msg" class="pf-msg"></p>
+      </section>
+
+      <section class="pf-kart">
+        <h2>ŞİFRE DEĞİŞTİR</h2>
+        <label>YENİ ŞİFRE<input id="pf-sifre" type="password" minlength="8" autocomplete="new-password"></label>
+        <label>YENİ ŞİFRE (TEKRAR)<input id="pf-sifre2" type="password" minlength="8" autocomplete="new-password"></label>
+        <div class="pf-kaydet-sira"><button class="pf-dugme ana" id="pf-sifre-kaydet" type="button">ŞİFREYİ GÜNCELLE</button></div>
+        <p id="pf-sifre-msg" class="pf-msg"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+  <script src="auth.js?v=20261024a"></script>
+  <script src="profil-yardim.js?v=1"></script>
+  <script src="profilim.js?v=1"></script>
+<script src="dil.js?v=2026102402" defer></script>
+</body>
+</html>

@@ -25,7 +25,7 @@
     if(!m)return null; const v=(m[1]?parseInt(m[1],10)*60:0)+parseFloat(m[2].replace(',','.')); return isFinite(v)?v:null; };
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
-  let client=null,admin=false,me=null,benimAdim='',projects=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false;
+  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false;
   let openTrackId=null;
   let detail={};
   let newFolderOpen=false, newFolderBusy=false, newFolderError='', newFolderNote='';
@@ -104,6 +104,7 @@
           coachList=r.data.filter(p=>p.role!=='admin');
         }
       }
+      await profilFotolariniYukle();
       if(openTrackId){
         let found=null,foundProject=null;
         for(const p of projects){const tr=(tracks[p.id]||[]).find(t=>t.id===openTrackId);if(tr){found=tr;foundProject=p;break;}}
@@ -190,7 +191,7 @@
         const t=trs.find(x=>x.id===f.track_id);
         const antrenor=f.author_id===p.coach_id;
         const ad=antrenor?(admin?(names[p.coach_id]||L('Antrenör','Coach')):L('Sen','You')):'Derin Record';
-        return `<li><span class="fb-av${antrenor?'':' stu'}" aria-hidden="true">${safe(yazarHarfi(f.author_id,p))}</span><div class="fb-govde">${safe(f.body)}${t?` <em>· ${safe(t.label)}</em>`:''}<small>${safe(ad)} · ${safe(goreli(f.created_at))}</small></div></li>`;
+        return `<li><span class="fb-av${antrenor?'':' stu'}" aria-hidden="true">${avatarHtml(f.author_id,p)}</span><div class="fb-govde">${safe(f.body)}${t?` <em>· ${safe(t.label)}</em>`:''}<small>${safe(ad)} · ${safe(goreli(f.created_at))}</small></div></li>`;
       }).join(''):'<li class="bos">Henüz not yok. İlk notu sen bırak.</li>'}</ul>
       <div class="fb-yaz"><textarea data-fb="${p.id}" rows="1" placeholder="Not yaz…" aria-label="Not yaz"></textarea>
       <button data-fbsend="${p.id}">GÖNDER</button></div></div>
@@ -831,6 +832,33 @@
     if(project&&id===project.coach_id)return admin?(names[id]||L('Antrenör','Coach')):L('Sen','You');
     return 'Derin Record';
   };
+  // Profil fotoğrafları (supabase/profil.sql). Yönetici antrenörlerin ve kendi
+  // fotoğrafını, antrenör kendi fotoğrafını ve yöneticininkini görür. SQL
+  // kurulmadıysa sorgular hata döner; notlarda baş harf görünmeye devam eder.
+  async function profilFotolariniYukle(){
+    try{
+      const yollar={};
+      if(admin){
+        const r=await client.from('profiles').select('id,avatar_path');
+        if(!r.error)r.data.forEach(p=>{ if(p.avatar_path)yollar[p.id]=p.avatar_path; });
+      }else{
+        const r=await client.from('profiles').select('id,avatar_path').eq('id',me).maybeSingle();
+        if(!r.error&&r.data&&r.data.avatar_path)yollar[me]=r.data.avatar_path;
+        const y=await client.rpc('yonetici_profil_fotolari');
+        if(!y.error&&Array.isArray(y.data))y.data.forEach(p=>{ if(p.avatar_path)yollar[p.id]=p.avatar_path; });
+      }
+      const idler=Object.keys(yollar);
+      if(!idler.length){ fotoUrl={}; return; }
+      const {data,error}=await client.storage.from('profil-foto').createSignedUrls(idler.map(i=>yollar[i]),3600);
+      if(error||!Array.isArray(data))return;
+      const yeni={};
+      data.forEach((d,i)=>{ if(d&&d.signedUrl)yeni[idler[i]]=d.signedUrl; });
+      fotoUrl=yeni;
+    }catch{ /* fotoğraf yoksa baş harf yeter */ }
+  }
+  // Yönetici notları (Derin Record) için: notu yazan yöneticinin id'si fotoUrl'da varsa o.
+  const avatarHtml=(id,project)=>fotoUrl[id]?`<img src="${safe(fotoUrl[id])}" alt="" loading="lazy">`:safe(yazarHarfi(id,project));
+
   // Not yanındaki yuvarlak harf: "Sen" etiketinin S'si değil, yazanın baş harfi.
   const yazarHarfi=(id,project)=>{
     if(project&&id===project.coach_id){
@@ -884,7 +912,7 @@
           ?`<div class="not-duzenle"><textarea data-notyeni="${safe(f.id)}" rows="2" maxlength="${NotIslem.EN_UZUN}" aria-label="${L('Notu düzenle','Edit note')}">${safe(f.body||'')}</textarea>
             <span class="not-duzenle-dugmeler"><button type="button" data-notvazgec>${L('Vazgeç','Cancel')}</button><button type="button" class="kaydet" data-notkaydet="${safe(f.id)}">${L('Kaydet','Save')}</button></span></div>`
           :`${safe(f.body||'')}`;
-        return `<li class="${duzenleniyor?'duzenleniyor':''}"><span class="fb-av${f.author_id===detail.proje?.coach_id?'':' stu'}" aria-hidden="true">${safe(yazarHarfi(f.author_id,detail.proje))}</span>
+        return `<li class="${duzenleniyor?'duzenleniyor':''}"><span class="fb-av${f.author_id===detail.proje?.coach_id?'':' stu'}" aria-hidden="true">${avatarHtml(f.author_id,detail.proje)}</span>
         <div class="fb-govde">${menu}${govde}<small>${safe(yazarAdi(f.author_id,detail.proje))} · ${safe(goreli(f.created_at))}${f.duzenlendi_at?` · ${L('düzenlendi','edited')}`:''}</small></div></li>`;
       }).join('')}</ul>`
         :'<p class="td-empty">Bu klasörde henüz not yok.</p>'}

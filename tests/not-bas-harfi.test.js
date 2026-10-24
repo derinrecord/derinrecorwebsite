@@ -24,7 +24,8 @@ test('yazarHarfi tanımlı ve Derin Record için D, antrenör için adının ba�
 
 test('not listelerinde yuvarlak harf yazarHarfi\'nden gelir', () => {
   assert.ok(!kaynak.includes("yazarAdi(f.author_id,detail.proje).charAt(0)"), 'Genel klasörde "Sen"in S\'si kalmamalı');
-  assert.ok(kaynak.includes('${safe(yazarHarfi(f.author_id,detail.proje))}'));
-  assert.ok(kaynak.includes('${safe(yazarHarfi(f.author_id,p))}'));
+  // Fotoğraf yoksa avatarHtml baş harfi (yazarHarfi) basar.
+  assert.ok(kaynak.includes('${avatarHtml(f.author_id,detail.proje)}'));
+  assert.ok(kaynak.includes('${avatarHtml(f.author_id,p)}'));
   assert.match(kaynak, /benimAdim=a\.profile\?\.full_name\|\|''/);
 });
