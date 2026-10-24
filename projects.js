@@ -262,6 +262,8 @@
   // Ses dosyası yardımcıları tek kaynaktan gelir: audio-file-types.js
   // (aynı modül tests/audio-file-types.test.js ile doğrulanıyor).
   const Ses=window.DerinAudioTypes;
+  // Not düzenle/sil kuralları: not-islemleri.js (Node'da sınanır).
+  const NotIslem=window.DerinNotIslem;
   const dosyaBoyutu=Ses.boyut;
   const sesUzantisi=Ses.uzanti;
   const sesTipi=Ses.tip;
@@ -860,8 +862,23 @@
       <div class="td-klasor-ust"><div>
         <p class="td-klasor-etiket">GENEL KLASÖR · BELİRLİ BİR ANA BAĞLI OLMAYAN NOTLAR</p>
       </div></div>
-      ${notlar.length?`<ul class="td-genel-liste">${notlar.map(f=>`<li><span class="fb-av${f.author_id===detail.proje?.coach_id?'':' stu'}" aria-hidden="true">${safe(yazarAdi(f.author_id,detail.proje).charAt(0).toLocaleUpperCase('tr-TR'))}</span>
-        <div class="fb-govde">${safe(f.body||'')}<small>${safe(yazarAdi(f.author_id,detail.proje))} · ${safe(goreli(f.created_at))}</small></div></li>`).join('')}</ul>`
+      ${notlar.length?`<ul class="td-genel-liste">${notlar.map(f=>{
+        const y=NotIslem.yetki(f,me,admin);
+        const duzenleniyor=y.duzenle&&detail.duzenlenenNot===f.id;
+        // WhatsApp gibi: köşede küçük ⌄; tıklayınca küçük menü (Düzenle / Sil).
+        const menu=(y.duzenle||y.sil)&&!duzenleniyor?`<span class="not-menu-kutu">
+          <button type="button" class="not-menu-ac" data-notmenu="${safe(f.id)}" aria-haspopup="menu" aria-expanded="${detail.acikNotMenu===f.id}" aria-label="${L('Not seçenekleri','Note options')}">⌄</button>
+          ${detail.acikNotMenu===f.id?`<span class="not-menu" role="menu">
+            ${y.duzenle?`<button type="button" role="menuitem" data-notduzenle="${safe(f.id)}">${L('Düzenle','Edit')}</button>`:''}
+            ${y.sil?`<button type="button" role="menuitem" class="sil" data-notsil="${safe(f.id)}">${L('Sil','Delete')}</button>`:''}
+          </span>`:''}</span>`:'';
+        const govde=duzenleniyor
+          ?`<div class="not-duzenle"><textarea data-notyeni="${safe(f.id)}" rows="2" maxlength="${NotIslem.EN_UZUN}" aria-label="${L('Notu düzenle','Edit note')}">${safe(f.body||'')}</textarea>
+            <span class="not-duzenle-dugmeler"><button type="button" data-notvazgec>${L('Vazgeç','Cancel')}</button><button type="button" class="kaydet" data-notkaydet="${safe(f.id)}">${L('Kaydet','Save')}</button></span></div>`
+          :`${safe(f.body||'')}`;
+        return `<li class="${duzenleniyor?'duzenleniyor':''}"><span class="fb-av${f.author_id===detail.proje?.coach_id?'':' stu'}" aria-hidden="true">${safe(yazarAdi(f.author_id,detail.proje).charAt(0).toLocaleUpperCase('tr-TR'))}</span>
+        <div class="fb-govde">${menu}${govde}<small>${safe(yazarAdi(f.author_id,detail.proje))} · ${safe(goreli(f.created_at))}${f.duzenlendi_at?` · ${L('düzenlendi','edited')}`:''}</small></div></li>`;
+      }).join('')}</ul>`
         :'<p class="td-empty">Bu klasörde henüz not yok.</p>'}
       <div class="fb-yaz td-genel-yaz"><textarea data-tdgenelnot rows="1" placeholder="Parçanın geneli için not yaz…" aria-label="Parçanın geneli için not"></textarea>
         <button type="button" data-tdgenelgonder>GÖNDER</button></div>
@@ -1545,6 +1562,53 @@
       genelGonder.disabled=false;
       if(!error){ detail.selPointLocalId=GENEL; await load(); }
     };
+
+    // Not menüsü (WhatsApp gibi ⌄ → Düzenle / Sil). Menü dışına tıklama ya da
+    // Esc menüyü kapatır.
+    const yeniden=()=>renderDetail(tr,project);
+    root.querySelectorAll('[data-notmenu]').forEach(b=>b.onclick=e=>{
+      e.stopPropagation();
+      detail.acikNotMenu=detail.acikNotMenu===b.dataset.notmenu?null:b.dataset.notmenu;
+      yeniden();
+    });
+    if(detail.acikNotMenu){
+      const kapat=e=>{
+        if(e.type==='keydown'&&e.key!=='Escape')return;
+        if(e.type==='click'&&e.target.closest&&e.target.closest('.not-menu-kutu'))return;
+        document.removeEventListener('click',kapat,true); document.removeEventListener('keydown',kapat,true);
+        if(detail.acikNotMenu){ detail.acikNotMenu=null; yeniden(); }
+      };
+      // key==='Escape' → acikNotMenu kapanır (yukarıda); tıklama dışarıdaysa da.
+      setTimeout(()=>{ document.addEventListener('click',kapat,true); document.addEventListener('keydown',kapat,true); },0);
+    }
+    root.querySelectorAll('[data-notduzenle]').forEach(b=>b.onclick=()=>{
+      detail.acikNotMenu=null; detail.duzenlenenNot=b.dataset.notduzenle; yeniden();
+      const kutu=document.querySelector(`[data-notyeni="${CSS.escape(b.dataset.notduzenle)}"]`);
+      if(kutu){ kutu.focus(); kutu.setSelectionRange(kutu.value.length,kutu.value.length); }
+    });
+    root.querySelectorAll('[data-notvazgec]').forEach(b=>b.onclick=()=>{ detail.duzenlenenNot=null; yeniden(); });
+    root.querySelectorAll('[data-notkaydet]').forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.notkaydet;
+      const f=(detail.genelNotlar||[]).find(x=>x.id===id);
+      const kutu=root.querySelector(`[data-notyeni="${CSS.escape(id)}"]`);
+      const sonuc=NotIslem.yeniMetin(f?.body,kutu?.value);
+      if(sonuc.hata){ bildir(sonuc.hata,'hata'); kutu?.focus(); return; }
+      if(sonuc.degismedi){ detail.duzenlenenNot=null; yeniden(); return; }
+      b.disabled=true;
+      try{
+        await tekSatir(client.from('project_feedback').update({body:sonuc.metin}).eq('id',id),L('Not bulunamadı ya da düzenleme yetkin yok.','Note not found or you cannot edit it.'));
+        detail.duzenlenenNot=null; bildir(L('Not düzenlendi.','Note edited.'),'ok'); await load();
+      }catch(error){ bildir(L('Düzenlenemedi: ','Could not edit: ')+error.message,'hata'); b.disabled=false; }
+    });
+    root.querySelectorAll('[data-notsil]').forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.notsil;
+      detail.acikNotMenu=null;
+      if(!confirm(L('Bu not silinsin mi?','Delete this note?'))){ yeniden(); return; }
+      try{
+        await tekSatir(client.from('project_feedback').delete().eq('id',id),L('Not bulunamadı ya da silme yetkin yok.','Note not found or you cannot delete it.'));
+        bildir(L('Not silindi.','Note deleted.'),'ok'); await load();
+      }catch(error){ bildir(L('Silinemedi: ','Could not delete: ')+error.message,'hata'); yeniden(); }
+    });
   }
 
   // ---------- Liste görünümü kablolama ----------
