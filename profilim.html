@@ -38,6 +38,23 @@
     .pf-kaydet-sira { margin-top: 22px; display: flex; justify-content: flex-end; }
     .pf-msg { margin: 12px 0 0; font-size: 14px; line-height: 1.5; min-height: 1.2em; }
     .pf-msg.err { color: #ff8a8a; } .pf-msg.ok { color: #8ae2a4; }
+    .pf-ayar { position: fixed; inset: 0; z-index: 60; background: rgba(8,6,10,.88); display: grid; place-items: center; padding: 16px; }
+    .pf-ayar[hidden] { display: none; }
+    .pf-ayar-kutu { width: min(360px, 100%); background: #17131a; border: 1px solid rgba(255,255,255,.14); border-radius: 18px; padding: 20px; }
+    .pf-ayar-kutu h2 { margin: 0 0 14px; color: var(--yellow); font-size: 12px; letter-spacing: .16em; }
+    .pf-ayar-alan { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: #000; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+    .pf-ayar-alan.surukle { cursor: grabbing; }
+    .pf-ayar-alan img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; -webkit-user-drag: none; }
+    .pf-izgara { position: absolute; inset: 0; pointer-events: none;
+      background:
+        linear-gradient(to right, transparent calc(33.333% - .5px), rgba(255,255,255,.45) calc(33.333% - .5px), rgba(255,255,255,.45) calc(33.333% + .5px), transparent calc(33.333% + .5px), transparent calc(66.666% - .5px), rgba(255,255,255,.45) calc(66.666% - .5px), rgba(255,255,255,.45) calc(66.666% + .5px), transparent calc(66.666% + .5px)),
+        linear-gradient(to bottom, transparent calc(33.333% - .5px), rgba(255,255,255,.45) calc(33.333% - .5px), rgba(255,255,255,.45) calc(33.333% + .5px), transparent calc(33.333% + .5px), transparent calc(66.666% - .5px), rgba(255,255,255,.45) calc(66.666% - .5px), rgba(255,255,255,.45) calc(66.666% + .5px), transparent calc(66.666% + .5px)); }
+    .pf-izgara::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px rgba(0,0,0,.5); border: 2px solid rgba(232,209,90,.8); }
+    .pf-ayar-zoom-sira { display: flex; align-items: center; gap: 10px; margin: 16px 0 4px; font-size: 18px; opacity: .85; }
+    .pf-ayar-zoom-sira input { flex: 1; accent-color: #e8d15a; }
+    .pf-ayar-dugmeler { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+    .pf-ayar-ipucu { margin: 10px 0 0; font-size: 12px; opacity: .6; text-align: center; }
+    @media (max-width: 560px) { .pf-ayar-dugmeler .pf-dugme { flex: 1; } }
     @media (max-width: 560px) { .pf-iki { grid-template-columns: 1fr; } .pf-main { padding-top: 32px; } .pf-kaydet-sira .pf-dugme { width: 100%; } }
   </style>
   <link rel="stylesheet" href="mobil.css?v=1">
@@ -94,11 +111,27 @@
     </div>
   </main>
 
+  <div class="pf-ayar" id="pf-ayar" hidden role="dialog" aria-modal="true" aria-label="Fotoğrafı ayarla">
+    <div class="pf-ayar-kutu">
+      <h2>FOTOĞRAFI AYARLA</h2>
+      <div class="pf-ayar-alan" id="pf-ayar-alan">
+        <img id="pf-ayar-resim" alt="" draggable="false">
+        <div class="pf-izgara"></div>
+      </div>
+      <p class="pf-ayar-ipucu">Sürükleyerek yerini, çubukla büyüklüğünü ayarla.</p>
+      <div class="pf-ayar-zoom-sira"><span aria-hidden="true">−</span><input id="pf-ayar-zoom" type="range" min="1" max="4" step="0.01" value="1" aria-label="Büyüt"><span aria-hidden="true">+</span></div>
+      <div class="pf-ayar-dugmeler">
+        <button class="pf-dugme" id="pf-ayar-vazgec" type="button">VAZGEÇ</button>
+        <button class="pf-dugme ana" id="pf-ayar-kaydet" type="button">KAYDET</button>
+      </div>
+    </div>
+  </div>
+
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
   <script src="auth.js?v=20261024a"></script>
-  <script src="profil-yardim.js?v=1"></script>
-  <script src="profilim.js?v=1"></script>
-<script src="dil.js?v=2026102402" defer></script>
+  <script src="profil-yardim.js?v=2"></script>
+  <script src="profilim.js?v=2"></script>
+<script src="dil.js?v=2026102403" defer></script>
 </body>
 </html>

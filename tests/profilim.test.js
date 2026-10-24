@@ -98,7 +98,7 @@ test('profilim.html: foto, alanlar, şifre ve gerekli dosyalar', () => {
 
 test('profilim.js: fotoğrafı tarayıcıda küçültür, kendi klasörüne yükler, eskisini siler', () => {
   const j = oku('profilim.js');
-  assert.match(j, /P\.kareKirp\(/);
+  assert.match(j, /P\.ayarKirp\(/);
   assert.match(j, /toBlob\([\s\S]{0,240}'image\/jpeg', 0\.85\)/);
   assert.match(j, /storage\.from\('profil-foto'\)\.upload\(yol, blob, \{ contentType: 'image\/jpeg'/);
   assert.match(j, /update\(\{ avatar_path: yol \}\)/);

@@ -10,6 +10,45 @@
     return { sx: Math.round((gen - kenar) / 2), sy: Math.round((yuk - kenar) / 2), kenar: kenar, cikti: Math.min(CIKTI, kenar) };
   }
 
+  // ---- Izgaralı ayar penceresi ----
+  // F: ekrandaki kare çerçeve kenarı. ayar: { zoom (1–4), ox, oy } — fotoğrafın
+  // sol üst köşesinin çerçeveye göre yeri (ekran pikseli, ≤ 0).
+  var EN_BUYUK = 4;
+  function olcek(gen, yuk, F, zoom) { return (F / Math.min(gen, yuk)) * zoom; }
+
+  function sinirla(a, gen, yuk, F) {
+    var zoom = Math.min(EN_BUYUK, Math.max(1, Number(a.zoom) || 1));
+    var s = olcek(gen, yuk, F, zoom);
+    var kx = F - gen * s, ky = F - yuk * s;
+    return {
+      zoom: zoom,
+      ox: Math.round(Math.min(0, Math.max(kx, a.ox)) * 100) / 100 || 0,
+      oy: Math.round(Math.min(0, Math.max(ky, a.oy)) * 100) / 100 || 0
+    };
+  }
+
+  function baslangicAyar(gen, yuk, F) {
+    var s = olcek(gen, yuk, F, 1);
+    return sinirla({ zoom: 1, ox: (F - gen * s) / 2, oy: (F - yuk * s) / 2 }, gen, yuk, F);
+  }
+
+  // Büyütürken çerçevenin ortası (ya da verilen nokta) yerinde kalır.
+  function zoomla(a, yeni, gen, yuk, F, mx, my) {
+    if (mx == null) mx = F / 2;
+    if (my == null) my = F / 2;
+    var z = Math.min(EN_BUYUK, Math.max(1, yeni));
+    var oran = olcek(gen, yuk, F, z) / olcek(gen, yuk, F, a.zoom);
+    return sinirla({ zoom: z, ox: mx - (mx - a.ox) * oran, oy: my - (my - a.oy) * oran }, gen, yuk, F);
+  }
+
+  function ayarKirp(a, gen, yuk, F) {
+    var s = olcek(gen, yuk, F, a.zoom);
+    var kenar = Math.min(Math.round(F / s), gen, yuk);
+    var sx = Math.min(gen - kenar, Math.max(0, Math.round(-a.ox / s)));
+    var sy = Math.min(yuk - kenar, Math.max(0, Math.round(-a.oy / s)));
+    return { sx: sx, sy: sy, kenar: kenar, cikti: Math.min(CIKTI, kenar) };
+  }
+
   function fotoYolu(uid, zaman) {
     return uid + '/foto-' + zaman + '.jpg';
   }
@@ -39,7 +78,7 @@
     return k ? k.charAt(0).toLocaleUpperCase('tr-TR') : '?';
   }
 
-  var api = { CIKTI: CIKTI, kareKirp: kareKirp, fotoYolu: fotoYolu, resimMi: resimMi, formKaydi: formKaydi, sifreHatasi: sifreHatasi, basHarf: basHarf };
+  var api = { CIKTI: CIKTI, kareKirp: kareKirp, baslangicAyar: baslangicAyar, sinirla: sinirla, zoomla: zoomla, ayarKirp: ayarKirp, fotoYolu: fotoYolu, resimMi: resimMi, formKaydi: formKaydi, sifreHatasi: sifreHatasi, basHarf: basHarf };
   if (typeof window !== 'undefined') window.DerinProfil = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();
