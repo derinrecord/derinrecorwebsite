@@ -1,4 +1,22 @@
 (() => {
+  // ---- Saf yardımcılar (Node'da sınanır) ----
+  // Ana sayfa kasetinin alt yazısı branştaki gerçek demolardan gelir (24 Ekim):
+  // hiç yoksa YAKINDA, tek demoysa adı, birden çoksa "N DEMO".
+  const BRANSLAR = ['aerobik', 'akrobatik', 'artistik', 'ritmik', 'cocuk-fitness'];
+  const bransAnahtari = link => {
+    const m = /^\/?([a-z-]+)\.html(?:[#?].*)?$/i.exec(String(link || '').trim());
+    return m && BRANSLAR.includes(m[1].toLowerCase()) ? m[1].toLowerCase() : null;
+  };
+  const altYazi = basliklar => !basliklar.length ? 'YAKINDA'
+    : basliklar.length === 1 ? String(basliklar[0]).toLocaleUpperCase('tr-TR') : basliklar.length + ' DEMO';
+  const basliklariGuncelle = (katalog, demolar) => katalog.map(k => {
+    const b = bransAnahtari(k.link_url);
+    if (!b) return k;
+    return { ...k, title: altYazi(demolar.filter(d => d.brans === b).map(d => d.baslik)) };
+  });
+  if (typeof module !== 'undefined') module.exports = { bransAnahtari, altYazi, basliklariGuncelle };
+  if (typeof document === 'undefined') return;
+
   const grid = document.querySelector('.cassette-grid');
   const demos = document.querySelector('#demolar');
   if (!grid || !demos) return;
@@ -16,8 +34,11 @@
     await window.DerinAuth.ready;
     const { configured, client, profile } = window.DerinAuth;
     if (!configured) return;
+    // Branş sayfalarındaki demolar (tablo yoksa katalog başlıkları olduğu gibi kalır).
+    const { data: demolar, error: demoHata } = await client.from('demo_parcalari').select('brans,baslik');
+    const guncelle = liste => (demoHata || !demolar) ? liste : basliklariGuncelle(liste, demolar);
     const { data, error } = await client.from('demo_catalog').select('*').order('sort_order').order('created_at');
-    if (!error && data?.length) render(data);
+    if (!error && data?.length) render(guncelle(data));
     if (profile?.role !== 'admin') return;
     const panel = document.createElement('section');
     panel.className = 'demo-manager';
@@ -29,7 +50,7 @@
     const refresh = async () => {
       const { data: current, error: listError } = await client.from('demo_catalog').select('*').order('sort_order').order('created_at');
       if (listError) { list.textContent = tableHint(listError.message); return; }
-      render(current || []);
+      render(guncelle(current || []));
       list.innerHTML = (current || []).map(item => `<div><span>${safe(item.branch)} — ${safe(item.title)}</span><button type="button" data-remove="${item.id}">KALDIR</button></div>`).join('') || 'Henüz demo yok.';
       list.querySelectorAll('[data-remove]').forEach(button => button.onclick = async () => { if (!confirm('Bu demo kaseti kaldırılsın mı?')) return; const { data: silinen, error: removeError } = await client.from('demo_catalog').delete().eq('id', button.dataset.remove).select('id'); if (removeError) { list.textContent = removeError.message; return; } if (!silinen || !silinen.length) { list.textContent = 'Kaset kaldırılamadı: kayıt bulunamadı ya da yetkiniz yok.'; return; } refresh(); });
     };
