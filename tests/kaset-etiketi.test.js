@@ -18,5 +18,5 @@ test('kaset etiketi stili yalnız kahraman düğmesine', () => {
 });
 
 test('ana sayfa yeni sürümü yükler', () => {
-  assert.match(oku('index.html'), /hero-clarity\.css\?v=2"/);
+  assert.match(oku('index.html'), /hero-clarity\.css\?v=3"/);
 });

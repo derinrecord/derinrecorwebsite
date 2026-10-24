@@ -1,7 +1,7 @@
 (() => {
   // Üyelik onayında kabul edilen hukuki metin sürümleri (sayfalardaki "Sürüm" ile aynı).
   const SOZLESME_SURUM = '2026-10-04';
-  const AYDINLATMA_SURUM = '2026-10-04';
+  const AYDINLATMA_SURUM = '2026-10-24';
   const config = window.DERIN_CONFIG || {};
   const configured = Boolean(config.supabaseUrl && config.supabasePublishableKey && window.supabase);
   const HATIRLA_ANAHTARI = 'derin-auth-hatirla';
@@ -144,8 +144,9 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
   function onaySatiri() {
     const sozlesme = `<a href="kullanici-sozlesmesi.html" target="_blank" rel="noopener">${dilMetni('auth.sozlesme', 'Kullanıcı Sözleşmesi')}</a>`;
     const aydinlatma = `<a href="aydinlatma-metni.html" target="_blank" rel="noopener">${dilMetni('auth.aydinlatma', 'Aydınlatma Metni')}</a>`;
-    const cumle = dilMetni('auth.onay', '{sozlesme}’ni okudum ve kabul ediyorum; {aydinlatma}’ni okudum.')
-      .replace('{sozlesme}', sozlesme).replace('{aydinlatma}', aydinlatma);
+    const gizlilik = `<a href="gizlilik-politikasi.html" target="_blank" rel="noopener">${dilMetni('auth.gizlilik', 'Gizlilik Politikası')}</a>`;
+    const cumle = dilMetni('auth.onay', '{sozlesme}’ni okudum ve kabul ediyorum; {aydinlatma}’ni ve {gizlilik}’nı okudum.')
+      .replace('{sozlesme}', sozlesme).replace('{aydinlatma}', aydinlatma).replace('{gizlilik}', gizlilik);
     return `<label class="auth-onay"><input type="checkbox" name="onay" required><span>${cumle}</span></label>`;
   }
 
