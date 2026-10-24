@@ -57,6 +57,7 @@
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && !menu.hidden) closeMenu(menu); });
   }
   function renderAccount() {
+    if (document.querySelectorAll) document.querySelectorAll('[data-profil-baglanti]').forEach(a => { a.hidden = !(configured && state.user); });
     const actions = document.querySelector('.account-actions'); if (!actions) return;
     const button = actions.querySelector('[data-login]'), signup = actions.querySelector('[data-signup]'), coachAction = actions.querySelector('.coach-action'), menu = document.querySelector('.account-menu');
     // Menü artık ziyaretçiye de açık; gizleme kararı burada verilmez (mobil menü mobil.css + script.js).

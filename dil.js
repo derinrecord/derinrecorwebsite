@@ -15,6 +15,7 @@
     'nav.ses': 'Sound Design',
     'nav.haberler': 'News',
     'nav.iletisim': 'Contact',
+    'nav.profilim': 'MY PROFILE',
     'nav.menu': 'MENU <i></i>',
     'site.logoEtiket': 'Derin Record home',
 

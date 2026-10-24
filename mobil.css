@@ -4,6 +4,9 @@
    en az 44px dokunma hedefleri, iOS yakınlaştırmasını önleyen form alanları
    ve çentik / ana çubuk güvenli alanları. */
 
+/* Yan menüdeki PROFİLİM yalnız telefonda; bilgisayarda HESABIM menüsünde zaten var. */
+.site-header nav a.nav-profil { display: none !important; }
+
 @media (max-width: 760px) {
   html {
     -webkit-text-size-adjust: 100%;
@@ -153,6 +156,24 @@
     visibility: visible !important;
     pointer-events: auto !important;
     display: flex !important;
+  }
+
+  /* Yan menünün en üstünde PROFİLİM: kaset etiketi gibi, ama düz (24 Ekim). */
+  .site-header nav a.nav-profil {
+    display: flex !important;
+    justify-content: center !important;
+    min-height: 48px !important;
+    margin: 0 4px 14px 0 !important;
+    background: #f4f1e9 !important;
+    color: #17131a !important;
+    border-radius: 6px !important;
+    box-shadow: 4px 4px 0 var(--pink, #cb2468) !important;
+    transform: none !important;
+    text-shadow: none !important;
+  }
+
+  .site-header nav a.nav-profil[hidden] {
+    display: none !important;
   }
 
   body.menu-open .float-actions {

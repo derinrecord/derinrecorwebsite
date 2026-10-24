@@ -21,7 +21,7 @@ const kural = (css, secici) => {
 test('her sayfa mobil katmanını ve güvenli alan görünümünü yükler', () => {
   for (const sayfa of SAYFALAR) {
     const html = oku(sayfa);
-    assert.match(html, /href="mobil\.css\?v=3"/, `${sayfa}: mobil.css eklenmeli`);
+    assert.match(html, /href="mobil\.css\?v=4"/, `${sayfa}: mobil.css eklenmeli`);
     assert.match(html, /viewport-fit=cover/, `${sayfa}: viewport-fit=cover olmalı`);
   }
 });
@@ -84,7 +84,7 @@ test('auth.js sürümü tüm sayfalarda aynı ve güncel', () => {
   for (const sayfa of SAYFALAR) {
     const html = oku(sayfa);
     if (html.includes('auth.js')) {
-      assert.match(html, /auth\.js\?v=20261024b/, `${sayfa}: auth.js sürümü artırılmalı`);
+      assert.match(html, /auth\.js\?v=20261024c/, `${sayfa}: auth.js sürümü artırılmalı`);
     }
   }
 });
