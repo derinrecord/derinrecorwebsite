@@ -22,7 +22,7 @@
     'ana.baslik': 'LEAVE<br /><em>YOUR MARK.</em>',
     'ana.metin': 'Every move has its own rhythm. Derin Record designs the music that matches the energy of your routine.',
     'ana.cta1': 'CREATE YOUR MUSIC',
-    'ana.cta2': 'HOW DOES IT WORK? <span>↘</span>',
+    'ana.cta2': 'HOW DOES IT WORK? <span><svg class="ok-ciz" aria-hidden="true" viewBox="0 0 16 16" width="0.85em" height="0.85em" style="vertical-align:-0.05em"><path d="M3.5 3.5l9 9M12.5 5.5v7h-7" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>',
     'ana.kasetEtiket': 'SOUNDS THAT OWN THE PODIUM',
     'ana.kurumsal.etiket': 'CORPORATE MUSIC LICENSING',
     'ana.kurumsal.baslik': "YOUR VENUE'S<br><span>OWN SOUND.</span>",
