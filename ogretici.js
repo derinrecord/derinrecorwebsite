@@ -1,6 +1,6 @@
 // Öğretici mod (24 Ekim) — adım adım tur motoru.
 // Hedef öğenin çevresi aydınlanır, yanında kısa açıklama balonu çıkar:
-// GERİ / İLERİ / ATLA. Antrenöre ilk girişte kendiliğinden açılır (her tur bir
+// GERİ / İLERİ / ATLA. Antrenöre ve yöneticiye ilk girişte kendiliğinden açılır (her tur bir
 // kez, "görüldü" bilgisi bu tarayıcıda saklanır); menüdeki ÖĞRETİCİ ile her
 // zaman yeniden başlatılır. Adımlar: ogretici-turlar.js.
 (function () {
@@ -11,7 +11,8 @@
 
   function gorulduAnahtari(tur, uid) { return 'derin-ogretici:' + tur + ':' + uid; }
 
-  function kendiligindenAcilsin(o) { return o.rol === 'coach' && !o.gorduMu; }
+  // Antrenör ve yönetici (25 Ekim: Derin yönetici de görsün istedi); ziyaretçi hayır.
+  function kendiligindenAcilsin(o) { return (o.rol === 'coach' || o.rol === 'admin') && !o.gorduMu; }
 
   // Balon hedefin altına sığıyorsa alta, sığmıyorsa üste; yatayda ekrandan taşmaz.
   function balonYeri(h, b, e) {

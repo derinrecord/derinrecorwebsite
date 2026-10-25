@@ -13,10 +13,11 @@ test('görüldü anahtarı tura ve kişiye özel', () => {
   assert.equal(O.gorulduAnahtari('projelerim', 'u-1'), 'derin-ogretici:projelerim:u-1');
 });
 
-test('kendiliğinden açılma: yalnız giriş yapmış antrenör ve daha önce görmediyse', () => {
+test('kendiliğinden açılma: giriş yapmış antrenör ya da yönetici, daha önce görmediyse (25 Ekim: yönetici de)', () => {
   assert.equal(O.kendiligindenAcilsin({ rol: 'coach', gorduMu: false }), true);
   assert.equal(O.kendiligindenAcilsin({ rol: 'coach', gorduMu: true }), false);
-  assert.equal(O.kendiligindenAcilsin({ rol: 'admin', gorduMu: false }), false);
+  assert.equal(O.kendiligindenAcilsin({ rol: 'admin', gorduMu: false }), true);
+  assert.equal(O.kendiligindenAcilsin({ rol: 'admin', gorduMu: true }), false);
   assert.equal(O.kendiligindenAcilsin({ rol: null, gorduMu: false }), false);
 });
 
