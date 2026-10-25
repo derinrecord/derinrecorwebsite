@@ -129,14 +129,13 @@
   .pt-surum{padding:5px 10px;border-radius:999px;border:1px solid var(--pj-cizgi2);font-size:10px;font-weight:900;letter-spacing:.08em}
   /* İndirme izni parça parça (25 Ekim) */
   .pt-indir{display:inline-grid;place-items:center;width:20px;height:20px;margin-left:4px;vertical-align:2px;border-radius:50%;background:rgba(95,207,143,.16);color:var(--pj-yesil);font-size:11px;font-weight:900}
-  .proj-indirme{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0 6px;padding:12px;border-radius:14px;border:1px dashed var(--pj-cizgi2)}
-  .proj-indirme-baslik{flex-basis:100%;font-size:9px;font-weight:900;letter-spacing:.2em;color:var(--pj-soluk)}
-  .pi-dugme{display:inline-flex;align-items:center;gap:7px;min-height:38px;max-width:100%;padding:0 12px;border-radius:999px;border:1px solid var(--pj-cizgi2);background:transparent;color:var(--pj-soluk);font:inherit;font-size:12px;cursor:pointer;text-align:left}
-  .pi-dugme b{color:var(--pj-krem);font-size:11px}
-  .pi-dugme i{font-style:normal;font-size:10px;font-weight:900;letter-spacing:.1em}
-  .pi-dugme.aktif{border-color:rgba(95,207,143,.6);background:rgba(95,207,143,.12);color:var(--pj-krem)}
-  .pi-dugme.aktif i{color:var(--pj-yesil)}
-  .pi-dugme[disabled]{opacity:.55}
+  /* Yazısız indirme düğmesi (25 Ekim): gri = kapalı, yeşil = açık */
+  .pt-sar{display:flex;align-items:center;gap:8px}
+  .pt-sar .proj-track{flex:1;min-width:0}
+  .pt-indir-dugme{flex:0 0 auto;width:44px;height:44px;display:inline-grid;place-items:center;padding:0;border-radius:50%;border:1px solid var(--pj-cizgi2);background:transparent;color:var(--pj-soluk);font:inherit;font-size:18px;font-weight:900;line-height:1;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+  .pt-indir-dugme:hover{border-color:rgba(95,207,143,.6);color:var(--pj-krem)}
+  .pt-indir-dugme.aktif{background:var(--pj-yesil);border-color:var(--pj-yesil);color:#0b0b0d;box-shadow:0 0 0 4px rgba(95,207,143,.18)}
+  .pt-indir-dugme[disabled]{opacity:.55}
   .td-dl-izin.aktif{background:rgba(95,207,143,.14);border-color:rgba(95,207,143,.6);color:var(--pj-yesil)}
   .pt-surum.hazir{border-color:rgba(216,187,44,.45);color:var(--pj-altin2)}
   .pt-not{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:var(--pj-altin2)}
@@ -574,7 +573,7 @@
 <script src="dalga-tepeleri.js?v=2"></script>
 <script src="ses-donustur.js?v=1"></script>
 <script src="not-islemleri.js?v=1"></script>
-<script src="projects.js?v=20261025d"></script>
+<script src="projects.js?v=20261025e"></script>
 <script src="ogretici-turlar.js?v=2"></script><script src="ogretici.js?v=2" data-sayfa="projelerim"></script>
 <script src="dil.js?v=2026102407" defer></script>
 </body>

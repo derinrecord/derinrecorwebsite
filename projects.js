@@ -122,16 +122,19 @@
 
   function trackBlock(tr,i,p){
     const has=!!tr.audio_path;
+    const acik=tr.indirme_izni===undefined?!!p.download_allowed:!!tr.indirme_izni;
     const renkler=['aerobik','acrobatik','artistik','ritmik','trambolin'];
     const renk=renkler[i%renkler.length];
-    return `<button type="button" class="proj-track" data-tb="${tr.id}" data-tdopen="${tr.id}">
+    const satir=`<button type="button" class="proj-track" data-tb="${tr.id}" data-tdopen="${tr.id}">
       <span class="pt-no">${String(i+1).padStart(2,'0')}</span>
       <span class="pt-kaset ${renk}"><img src="assets/demo-cassette-derin-record.png" alt="" loading="lazy"></span>
-      <span class="pt-ad"><strong>${safe(tr.label||'Parça')}${tr.indirme_izni?` <span class="pt-indir" title="${L('İndirmesi açık','Download allowed')}" aria-label="${L('İndirmesi açık','Download allowed')}">⤓</span>`:''}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small></span>
+      <span class="pt-ad"><strong>${safe(tr.label||'Parça')}${(!admin&&acik)?` <span class="pt-indir" title="${L('İndirmesi açık','Download allowed')}" aria-label="${L('İndirmesi açık','Download allowed')}">⤓</span>`:''}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small></span>
       ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${L(`${n} not — parçayı açıp klasöründe gör`,`${n} ${n===1?'note':'notes'} — open the track to see its folder`)}">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
       <span class="pt-surum${has?' hazir':''}">v${safe(tr.version||1)}</span>
       <span class="pt-ok" aria-hidden="true">→</span>
     </button>`;
+    // Yönetici: satırın yanında yazısız ⤓ — basınca bu parçanın indirmesi açılır/kapanır (25 Ekim).
+    return (admin&&has)?`<div class="pt-sar">${satir}<button type="button" class="pt-indir-dugme${acik?' aktif':''}" data-tddlizin="${tr.id}" data-on="${acik?1:0}" aria-pressed="${acik}" aria-label="${acik?L('İndirme açık — kapatmak için bas','Download on — tap to turn off'):L('İndirme kapalı — açmak için bas','Download off — tap to turn on')}" title="${acik?L('İndirme açık — kapatmak için bas','Download on — tap to turn off'):L('İndirme kapalı — açmak için bas','Download off — tap to turn on')}">⤓</button></div>`:satir;
   }
 
   // Kart gövdesini "katla/aç": sınıfı değiştirmek yeterli (CSS yüksekliği
@@ -178,11 +181,6 @@
       ${p.status==='pending'?'<div class="pj-bekleme"><strong>ONAY BEKLİYOR</strong>Talep Derin Record\'a ulaştı. Onaylandığında üretim süreci burada adım adım ilerler.</div>':bar(p.status)}
       <p class="pj-baslik"><span>PARÇALAR</span><i>${trs.length}</i></p>
       <div class="proj-tracks">${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<p class="proj-empty-track">Henüz parça yok. İlk taslak yüklendiğinde burada görünecek.</p>`}</div>
-      ${admin&&trs.some(t=>t.audio_path)?`<div class="proj-indirme" role="group" aria-label="İndirme izinleri">
-        <span class="proj-indirme-baslik">İNDİRME İZİNLERİ</span>
-        ${trs.map((tr,i)=>{ if(!tr.audio_path)return ''; const acik=tr.indirme_izni===undefined?!!p.download_allowed:!!tr.indirme_izni;
-          return `<button type="button" class="pi-dugme${acik?' aktif':''}" data-tddlizin="${tr.id}" data-on="${acik?1:0}" aria-pressed="${acik}" title="${acik?'İndirme açık — kapatmak için bas':'İndirme kapalı — açmak için bas'}"><b>${String(i+1).padStart(2,'0')}</b> ${safe(tr.label||'Parça')} <i>${acik?'✓ AÇIK':'KAPALI'}</i></button>`; }).join('')}
-      </div>`:''}
       ${admin?`<div class="proj-actions proj-yonetim"><span>YÖNETİM</span>
         <label class="proj-add-track">+ YENİ PARÇA <input type="file" accept="${SES_ACCEPT}" data-addtrack="${p.id}" hidden></label>
         <select data-stage="${p.id}" aria-label="Proje aşaması">
@@ -998,7 +996,7 @@
       <div class="td-tools">
         ${tr.source_url?`<a class="td-tool-link" href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">KAYNAĞI AÇ ↗</a>`:''}
         ${(!admin && indirmeAcik(tr) && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="wav">${sesUzantisi(tr.audio_path)==='wav'?L('⤓ WAV · ORİJİNAL','⤓ WAV · ORIGINAL'):'⤓ WAV'}</button><button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="mp3">⤓ MP3</button>` : ''}
-        ${(admin && has)?`<button type="button" class="td-tool-btn td-dl-izin${indirmeAcik(tr)?' aktif':''}" data-tddlizin="${tr.id}" data-on="${indirmeAcik(tr)?1:0}" aria-pressed="${indirmeAcik(tr)}">${indirmeAcik(tr)?L('✓ İNDİRME AÇIK','✓ DOWNLOAD ON'):L('İNDİRMEYE İZİN VER','ALLOW DOWNLOAD')}</button>`:''}
+        ${(admin && has)?`<button type="button" class="pt-indir-dugme td-dl-izin${indirmeAcik(tr)?' aktif':''}" data-tddlizin="${tr.id}" data-on="${indirmeAcik(tr)?1:0}" aria-pressed="${indirmeAcik(tr)}" aria-label="${indirmeAcik(tr)?L('İndirme açık — kapatmak için bas','Download on — tap to turn off'):L('İndirme kapalı — açmak için bas','Download off — tap to turn on')}" title="${indirmeAcik(tr)?L('İndirme açık — kapatmak için bas','Download on — tap to turn off'):L('İndirme kapalı — açmak için bas','Download off — tap to turn on')}">⤓</button>`:''}
         ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="${SES_ACCEPT}" data-newver="${tr.id}" hidden></label>`:''}
         ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
       </div>

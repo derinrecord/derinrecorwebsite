@@ -33,10 +33,11 @@ test('parça listesinde indirmesi açık olana ⤓ işareti', () => {
   assert.match(j, /class="pt-indir"/);
 });
 
-test('proje kartında yalnız yöneticiye İNDİRME İZİNLERİ satırı; her parça için aç/kapa', () => {
-  assert.match(j, /\$\{admin&&trs\.some\(t=>t\.audio_path\)\?`<div class="proj-indirme"/);
-  assert.match(j, /<span class="proj-indirme-baslik">İNDİRME İZİNLERİ<\/span>/);
-  assert.match(j, /class="pi-dugme\$\{acik\?' aktif':''\}" data-tddlizin="\$\{tr\.id\}" data-on="\$\{acik\?1:0\}" aria-pressed="\$\{acik\}"/);
+test('yazısız ⤓ düğmesi: yöneticiye her parça satırında, basınca aç/kapa (25 Ekim)', () => {
+  assert.doesNotMatch(j, /İNDİRME İZİNLERİ/);
+  assert.doesNotMatch(j, /İNDİRMEYE İZİN VER/);
+  assert.match(j, /<div class="pt-sar">/);
+  assert.match(j, /class="pt-indir-dugme\$\{acik\?' aktif':''\}" data-tddlizin="\$\{tr\.id\}" data-on="\$\{acik\?1:0\}" aria-pressed="\$\{acik\}" aria-label="\$\{acik\?L\('İndirme açık — kapatmak için bas'/);
   assert.match(j, /list\.querySelectorAll\('\[data-tddlizin\]'\)\.forEach\(b=>b\.onclick=\(\)=>indirmeIzniDegistir\(b\)\)/);
   assert.match(j, /root\.querySelectorAll\('\[data-tddlizin\]'\)\.forEach\(b=>b\.onclick=\(\)=>indirmeIzniDegistir\(b\)\)/);
 });
