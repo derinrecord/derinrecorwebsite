@@ -127,7 +127,7 @@
     return `<button type="button" class="proj-track" data-tb="${tr.id}" data-tdopen="${tr.id}">
       <span class="pt-no">${String(i+1).padStart(2,'0')}</span>
       <span class="pt-kaset ${renk}"><img src="assets/demo-cassette-derin-record.png" alt="" loading="lazy"></span>
-      <span class="pt-ad"><strong>${safe(tr.label||'Parça')}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small></span>
+      <span class="pt-ad"><strong>${safe(tr.label||'Parça')}${tr.indirme_izni?` <span class="pt-indir" title="${L('İndirmesi açık','Download allowed')}" aria-label="${L('İndirmesi açık','Download allowed')}">⤓</span>`:''}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small></span>
       ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${L(`${n} not — parçayı açıp klasöründe gör`,`${n} ${n===1?'note':'notes'} — open the track to see its folder`)}">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
       <span class="pt-surum${has?' hazir':''}">v${safe(tr.version||1)}</span>
       <span class="pt-ok" aria-hidden="true">→</span>
@@ -184,7 +184,6 @@
           <option value="pending"${p.status==='pending'?' selected':''}>Bekliyor</option>
           ${STAGES.map(s=>`<option value="${s.k}"${p.status===s.k?' selected':''}>${s.l}</option>`).join('')}
         </select>
-        <button data-dlallow="${p.id}" data-on="${p.download_allowed?1:0}"${p.download_allowed?' class="aktif"':''}>${p.download_allowed?'✓ İNDİRME AÇIK':'İNDİRMEYE İZİN VER'}</button>
         <button data-del="${p.id}" class="tehlike">SİL</button></div>`:''}
       <div class="fb-box"><p class="pj-baslik"><span>NOTLAR</span><i>${notSayisi}</i></p>
       <ul class="fb-list">${fbs.length?fbs.map(f=>{
@@ -868,6 +867,8 @@
     }
     return 'D';
   };
+  // İndirme izni parça parça (25 Ekim). Sütun henüz kurulmadıysa eski proje izni geçerli.
+  const indirmeAcik=tr=>tr.indirme_izni===undefined?!!(detail.proje&&detail.proje.download_allowed):!!tr.indirme_izni;
   const GENEL='__genel';
   const genelSecili=()=>detail.selPointLocalId===GENEL;
 
@@ -981,7 +982,8 @@
 
       <div class="td-tools">
         ${tr.source_url?`<a class="td-tool-link" href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">KAYNAĞI AÇ ↗</a>`:''}
-        ${(!admin && project.download_allowed && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="wav">${sesUzantisi(tr.audio_path)==='wav'?L('⤓ WAV · ORİJİNAL','⤓ WAV · ORIGINAL'):'⤓ WAV'}</button><button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="mp3">⤓ MP3</button>` : ''}
+        ${(!admin && indirmeAcik(tr) && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="wav">${sesUzantisi(tr.audio_path)==='wav'?L('⤓ WAV · ORİJİNAL','⤓ WAV · ORIGINAL'):'⤓ WAV'}</button><button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="mp3">⤓ MP3</button>` : ''}
+        ${(admin && has)?`<button type="button" class="td-tool-btn td-dl-izin${indirmeAcik(tr)?' aktif':''}" data-tddlizin="${tr.id}" data-on="${indirmeAcik(tr)?1:0}" aria-pressed="${indirmeAcik(tr)}">${indirmeAcik(tr)?L('✓ İNDİRME AÇIK','✓ DOWNLOAD ON'):L('İNDİRMEYE İZİN VER','ALLOW DOWNLOAD')}</button>`:''}
         ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="${SES_ACCEPT}" data-newver="${tr.id}" hidden></label>`:''}
         ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
       </div>
@@ -1548,6 +1550,15 @@
       }
     });
 
+    root.querySelectorAll('[data-tddlizin]').forEach(b=>b.onclick=async()=>{
+      const yeni=b.dataset.on!=='1';
+      b.disabled=true;
+      try{
+        await tekSatir(client.from('project_tracks').update({indirme_izni:yeni}).eq('id',b.dataset.tddlizin),L('İndirme izni kaydedilemedi.','Download permission could not be saved.'));
+        bildir(yeni?L('Bu parçanın indirmesi açıldı.','Download allowed for this track.'):L('Bu parçanın indirmesi kapatıldı.','Download turned off for this track.'),'ok');
+        await load();
+      }catch(error){ bildir(L('İndirme izni kaydedilemedi: ','Download permission could not be saved: ')+error.message,'hata'); b.disabled=false; }
+    });
     root.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
       b.disabled=true;
       try{ await dosyaIndir(b.dataset.path,b.dataset.name,b.dataset.bicim||'wav'); } finally{ b.disabled=false; }
@@ -1792,14 +1803,6 @@
         bildir('Aşama güncellendi.','ok');
       }catch(error){ bildir('Kaydedilemedi: '+error.message,'hata'); }
       s.disabled=false;load();
-    });
-    list.querySelectorAll('[data-dlallow]').forEach(b=>b.onclick=async()=>{
-      const yeni = b.dataset.on!=='1';
-      try{
-        await tekSatir(client.from('music_projects').update({download_allowed:yeni}).eq('id',b.dataset.dlallow),'İndirme izni kaydedilemedi.');
-        bildir(yeni?'İndirme izni verildi.':'İndirme izni kaldırıldı.','ok');
-      }catch(error){ bildir('İndirme izni kaydedilemedi: '+error.message,'hata'); }
-      load();
     });
 
     list.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
