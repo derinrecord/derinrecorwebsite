@@ -77,8 +77,8 @@
     return sinirlar;
   }
 
-  function parcaSayisi(toplamBayt) {
-    return dilimSinirlari(toplamBayt).length;
+  function parcaSayisi(toplamBayt, parcaBoyutu) {
+    return dilimSinirlari(toplamBayt, parcaBoyutu).length;
   }
 
   // Yol sonuna eklenen parça etiketi: -p02of03
@@ -117,30 +117,71 @@
     return !!dosya && dosya.size > PARCA_BOYUTU;
   }
 
-  // Parçalı yükleme: tek nesne sınırı aşıldığında dosyayı dilimlere bölüp
-  // sırayla yükler. Girdi/çıktı dışarıdan verilir (io) — böylece hem tarayıcı
-  // (Supabase storage) hem testler (sahte io) aynı mantığı kullanır.
+  // Parçalı yükleme: dosyayı dilimlere bölüp yükler. Girdi/çıktı dışarıdan
+  // verilir (io) — böylece hem tarayıcı hem testler (sahte io) aynı mantığı kullanır.
   //   io.yukle(yol, dilim, tip) -> Promise<{error}>
   //   io.sil(yollar)            -> Promise (isteğe bağlı)
+  // secenek (isteğe bağlı, 25 Ekim — hızlı yükleme):
+  //   parcaBoyutu: dilim boyu (varsayılan 45 MB)
+  //   esZaman:     aynı anda gönderilecek dilim sayısı (varsayılan 1 = sırayla)
+  //   tekrar:      takılan dilim için ek deneme sayısı (varsayılan 0)
+  // ilerleme: sırayla modda (i, n) — dilim i başlarken (eski davranış);
+  //           eş zamanlı modda (biten, n, yuklenenBayt, toplamBayt) — her dilim bitince.
   // Döner: {error, path, toplam} — hata hâlinde yüklenmiş parçalar temizlenir.
-  async function parcaliYukle(io, temelYol, dosya, ilerleme) {
-    var toplam = parcaSayisi(dosya.size);
+  async function parcaliYukle(io, temelYol, dosya, ilerleme, secenek) {
+    secenek = secenek || {};
+    var parcaBoyutu = secenek.parcaBoyutu || PARCA_BOYUTU;
+    var esZaman = Math.max(1, secenek.esZaman || 1);
+    var tekrar = Math.max(0, secenek.tekrar || 0);
+    var sinirlar = dilimSinirlari(dosya.size, parcaBoyutu);
+    var toplam = sinirlar.length;
     var uz = uzanti(dosya.name);
     var mime = tip(dosya);
-    var sinirlar = dilimSinirlari(dosya.size);
+    var yolu = function (i) { return temelYol + (toplam > 1 ? parcaEki(i, toplam) : '') + '.' + uz; };
     var yuklenen = [];
-    for (var i = 1; i <= sinirlar.length; i++) {
-      if (ilerleme) ilerleme(i, sinirlar.length);
-      var yol = temelYol + (toplam > 1 ? parcaEki(i, toplam) : '') + '.' + uz;
-      var sonuc = await io.yukle(yol, dosya.slice(sinirlar[i - 1][0], sinirlar[i - 1][1]), mime);
-      if (sonuc && sonuc.error) {
-        // Yarım kalan parçaları temizle: depoda eksik dosya kalmasın.
-        if (yuklenen.length && io.sil) { try { await io.sil(yuklenen); } catch (e) {} }
-        return { error: sonuc.error, path: null, toplam: toplam, yol: yol, parca: i };
+
+    async function birDilim(i) {
+      var yol = yolu(i), son = null;
+      for (var d = 0; d <= tekrar; d++) {
+        son = await io.yukle(yol, dosya.slice(sinirlar[i - 1][0], sinirlar[i - 1][1]), mime);
+        if (!(son && son.error)) return { yol: yol };
       }
-      yuklenen.push(yol);
+      return { yol: yol, error: son.error };
     }
-    return { error: null, path: yuklenen[0], toplam: toplam, yol: yuklenen[0], parca: 1 };
+
+    if (esZaman === 1) {
+      for (var i = 1; i <= toplam; i++) {
+        if (ilerleme) ilerleme(i, toplam);
+        var r = await birDilim(i);
+        if (r.error) {
+          // Yarım kalan parçaları temizle: depoda eksik dosya kalmasın.
+          if (yuklenen.length && io.sil) { try { await io.sil(yuklenen); } catch (e) {} }
+          return { error: r.error, path: null, toplam: toplam, yol: r.yol, parca: i };
+        }
+        yuklenen.push(r.yol);
+      }
+      return { error: null, path: yuklenen[0], toplam: toplam, yol: yuklenen[0], parca: 1 };
+    }
+
+    var siradaki = 1, biten = 0, bayt = 0, hata = null;
+    async function isci() {
+      while (!hata && siradaki <= toplam) {
+        var i = siradaki++;
+        var r = await birDilim(i);
+        if (r.error) { if (!hata) hata = { error: r.error, yol: r.yol, parca: i }; return; }
+        yuklenen.push(r.yol);
+        biten++; bayt += sinirlar[i - 1][1] - sinirlar[i - 1][0];
+        if (ilerleme) ilerleme(biten, toplam, bayt, dosya.size);
+      }
+    }
+    var isciler = [];
+    for (var k = 0; k < Math.min(esZaman, toplam); k++) isciler.push(isci());
+    await Promise.all(isciler);
+    if (hata) {
+      if (yuklenen.length && io.sil) { try { await io.sil(yuklenen.slice()); } catch (e) {} }
+      return { error: hata.error, path: null, toplam: toplam, yol: hata.yol, parca: hata.parca };
+    }
+    return { error: null, path: yolu(1), toplam: toplam, yol: yolu(1), parca: 1 };
   }
 
   var api = {

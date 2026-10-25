@@ -258,7 +258,7 @@
         </select>`:''}
         <input type="text" id="proj-newfolder-name" placeholder="Proje adı (ör. Unleashed v2)" autocomplete="off">
         <input type="file" id="proj-newfolder-file" accept="${SES_ACCEPT}">
-        <p class="proj-newfolder-hint">${L(`WAV, FLAC ve MP3 desteklenir · ${dosyaBoyutu(PARCA_BOYUTU)} üzeri dosyalar kayıpsız olarak parçalara bölünüp yüklenir (tek nesne sınırı ${dosyaBoyutu(YUKLEME_SINIRI)})`,`WAV, FLAC and MP3 are supported · files over ${dosyaBoyutu(PARCA_BOYUTU)} are split losslessly into parts and uploaded (single object limit ${dosyaBoyutu(YUKLEME_SINIRI)})`)}<br><small class="proj-surum">${L('sürüm','version')} ${SURUM}</small></p>
+        <p class="proj-newfolder-hint">${L(`WAV, FLAC ve MP3 desteklenir · büyük dosyalar kayıpsız olarak ${dosyaBoyutu(HIZLI_YUKLEME.parcaBoyutu)}'lık dilimlere bölünüp aynı anda yüklenir`,`WAV, FLAC and MP3 are supported · large files are split losslessly into ${dosyaBoyutu(HIZLI_YUKLEME.parcaBoyutu)} parts and uploaded in parallel`)}<br><small class="proj-surum">${L('sürüm','version')} ${SURUM}</small></p>
         <p class="proj-newfolder-error" id="proj-newfolder-error" role="alert">${safe(newFolderError)}</p>
         <p class="proj-newfolder-note" id="proj-newfolder-note" role="status">${safe(newFolderNote)}</p>
         <div class="proj-newfolder-actions">
@@ -405,11 +405,16 @@
   // temelYol: uzantı ve parça eki hariç yol. Döner: {path (ilk parça), toplam}
   // Mantık audio-file-types.js içindedir (Ses.parcaliYukle): aynı kod sohbet
   // sayfasındaki müzik gönderimi ve testler tarafından da kullanılır.
+  // Hızlı yükleme (25 Ekim, Derin: "yüklenmesi çok zaman alıyor"): 16 MB'lık
+  // dilimler aynı anda 4'er gönderilir; takılan dilim 2 kez daha denenir.
+  // Depo R2 olduğundan tek nesne sınırı yok; dilimler hız için.
+  const HIZLI_YUKLEME={parcaBoyutu:16*1048576,esZaman:4,tekrar:2};
+  const yuzdeYazi=(bayt,tum)=>`%${Math.floor((bayt||0)/(tum||1)*100)} (${bayt?dosyaBoyutu(bayt):'0 MB'} / ${dosyaBoyutu(tum||0)})`;
   async function yukleSesParcali(temelYol,file,ilerleme){
     const sonuc=await Ses.parcaliYukle({
       yukle:(yol,dilim,tip)=>yukleSes(yol,dilim,tip),
       sil:yollar=>window.DerinR2.sil('project-audio',yollar)
-    },temelYol,file,ilerleme);
+    },temelYol,file,ilerleme,HIZLI_YUKLEME);
     if(sonuc.error){
       sonHataDetay.yol=sonuc.yol; sonHataDetay.parca=`${sonuc.parca}/${sonuc.toplam}`; sonHataDetay.mesaj=sonuc.error.message;
     }else if(sonuc.path){
@@ -420,14 +425,14 @@
 
   // Parçalı dosyayı indirip tek bir Blob olarak döner.
   async function sesBlob(path){
-    const blobs=[];
-    for(const p of Ses.parcalariCoz(path)){
-      const url=await signed(p.path);
-      if(!url)return null;
-      const cevap=await fetch(url);
-      if(!cevap.ok)return null;
-      blobs.push(await cevap.blob());
-    }
+    // Dilimler aynı anda istenir (25 Ekim, hızlı yükleme ile dilim sayısı arttı); sıra korunur.
+    const parcalar=Ses.parcalariCoz(path);
+    const blobs=await Promise.all(parcalar.map(async p=>{
+      const url=await signed(p.path); if(!url)return null;
+      const cevap=await fetch(url); if(!cevap.ok)return null;
+      return cevap.blob();
+    }));
+    if(blobs.some(b=>!b))return null;
     // Tür, ilk parçanın uzantısından: mp3 dosya wav diye işaretlenmesin.
     return new Blob(blobs,{type:sesTipi({name:Ses.parcalariCoz(path)[0].path})});
   }
@@ -575,8 +580,10 @@
   async function sesAkisIndir(yol,{dilim,ilerleme,sakla}){
     const parcalar=Ses.parcalariCoz(yol), saklanan=[];
     let gelen=0, toplam=0;
+    // Bütün dilimlerin imzalı adresleri baştan, aynı anda alınır (her dilimde beklenmesin).
+    const adresler=await Promise.all(parcalar.map(p=>signed(p.path)));
     for(let i=0;i<parcalar.length;i++){
-      const url=await signed(parcalar[i].path); if(!url)throw new Error('Ses adresi alınamadı');
+      const url=adresler[i]; if(!url)throw new Error('Ses adresi alınamadı');
       const resp=await fetch(url); if(!resp.ok)throw new Error('Ses indirilemedi ('+resp.status+')');
       const boy=Number(resp.headers.get('content-length'))||0;
       // Toplam boy: ilk parçanın boyu × parça sayısı (son parça küçük olabilir; yalnız yüzde içindir).
@@ -1598,7 +1605,7 @@
       inp.disabled=true;
       try{
         const up=await yukleSesParcali(`${project.coach_id}/${project.id}-${Date.now()}`,file,
-          (i,n)=>{ bildir(`Yeni varyasyon ekleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`,'bilgi'); });
+          (i,n,b,t)=>{ bildir(`Yeni varyasyon ekleniyor… ${yuzdeYazi(b,t)}`,'bilgi'); });
         if(up.error)throw up.error;
         const sortOrder=(tracks[project.id]||[]).length;
         const insertRes=await client.from('project_tracks').insert({
@@ -1740,7 +1747,7 @@
         const errEl=list.querySelector('#proj-newfolder-error');
         if(picked&&!nfName.value.trim())nfName.value=picked.name.replace(/\.[^.]+$/,'').slice(0,120);
         if(noteEl){
-          const parca=sesBuyuk(picked)?Ses.parcaSayisi(picked.size):0;
+          const parca=picked?Ses.parcaSayisi(picked.size,HIZLI_YUKLEME.parcaBoyutu):0;
           noteEl.textContent=picked
             ? `${picked.name} · ${dosyaBoyutu(picked.size)}${parca>1?` · kayıpsız ${parca} parçaya bölünecek`:''}`
             : '';
@@ -1790,7 +1797,7 @@
           if(file){
             stage='ses yükleme';
             const up=await yukleSesParcali(`${targetCoach}/${proj.id}-${Date.now()}`,file,
-              (i,n)=>nfNote(`${file.name} yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`));
+              (i,n,b,t)=>nfNote(`${file.name} yükleniyor… ${yuzdeYazi(b,t)}`));
             if(up.error)throw up.error;
             stage='parça kaydı';
             const trackResult=await client.from('project_tracks').insert({project_id:proj.id,label:title,audio_path:up.path,version:1,sort_order:0});
@@ -1880,10 +1887,10 @@
         bildir(L(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,`The “${sesUzantisi(file.name)}” format is not supported. Supported audio files: ${desteklenenMetin()}.`),'hata');
         inp.value=''; return;
       }
-      inp.disabled=true; bildir('Parça yükleniyor… ('+dosyaBoyutu(file.size)+')','bilgi');
+      inp.disabled=true; bildir('Parça yükleniyor… '+yuzdeYazi(0,file.size),'bilgi');
       try{
         const uploaded=await yukleSesParcali(`${project.coach_id}/${project.id}-${Date.now()}`,file,
-          (i,n)=>{ bildir(`Parça yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`,'bilgi'); });
+          (i,n,b,t)=>{ bildir(`Parça yükleniyor… ${yuzdeYazi(b,t)}`,'bilgi'); });
         if(uploaded.error)throw uploaded.error;
         const label=file.name.replace(/\.[^.]+$/,'');
         const result=await client.from('project_tracks').insert({project_id:project.id,label,audio_path:uploaded.path,version:1,sort_order:(tracks[project.id]||[]).length});
@@ -1914,7 +1921,7 @@
       if(!sesGecerli(file)){ bildir(L(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,`The “${sesUzantisi(file.name)}” format is not supported. Supported audio files: ${desteklenenMetin()}.`),'hata'); inp.value=''; return; }
       const eskiParcalar=sesYollari(tr.audio_path);
       const up=await yukleSesParcali(`${proj.coach_id}/${tid}-${Date.now()}`,file,
-        (i,n)=>{ bildir(`Varyasyon yükleniyor… parça ${i}/${n} (${dosyaBoyutu(file.size)})`,'bilgi'); });
+        (i,n,b,t)=>{ bildir(`Varyasyon yükleniyor… ${yuzdeYazi(b,t)}`,'bilgi'); });
       if(up.error){bildir('Yükleme hatası: '+up.error.message,'hata');return;}
       try{ await tekSatir(client.from('project_tracks').update({audio_path:up.path,version:(tr.version||1)+1}).eq('id',tid),'Varyasyon kaydedilemedi.'); }
       catch(error){ bildir('Varyasyon kaydedilemedi: '+error.message,'hata'); return; }
