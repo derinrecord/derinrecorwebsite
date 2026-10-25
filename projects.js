@@ -27,6 +27,7 @@
 
   let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false;
   let openTrackId=null;
+  let kartNotMenu=null, kartDuzenlenen=null; // proje kartındaki not menüsü (25 Ekim)
   let detail={};
   let newFolderOpen=false, newFolderBusy=false, newFolderError='', newFolderNote='';
   let localSeq=0;
@@ -190,7 +191,20 @@
         const t=trs.find(x=>x.id===f.track_id);
         const antrenor=f.author_id===p.coach_id;
         const ad=antrenor?(admin?(names[p.coach_id]||L('Antrenör','Coach')):L('Sen','You')):'Derin Record';
-        return `<li><span class="fb-av${antrenor?'':' stu'}" aria-hidden="true">${avatarHtml(f.author_id,p)}</span><div class="fb-govde">${safe(f.body)}${t?` <em>· ${safe(t.label)}</em>`:''}<small>${safe(ad)} · ${safe(goreli(f.created_at))}</small></div></li>`;
+        // WhatsApp gibi ⌄ → Düzenle / Sil (25 Ekim). Yetki: not-islemleri.js.
+        const y=NotIslem.yetki(f,me,admin);
+        const duzenleniyor=y.duzenle&&kartDuzenlenen===f.id;
+        const menu=(y.duzenle||y.sil)&&!duzenleniyor?`<span class="not-menu-kutu">
+          <button type="button" class="not-menu-ac" data-knotmenu="${safe(f.id)}" aria-haspopup="menu" aria-expanded="${kartNotMenu===f.id}" aria-label="${L('Not seçenekleri','Note options')}">⌄</button>
+          ${kartNotMenu===f.id?`<span class="not-menu" role="menu">
+            ${y.duzenle?`<button type="button" role="menuitem" data-knotduzenle="${safe(f.id)}">${L('Düzenle','Edit')}</button>`:''}
+            ${y.sil?`<button type="button" role="menuitem" class="sil" data-knotsil="${safe(f.id)}">${L('Sil','Delete')}</button>`:''}
+          </span>`:''}</span>`:'';
+        const govde=duzenleniyor
+          ?`<div class="not-duzenle"><textarea data-knotyeni="${safe(f.id)}" rows="2" maxlength="${NotIslem.EN_UZUN}" aria-label="${L('Notu düzenle','Edit note')}">${safe(f.body||'')}</textarea>
+            <span class="not-duzenle-dugmeler"><button type="button" data-knotvazgec>${L('Vazgeç','Cancel')}</button><button type="button" class="kaydet" data-knotkaydet="${safe(f.id)}">${L('Kaydet','Save')}</button></span></div>`
+          :`${safe(f.body)}${t?` <em>· ${safe(t.label)}</em>`:''}`;
+        return `<li class="${duzenleniyor?'duzenleniyor':''}"><span class="fb-av${antrenor?'':' stu'}" aria-hidden="true">${avatarHtml(f.author_id,p)}</span><div class="fb-govde">${menu}${govde}<small>${safe(ad)} · ${safe(goreli(f.created_at))}${f.duzenlendi_at?` · ${L('düzenlendi','edited')}`:''}</small></div></li>`;
       }).join(''):'<li class="bos">Henüz not yok. İlk notu sen bırak.</li>'}</ul>
       <div class="fb-yaz"><textarea data-fb="${p.id}" rows="1" placeholder="Not yaz…" aria-label="Not yaz"></textarea>
       <button data-fbsend="${p.id}">GÖNDER</button></div></div>
@@ -1665,6 +1679,49 @@
   // ---------- Liste görünümü kablolama ----------
 
   function wire(){
+    // Proje kartındaki not menüsü (⌄ → Düzenle / Sil).
+    const tum=()=>Object.values(feedback).flat();
+    list.querySelectorAll('[data-knotmenu]').forEach(b=>b.onclick=e=>{
+      e.stopPropagation(); kartNotMenu=kartNotMenu===b.dataset.knotmenu?null:b.dataset.knotmenu; render();
+    });
+    if(kartNotMenu){
+      const kapat=e=>{
+        if(e.type==='keydown'&&e.key!=='Escape')return;
+        if(e.type==='click'&&e.target.closest&&e.target.closest('.not-menu-kutu'))return;
+        document.removeEventListener('click',kapat,true); document.removeEventListener('keydown',kapat,true);
+        if(kartNotMenu){ kartNotMenu=null; render(); }
+      };
+      setTimeout(()=>{ document.addEventListener('click',kapat,true); document.addEventListener('keydown',kapat,true); },0);
+    }
+    list.querySelectorAll('[data-knotduzenle]').forEach(b=>b.onclick=()=>{
+      kartNotMenu=null; kartDuzenlenen=b.dataset.knotduzenle; render();
+      const kutu=list.querySelector(`[data-knotyeni="${CSS.escape(kartDuzenlenen)}"]`);
+      if(kutu){ kutu.focus(); kutu.setSelectionRange(kutu.value.length,kutu.value.length); }
+    });
+    list.querySelectorAll('[data-knotvazgec]').forEach(b=>b.onclick=()=>{ kartDuzenlenen=null; render(); });
+    list.querySelectorAll('[data-knotkaydet]').forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.knotkaydet;
+      const f=tum().find(x=>x.id===id);
+      const kutu=list.querySelector(`[data-knotyeni="${CSS.escape(id)}"]`);
+      const sonuc=NotIslem.yeniMetin(f?.body,kutu?.value);
+      if(sonuc.hata){ bildir(sonuc.hata,'hata'); kutu?.focus(); return; }
+      if(sonuc.degismedi){ kartDuzenlenen=null; render(); return; }
+      b.disabled=true;
+      try{
+        await tekSatir(client.from('project_feedback').update({body:sonuc.metin}).eq('id',id),L('Not bulunamadı ya da düzenleme yetkin yok.','Note not found or you cannot edit it.'));
+        kartDuzenlenen=null; bildir(L('Not düzenlendi.','Note edited.'),'ok'); await load();
+      }catch(error){ bildir(L('Düzenlenemedi: ','Could not edit: ')+error.message,'hata'); b.disabled=false; }
+    });
+    list.querySelectorAll('[data-knotsil]').forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.knotsil;
+      kartNotMenu=null;
+      if(!confirm(L('Bu not silinsin mi?','Delete this note?'))){ render(); return; }
+      try{
+        await tekSatir(client.from('project_feedback').delete().eq('id',id),L('Not bulunamadı ya da silme yetkin yok.','Note not found or you cannot delete it.'));
+        bildir(L('Not silindi.','Note deleted.'),'ok'); await load();
+      }catch(error){ bildir(L('Silinemedi: ','Could not delete: ')+error.message,'hata'); render(); }
+    });
+
     const fabBtn=list.querySelector('#proj-fab-btn');
     if(fabBtn)fabBtn.onclick=()=>{ newFolderOpen=!newFolderOpen; render(); };
 
