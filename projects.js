@@ -178,6 +178,11 @@
       ${p.status==='pending'?'<div class="pj-bekleme"><strong>ONAY BEKLİYOR</strong>Talep Derin Record\'a ulaştı. Onaylandığında üretim süreci burada adım adım ilerler.</div>':bar(p.status)}
       <p class="pj-baslik"><span>PARÇALAR</span><i>${trs.length}</i></p>
       <div class="proj-tracks">${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<p class="proj-empty-track">Henüz parça yok. İlk taslak yüklendiğinde burada görünecek.</p>`}</div>
+      ${admin&&trs.some(t=>t.audio_path)?`<div class="proj-indirme" role="group" aria-label="İndirme izinleri">
+        <span class="proj-indirme-baslik">İNDİRME İZİNLERİ</span>
+        ${trs.map((tr,i)=>{ if(!tr.audio_path)return ''; const acik=tr.indirme_izni===undefined?!!p.download_allowed:!!tr.indirme_izni;
+          return `<button type="button" class="pi-dugme${acik?' aktif':''}" data-tddlizin="${tr.id}" data-on="${acik?1:0}" aria-pressed="${acik}" title="${acik?'İndirme açık — kapatmak için bas':'İndirme kapalı — açmak için bas'}"><b>${String(i+1).padStart(2,'0')}</b> ${safe(tr.label||'Parça')} <i>${acik?'✓ AÇIK':'KAPALI'}</i></button>`; }).join('')}
+      </div>`:''}
       ${admin?`<div class="proj-actions proj-yonetim"><span>YÖNETİM</span>
         <label class="proj-add-track">+ YENİ PARÇA <input type="file" accept="${SES_ACCEPT}" data-addtrack="${p.id}" hidden></label>
         <select data-stage="${p.id}" aria-label="Proje aşaması">
@@ -869,6 +874,16 @@
   };
   // İndirme izni parça parça (25 Ekim). Sütun henüz kurulmadıysa eski proje izni geçerli.
   const indirmeAcik=tr=>tr.indirme_izni===undefined?!!(detail.proje&&detail.proje.download_allowed):!!tr.indirme_izni;
+  // Parçanın indirme iznini aç/kapa (yalnız yönetici; parça odasında ve proje kartında).
+  async function indirmeIzniDegistir(b){
+    const yeni=b.dataset.on!=='1';
+    b.disabled=true;
+    try{
+      await tekSatir(client.from('project_tracks').update({indirme_izni:yeni}).eq('id',b.dataset.tddlizin),L('İndirme izni kaydedilemedi.','Download permission could not be saved.'));
+      bildir(yeni?L('Bu parçanın indirmesi açıldı.','Download allowed for this track.'):L('Bu parçanın indirmesi kapatıldı.','Download turned off for this track.'),'ok');
+      await load();
+    }catch(error){ bildir(L('İndirme izni kaydedilemedi: ','Download permission could not be saved: ')+error.message,'hata'); b.disabled=false; }
+  }
   const GENEL='__genel';
   const genelSecili=()=>detail.selPointLocalId===GENEL;
 
@@ -1550,15 +1565,7 @@
       }
     });
 
-    root.querySelectorAll('[data-tddlizin]').forEach(b=>b.onclick=async()=>{
-      const yeni=b.dataset.on!=='1';
-      b.disabled=true;
-      try{
-        await tekSatir(client.from('project_tracks').update({indirme_izni:yeni}).eq('id',b.dataset.tddlizin),L('İndirme izni kaydedilemedi.','Download permission could not be saved.'));
-        bildir(yeni?L('Bu parçanın indirmesi açıldı.','Download allowed for this track.'):L('Bu parçanın indirmesi kapatıldı.','Download turned off for this track.'),'ok');
-        await load();
-      }catch(error){ bildir(L('İndirme izni kaydedilemedi: ','Download permission could not be saved: ')+error.message,'hata'); b.disabled=false; }
-    });
+    root.querySelectorAll('[data-tddlizin]').forEach(b=>b.onclick=()=>indirmeIzniDegistir(b));
     root.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
       b.disabled=true;
       try{ await dosyaIndir(b.dataset.path,b.dataset.name,b.dataset.bicim||'wav'); } finally{ b.disabled=false; }
@@ -1809,6 +1816,7 @@
       b.disabled=true;
       try{ await dosyaIndir(b.dataset.path,b.dataset.name,b.dataset.bicim||'wav'); } finally{ b.disabled=false; }
     });
+    list.querySelectorAll('[data-tddlizin]').forEach(b=>b.onclick=()=>indirmeIzniDegistir(b));
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Proje silinecek. Emin misiniz?'))return;
       try{ await tekSatir(client.from('music_projects').delete().eq('id',b.dataset.del),'Proje bulunamadı ya da silme yetkiniz yok.'); bildir('Proje silindi.','ok'); }
