@@ -36,9 +36,9 @@
       A('.td-addbtn', 'İşaret koy', 'Add a marker',
         'Dinlerken değişmesini istediğin anda bas. O saniyeye bir işaret ve ona ait bir not klasörü açılır.',
         'Tap at the moment you want changed. A marker and its own note folder open at that second.'),
-      A('.td-klasorler', 'Not klasörleri', 'Note folders',
-        'GENEL klasöre parçanın tamamı için yaz. İşaretlerin kendi klasörlerine yazılı ya da sesli not bırak.',
-        'Use GENERAL for the whole track. Leave written or voice notes in each marker\'s own folder.'),
+      A('.td-klasorler', 'Parçanın notları', 'Track notes',
+        'Bu parçaya yazılan bütün notlar burada, tek klasörde. Belirli bir ana bağlı notların başında süresi var; dokununca o saniyeye gider.',
+        'Every note for this track is here, in one folder. Notes tied to a moment show their time; tap it to jump there.'),
       A('.td-back', 'Geri dön', 'Go back',
         'Projelerine dönmek için buraya bas. Turu menüdeki ÖĞRETİCİ ile istediğin zaman tekrar açabilirsin.',
         'Tap here to return to your projects. Reopen this tour any time from TUTORIAL in the menu.')

@@ -128,7 +128,7 @@
       <span class="pt-no">${String(i+1).padStart(2,'0')}</span>
       <span class="pt-kaset ${renk}"><img src="assets/demo-cassette-derin-record.png" alt="" loading="lazy"></span>
       <span class="pt-ad"><strong>${safe(tr.label||'Parça')}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small></span>
-      ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${L(`${n} not — parçayı açıp klasörlerde gör`,`${n} ${n===1?'note':'notes'} — open the track to see the folders`)}">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
+      ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${L(`${n} not — parçayı açıp klasöründe gör`,`${n} ${n===1?'note':'notes'} — open the track to see its folder`)}">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
       <span class="pt-surum${has?' hazir':''}">v${safe(tr.version||1)}</span>
       <span class="pt-ok" aria-hidden="true">→</span>
     </button>`;
@@ -476,7 +476,7 @@
   }
 
   function syncSavedPoints(tr,project){
-    const {zamanli,genel}=parcaNotlari(project.id,tr.id);
+    const {zamanli,genel,hepsi}=parcaNotlari(project.id,tr.id);
     const draftLocal=(detail.points||[]).filter(p=>!p.saved);
     const savedNow=zamanli.map(f=>{
       const existing=(detail.points||[]).find(p=>p.dbId===f.id);
@@ -486,6 +486,7 @@
     });
     detail.points=[...savedNow,...draftLocal];
     detail.genelNotlar=genel;
+    detail.tumNotlar=hepsi;
     detail.proje=project;
   }
 
@@ -872,52 +873,50 @@
 
   const klasorIkon='<svg viewBox="0 0 20 16" width="15" height="12" aria-hidden="true"><path d="M1 3.2C1 2 2 1 3.2 1h4.3l2 2.2h7.3C18 3.2 19 4.2 19 5.4v7.4c0 1.2-1 2.2-2.2 2.2H3.2C2 15 1 14 1 12.8z" fill="currentColor"/></svg>';
 
-  function klasorSekmesi(p){
-    const aktif=p.localId===detail.selPointLocalId;
-    const ses=p.voiceUrl||p.voiceBlobUrl;
-    return `<button type="button" role="tab" aria-selected="${aktif}" class="td-sekme ${p.saved?'saved':'draft'}${aktif?' aktif':''}" data-tdsec="${p.localId}">
-      <span class="td-sekme-ikon">${klasorIkon}</span>
-      <span class="td-sekme-no">${noktaNo(p)}</span>
-      <span class="td-sekme-zaman" data-sekmezaman="${p.localId}">${mmssOnda(p.time)}</span>
-      <span class="td-sekme-durum">${p.saved?L('KAYITLI','SAVED'):L('TASLAK','DRAFT')}${ses?L(' · SESLİ',' · VOICE'):''}</span>
-    </button>`;
+  // Parçanın notları tek listede (25 Ekim, Derin: "her parçaya tek klasör"):
+  // önce zamanlılar (süreye göre), sonra genel notlar (yazılma sırasıyla).
+  function parcaNotListesi(){
+    const hepsi=detail.tumNotlar||[];
+    const zamanlilar=hepsi.filter(f=>notZamani(f)!=null);
+    zamanlilar.sort((a,b)=>notZamani(a)-notZamani(b));
+    const genel=hepsi.filter(f=>notZamani(f)==null);
+    return [...zamanlilar,...genel];
   }
-
-  function genelSekmesi(){
-    const n=(detail.genelNotlar||[]).length, aktif=genelSecili();
-    return `<button type="button" role="tab" aria-selected="${aktif}" class="td-sekme genel${n?' saved':''}${aktif?' aktif':''}" data-tdsec="${GENEL}">
-      <span class="td-sekme-ikon">${klasorIkon}</span>
-      <span class="td-sekme-no">${L('GENEL','GENERAL')}</span>
-      <span class="td-sekme-zaman">${n}</span>
-      <span class="td-sekme-durum">PARÇANIN GENELİ</span>
-    </button>`;
+  function notSatiri(f){
+    const y=NotIslem.yetki(f,me,admin);
+    const duzenleniyor=y.duzenle&&detail.duzenlenenNot===f.id;
+    const nokta=(detail.points||[]).find(p=>p.dbId===f.id);
+    const secili=nokta&&nokta.localId===detail.selPointLocalId;
+    // WhatsApp gibi: köşede küçük ⌄; tıklayınca küçük menü (Düzenle / Sil).
+    const menu=(y.duzenle||y.sil)&&!duzenleniyor?`<span class="not-menu-kutu">
+      <button type="button" class="not-menu-ac" data-notmenu="${safe(f.id)}" aria-haspopup="menu" aria-expanded="${detail.acikNotMenu===f.id}" aria-label="${L('Not seçenekleri','Note options')}">⌄</button>
+      ${detail.acikNotMenu===f.id?`<span class="not-menu" role="menu">
+        ${y.duzenle?`<button type="button" role="menuitem" data-notduzenle="${safe(f.id)}">${L('Düzenle','Edit')}</button>`:''}
+        ${y.sil?`<button type="button" role="menuitem" class="sil" data-notsil="${safe(f.id)}">${L('Sil','Delete')}</button>`:''}
+      </span>`:''}</span>`:'';
+    const govde=duzenleniyor
+      ?`<div class="not-duzenle"><textarea data-notyeni="${safe(f.id)}" rows="2" maxlength="${NotIslem.EN_UZUN}" aria-label="${L('Notu düzenle','Edit note')}">${safe(f.body||'')}</textarea>
+        <span class="not-duzenle-dugmeler"><button type="button" data-notvazgec>${L('Vazgeç','Cancel')}</button><button type="button" class="kaydet" data-notkaydet="${safe(f.id)}">${L('Kaydet','Save')}</button></span></div>`
+      :`${safe(f.body||'')}`;
+    const ses=nokta&&nokta.voiceUrl?`<audio controls preload="none" src="${safe(nokta.voiceUrl)}"></audio>`:(f.voice_path&&!nokta?'':'');
+    const zaman=nokta
+      ?`<button type="button" class="td-not-zaman" data-tdsec="${nokta.localId}" title="${L('Bu ana git','Go to this moment')}">${mmss(nokta.time)}</button>`
+      :`<span class="td-not-zaman genel" aria-hidden="true">—</span>`;
+    return `<li class="${duzenleniyor?'duzenleniyor':''}${secili?' secili':''}">${zaman}<span class="fb-av${f.author_id===detail.proje?.coach_id?'':' stu'}" aria-hidden="true">${avatarHtml(f.author_id,detail.proje)}</span>
+    <div class="fb-govde">${menu}${govde}${ses}<small>${safe(yazarAdi(f.author_id,detail.proje))} · ${safe(goreli(f.created_at))}${f.duzenlendi_at?` · ${L('düzenlendi','edited')}`:''}</small></div></li>`;
   }
-  function genelGovdesi(){
-    const notlar=detail.genelNotlar||[];
-    return `<div class="td-klasor genel" role="tabpanel">
+  function tekKlasorGovdesi(){
+    const liste=parcaNotListesi(), sp=seciliNokta();
+    return `<div class="td-klasor tek" role="region" aria-label="${L('Parçanın notları','Track notes')}">
       <div class="td-klasor-ust"><div>
-        <p class="td-klasor-etiket">GENEL KLASÖR · BELİRLİ BİR ANA BAĞLI OLMAYAN NOTLAR</p>
+        <p class="td-klasor-etiket">${L('BU PARÇANIN KLASÖRÜ · TÜM NOTLAR BURADA','THIS TRACK\'S FOLDER · ALL NOTES HERE')}</p>
       </div></div>
-      ${notlar.length?`<ul class="td-genel-liste">${notlar.map(f=>{
-        const y=NotIslem.yetki(f,me,admin);
-        const duzenleniyor=y.duzenle&&detail.duzenlenenNot===f.id;
-        // WhatsApp gibi: köşede küçük ⌄; tıklayınca küçük menü (Düzenle / Sil).
-        const menu=(y.duzenle||y.sil)&&!duzenleniyor?`<span class="not-menu-kutu">
-          <button type="button" class="not-menu-ac" data-notmenu="${safe(f.id)}" aria-haspopup="menu" aria-expanded="${detail.acikNotMenu===f.id}" aria-label="${L('Not seçenekleri','Note options')}">⌄</button>
-          ${detail.acikNotMenu===f.id?`<span class="not-menu" role="menu">
-            ${y.duzenle?`<button type="button" role="menuitem" data-notduzenle="${safe(f.id)}">${L('Düzenle','Edit')}</button>`:''}
-            ${y.sil?`<button type="button" role="menuitem" class="sil" data-notsil="${safe(f.id)}">${L('Sil','Delete')}</button>`:''}
-          </span>`:''}</span>`:'';
-        const govde=duzenleniyor
-          ?`<div class="not-duzenle"><textarea data-notyeni="${safe(f.id)}" rows="2" maxlength="${NotIslem.EN_UZUN}" aria-label="${L('Notu düzenle','Edit note')}">${safe(f.body||'')}</textarea>
-            <span class="not-duzenle-dugmeler"><button type="button" data-notvazgec>${L('Vazgeç','Cancel')}</button><button type="button" class="kaydet" data-notkaydet="${safe(f.id)}">${L('Kaydet','Save')}</button></span></div>`
-          :`${safe(f.body||'')}`;
-        return `<li class="${duzenleniyor?'duzenleniyor':''}"><span class="fb-av${f.author_id===detail.proje?.coach_id?'':' stu'}" aria-hidden="true">${avatarHtml(f.author_id,detail.proje)}</span>
-        <div class="fb-govde">${menu}${govde}<small>${safe(yazarAdi(f.author_id,detail.proje))} · ${safe(goreli(f.created_at))}${f.duzenlendi_at?` · ${L('düzenlendi','edited')}`:''}</small></div></li>`;
-      }).join('')}</ul>`
+      ${sp?`<div class="td-secili">${klasorGovdesi(sp)}</div>`:''}
+      ${liste.length?`<ul class="td-genel-liste td-not-listesi">${liste.map(notSatiri).join('')}</ul>`
         :'<p class="td-empty">Bu klasörde henüz not yok.</p>'}
-      <div class="fb-yaz td-genel-yaz"><textarea data-tdgenelnot rows="1" placeholder="Parçanın geneli için not yaz…" aria-label="Parçanın geneli için not"></textarea>
+      <div class="fb-yaz td-genel-yaz"><textarea data-tdgenelnot rows="1" placeholder="${L('Bu parça için not yaz…','Write a note for this track…')}" aria-label="${L('Bu parça için not','Note for this track')}"></textarea>
         <button type="button" data-tdgenelgonder>GÖNDER</button></div>
+      <p class="td-ipucu">${L('Belirli bir an için: dinlerken “+ İşaret koy”a bas; not bu klasöre süresiyle eklenir.','For a specific moment: tap “+ Add marker” while listening; the note is added here with its time.')}</p>
     </div>`;
   }
 
@@ -927,13 +926,13 @@
     return `<div class="td-klasor ${p.saved?'saved':'draft'}" role="tabpanel" data-tdpoint="${p.localId}">
       <div class="td-klasor-ust">
         <div>
-          <p class="td-klasor-etiket">${L('KLASÖR','FOLDER')} ${noktaNo(p)} · ${p.saved?(L('NOT · ','NOTE · ')+safe(yazarAdi(p.yazar,detail.proje).toLocaleUpperCase(L('tr-TR','en-GB')))+(p.tarih?' · '+safe(goreli(p.tarih).toLocaleUpperCase(L('tr-TR','en-GB'))):'')):L('TASLAK NOT','DRAFT NOTE')}</p>
+          <p class="td-klasor-etiket">${L('İŞARET','MARKER')} ${noktaNo(p)} · ${p.saved?(L('NOT · ','NOTE · ')+safe(yazarAdi(p.yazar,detail.proje).toLocaleUpperCase(L('tr-TR','en-GB')))+(p.tarih?' · '+safe(goreli(p.tarih).toLocaleUpperCase(L('tr-TR','en-GB'))):'')):L('TASLAK NOT','DRAFT NOTE')}</p>
           <p class="td-klasor-zaman">${!tasinabilir(p)?`<span class="td-point-time" data-klasorzaman>${mmssOnda(p.time)}</span>`
             :`<input class="td-zaman-kutu" data-klasorzaman data-tdzamanyaz inputmode="decimal" value="${mmssOnda(p.time)}" aria-label="İşaret zamanı (dakika:saniye,onda bir)" title="Zamanı yaz, işaret oraya taşınır">`}</p>
         </div>
         <div class="td-klasor-arac">
           <button type="button" class="td-dinle" data-tdburadan="${p.localId}" aria-label="${detail.playing?'Durdur':'Bu noktadan çal'}" title="${detail.playing?'Durdur':'Bu noktadan çal'}">${detail.playing?'❚❚':'▶'}</button>
-          ${!p.saved?`<button type="button" class="td-point-del" data-tdpointdel="${p.localId}">SİL</button>`:''}
+          ${!p.saved?`<button type="button" class="td-point-del" data-tdpointdel="${p.localId}">SİL</button>`:`<button type="button" class="td-point-kapat" data-tdsec="${GENEL}" aria-label="${L('Kapat','Close')}">✕</button>`}
         </div>
       </div>
       <div class="td-zoom">
@@ -944,9 +943,8 @@
         <button type="button" data-tdkaydir="-1">${L('−1 sn','−1 s')}</button><button type="button" data-tdkaydir="-0.1">${L('−0,1','−0.1')}</button>
         <button type="button" data-tdkaydir="0.1">${L('+0,1','+0.1')}</button><button type="button" data-tdkaydir="1">${L('+1 sn','+1 s')}</button>
         <button type="button" data-tdsuana>ÇALAN YERE TAŞI</button></div>`:''}
-      <textarea class="td-point-note" placeholder="Bu noktada ne değişsin? (ör. davul daha sert girsin)" data-tdpointnote="${p.localId}" ${p.saved?'disabled':''}>${safe(p.body||'')}</textarea>
+      ${p.saved?'':`<textarea class="td-point-note" placeholder="Bu noktada ne değişsin? (ör. davul daha sert girsin)" data-tdpointnote="${p.localId}">${safe(p.body||'')}</textarea>`}
       <div class="td-point-voice">
-        ${p.voiceUrl?`<audio controls src="${p.voiceUrl}"></audio>`:''}
         ${!p.saved && p.voiceBlobUrl?`<audio controls src="${p.voiceBlobUrl}"></audio><button type="button" class="td-point-voicedel" data-tdvoicedel="${p.localId}">Sesli notu kaldır</button>`:''}
         ${!p.saved && !p.voiceBlobUrl?`<button type="button" class="td-point-rec ${p.recording?'is-rec':''}" data-tdrec="${p.localId}">${p.recording?'⏹ Durdur':'🎙 Sesli not kaydet'}</button>`:''}
       </div>
@@ -959,7 +957,8 @@
     const dur=detail.duration||0, cur=detail.curTime||0;
     const branchLabel=safe(bransAdi(project.branch||'proje'));
     const points=detail.points||[];
-    if(!genelSecili()&&!seciliNokta())detail.selPointLocalId=points.length?sirali()[0].localId:GENEL;
+    // Tek klasör (25 Ekim): taslak yoksa hiçbir işaret seçili gelmez, liste görünür.
+    if(!genelSecili()&&!seciliNokta())detail.selPointLocalId=(points.find(p=>!p.saved)||{}).localId||GENEL;
     const draftCount=points.filter(p=>!p.saved).length;
     const savedCount=points.filter(p=>p.saved).length;
     const D=detail.peaks, dalgaTam=!!(D&&D.n&&D.hazir>=D.n), dalgaVar=!!(D&&D.hazir>0&&(detail.duration||D.duration));
@@ -998,11 +997,11 @@
       </div>
       <div class="td-desc" id="td-bilgi"${bilgiAcik?'':' hidden'}>
         ${L(`<p><strong>Dinle:</strong> Dalgaya dokun, o yerden çalar.</p>
-        <p><strong>İşaretle:</strong> Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; her işaret kendi klasöründe notunu tutar. Taslak işaretleri sürükleyerek ya da ince ayarla kaydırabilirsin.${admin?' Kayıtlı işaretleri de taşıyabilirsin; yeni yeri kendiliğinden kaydedilir.':' Kendi kaydettiğin işaretleri de taşıyabilirsin; yeni yeri kendiliğinden kaydedilir.'}</p>
+        <p><strong>İşaretle:</strong> Değişmesini istediğin yerde <strong>+ İŞARET KOY</strong>'a bas; notu, süresiyle birlikte bu parçanın klasörüne eklenir. Taslak işaretleri sürükleyerek ya da ince ayarla kaydırabilirsin.${admin?' Kayıtlı işaretleri de taşıyabilirsin; yeni yeri kendiliğinden kaydedilir.':' Kendi kaydettiğin işaretleri de taşıyabilirsin; yeni yeri kendiliğinden kaydedilir.'}</p>
         <p><strong>Yakınlaştır:</strong> − / + düğmeleri, telefonda iki parmak, bilgisayarda Ctrl/⌘ + tekerlek. Yakınken sağa-sola sürükleyerek gezin.</p>
         <p><strong>Renk:</strong> Alttaki yuvarlak simgeden dalganın zemin rengini seç.</p>`,
         `<p><strong>Listen:</strong> Tap the waveform to play from that point.</p>
-        <p><strong>Mark:</strong> Press <strong>+ ADD MARKER</strong> where you want something changed; each marker keeps its note in its own folder. You can move draft markers by dragging them or with fine adjustment.${admin?' You can also move saved markers; the new position is saved automatically.':' You can also move markers you saved; the new position is saved automatically.'}</p>
+        <p><strong>Mark:</strong> Press <strong>+ ADD MARKER</strong> where you want something changed; its note is added to this track's folder with its time. You can move draft markers by dragging them or with fine adjustment.${admin?' You can also move saved markers; the new position is saved automatically.':' You can also move markers you saved; the new position is saved automatically.'}</p>
         <p><strong>Zoom:</strong> − / + buttons, two fingers on a phone, Ctrl/⌘ + scroll wheel on a computer. When zoomed in, drag left and right to move around.</p>
         <p><strong>Colour:</strong> Choose the waveform background colour from the round icon below.</p>`)}
       </div>
@@ -1035,14 +1034,12 @@
 
       <div class="td-addbtn-row">
         <button type="button" class="td-addbtn" data-tdaddpoint>${L('+ İŞARET KOY','+ ADD MARKER')} · <span data-tdaddzaman>${mmss(cur)}</span></button>
-        <span class="td-legend"><i class="td-legend-dot draft"></i> ${L('taslak','draft')} <i class="td-legend-dot saved"></i> ${L('kayıtlı','saved')} <i class="td-legend-dot aktif"></i> ${L(`açık klasör · ${draftCount} taslak · ${savedCount} kayıtlı`,`open folder · ${draftCount} draft · ${savedCount} saved`)}</span>
+        <span class="td-legend"><i class="td-legend-dot draft"></i> ${L('taslak','draft')} <i class="td-legend-dot saved"></i> ${L('kayıtlı','saved')} <i class="td-legend-dot aktif"></i> ${L(`seçili işaret · ${draftCount} taslak · ${savedCount} kayıtlı`,`selected marker · ${draftCount} draft · ${savedCount} saved`)}</span>
       </div>
 
       <div class="td-klasorler">
-        <p class="td-klasorler-baslik">${L('NOT KLASÖRLERİ','NOTE FOLDERS')} <i>${points.length+(detail.genelNotlar||[]).length}</i></p>
-        <div class="td-sekmeler" role="tablist">${genelSekmesi()}${sirali().map(klasorSekmesi).join('')}</div>
-        ${genelSecili()?genelGovdesi():klasorGovdesi(seciliNokta())}
-        ${points.length?'':'<p class="td-empty">İşaretli bir yere not bırakmak için dinlerken “+ İşaret koy”a bas; o not kendi klasöründe durur.</p>'}
+        <p class="td-klasorler-baslik">${L('PARÇANIN NOTLARI','TRACK NOTES')} <i>${(detail.tumNotlar||[]).length}</i></p>
+        ${tekKlasorGovdesi()}
       </div>
       `:`<p class="td-empty">Bu parça için henüz ses dosyası yok.</p>`}
     </div>`;
@@ -1601,7 +1598,7 @@
       if(!body){ kutu?.focus(); return; }   // boş not gönderilmez
       genelGonder.disabled=true;
       const {error}=await client.from('project_feedback').insert({project_id:project.id,author_id:me,track_id:tr.id,kind:'note',body});
-      bildir(error?'Gönderilemedi: '+error.message:'Not GENEL klasörüne eklendi.',error?'hata':'ok');
+      bildir(error?'Gönderilemedi: '+error.message:L('Not eklendi.','Note added.'),error?'hata':'ok');
       genelGonder.disabled=false;
       if(!error){ detail.selPointLocalId=GENEL; await load(); }
     };
@@ -1632,7 +1629,7 @@
     root.querySelectorAll('[data-notvazgec]').forEach(b=>b.onclick=()=>{ detail.duzenlenenNot=null; yeniden(); });
     root.querySelectorAll('[data-notkaydet]').forEach(b=>b.onclick=async()=>{
       const id=b.dataset.notkaydet;
-      const f=(detail.genelNotlar||[]).find(x=>x.id===id);
+      const f=(detail.tumNotlar||[]).find(x=>x.id===id);
       const kutu=root.querySelector(`[data-notyeni="${CSS.escape(id)}"]`);
       const sonuc=NotIslem.yeniMetin(f?.body,kutu?.value);
       if(sonuc.hata){ bildir(sonuc.hata,'hata'); kutu?.focus(); return; }

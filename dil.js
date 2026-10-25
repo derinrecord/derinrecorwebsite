@@ -680,6 +680,8 @@
     'PARÇANIN GENELİ': 'WHOLE TRACK',
     'GENEL KLASÖR · BELİRLİ BİR ANA BAĞLI OLMAYAN NOTLAR': 'GENERAL FOLDER · NOTES NOT TIED TO A SPECIFIC MOMENT',
     'Parçanın geneli için not yaz…': 'Write a note about the whole track…',
+    'PARÇANIN NOTLARI': 'TRACK NOTES',
+    'BU PARÇANIN KLASÖRÜ · TÜM NOTLAR BURADA': 'THIS TRACK\'S FOLDER · ALL NOTES HERE',
     'Parçanın geneli için not': 'Note about the whole track',
     'KLASÖR': 'FOLDER',
     'İşaret zamanı (dakika:saniye,onda bir)': 'Marker time (minutes:seconds,tenths)',

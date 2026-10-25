@@ -380,6 +380,21 @@
   .not-duzenle-dugmeler button.kaydet{background:var(--pj-altin);border-color:var(--pj-altin);color:#141209;font-weight:700}
   .td-genel-liste li.duzenleniyor .fb-govde{padding-right:0}
   .td-klasor{padding:20px;border-radius:0 16px 16px 16px;background:var(--pj-yuzey2);border:1px solid var(--pj-cizgi2)}
+  /* Parça başına tek klasör (25 Ekim): tüm notlar alt alta, zamanlılarda süre etiketi */
+  .td-klasor.tek{border-radius:16px}
+  .td-not-listesi li{grid-template-columns:52px 30px 1fr}
+  .td-not-zaman{align-self:start;margin-top:3px;padding:5px 0;border-radius:999px;border:1px solid rgba(216,187,44,.45);
+    background:rgba(216,187,44,.08);color:var(--pj-altin2);font:inherit;font-size:12px;font-weight:800;text-align:center;cursor:pointer}
+  .td-not-zaman:hover{background:rgba(216,187,44,.18)}
+  .td-not-zaman.genel{border-color:transparent;background:none;color:var(--pj-soluk);cursor:default}
+  .td-not-listesi li.secili .fb-govde{color:var(--pj-krem)}
+  .td-not-listesi li.secili .td-not-zaman{background:var(--pj-altin);color:var(--pj-ink)}
+  .td-not-listesi audio{display:block;width:100%;max-width:320px;height:36px;margin-top:8px}
+  .td-secili{margin:0 0 18px;padding:14px;border-radius:14px;border:1px dashed rgba(216,187,44,.4);background:rgba(0,0,0,.18)}
+  .td-secili .td-klasor{padding:0;border:0;background:none;border-radius:0}
+  .td-point-kapat{width:44px;height:44px;border-radius:50%;border:1px solid var(--pj-cizgi2);background:transparent;color:var(--pj-krem);font:inherit;font-size:16px;cursor:pointer}
+  .td-ipucu{margin:12px 0 0;color:var(--pj-soluk);font-size:12px;line-height:1.5}
+  @media(max-width:520px){.td-not-listesi li{grid-template-columns:46px 26px 1fr;gap:9px}}
   .td-klasor-ust{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px}
   .td-klasor-etiket{margin:0 0 4px;font-size:9px;font-weight:900;letter-spacing:.2em;color:var(--pj-soluk)}
   .td-klasor-zaman{margin:0;font-family:var(--pj-serif);font-style:italic;font-size:30px;line-height:1;color:var(--pj-krem)}
@@ -548,8 +563,8 @@
 <script src="dalga-tepeleri.js?v=2"></script>
 <script src="ses-donustur.js?v=1"></script>
 <script src="not-islemleri.js?v=1"></script>
-<script src="projects.js?v=20261025"></script>
-<script src="ogretici-turlar.js?v=1"></script><script src="ogretici.js?v=2" data-sayfa="projelerim"></script>
-<script src="dil.js?v=2026102406" defer></script>
+<script src="projects.js?v=20261025b"></script>
+<script src="ogretici-turlar.js?v=2"></script><script src="ogretici.js?v=2" data-sayfa="projelerim"></script>
+<script src="dil.js?v=2026102407" defer></script>
 </body>
 </html>

@@ -79,8 +79,9 @@ test('SQL: başka tablo ya da politika değişmez', () => {
 // ---------- Ekran ----------
 const kaynak = oku('projects.js');
 
-test('genel klasörde WhatsApp gibi küçük açılır menü: ⌄ → Düzenle / Sil', () => {
-  const g = kaynak.match(/function genelGovdesi\(\)\{[\s\S]*?\n  \}/)[0];
+// 25 Ekim: parça başına tek klasör; menü her not satırında (notSatiri).
+test('parça klasöründe WhatsApp gibi küçük açılır menü: ⌄ → Düzenle / Sil', () => {
+  const g = kaynak.match(/function notSatiri\(f\)\{[\s\S]*?\n  \}/)[0];
   assert.ok(g.includes('NotIslem.yetki(f,me,admin)'));
   assert.ok(g.includes('class="not-menu-ac" data-notmenu="${safe(f.id)}" aria-haspopup="menu"'), 'küçük ⌄ düğmesi');
   assert.ok(g.includes('class="not-menu" role="menu"'), 'açılır menü');
