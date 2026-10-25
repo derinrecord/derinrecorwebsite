@@ -1522,7 +1522,8 @@
 
     root.querySelectorAll('[data-tdpointsave]').forEach(b=>b.onclick=async()=>{
       const p=(detail.points||[]).find(x=>x.localId===b.dataset.tdpointsave);
-      if(!p)return;
+      if(!p||p.gonderiliyor)return;
+      p.gonderiliyor=true;
       b.disabled=true; b.textContent='GÖNDERİLİYOR…';
       try{
         let voice_path=null;
@@ -1531,14 +1532,20 @@
           const up=await client.storage.from('project-voice-notes').upload(voice_path,p.voiceBlob,{contentType:'audio/webm'});
           if(up.error)throw up.error;
         }
-        const {error}=await client.from('project_feedback').insert({
+        const {data,error}=await client.from('project_feedback').insert({
           project_id:project.id,author_id:me,track_id:tr.id,
           start_sec:p.time,kind:'note',body:p.body||null,voice_path
-        });
+        }).select('id').single();
         if(error)throw error;
+        // Taslak kaydedildi: listeden çıkar ki ekranda "KAYDET VE GÖNDER" ile
+        // kalıp ikinci kez gönderilmesin (25 Ekim çift not hatası).
+        if(p.voiceBlobUrl){ try{ URL.revokeObjectURL(p.voiceBlobUrl); }catch(_){} }
+        detail.points=(detail.points||[]).filter(x=>x.localId!==p.localId);
+        detail.selPointLocalId='db-'+data.id;
         bildir('Nokta gönderildi.','ok');
         await load();
       }catch(e){
+        p.gonderiliyor=false;
         bildir('Gönderilemedi: '+e.message,'hata');
         b.disabled=false; b.textContent='KAYDET VE GÖNDER';
       }
