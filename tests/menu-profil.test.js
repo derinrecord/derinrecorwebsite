@@ -1,35 +1,32 @@
-// Telefon yan menüsü (24 Ekim): en üstte PROFİLİM, kaset etiketi gibi (krem,
-// pembe sert gölge) ama eğik değil. Yalnız giriş yapmış kişiye görünür.
+// PROFİLİM (27 Ekim): ızgaradaki yan menüden HESABIM paneline taşındı. Panelin
+// en üstünde, kaset etiketi gibi (krem, pembe sert gölge), düz. Her sayfada,
+// telefonda ve bilgisayarda aynı yerde.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const oku = d => fs.readFileSync(path.join(__dirname, '..', d), 'utf8');
 
-test('ana sayfa menüsünün ilk bağlantısı PROFİLİM, başta gizli', () => {
-  const nav = oku('index.html').match(/<nav id="nav">([\s\S]*?)<\/nav>/)[1];
-  const ilk = nav.match(/<a [^>]*>[^<]*<\/a>/)[0];
-  assert.match(ilk, /href="profilim\.html"/);
-  assert.match(ilk, /class="nav-profil"/);
-  assert.match(ilk, /data-profil-baglanti/);
-  assert.match(ilk, /\shidden[\s>]/);
-  assert.match(ilk, />PROFİLİM</);
-});
-
-test('auth.js: giriş yapınca görünür, çıkınca gizlenir', () => {
+test('HESABIM panelinin ilk bağlantısı PROFİLİM ve yalnız bir kez', () => {
   const a = oku('auth.js');
-  assert.match(a, /\[data-profil-baglanti\]'\)\.forEach\(a => \{ a\.hidden = !\(configured && state\.user\); \}\)/);
+  assert.match(a, /\.account-menu-links'\)\.innerHTML = `<a href="profilim\.html" class="menu-profil">PROFİLİM<\/a>\$\{state\.profile/);
+  assert.equal((a.match(/href="profilim\.html"/g) || []).length, 1);
 });
 
-test('kaset etiketi görünümü, eğik değil; gizliyken gerçekten gizli; bilgisayarda yok', () => {
-  const css = oku('mobil.css');
-  const k = css.split('@media (max-width: 760px)')[1].match(/\.site-header nav a\.nav-profil \{([^}]*)\}/)[1];
-  assert.match(k, /background: #f4f1e9 !important/);
-  assert.match(k, /box-shadow: 4px 4px 0 var\(--pink, #cb2468\) !important/);
-  assert.match(k, /transform: none !important/);
-  assert.match(css, /\.site-header nav a\.nav-profil\[hidden\] \{\s*display: none !important/);
-  const masaustu = css.split('@media (max-width: 760px)')[0];
-  assert.match(masaustu, /\.site-header nav a\.nav-profil \{ display: none !important; \}/);
+test('ızgaradaki yan menüde artık PROFİLİM yok', () => {
+  assert.doesNotMatch(oku('index.html'), /nav-profil|data-profil-baglanti/);
+  assert.doesNotMatch(oku('mobil.css'), /nav-profil/);
+});
+
+test('kaset etiketi görünümü, eğik değil', () => {
+  const k = oku('auth.css').match(/\.account-menu-links a\.menu-profil\{([^}]*)\}/)[1];
+  assert.match(k, /background:#f4f1e9/);
+  assert.match(k, /box-shadow:4px 4px 0 var\(--pink,#cb2468\)/);
+  assert.doesNotMatch(k, /rotate/);
+});
+
+test('ÖĞRETİCİ, PROFİLİM etiketinin altına eklenir', () => {
+  assert.match(oku('ogretici.js'), /const profil = liste\.querySelector\('\.menu-profil'\);\s*if \(profil\) profil\.after\(a\); else liste\.prepend\(a\);/);
 });
 
 test('İngilizce karşılığı var', () => {

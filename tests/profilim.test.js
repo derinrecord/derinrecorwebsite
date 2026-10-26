@@ -108,7 +108,7 @@ test('profilim.js: fotoğrafı tarayıcıda küçültür, kendi klasörüne yük
 
 test('hesap menüsünde herkese PROFİLİM bağlantısı', () => {
   const a = oku('auth.js');
-  assert.ok(a.includes('<a href="profilim.html">PROFİLİM</a>'));
+  assert.ok(a.includes('<a href="profilim.html" class="menu-profil">PROFİLİM</a>'));
 });
 
 test('Projelerim not yuvarlağında fotoğraf varsa resim, yoksa baş harf', () => {

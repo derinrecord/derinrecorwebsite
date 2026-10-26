@@ -172,7 +172,8 @@
       document.body.classList.remove('account-menu-open');
       setTimeout(function () { baslat(sayfaTuru()); }, 120);
     };
-    liste.prepend(a);
+    const profil = liste.querySelector('.menu-profil');
+    if (profil) profil.after(a); else liste.prepend(a);
   }
 
   function bekle(sec, sure) {
