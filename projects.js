@@ -247,7 +247,7 @@
   function arsivBolumu(){
     if(!admin||!arsivProjeleri.length)return '';
     return `<details class="proj-arsiv"${arsivAcik?' open':''}>
-      <summary><span>ARŞİV</span><i>${arsivProjeleri.length}</i><small>${L('Yalnız sen görürsün','Only you can see this')}</small></summary>
+      <summary><span>ARŞİV</span><i>${arsivProjeleri.length}</i></summary>
       <ul class="proj-arsiv-liste">${arsivProjeleri.map(p=>{
         const n=(tracks[p.id]||[]).length;
         return `<li><div><strong>${safe(p.title||'Proje')}</strong><small>${safe(names[p.coach_id]||L('Antrenör','Coach'))} · ${L(`${n} parça`,`${n} ${n===1?'track':'tracks'}`)}${p.arsiv_tarihi?' · '+L('arşive atıldı ','archived ')+safe(goreli(p.arsiv_tarihi)):''}</small></div>
