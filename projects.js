@@ -25,7 +25,7 @@
     if(!m)return null; const v=(m[1]?parseInt(m[1],10)*60:0)+parseFloat(m[2].replace(',','.')); return isFinite(v)?v:null; };
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
-  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false;
+  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],arsivProjeleri=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false,arsivAcik=false;
   let openTrackId=null;
   let kartNotMenu=null, kartDuzenlenen=null; // proje kartındaki not menüsü (25 Ekim)
   let detail={};
@@ -86,11 +86,22 @@
     if(!client||!me)return;
     if(busy)return; busy=true;
     try{
-      let q=client.from('music_projects').select('id,coach_id,title,song,branch,status,note,download_allowed,created_at,updated_at').order('created_at',{ascending:false});
-      if(!admin)q=q.eq('coach_id',me);
-      const {data,error}=await q; if(error)throw error;
-      projects=data||[];
-      const ids=projects.map(p=>p.id);
+      const SUTUNLAR='id,coach_id,title,song,branch,status,note,download_allowed,created_at,updated_at';
+      // Arşiv (26 Ekim): antrenör arşivdeki projeleri hiç çekmez; yönetici ayrı bölümde görür.
+      let q=client.from('music_projects').select(SUTUNLAR+',arsivde,arsiv_tarihi').order('created_at',{ascending:false});
+      if(!admin)q=q.eq('coach_id',me).eq('arsivde',false);
+      let {data,error}=await q;
+      // Arşiv SQL'i henüz çalıştırılmadıysa (sütun yok: 42703) sayfa eskisi gibi açılır.
+      if(error&&error.code==='42703'){
+        let eski=client.from('music_projects').select(SUTUNLAR).order('created_at',{ascending:false});
+        if(!admin)eski=eski.eq('coach_id',me);
+        ({data,error}=await eski);
+      }
+      if(error)throw error;
+      const hepsi=data||[];
+      arsivProjeleri=admin?hepsi.filter(p=>p.arsivde):[];
+      projects=hepsi.filter(p=>!p.arsivde);
+      const ids=hepsi.map(p=>p.id);
       tracks={};feedback={};names={};
       if(ids.length){
         const t=await client.from('project_tracks').select('*').in('project_id',ids).order('sort_order');
@@ -185,7 +196,7 @@
           <option value="pending"${p.status==='pending'?' selected':''}>Bekliyor</option>
           ${STAGES.map(s=>`<option value="${s.k}"${p.status===s.k?' selected':''}>${s.l}</option>`).join('')}
         </select>
-        <button data-del="${p.id}" class="tehlike">SİL</button></div>`:''}
+        <button type="button" data-arsivat="${p.id}" class="tehlike" title="Antrenörün listesinden kalkar, silinmez">ARŞİVE AT</button></div>`:''}
       <div class="fb-box"><p class="pj-baslik"><span>NOTLAR</span><i>${notSayisi}</i></p>
       <ul class="fb-list">${fbs.length?fbs.map(f=>{
         const t=trs.find(x=>x.id===f.track_id);
@@ -224,12 +235,24 @@
       return `<section class="proj-group"><h2>${g.t} <i>${it.length}</i></h2>${it.length?it.map(card).join(''):'<p class="proj-empty">Bu grupta proje yok.</p>'}</section>`;}).join('');
     list.innerHTML=`<button type="button" class="proj-fab" id="proj-fab-btn" aria-label="Yeni proje klasörü aç" title="Yeni proje klasörü aç"><b>${newFolderOpen?'×':'+'}</b><span>${newFolderOpen?'KAPAT':'YENİ PROJE'}</span></button>
       ${newFolderOpen?newFolderPanel():''}
-      ${groupsHtml}`;
+      ${groupsHtml}${arsivBolumu()}`;
     status.textContent=projects.length?'● Canlı — değişiklikler anında yansır':'Henüz proje yok.';
     ozetCiz();
     const foldAll=document.querySelector('#foldall');
     if(foldAll){ foldAll.hidden=!projects.length; tumunuKatlaEtiketiniYenile(); }
     wire();
+  }
+
+  // Arşiv (26 Ekim): yalnız yönetici görür. Proje silinmez; parçaları ve notları durur.
+  function arsivBolumu(){
+    if(!admin||!arsivProjeleri.length)return '';
+    return `<details class="proj-arsiv"${arsivAcik?' open':''}>
+      <summary><span>ARŞİV</span><i>${arsivProjeleri.length}</i><small>${L('Yalnız sen görürsün','Only you can see this')}</small></summary>
+      <ul class="proj-arsiv-liste">${arsivProjeleri.map(p=>{
+        const n=(tracks[p.id]||[]).length;
+        return `<li><div><strong>${safe(p.title||'Proje')}</strong><small>${safe(names[p.coach_id]||L('Antrenör','Coach'))} · ${L(`${n} parça`,`${n} ${n===1?'track':'tracks'}`)}${p.arsiv_tarihi?' · '+L('arşive atıldı ','archived ')+safe(goreli(p.arsiv_tarihi)):''}</small></div>
+          <span class="proj-actions"><button type="button" data-arsivcikar="${p.id}">${L('ARŞİVDEN ÇIKAR','RESTORE')}</button><button type="button" data-del="${p.id}" class="tehlike">${L('KALICI SİL','DELETE')}</button></span></li>`;
+      }).join('')}</ul></details>`;
   }
 
   // Üstteki dört sayı: tek bakışta durum.
@@ -1873,8 +1896,19 @@
       b.disabled=true;
       try{ await dosyaIndir(b.dataset.path,b.dataset.name,b.dataset.bicim||'wav'); } finally{ b.disabled=false; }
     });
+    const arsivle=async(id,arsivde,mesaj)=>{
+      try{ await tekSatir(client.from('music_projects').update({arsivde}).eq('id',id),'Proje bulunamadı ya da yetkiniz yok.'); bildir(mesaj,'ok'); }
+      catch(error){ bildir(L('Kaydedilemedi: ','Could not save: ')+error.message,'hata'); }
+      load();
+    };
+    list.querySelectorAll('[data-arsivat]').forEach(b=>b.onclick=()=>{
+      if(!confirm(L('Proje arşive atılacak. Antrenör artık görmeyecek; parçalar ve notlar silinmez. Devam edilsin mi?','The project will be archived. The coach will no longer see it; tracks and notes are kept. Continue?')))return;
+      arsivAcik=false; arsivle(b.dataset.arsivat,true,L('Proje arşive atıldı.','Project archived.'));
+    });
+    list.querySelectorAll('[data-arsivcikar]').forEach(b=>b.onclick=()=>{ arsivAcik=true; arsivle(b.dataset.arsivcikar,false,L('Proje arşivden çıktı.','Project restored.')); });
+    const arsivKutu=list.querySelector('.proj-arsiv'); if(arsivKutu)arsivKutu.ontoggle=()=>{arsivAcik=arsivKutu.open;};
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
-      if(!confirm('Proje silinecek. Emin misiniz?'))return;
+      if(!confirm('Proje, parçaları ve notlarıyla KALICI olarak silinecek. Geri alınamaz. Emin misiniz?'))return;
       try{ await tekSatir(client.from('music_projects').delete().eq('id',b.dataset.del),'Proje bulunamadı ya da silme yetkiniz yok.'); bildir('Proje silindi.','ok'); }
       catch(error){ bildir('Proje silinemedi: '+error.message,'hata'); }
       load();
