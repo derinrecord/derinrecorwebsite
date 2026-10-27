@@ -47,6 +47,20 @@ test('SQL: yeni tablo, herkes okur, yalnız yönetici yönetir; döndürme sütu
 
 test('sayfa: oturum ve R2 betikleri yüklü; eski Drive betiği kalktı', () => {
   const h = oku('ses-tasarimi.html');
-  for (const b of ['config.js', 'auth.js?v=20261027a', 'r2-depo.js?v=3', 'ses-tasarimi-isleri.js?v=1']) assert.ok(h.includes(`src="${b}"`), b);
+  for (const b of ['config.js', 'auth.js?v=20261027a', 'r2-depo.js?v=3', 'ses-tasarimi-isleri.js?v=2']) assert.ok(h.includes(`src="${b}"`), b);
   assert.doesNotMatch(h, /iframe\.src = 'https:\/\/drive\.google\.com/);
+});
+
+// 27 Ekim: Megatron düzenleme formu açıkken silindi; kaydet "kayıt bulunamadı" dedi
+// ve yüklenen video boşa gitti. Artık iş aynı sırada yeniden eklenir.
+test('form açıkken silinen iş, yüklenen yeni videoyla yeniden eklenir', () => {
+  const eski = { id: 'm', baslik: 'Megatron', sira: 10, kapak_url: 'assets/k.jpg', video_id: '1Det9SdiRmOYBL6R2XanFG', kapak_r2: null, video_r2: null };
+  const satir = { baslik: 'Megatron', donme: 180, yatay_cevir: false, dikey_cevir: false, video_url: 'https://m/v.mp4', video_r2: 'ses-tasarimi/video/v.mp4', video_id: null };
+  assert.deepEqual(S.yenidenEklenecek(eski, satir), {
+    baslik: 'Megatron', sira: 10, donme: 180, yatay_cevir: false, dikey_cevir: false,
+    kapak_url: 'assets/k.jpg', kapak_r2: null, video_url: 'https://m/v.mp4', video_r2: 'ses-tasarimi/video/v.mp4', video_id: null
+  });
+  const kod = fs.readFileSync(path.join(__dirname, '..', 'ses-tasarimi-isleri.js'), 'utf8');
+  assert.match(kod, /if \(!sonuc\.error && sonuc\.data && !sonuc\.data\.length\) \{\s*sonuc = await client\.from\('ses_tasarimi_isleri'\)\.insert\(yenidenEklenecek\(duzenlenen, satir\)\)/);
+  assert.match(kod, /form\.silindi\(is\.id\);/);
 });

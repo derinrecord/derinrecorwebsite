@@ -59,7 +59,19 @@
     return { yan: d === 90 || d === 270, transform: parca.join(' ') };
   }
 
-  const api = { donusum, esc, videoMu, resimMi, r2Yolu, siraDegistir, kartHtml, EN_BUYUK_VIDEO, EN_BUYUK_KAPAK };
+  // Silinmiş işi yeniden eklerken: yeni seçilenler, yoksa eski değerler.
+  function yenidenEklenecek(eski, satir) {
+    const y = {
+      baslik: satir.baslik, sira: eski.sira,
+      donme: satir.donme || 0, yatay_cevir: !!satir.yatay_cevir, dikey_cevir: !!satir.dikey_cevir,
+      kapak_url: satir.kapak_url || eski.kapak_url, kapak_r2: satir.kapak_url ? satir.kapak_r2 : null
+    };
+    if (satir.video_url) Object.assign(y, { video_url: satir.video_url, video_r2: satir.video_r2, video_id: null });
+    else Object.assign(y, { video_url: eski.video_url || null, video_r2: null, video_id: eski.video_id || null });
+    return y;
+  }
+
+  const api = { yenidenEklenecek, donusum, esc, videoMu, resimMi, r2Yolu, siraDegistir, kartHtml, EN_BUYUK_VIDEO, EN_BUYUK_KAPAK };
   if (typeof module !== 'undefined') module.exports = api;
   if (typeof document === 'undefined') return;
 
@@ -235,16 +247,22 @@
           Object.assign(satir, { video_url: window.DerinR2.adres(KOVA, yol), video_r2: yol, video_id: null });
         }
         yaz('Kaydediliyor…');
-        let sonuc;
+        let sonuc, yenidenEklendi = false;
         if (duzenlenen) {
           sonuc = await client.from('ses_tasarimi_isleri').update(satir).eq('id', duzenlenen.id).select('id');
+          // Form açıkken iş silinmişse (27 Ekim: Megatron) güncellenecek satır kalmaz;
+          // yüklenen dosyalar boşa gitmesin, iş aynı yerinde yeniden eklenir.
+          if (!sonuc.error && sonuc.data && !sonuc.data.length) {
+            sonuc = await client.from('ses_tasarimi_isleri').insert(yenidenEklenecek(duzenlenen, satir)).select('id');
+            yenidenEklendi = true;
+          }
         } else {
           const enSon = isler.reduce((m, x) => Math.max(m, x.sira || 0), 0);
           sonuc = await client.from('ses_tasarimi_isleri').insert(Object.assign(satir, { sira: enSon + 10 })).select('id');
         }
         if (sonuc.error || !sonuc.data || !sonuc.data.length) throw new Error((sonuc.error && sonuc.error.message) || 'Kayıt bulunamadı ya da yetkin yok.');
         // Düzenlemede yerine yenisi gelen eski dosyalar R2'den silinir.
-        if (duzenlenen) {
+        if (duzenlenen && !yenidenEklendi) {
           const eski = [];
           if (kapak && duzenlenen.kapak_r2) eski.push(duzenlenen.kapak_r2);
           if (video && duzenlenen.video_r2) eski.push(duzenlenen.video_r2);
@@ -260,10 +278,15 @@
         dugme.disabled = false;
       }
     };
-    return is => goster(true, is);
+    return {
+      duzenle: is => goster(true, is),
+      // Düzenlenen iş silinirse form kapanır; eski kayda kaydetmeye çalışmasın.
+      silindi: id => { if (duzenlenen && duzenlenen.id === id) goster(false); }
+    };
   }
 
-  function yonetimiBagla(duzenle) {
+  function yonetimiBagla(form) {
+    const duzenle = form.duzenle;
     grid.addEventListener('click', async e => {
       const d = e.target.closest('[data-st-duzenle]');
       if (d) { const is = isler.find(x => x.id === d.dataset.stDuzenle); if (is) duzenle(is); return; }
@@ -276,6 +299,7 @@
         if (error || !data || !data.length) { alert('Silinemedi: ' + ((error && error.message) || 'kayıt bulunamadı ya da yetkin yok.')); await yenile(); return; }
         const yollar = [is.video_r2, is.kapak_r2].filter(Boolean);
         if (yollar.length) await window.DerinR2.sil(KOVA, yollar);
+        form.silindi(is.id);
         await yenile();
         return;
       }
