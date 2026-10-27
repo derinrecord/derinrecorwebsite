@@ -2085,6 +2085,37 @@
         return;
       }
 
+      // Geçmişi temizle (27 Ekim): önce sayar, onayda sayıları gösterir, sonra
+      // siler. İşlev yalnız yöneticiye açık (supabase/radyo-gecmis-temizle.sql).
+      case 'gecmis-temizle': {
+        if (!kullanici.adminMi) return hata('Geçmişi silmek yönetici yetkisi ister.');
+        const hedefDeger = (el('gt-hedef') || {}).value || 'silinmis';
+        const turler = [...document.querySelectorAll('[data-gt-tur]:checked')].map(x => x.value);
+        if (!turler.length) return hata('Silinecek en az bir kayıt türü seçin.');
+        const say = await client.rpc('radyo_gecmis_temizle', { p_hedef: hedefDeger, p_turler: turler, p_sil: false });
+        if (say.error) {
+          return hata(/radyo_gecmis_temizle|function|schema cache/i.test(say.error.message)
+            ? 'Önce supabase/radyo-gecmis-temizle.sql dosyasını SQL Editor\'de çalıştırın.'
+            : 'Kayıtlar sayılamadı: ' + say.error.message);
+        }
+        const AD = { olay: 'bağlantı geçmişi', alarm: 'alarm kaydı', kod: 'kod denemesi' };
+        const satirlar = (say.data || []).filter(x => Number(x.adet) > 0);
+        if (!satirlar.length) return hata('Seçilen markada silinecek geçmiş kaydı yok.');
+        const hedefAd = hedefDeger === 'silinmis' ? 'Silinmiş markalar'
+          : hedefDeger === 'hepsi' ? 'Tüm markalar' : ((marka(hedefDeger) || {}).name || 'Marka');
+        if (!await onaySor({
+          baslik: 'Geçmiş silinsin mi?',
+          govde: `${esc(hedefAd)}: ${satirlar.map(x => x.adet + ' ' + AD[x.tur]).join(', ')} silinir. Geri alınamaz.`,
+          onayMetni: 'GEÇMİŞİ SİL'
+        })) return;
+        const sil = await client.rpc('radyo_gecmis_temizle', { p_hedef: hedefDeger, p_turler: turler, p_sil: true });
+        if (sil.error) return hata('Geçmiş silinemedi: ' + sil.error.message);
+        const toplam = (sil.data || []).reduce((n, x) => n + Number(x.adet || 0), 0);
+        await yenile(false);
+        bildir(hedefAd + ': ' + toplam + ' geçmiş kaydı silindi.');
+        return;
+      }
+
       // Yayın başlatma ekranının kararı: seçimler buraya kadar yalnız ekranda
       // beklemişti; yayın bu düğmeyle değişir.
       case 'yayin-basla': {

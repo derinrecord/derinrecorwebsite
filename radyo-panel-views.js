@@ -1134,7 +1134,39 @@
           <thead><tr><th>KAFE / ŞUBE</th><th>OLAY</th><th>TARAF</th><th>ZAMAN</th></tr></thead>
           <tbody>${satirlar || bos(4, 'Kayıtlı olay yok.')}</tbody>
         </table>`
-      })}`;
+      })}
+      ${gecmisTemizleBolum(state, D)}`;
+  }
+
+  // Geçmişi temizle (27 Ekim): deneme markaları silinince geçmiş kayıtları
+  // sahipsiz kalıyor. Yönetici hedefi (silinmiş markalar / tek marka / hepsi)
+  // ve türü seçer; kaç kaydın gideceği onay penceresinde yazar
+  // (supabase/radyo-gecmis-temizle.sql).
+  function gecmisTemizleBolum(state, D) {
+    const tur = (deger, ad, not) => `<label class="sube-liste">
+        <input type="checkbox" value="${deger}" data-gt-tur checked>
+        <span><b>${ad}</b><span class="sub">${not}</span></span>
+      </label>`;
+    return katliBolum({
+      state: state, anahtar: 'gecmis:temizle',
+      baslik: 'GEÇMİŞİ TEMİZLE',
+      ozet: 'Silinen ya da duran bir markanın geçmiş kayıtlarını siler. Markalar, şubeler ve şarkılar silinmez. '
+        + 'Kaç kaydın silineceği, silmeden önce onay penceresinde yazar. Geri alınamaz.',
+      icerik: `<div class="form-grid">
+          <div class="field"><label for="gt-hedef">HANGİ MARKA</label>
+            <select id="gt-hedef">
+              <option value="silinmis">Silinmiş markalar</option>
+              ${D.brands.map(b => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('')}
+              <option value="hepsi">Tüm markalar</option>
+            </select></div>
+        </div>
+        <div class="block">
+          ${tur('olay', 'Bağlantı geçmişi', 'şube açıldı, çaldı, durdu kayıtları')}
+          ${tur('alarm', 'Alarm kayıtları', 'susan şube alarmları')}
+          ${tur('kod', 'Kod denemeleri', 'sunum ekranına girilen doğru/yanlış kodlar')}
+        </div>
+        <button class="btn danger" data-act="gecmis-temizle" type="button">GEÇMİŞİ TEMİZLE</button>`
+    });
   }
 
   // Yayın hücresinin ikinci satırı: ses gerçekten akıyor mu, bu bilgi ne kadar
