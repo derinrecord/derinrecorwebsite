@@ -1,6 +1,7 @@
-// Site açılış introsu (29 Ekim): yalnız ana sayfada, oturumda bir kez.
-// Tarayıcılar dokunmadan ses çaldırmadığı için önce kapı: ▶ DİNLEYEREK GİR / GEÇ.
-// Google'dan gelen, site içinden dönen, bölüm bağlantısıyla (#) gelen ve botlar introyu görmez.
+// Ana sayfa açılış ekranı (29 Ekim): Spotify gibi kısa ve sessiz.
+// Koyu ekranda Derin Record logosu ~1,5 sn görünür, site hazır olunca kalkar (en fazla ~2,5 sn).
+// Yalnız ana sayfada, oturumda bir kez. Aramadan gelen, site içinden dönen,
+// # bölüm bağlantısıyla gelen ve botlar açılışı görmez.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -17,7 +18,7 @@ function yukle() {
 const temel = { yol: '/', arama: '', hash: '', oturum: false, referans: '', koken: 'https://derinrecord.com', ajan: 'Mozilla/5.0 (iPhone) Instagram 300.0' };
 const goster = o => yukle().gosterilsinMi({ ...temel, ...o });
 
-test('ana sayfaya ilk girişte intro gösterilir (Instagram tarayıcısı dahil)', () => {
+test('ana sayfaya ilk girişte açılış gösterilir (Instagram tarayıcısı dahil)', () => {
   assert.equal(goster({}), true);
   assert.equal(goster({ yol: '/index.html' }), true);
 });
@@ -50,7 +51,23 @@ test('?intro=1 her durumda açar, ?intro=0 kapatır (deneme ve tekrar izleme iç
   assert.equal(goster({ arama: '?intro=0' }), false);
 });
 
-test('ana sayfa: stil <head> içinde, betik <body> açılır açılmaz (kapı sayfa yüklenirken hemen görünsün)', () => {
+test('kısa: logo en az 0,9 sn görünür, site geç hazırlansa bile 1,6 sn’de çıkış başlar; toplam en fazla 2,5 sn', () => {
+  const D = yukle();
+  assert.equal(D.cikisZamani(0.2), 0.9);
+  assert.equal(D.cikisZamani(1.2), 1.2);
+  assert.equal(D.cikisZamani(9), 1.6);
+  for (const s of D.SECENEKLER) assert.ok(D.cikisZamani(9) + D.CIKIS[s] <= 2.5, s);
+});
+
+test('sessiz ve kapısız: ses dosyası, DİNLEYEREK GİR ve GEÇ yok; dokunan hemen geçer', () => {
+  const js = oku('intro.js');
+  assert.doesNotMatch(js, /new Audio|\.mp3|DİNLEYEREK|dintro-gec/);
+  assert.match(js, /kok\.addEventListener\('pointerdown', \(\) => kapat\(\)/);
+  const dosyalar = fs.readdirSync(path.join(__dirname, '..', 'assets', 'intro'));
+  assert.deepEqual(dosyalar.filter(d => /\.(mp3|wav|m4a)$/.test(d)), []);
+});
+
+test('ana sayfa: stil <head> içinde, betik <body> açılır açılmaz (açılış sayfa yüklenirken hemen görünsün)', () => {
   const html = oku('index.html');
   const bas = html.slice(0, html.indexOf('</head>'));
   assert.match(bas, /<link rel="stylesheet" href="intro\.css\?v=\d+" \/>/);
@@ -61,16 +78,8 @@ test('ana sayfa: stil <head> içinde, betik <body> açılır açılmaz (kapı sa
   }
 });
 
-test('kapı: DİNLEYEREK GİR ve GEÇ, İngilizcesiyle', () => {
+test('hata olursa açılış kalkar, site normal açılır', () => {
   const js = oku('intro.js');
-  for (const s of ['DİNLEYEREK GİR', 'GEÇ', '8 saniyelik sesli intro', 'ENTER WITH SOUND', 'SKIP', '8-second intro with sound']) {
-    assert.ok(js.includes(s), s);
-  }
-});
-
-test('sekme arka plana geçerse ses durur ve intro kapanır; hata olursa site normal açılır', () => {
-  const js = oku('intro.js');
-  assert.match(js, /function gizlenince\(\) \{ if \(document\.hidden && durum === 'oynuyor'\) kapat\(true\); \}/);
   assert.match(js, /function acil\(\) \{/);
   assert.match(js, /if \(document\.body\) guvenli\(ac\)\(\);/);
 });
@@ -79,12 +88,10 @@ test('oturum anahtarı sessionStorage içinde tutulur', () => {
   assert.match(oku('intro.js'), /sessionStorage\.(getItem|setItem)\(ANAHTAR/);
 });
 
-test('logo katmanları ve ses imzası dosyaları var', () => {
-  for (const d of ['kaset.webp', 'derin.webp', 'record.webp', 'nokta.webp']) {
-    assert.ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'intro', d)), d);
+test('logo dosyaları var ve küçük (hızlı açılsın)', () => {
+  for (const d of ['logo-noktasiz.webp', 'logo-nokta.webp']) {
+    const yol = path.join(__dirname, '..', 'assets', 'intro', d);
+    assert.ok(fs.existsSync(yol), d);
+    assert.ok(fs.statSync(yol).size < 60 * 1024, d + ' 60 KB altında');
   }
-  const js = oku('intro.js');
-  const ses = js.match(/assets\/intro\/(imza[^'"`]*\.mp3)/g) || [];
-  assert.ok(ses.length > 0, 'ses dosyası adı intro.js içinde');
-  for (const s of ses) assert.ok(fs.existsSync(path.join(__dirname, '..', s.replace(/\$\{[^}]+\}/, 'A'))), s);
 });
