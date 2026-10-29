@@ -1,0 +1,58 @@
+/* Derin Record — site açılış introsu (intro.js). Yalnız ana sayfa. */
+html.dintro-bekle::after{content:"";position:fixed;inset:0;background:#0b0b0d;z-index:2147483000}
+html.dintro-acik,html.dintro-acik body{overflow:hidden!important}
+
+#derin-intro{position:fixed;inset:0;z-index:2147483001;color:#f4f1e9;font-family:Arial,Helvetica,sans-serif;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:none;overflow:hidden;
+  transition:opacity .3s ease}
+#derin-intro.kapaniyor{opacity:0}
+.dintro-zemin{position:absolute;inset:0;background:
+  radial-gradient(60% 45% at 50% 52%,rgba(203,36,104,.16),transparent 70%),
+  radial-gradient(40% 30% at 70% 20%,rgba(207,177,56,.06),transparent 70%),#0b0b0d}
+.dintro-zemin::after{content:"";position:absolute;inset:0;opacity:.07;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.9'/%3E%3C/svg%3E")}
+.dintro-C .dintro-zemin{background:#060607}
+.dintro-tuval{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+
+/* logo katmanları (yerleri ve boyutları intro.js verir) */
+.dintro-logo{position:absolute;opacity:0;transform-origin:50% 50%;will-change:transform,opacity;pointer-events:none}
+.dintro-logo>*,.dintro-kirp>*,.dintro-kaset-kap>*{position:absolute;display:block}
+.dintro-B .dintro-kirp{overflow:hidden}
+.dintro-kaset-kap{transform-origin:50% 26%}
+.dintro-kaset,.dintro-kaset-tam,.dintro-derin,.dintro-nokta{max-width:none;margin:0}
+.dintro-makara{transform-origin:50% 50%}
+.dintro-bant{background:#cfb138;overflow:hidden;opacity:0}
+.dintro-isik{position:absolute;top:-20%;left:0;width:26%;height:140%;opacity:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.6) 50%,rgba(255,255,255,0))}
+.dintro-derin,.dintro-harf,.dintro-nokta{opacity:0}
+.dintro-harf{background:url("assets/intro/record.webp") no-repeat;will-change:transform,opacity}
+.dintro-nokta{transform-origin:50% 50%}
+.dintro-yarik{position:absolute;left:0;top:0;width:6px;opacity:0;pointer-events:none;border-radius:3px;
+  background:linear-gradient(180deg,rgba(255,240,210,0),#fff6e0 30%,#fff6e0 70%,rgba(255,240,210,0));box-shadow:0 0 18px 6px rgba(255,236,190,.55),0 0 60px 20px rgba(203,36,104,.25)}
+.dintro-rec{position:absolute;left:0;top:0;opacity:0;color:#f70811;font:900 12px/1 "Courier New",monospace;letter-spacing:.18em;pointer-events:none}
+
+/* C: büyük kelimeler */
+.dintro-kelime{position:absolute;left:0;right:0;top:50%;opacity:0;text-align:center;white-space:nowrap;
+  font-weight:900;line-height:1;letter-spacing:.02em;color:#f4f1e9;pointer-events:none;transform-origin:50% 50%}
+.dintro-kelime b{color:#f70811;font-weight:900}
+
+/* kapı */
+.dintro-kapi{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px}
+.dintro-oynat{display:flex;flex-direction:column;align-items:center;gap:0;background:none;border:0;padding:12px 18px;
+  color:#f4f1e9;cursor:pointer;font:inherit;transition:transform .12s ease}
+.dintro-daire{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;background:#cfb138;color:#0b0b0d;
+  box-shadow:0 0 0 0 rgba(203,36,104,.6);animation:dintroNabiz 1.8s ease-out infinite}
+.dintro-daire svg{width:38px;height:38px;margin-left:5px}
+.dintro-etiket{margin-top:22px;font-weight:900;font-size:14px;letter-spacing:.26em}
+.dintro-not{margin-top:9px;font-size:12px;letter-spacing:.06em;color:#a8a5a0}
+.dintro-oynat:hover .dintro-daire{background:#ddc24a}
+.dintro-oynat:active,.dintro.basili .dintro-oynat{transform:scale(.93)}
+.dintro.bekliyor .dintro-daire{animation:none;opacity:.75}
+.dintro-oynat:focus{outline:none}.dintro-oynat:focus-visible .dintro-daire{box-shadow:0 0 0 5px rgba(244,241,233,.28)}
+@keyframes dintroNabiz{0%{box-shadow:0 0 0 0 rgba(203,36,104,.6)}70%{box-shadow:0 0 0 28px rgba(203,36,104,0)}100%{box-shadow:0 0 0 0 rgba(203,36,104,0)}}
+
+.dintro-gec{position:absolute;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:none;border:0;padding:14px 20px;color:#a8a5a0;cursor:pointer;font:700 12px/1 Arial,Helvetica,sans-serif;letter-spacing:.24em}
+.dintro-gec:hover,.dintro-gec:focus-visible{color:#f4f1e9}
+.dintro-gec:focus-visible{outline:2px solid #cfb138;outline-offset:2px}
+.dintro.oynuyor .dintro-gec{left:auto;bottom:auto;transform:none;top:calc(14px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right))}
