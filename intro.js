@@ -1,25 +1,30 @@
 // Derin Record — ana sayfa açılış ekranı (Spotify gibi sessiz, 3 saniye).
-// Koyu ekranda logo belirir; site erken hazırsa açılış tam 3 sn sürer, geç kalırsa
-// site hazır olana kadar bekler ama en fazla 3,6 sn.
+// Logo belirir, yavaşça yakınlaşır, sarı bandın üstünden ışık geçer; kırmızı nokta REC ışığı gibi
+// yavaşça yanıp söner; sonunda logo sitedeki kaset logosunun yerine oturur ve site açılır.
+// Site erken hazırsa açılış tam 3 sn sürer; geç kalırsa site hazır olana kadar bekler (en fazla 3,6 sn).
 // Yalnız ana sayfada, oturumda bir kez. Aramadan gelen, site içinden dönen,
 // # bölüm bağlantısıyla gelen ve botlar açılışı görmez. Ekrana dokunan hemen geçer.
 // Deneme / tekrar izleme: derinrecord.com/?intro=1   (kapatmak için ?intro=0)
 (() => {
   'use strict';
   const ANAHTAR = 'derin-intro-goruldu';
-  const VARSAYILAN = 'A';
-  const SECENEKLER = ['A', 'B', 'C'];
-  const TOPLAM = 3;                             // site erken hazırsa açılışın süresi (sn)
-  const BEKLEME = 0.6;                          // site geç kalırsa en fazla bu kadar daha beklenir
-  const CIKIS = { A: 0.45, B: 0.85, C: 0.45 };  // çıkış süreleri (sn)
+  const TOPLAM = 3;          // site erken hazırsa açılışın süresi (sn)
+  const BEKLEME = 0.6;       // site geç kalırsa en fazla bu kadar daha beklenir
+  const CIKIS = 0.85;        // logonun yerine oturup sitenin açılması (sn)
   const ARAMA_MOTORU = /(^|\.)(google|bing|yandex|duckduckgo|yahoo|ecosia|baidu|naver|qwant|search\.brave)\./i;
   const BOT = /bot\b|bot\/|crawl|spider|slurp|lighthouse|headless/i;
 
+  // ---------------- yardımcılar ----------------
+  const kis = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const ara = (t, a, b) => kis((t - a) / (b - a));
+  const kar = (a, b, p) => a + (b - a) * p;
+  const cikis = p => 1 - Math.pow(1 - kis(p), 3);
+  const icdis = p => { p = kis(p); return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; };
+
   function gosterilsinMi(o) {
-    const p = new URLSearchParams(o.arama || '');
-    const zorla = (p.get('intro') || '').toUpperCase();
+    const zorla = new URLSearchParams(o.arama || '').get('intro');
     if (zorla === '0') return false;
-    if (zorla === '1' || SECENEKLER.includes(zorla)) return true;
+    if (zorla === '1') return true;
     if (!/^\/(index\.html)?$/.test(o.yol || '')) return false;
     if (o.oturum) return false;
     if (o.hash && o.hash.length > 1) return false;
@@ -34,33 +39,24 @@
     return true;
   }
 
-  function secenekBul(arama) {
-    const z = (new URLSearchParams(arama || '').get('intro') || '').toUpperCase();
-    return SECENEKLER.includes(z) ? z : VARSAYILAN;
+  // Çıkışın (logonun yerine kaymasının) başladığı an: toplam 3 sn olacak şekilde;
+  // site daha geç hazırsa onu bekler (en fazla +0,6 sn).
+  const cikisZamani = hazir => Math.min(TOPLAM - CIKIS + BEKLEME, Math.max(TOPLAM - CIKIS, hazir));
+
+  // Kırmızı nokta: kayıt ışığı gibi yavaşça yanar ve söner (yaklaşık saniyede bir), sonra yanık kalır.
+  function recIsigi(t) {
+    const yan = (a, b) => Math.min(ara(t, a, a + 0.1), 1 - ara(t, b, b + 0.1));
+    return Math.max(yan(0.55, 0.95), yan(1.35, 1.75), ara(t, 2.15, 2.25));
   }
 
-  // Çıkışın başladığı an: toplam 3 sn olacak şekilde; site daha geç hazırsa onu bekler (en fazla +0,6 sn).
-  const cikisZamani = (hazir, sec = VARSAYILAN) => {
-    const enAz = TOPLAM - CIKIS[sec];
-    return Math.min(enAz + BEKLEME, Math.max(enAz, hazir));
-  };
-
-  window.DerinIntro = { gosterilsinMi, secenekBul, cikisZamani, SECENEKLER, CIKIS };
+  window.DerinIntro = { gosterilsinMi, cikisZamani, recIsigi, CIKIS, TOPLAM };
   if (typeof document === 'undefined') return;
-
-  // ---------------- yardımcılar ----------------
-  const kis = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
-  const ara = (t, a, b) => kis((t - a) / (b - a));
-  const kar = (a, b, p) => a + (b - a) * p;
-  const cikis = p => 1 - Math.pow(1 - kis(p), 3);
-  const icdis = p => { p = kis(p); return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; };
-  const geri = p => { p = kis(p); const c = 1.70158; return 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2); };
 
   const LOGO = { w: 1760, h: 1460 };
   const LOGO_IC = [1405.8, 1525.6, 3436.5, 2850.8];   // assets/logo.png (6250 kare) içinde aynı logo
   const sade = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
 
-  let secenek = VARSAYILAN, kok = null, el = {}, G = null;
+  let kok = null, el = {}, G = null;
   let durum = 'yok', t0 = 0, raf = 0, hazir = Infinity, kilit = null;
 
   // ---------------- karar (<body> açılır açılmaz, eşzamanlı) ----------------
@@ -71,7 +67,6 @@
     referans: document.referrer, koken: location.origin, ajan: navigator.userAgent
   });
   if (!karar) return;
-  secenek = secenekBul(location.search);
   if (document.body) guvenli(ac)();
   else {
     document.documentElement.classList.add('dintro-bekle');
@@ -91,7 +86,7 @@
     if (kok || durum === 'bitti' || document.getElementById('derin-intro')) return;
     kok = document.createElement('div');
     kok.id = 'derin-intro';
-    kok.className = 'dintro dintro-' + secenek;
+    kok.className = 'dintro';
     kok.setAttribute('aria-hidden', 'true');
     kok.setAttribute('data-dil-yok', '');
     kok.innerHTML = `
@@ -102,7 +97,10 @@
         <div class="dintro-bant"><i class="dintro-isik"></i></div>
       </div>`;
     document.body.appendChild(kok);
-    el = { zemin: kok.querySelector('.dintro-zemin'), logo: kok.querySelector('.dintro-logo'), nokta: kok.querySelector('.dintro-nokta'), isik: kok.querySelector('.dintro-isik') };
+    el = {
+      zemin: kok.querySelector('.dintro-zemin'), logo: kok.querySelector('.dintro-logo'),
+      nokta: kok.querySelector('.dintro-nokta'), isik: kok.querySelector('.dintro-isik')
+    };
     document.documentElement.classList.add('dintro-acik');
     document.documentElement.classList.remove('dintro-bekle');
     durum = 'oynuyor';
@@ -137,7 +135,7 @@
     const lh = lw * LOGO.h / LOGO.w;
     G = Object.assign(G || {}, { vw, vh, lw, lh, lx: (vw - lw) / 2, ly: (vh - lh) / 2 });
     Object.assign(el.logo.style, { left: G.lx + 'px', top: G.ly + 'px', width: lw + 'px', height: lh + 'px' });
-    // ışık maskesi: logonun tamamı, bant kutusuna göre kaydırılmış
+    // ışık maskesi: logonun tamamı, bant kutusuna göre kaydırılmış (ışık yalnız sarı bantta görünür)
     const boy = `${lw}px ${lh}px`, yer = `${-lw * 37 / LOGO.w}px ${-lh * 729 / LOGO.h}px`;
     Object.assign(el.isik.parentNode.style, { webkitMaskSize: boy, maskSize: boy, webkitMaskPosition: yer, maskPosition: yer });
   }
@@ -171,50 +169,43 @@
   // ---------------- kare çizimi ----------------
   // t: açılıştan beri geçen süre (sn). Döndürdüğü değer: açılışın biteceği an.
   function kare(t) {
-    const Tc = cikisZamani(hazir, secenek);
+    const Tc = cikisZamani(hazir);
     if (kilit === null && t >= Tc) kilit = Tc;
     const T = kilit === null ? Tc : kilit;
     const gir = ara(t, 0.05, 0.45);
-    let s = sade ? 1 : kar(0.92, 1, cikis(gir)) * (1 + 0.04 * ara(t, 0.45, T)), x = 0, y = 0, r = 0, o = cikis(gir), zemin = 1;
-    let son = T + CIKIS[secenek];
-    // A, B: sarı bandın üstünden bir ışık geçer
-    if (secenek !== 'C' && !sade) {
-      const p = ara(t, 1.0, 1.75);
-      el.isik.style.opacity = p > 0 && p < 1 ? Math.sin(p * Math.PI) : 0;
-      el.isik.style.transform = `translateX(${kar(-40, 420, p)}%) skewX(-20deg)`;
-    }
-    // C: kırmızı nokta kayıt ışığı gibi yanıp söner (0,6 / 1,1 / 1,6 sn'de yanar, sonra açık kalır)
-    if (secenek === 'C') {
-      const yan = sade ? t >= 0.6 : (t >= 0.6 && t < 0.85) || (t >= 1.1 && t < 1.35) || t >= 1.6;
-      el.nokta.style.opacity = yan ? 1 : 0;
-      const pop = t < 0.85 ? geri(ara(t, 0.6, 0.78)) : 1;
-      el.nokta.style.transform = sade ? 'none' : `scale(${pop})`;
-      el.nokta.style.filter = yan ? 'drop-shadow(0 0 8px rgba(247,8,17,.8))' : 'none';
-    }
+    // belirir ve çok yavaş yakınlaşır
+    let s = sade ? 1 : kar(0.92, 1, cikis(gir)) * (1 + 0.04 * ara(t, 0.45, T));
+    let x = 0, y = 0, r = 0, o = cikis(gir), zemin = 1;
+    // sarı bandın üstünden ışık geçer
+    const p = sade ? 0 : ara(t, 1.0, 1.75);
+    el.isik.style.opacity = p > 0 && p < 1 ? Math.sin(p * Math.PI) : 0;
+    el.isik.style.transform = `translateX(${kar(-40, 420, p)}%) skewX(-20deg)`;
+    // REC ışığı
+    const rec = sade ? (t >= 0.55 ? 1 : 0) : recIsigi(t);
+    el.nokta.style.opacity = rec;
+    el.nokta.style.filter = rec > 0.05 ? `drop-shadow(0 0 ${(8 * rec).toFixed(1)}px rgba(247,8,17,.8))` : 'none';
+    // çıkış: logo sitedeki kaset logosunun yerine kayar, site çevresinde açılır
     if (t >= T) {
-      if (secenek === 'B' && !sade && G.hedef === undefined) G.hedef = heroHedef();
-      const H = secenek === 'B' && !sade ? G.hedef : null;
+      if (!sade && G.hedef === undefined) G.hedef = heroHedef();
+      const H = sade ? null : G.hedef;
       if (H) {
-        // logo karanlıkta yerine konar, sonra sayfa çevresinde belirir, en son logo devredilir
-        const p = icdis(ara(t, T, T + 0.5));
-        x = kar(0, H.cx - (G.lx + G.lw / 2), p);
-        y = kar(0, H.cy - (G.ly + G.lh / 2), p);
-        s = kar(s, H.w / G.lw, p);
-        r = kar(0, H.aci, p);
+        const u = icdis(ara(t, T, T + 0.5));
+        x = kar(0, H.cx - (G.lx + G.lw / 2), u);
+        y = kar(0, H.cy - (G.ly + G.lh / 2), u);
+        s = kar(s, H.w / G.lw, u);
+        r = kar(0, H.aci, u);
         zemin = 1 - icdis(ara(t, T + 0.3, T + 0.65));
         o *= 1 - ara(t, T + 0.6, T + 0.85);
       } else {
-        // logo önce kaybolur, sonra sayfa açılır (iki logo üst üste binmesin)
-        if (!sade) s *= 1 + 0.06 * cikis(ara(t, T, T + 0.3));
-        o *= 1 - cikis(ara(t, T, T + 0.25));
-        zemin = 1 - icdis(ara(t, T + 0.1, T + 0.45));
-        son = T + 0.45;
+        // kaset logosu görünmüyorsa: logo kaybolur, sonra site açılır (yine 3 sn)
+        o *= 1 - cikis(ara(t, T + 0.4, T + 0.65));
+        zemin = 1 - icdis(ara(t, T + 0.5, T + 0.85));
       }
     }
     el.logo.style.opacity = o;
     el.logo.style.transform = `translate(${x}px,${y}px) rotate(${r}deg) scale(${s})`;
     el.zemin.style.opacity = zemin;
-    return son;
+    return T + CIKIS;
   }
 
   // Logonun sayfadaki kaset logosuna konacağı yer (.hero-art img). Görünmüyorsa null.
@@ -243,11 +234,11 @@
   }
 
   // Önizleme (video çekimi): t anını, site 'hz' saniyede hazır olmuş gibi çizer.
-  window.DerinIntro.onizle = (t, sec, hz = 0.8) => {
-    if (!kok) { if (sec) secenek = sec; durum = 'yok'; ac(true); }
+  window.DerinIntro.onizle = (t, hz = 0.8) => {
+    if (!kok) { durum = 'yok'; ac(true); }
     hazir = hz;
     kilit = null;
-    if (t < cikisZamani(hz, secenek)) G.hedef = undefined;
+    if (t < cikisZamani(hz)) G.hedef = undefined;
     return kare(t);
   };
 })();
