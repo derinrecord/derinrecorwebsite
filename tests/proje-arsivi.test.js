@@ -27,7 +27,7 @@ test('arşivdekiler ana listeden ayrılır', () => {
 test('kartta SİL yerine ARŞİVE AT; arşiv bölümünde ARŞİVDEN ÇIKAR ve kalıcı SİL', () => {
   assert.match(js, /data-arsivat="\$\{p\.id\}"/);
   // 29 Ekim: ARŞİVE AT'ın yanında kalıcı SİL de var.
-  assert.match(js, /data-arsivat="\$\{p\.id\}"[^\n]*ARŞİVE AT<\/button>\s*<button type="button" data-del="\$\{p\.id\}" class="tehlike"[^>]*>SİL<\/button><\/div>/);
+  assert.match(js, /data-arsivat="\$\{p\.id\}"[^\n]*ARŞİVE AT<\/button>`\}\s*<button type="button" data-del="\$\{p\.id\}" class="tehlike"[^>]*>SİL<\/button><\/div>/);
   assert.match(js, /if\(dosyalar\.length\) await window\.DerinR2\.sil\('project-audio',dosyalar\);/);
   assert.match(js, /data-arsivcikar=/);
   assert.match(js, /function arsivBolumu\(\)\{\s*if\(!admin\|\|!arsivProjeleri\.length\)return '';/);
@@ -35,4 +35,14 @@ test('kartta SİL yerine ARŞİVE AT; arşiv bölümünde ARŞİVDEN ÇIKAR ve k
 
 test('arşiv sütunu henüz yoksa sayfa eskisi gibi açılır', () => {
   assert.match(js, /42703/);
+});
+
+// 29 Ekim: arşivdeki proje AÇ ile tam kart olarak açılır; parçaları ve
+// antrenörün notları okunur, parça odası da açılır.
+test('arşivdeki proje açılır: tam kart, parça odası, ARŞİVDEN ÇIKAR', () => {
+  assert.match(js, /const tumProjeler=\(\)=>projects\.concat\(arsivProjeleri\);/);
+  assert.match(js, /if\(arsivdeAcik\[p\.id\]\) return `<li class="arsiv-acik">[\s\S]{0,200}\$\{card\(p\)\}<\/li>`;/);
+  assert.match(js, /data-arsivgoster="\$\{p\.id\}">\$\{L\('AÇ','OPEN'\)\}/);
+  assert.equal((js.match(/for\(const p of tumProjeler\(\)\)/g) || []).length, 3, 'parça odası arşivdekini de bulmalı');
+  assert.match(js, /\$\{p\.arsivde\?`<button type="button" data-arsivcikar="\$\{p\.id\}">ARŞİVDEN ÇIKAR<\/button>`/);
 });

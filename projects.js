@@ -25,7 +25,9 @@
     if(!m)return null; const v=(m[1]?parseInt(m[1],10)*60:0)+parseFloat(m[2].replace(',','.')); return isFinite(v)?v:null; };
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
-  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],arsivProjeleri=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false,arsivAcik=false;
+  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],arsivProjeleri=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false,arsivAcik=false,arsivdeAcik={};
+  // Arşivdeki projeler de parça odasında açılır (29 Ekim); ana listeye karışmazlar.
+  const tumProjeler=()=>projects.concat(arsivProjeleri);
   let openTrackId=null;
   let kartNotMenu=null, kartDuzenlenen=null; // proje kartındaki not menüsü (25 Ekim)
   let detail={};
@@ -119,7 +121,7 @@
       await profilFotolariniYukle();
       if(openTrackId){
         let found=null,foundProject=null;
-        for(const p of projects){const tr=(tracks[p.id]||[]).find(t=>t.id===openTrackId);if(tr){found=tr;foundProject=p;break;}}
+        for(const p of tumProjeler()){const tr=(tracks[p.id]||[]).find(t=>t.id===openTrackId);if(tr){found=tr;foundProject=p;break;}}
         if(found)syncSavedPoints(found,foundProject);
         else openTrackId=null;
       }
@@ -171,7 +173,7 @@
     const asama=p.status==='pending'?'BEKLİYOR':((STAGES.find(s=>s.k===p.status)||{}).l||'');
     const durum=p.status==='pending'?'bekliyor':p.status==='delivered'?'teslim':'yapim';
     const kim=admin?(names[p.coach_id]||L('Antrenör','Coach')):L('Derin Record × sen','Derin Record × you');
-    const no=String(projects.indexOf(p)+1).padStart(2,'0');
+    const no=p.arsivde?'A':String(projects.indexOf(p)+1).padStart(2,'0');
     const notSayisi=fbs.length;
     return `<article class="proj-card${katli?' katli':''}" data-durum="${durum}">
       <div class="proj-head" data-projfold="${p.id}" role="button" tabindex="0" aria-expanded="${katli?'false':'true'}" aria-controls="proj-body-${p.id}">
@@ -196,7 +198,7 @@
           <option value="pending"${p.status==='pending'?' selected':''}>Bekliyor</option>
           ${STAGES.map(s=>`<option value="${s.k}"${p.status===s.k?' selected':''}>${s.l}</option>`).join('')}
         </select>
-        <button type="button" data-arsivat="${p.id}" class="tehlike" title="Antrenörün listesinden kalkar, silinmez">ARŞİVE AT</button>
+        ${p.arsivde?`<button type="button" data-arsivcikar="${p.id}">ARŞİVDEN ÇIKAR</button>`:`<button type="button" data-arsivat="${p.id}" class="tehlike" title="Antrenörün listesinden kalkar, silinmez">ARŞİVE AT</button>`}
         <button type="button" data-del="${p.id}" class="tehlike" title="Proje, parçaları ve notlarıyla kalıcı olarak silinir">SİL</button></div>`:''}
       <div class="fb-box"><p class="pj-baslik"><span>NOTLAR</span><i>${notSayisi}</i></p>
       <ul class="fb-list">${fbs.length?fbs.map(f=>{
@@ -228,7 +230,7 @@
   function render(){
     if(openTrackId){
       let found=null,foundProject=null;
-      for(const p of projects){const tr=(tracks[p.id]||[]).find(t=>t.id===openTrackId);if(tr){found=tr;foundProject=p;break;}}
+      for(const p of tumProjeler()){const tr=(tracks[p.id]||[]).find(t=>t.id===openTrackId);if(tr){found=tr;foundProject=p;break;}}
       if(found){ list.innerHTML=trackDetailView(found,foundProject); wireDetail(found,foundProject); return; }
       openTrackId=null;
     }
@@ -251,8 +253,9 @@
       <summary><span>ARŞİV</span><i>${arsivProjeleri.length}</i></summary>
       <ul class="proj-arsiv-liste">${arsivProjeleri.map(p=>{
         const n=(tracks[p.id]||[]).length;
+        if(arsivdeAcik[p.id]) return `<li class="arsiv-acik"><button type="button" class="arsiv-kapat" data-arsivgoster="${p.id}">${L('▴ KAPAT','▴ CLOSE')}</button>${card(p)}</li>`;
         return `<li><div><strong>${safe(p.title||'Proje')}</strong><small>${safe(names[p.coach_id]||L('Antrenör','Coach'))} · ${L(`${n} parça`,`${n} ${n===1?'track':'tracks'}`)}${p.arsiv_tarihi?' · '+L('arşive atıldı ','archived ')+safe(goreli(p.arsiv_tarihi)):''}</small></div>
-          <span class="proj-actions"><button type="button" data-arsivcikar="${p.id}">${L('ARŞİVDEN ÇIKAR','RESTORE')}</button><button type="button" data-del="${p.id}" class="tehlike">${L('KALICI SİL','DELETE')}</button></span></li>`;
+          <span class="proj-actions"><button type="button" data-arsivgoster="${p.id}">${L('AÇ','OPEN')}</button><button type="button" data-arsivcikar="${p.id}">${L('ARŞİVDEN ÇIKAR','RESTORE')}</button><button type="button" data-del="${p.id}" class="tehlike">${L('KALICI SİL','DELETE')}</button></span></li>`;
       }).join('')}</ul></details>`;
   }
 
@@ -1880,7 +1883,7 @@
     list.querySelectorAll('[data-tdopen]').forEach(el=>el.onclick=()=>{
       const trackId=el.dataset.tdopen;
       let tr=null,project=null;
-      for(const p of projects){const t=(tracks[p.id]||[]).find(x=>x.id===trackId);if(t){tr=t;project=p;break;}}
+      for(const p of tumProjeler()){const t=(tracks[p.id]||[]).find(x=>x.id===trackId);if(t){tr=t;project=p;break;}}
       if(tr&&project)openTrackDetail(tr,project);
     });
 
@@ -1907,6 +1910,7 @@
       arsivAcik=false; arsivle(b.dataset.arsivat,true,L('Proje arşive atıldı.','Project archived.'));
     });
     list.querySelectorAll('[data-arsivcikar]').forEach(b=>b.onclick=()=>{ arsivAcik=true; arsivle(b.dataset.arsivcikar,false,L('Proje arşivden çıktı.','Project restored.')); });
+    list.querySelectorAll('[data-arsivgoster]').forEach(b=>b.onclick=()=>{ const id=b.dataset.arsivgoster; arsivdeAcik[id]=!arsivdeAcik[id]; if(arsivdeAcik[id])katliProjeler[id]=false; arsivAcik=true; render(); });
     const arsivKutu=list.querySelector('.proj-arsiv'); if(arsivKutu)arsivKutu.ontoggle=()=>{arsivAcik=arsivKutu.open;};
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Proje, parçaları ve notlarıyla KALICI olarak silinecek. Geri alınamaz. Emin misiniz?'))return;
@@ -1923,7 +1927,7 @@
 
     list.querySelectorAll('[data-addtrack]').forEach(inp=>inp.onchange=async()=>{
       const file=inp.files?.[0]; if(!file)return;
-      const project=projects.find(p=>p.id===inp.dataset.addtrack); if(!project)return;
+      const project=tumProjeler().find(p=>p.id===inp.dataset.addtrack); if(!project)return;
       if(!sesGecerli(file)){
         bildir(L(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,`The “${sesUzantisi(file.name)}” format is not supported. Supported audio files: ${desteklenenMetin()}.`),'hata');
         inp.value=''; return;
@@ -1957,7 +1961,7 @@
       const file=inp.files?.[0]; if(!file)return;
       const tid=inp.dataset.newver;
       const tr=Object.values(tracks).flat().find(t=>t.id===tid);
-      const proj=projects.find(p=>p.id===tr.project_id);
+      const proj=tumProjeler().find(p=>p.id===tr.project_id);
       bildir('Varyasyon yükleniyor… ('+dosyaBoyutu(file.size)+')','bilgi');
       if(!sesGecerli(file)){ bildir(L(`“${sesUzantisi(file.name)}” uzantısı desteklenmiyor. Desteklenen ses dosyaları: ${desteklenenMetin()}.`,`The “${sesUzantisi(file.name)}” format is not supported. Supported audio files: ${desteklenenMetin()}.`),'hata'); inp.value=''; return; }
       const eskiParcalar=sesYollari(tr.audio_path);
