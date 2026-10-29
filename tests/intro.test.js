@@ -84,6 +84,13 @@ test('hata olursa açılış kalkar, site normal açılır', () => {
   assert.match(js, /if \(document\.body\) guvenli\(ac\)\(\);/);
 });
 
+test('betik yüklenir yüklenmez kurulur: döngü, kurulumdan önce hazır (sonradan tanımlı sabit kullanılmaz)', () => {
+  const js = oku('intro.js');
+  // ac() karar anında eşzamanlı çalışır; içinden çağrılan döngü hoisting'li fonksiyon olmalı
+  assert.match(js, /function dongu_\(\) \{/);
+  assert.doesNotMatch(js, /const dongu_ =/);
+});
+
 test('oturum anahtarı sessionStorage içinde tutulur', () => {
   assert.match(oku('intro.js'), /sessionStorage\.(getItem|setItem)\(ANAHTAR/);
 });

@@ -140,7 +140,8 @@
     if (t >= bitis) return bitir();
     raf = requestAnimationFrame(dongu_);
   }
-  const dongu_ = guvenli(dongu);
+  // fonksiyon bildirimi: ac() betik başında eşzamanlı çalışırken de hazır olsun
+  function dongu_() { try { dongu(); } catch (e) { acil(); } }
 
   function kapat() {
     if (!kok || durum === 'bitti') return;
