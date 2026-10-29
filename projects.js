@@ -196,7 +196,8 @@
           <option value="pending"${p.status==='pending'?' selected':''}>Bekliyor</option>
           ${STAGES.map(s=>`<option value="${s.k}"${p.status===s.k?' selected':''}>${s.l}</option>`).join('')}
         </select>
-        <button type="button" data-arsivat="${p.id}" class="tehlike" title="Antrenörün listesinden kalkar, silinmez">ARŞİVE AT</button></div>`:''}
+        <button type="button" data-arsivat="${p.id}" class="tehlike" title="Antrenörün listesinden kalkar, silinmez">ARŞİVE AT</button>
+        <button type="button" data-del="${p.id}" class="tehlike" title="Proje, parçaları ve notlarıyla kalıcı olarak silinir">SİL</button></div>`:''}
       <div class="fb-box"><p class="pj-baslik"><span>NOTLAR</span><i>${notSayisi}</i></p>
       <ul class="fb-list">${fbs.length?fbs.map(f=>{
         const t=trs.find(x=>x.id===f.track_id);
@@ -1909,7 +1910,13 @@
     const arsivKutu=list.querySelector('.proj-arsiv'); if(arsivKutu)arsivKutu.ontoggle=()=>{arsivAcik=arsivKutu.open;};
     list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Proje, parçaları ve notlarıyla KALICI olarak silinecek. Geri alınamaz. Emin misiniz?'))return;
-      try{ await tekSatir(client.from('music_projects').delete().eq('id',b.dataset.del),'Proje bulunamadı ya da silme yetkiniz yok.'); bildir('Proje silindi.','ok'); }
+      // Parçaların ses dosyaları da R2'den silinir (29 Ekim); yoksa depoda sahipsiz kalırdı.
+      const dosyalar=(tracks[b.dataset.del]||[]).flatMap(t=>sesYollari(t.audio_path));
+      try{
+        await tekSatir(client.from('music_projects').delete().eq('id',b.dataset.del),'Proje bulunamadı ya da silme yetkiniz yok.');
+        if(dosyalar.length) await window.DerinR2.sil('project-audio',dosyalar);
+        bildir('Proje silindi.','ok');
+      }
       catch(error){ bildir('Proje silinemedi: '+error.message,'hata'); }
       load();
     });

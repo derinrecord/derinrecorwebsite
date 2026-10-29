@@ -26,7 +26,9 @@ test('arşivdekiler ana listeden ayrılır', () => {
 
 test('kartta SİL yerine ARŞİVE AT; arşiv bölümünde ARŞİVDEN ÇIKAR ve kalıcı SİL', () => {
   assert.match(js, /data-arsivat="\$\{p\.id\}"/);
-  assert.doesNotMatch(js, /<button data-del="\$\{p\.id\}" class="tehlike">SİL<\/button><\/div>`:''\}/);
+  // 29 Ekim: ARŞİVE AT'ın yanında kalıcı SİL de var.
+  assert.match(js, /data-arsivat="\$\{p\.id\}"[^\n]*ARŞİVE AT<\/button>\s*<button type="button" data-del="\$\{p\.id\}" class="tehlike"[^>]*>SİL<\/button><\/div>/);
+  assert.match(js, /if\(dosyalar\.length\) await window\.DerinR2\.sil\('project-audio',dosyalar\);/);
   assert.match(js, /data-arsivcikar=/);
   assert.match(js, /function arsivBolumu\(\)\{\s*if\(!admin\|\|!arsivProjeleri\.length\)return '';/);
 });
