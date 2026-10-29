@@ -1,5 +1,5 @@
-// Ana sayfa açılış ekranı (29 Ekim): Spotify gibi kısa ve sessiz.
-// Koyu ekranda Derin Record logosu ~1,5 sn görünür, site hazır olunca kalkar (en fazla ~2,5 sn).
+// Ana sayfa açılış ekranı (29 Ekim): Spotify gibi sessiz, 3 saniye.
+// Koyu ekranda Derin Record logosu görünür; site erken hazırsa tam 3 sn, geç kalırsa en fazla 3,6 sn.
 // Yalnız ana sayfada, oturumda bir kez. Aramadan gelen, site içinden dönen,
 // # bölüm bağlantısıyla gelen ve botlar açılışı görmez.
 const test = require('node:test');
@@ -51,12 +51,14 @@ test('?intro=1 her durumda açar, ?intro=0 kapatır (deneme ve tekrar izleme iç
   assert.equal(goster({ arama: '?intro=0' }), false);
 });
 
-test('kısa: logo en az 0,9 sn görünür, site geç hazırlansa bile 1,6 sn’de çıkış başlar; toplam en fazla 2,5 sn', () => {
+test('3 saniye: site erken hazırsa açılış tam 3 sn sürer; site geç kalırsa bekler ama en fazla 3,6 sn', () => {
   const D = yukle();
-  assert.equal(D.cikisZamani(0.2), 0.9);
-  assert.equal(D.cikisZamani(1.2), 1.2);
-  assert.equal(D.cikisZamani(9), 1.6);
-  for (const s of D.SECENEKLER) assert.ok(D.cikisZamani(9) + D.CIKIS[s] <= 2.5, s);
+  for (const s of D.SECENEKLER) {
+    assert.ok(Math.abs(D.cikisZamani(0.3, s) + D.CIKIS[s] - 3) < 1e-9, s + ' erken hazır: 3 sn');
+    assert.ok(D.cikisZamani(99, s) + D.CIKIS[s] <= 3.6 + 1e-9, s + ' en fazla 3,6 sn');
+    const orta = D.cikisZamani(0.3, s) + 0.2;
+    assert.ok(Math.abs(D.cikisZamani(orta, s) - orta) < 1e-9, s + ' site biraz geç hazırsa onu bekler');
+  }
 });
 
 test('sessiz ve kapısız: ses dosyası, DİNLEYEREK GİR ve GEÇ yok; dokunan hemen geçer', () => {
