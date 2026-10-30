@@ -120,6 +120,36 @@
     };
   }
 
+  // ---------- Yönetici: sıra (▲ ▼) — ilk sıradaki ana sayfa kasetinde yazar ----------
+  function siraBagla(client, demolar) {
+    alan.addEventListener('click', async e => {
+      const dugme = e.target.closest('[data-demo-sira]');
+      if (!dugme) return;
+      const yeni = D.siraDegistir(demolar, dugme.dataset.id, dugme.dataset.demoSira);
+      if (!yeni) return;
+      alan.querySelectorAll('[data-demo-sira]').forEach(b => { b.disabled = true; });
+      const sonuclar = await Promise.all(yeni.map(s =>
+        client.from('demo_parcalari').update({ sira: s.sira }).eq('id', s.id).select('id')));
+      const hata = sonuclar.find(r => r.error || !r.data || !r.data.length);
+      if (hata) {
+        alan.querySelectorAll('[data-demo-sira]').forEach(b => { b.disabled = false; });
+        alert('Sıra kaydedilemedi: ' + ((hata.error && hata.error.message) || 'kayıt bulunamadı ya da yetkin yok.'));
+        return;
+      }
+      const sira = new Map(yeni.map(s => [s.id, s.sira]));
+      demolar.forEach(x => { x.sira = sira.get(x.id); });
+      demolar.sort((a, b) => a.sira - b.sira);
+      // kasetleri yeni sıraya taşı (öğeler taşınır, oynatıcı bağlantıları korunur)
+      const liste = listeAl();
+      demolar.forEach(x => {
+        const kart = liste.querySelector(`.track[data-demo-id="${CSS.escape(String(x.id))}"]`);
+        if (kart) liste.append(kart);
+      });
+      alan.querySelectorAll('[data-demo-sira]').forEach(b => { b.disabled = false; });
+      dugme.focus();
+    });
+  }
+
   // ---------- Yönetici: silme ----------
   function silmeyiBagla(client, demolar) {
     alan.addEventListener('click', async e => {
@@ -156,7 +186,7 @@
     const yonetici = window.DerinAuth.profile?.role === 'admin';
     const demolar = data || [];
     ciz(demolar, yonetici);
-    if (yonetici) { formKur(client); silmeyiBagla(client, demolar); }
+    if (yonetici) { formKur(client); silmeyiBagla(client, demolar); siraBagla(client, demolar); }
     await oynaticilariBagla();
   }
 

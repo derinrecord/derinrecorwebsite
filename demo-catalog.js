@@ -1,18 +1,20 @@
 (() => {
   // ---- Saf yardımcılar (Node'da sınanır) ----
-  // Ana sayfa kasetinin alt yazısı branştaki gerçek demolardan gelir (24 Ekim):
-  // hiç yoksa YAKINDA, tek demoysa adı, birden çoksa "N DEMO".
+  // Ana sayfa kasetinin alt yazısı branştaki gerçek demolardan gelir:
+  // branş listesinde ilk sıradaki demonun adı (30 Ekim); hiç yoksa YAKINDA.
   const BRANSLAR = ['aerobik', 'akrobatik', 'artistik', 'ritmik', 'cocuk-fitness'];
   const bransAnahtari = link => {
     const m = /^\/?([a-z-]+)\.html(?:[#?].*)?$/i.exec(String(link || '').trim());
     return m && BRANSLAR.includes(m[1].toLowerCase()) ? m[1].toLowerCase() : null;
   };
-  const altYazi = basliklar => !basliklar.length ? 'YAKINDA'
-    : basliklar.length === 1 ? String(basliklar[0]) : basliklar.length + ' DEMO';
+  const altYazi = basliklar => !basliklar.length ? 'YAKINDA' : String(basliklar[0]);
+  // Branş sayfasıyla aynı sıra: önce sira, eşitse önce eklenen.
+  const siraliMi = (a, b) => (Number(a.sira) || 0) - (Number(b.sira) || 0)
+    || String(a.created_at || '').localeCompare(String(b.created_at || ''));
   const basliklariGuncelle = (katalog, demolar) => katalog.map(k => {
     const b = bransAnahtari(k.link_url);
     if (!b) return k;
-    return { ...k, title: altYazi(demolar.filter(d => d.brans === b).map(d => d.baslik)) };
+    return { ...k, title: altYazi(demolar.filter(d => d.brans === b).sort(siraliMi).map(d => d.baslik)) };
   });
   if (typeof module !== 'undefined') module.exports = { bransAnahtari, altYazi, basliklariGuncelle };
   if (typeof document === 'undefined') return;
@@ -35,7 +37,7 @@
     const { configured, client, profile } = window.DerinAuth;
     if (!configured) return;
     // Branş sayfalarındaki demolar (tablo yoksa katalog başlıkları olduğu gibi kalır).
-    const { data: demolar, error: demoHata } = await client.from('demo_parcalari').select('brans,baslik');
+    const { data: demolar, error: demoHata } = await client.from('demo_parcalari').select('brans,baslik,sira,created_at');
     const guncelle = liste => (demoHata || !demolar) ? liste : basliklariGuncelle(liste, demolar);
     const { data, error } = await client.from('demo_catalog').select('*').order('sort_order').order('created_at');
     if (!error && data?.length) render(guncelle(data));

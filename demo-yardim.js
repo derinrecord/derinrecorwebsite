@@ -72,7 +72,10 @@
       + '<div class="track-info"><span class="track-type"' + (turAnahtar ? ' data-i18n="' + turAnahtar + '"' : '') + '>' + esc(tur) + '</span>'
       + '<h2 class="track-title">' + esc(baslik) + '</h2>'
       + '<p class="track-note">' + esc(d.not_metni || VARSAYILAN_NOT) + '</p>'
-      + (yonetici ? '<button type="button" class="demo-sil" data-demo-sil="' + esc(d.id) + '">SİL</button>' : '')
+      + (yonetici ? '<div class="demo-yonet-dugmeler">'
+        + '<button type="button" class="demo-sira" data-demo-sira="yukari" data-id="' + esc(d.id) + '" aria-label="Yukarı taşı">▲</button>'
+        + '<button type="button" class="demo-sira" data-demo-sira="asagi" data-id="' + esc(d.id) + '" aria-label="Aşağı taşı">▼</button>'
+        + '<button type="button" class="demo-sil" data-demo-sil="' + esc(d.id) + '">SİL</button></div>' : '')
       + '</div>'
       + '<div class="player-controls"><button class="play" data-media="#' + id + '" aria-label="Demoyu dinle" data-i18n-etiket="brans.dinle">▶</button>'
       + '<input class="seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="' + esc(baslik) + ' içinde ilerle">'
@@ -80,7 +83,19 @@
       + medya + '</article>';
   }
 
-  var api = { TUR: TUR, VARSAYILAN_NOT: VARSAYILAN_NOT, esc: esc, demoAnahtari: demoAnahtari, uzanti: uzanti, dosyaTuru: dosyaTuru, r2Yolu: r2Yolu, guvenliAdres: guvenliAdres, kasetHtml: kasetHtml };
+  // Yönetici sırayı değiştirir: demoyu bir yukarı/aşağı taşır, hepsini 10, 20, 30… diye numaralar.
+  // Taşınamıyorsa (en üst/en alt ya da bulunamadı) null döner.
+  function siraDegistir(liste, id, yon) {
+    var i = -1;
+    for (var k = 0; k < liste.length; k++) if (liste[k].id === id) i = k;
+    var j = yon === 'yukari' ? i - 1 : i + 1;
+    if (i < 0 || j < 0 || j >= liste.length) return null;
+    var yeni = liste.slice();
+    var t = yeni[i]; yeni[i] = yeni[j]; yeni[j] = t;
+    return yeni.map(function (x, n) { return { id: x.id, sira: (n + 1) * 10 }; });
+  }
+
+  var api = { siraDegistir: siraDegistir, TUR: TUR, VARSAYILAN_NOT: VARSAYILAN_NOT, esc: esc, demoAnahtari: demoAnahtari, uzanti: uzanti, dosyaTuru: dosyaTuru, r2Yolu: r2Yolu, guvenliAdres: guvenliAdres, kasetHtml: kasetHtml };
   if (typeof window !== 'undefined') window.DerinDemo = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();

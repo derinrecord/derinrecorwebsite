@@ -24,3 +24,9 @@
 .demo-sil{display:inline-flex;align-items:center;margin-top:12px;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,138,138,.6);background:transparent;color:#ff9b9b;font:800 11px/1 Arial,sans-serif;letter-spacing:.1em;cursor:pointer}
 .demo-sil[disabled]{opacity:.5}
 @media (max-width:560px){.demo-yonetim-dugmeler button{flex:1;padding:0 10px}}
+/* yönetici: sıra (▲ ▼) ve sil düğmeleri yan yana (30 Ekim) */
+.demo-yonet-dugmeler{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.demo-yonet-dugmeler .demo-sil{margin-top:0}
+.demo-sira{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:999px;border:1px solid rgba(244,241,233,.35);background:transparent;color:#f4f1e9;font:800 13px/1 Arial,sans-serif;cursor:pointer}
+.demo-sira:hover{border-color:#cfb138;color:#cfb138}
+.demo-sira[disabled]{opacity:.4;cursor:default}

@@ -1,5 +1,6 @@
-// Ana sayfa demo kasetleri (24 Ekim): alt yazı branştaki gerçek demolardan
-// otomatik gelir — hiç yoksa YAKINDA, tek demoysa adı, birden çoksa "N DEMO".
+// Ana sayfa demo kasetleri: alt yazı branştaki gerçek demolardan otomatik gelir.
+// 30 Ekim: branş listesinde İLK SIRADAKİ demonun adı yazar (sıra: sira, sonra eklenme);
+// hiç demo yoksa YAKINDA.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -12,10 +13,10 @@ test('branş anahtarı bağlantıdan çıkar', () => {
   assert.equal(C.bransAnahtari('https://ornek.com/a.html'), null);
 });
 
-test('alt yazı: 0 → YAKINDA, 1 → adı, çok → N DEMO', () => {
+test('alt yazı: demo yoksa YAKINDA, varsa listedeki ilk şarkının adı', () => {
   assert.equal(C.altYazi([]), 'YAKINDA');
   assert.equal(C.altYazi(['Horon Kafkas']), 'Horon Kafkas', 'büyük harfe kaset çizilirken çevrilir');
-  assert.equal(C.altYazi(['a', 'b', 'c']), '3 DEMO');
+  assert.equal(C.altYazi(['a', 'b', 'c']), 'a');
 });
 
 test('katalog başlıkları demolarla güncellenir; bilinmeyen bağlantı dokunulmaz', () => {
@@ -25,12 +26,18 @@ test('katalog başlıkları demolarla güncellenir; bilinmeyen bağlantı dokunu
     { branch: 'Çocuk Fitness', title: 'YAKINDA', link_url: 'cocuk-fitness.html' },
     { branch: 'Özel', title: 'ELLE', link_url: 'https://ornek.com' }
   ];
-  const demolar = [{ brans: 'ritmik', baslik: 'Horon Kafkas' }, { brans: 'akrobatik', baslik: 'WP Acro' }, { brans: 'ritmik', baslik: 'Kuğu' }];
-  assert.deepEqual(C.basliklariGuncelle(katalog, demolar).map(k => k.title), ['2 DEMO', 'WP Acro', 'YAKINDA', 'ELLE']);
+  const demolar = [
+    { brans: 'ritmik', baslik: 'Horon Kafkas', sira: 20, created_at: '2026-10-01' },
+    { brans: 'akrobatik', baslik: 'WP Acro', sira: 10, created_at: '2026-10-01' },
+    { brans: 'ritmik', baslik: 'Kuğu', sira: 10, created_at: '2026-10-05' },
+    { brans: 'akrobatik', baslik: 'Sonra', sira: 10, created_at: '2026-10-09' }
+  ];
+  assert.deepEqual(C.basliklariGuncelle(katalog, demolar).map(k => k.title), ['Kuğu', 'WP Acro', 'YAKINDA', 'ELLE'],
+    'en küçük sira ilk; eşitse önce eklenen');
 });
 
 test('sayfa demo listesini okur', () => {
-  assert.match(fs.readFileSync(path.join(__dirname, '..', 'demo-catalog.js'), 'utf8'), /from\('demo_parcalari'\)\.select\('brans,baslik'\)/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'demo-catalog.js'), 'utf8'), /from\('demo_parcalari'\)\.select\('brans,baslik,sira,created_at'\)/);
 });
 
 test('her branş kasetinin zemini kendi renginde (A · renkli kart zemini)', () => {
