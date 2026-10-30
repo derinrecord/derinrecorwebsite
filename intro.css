@@ -1,4 +1,4 @@
-/* Derin Record — ana sayfa açılış ekranı (intro.js). Spotify gibi sessiz, 3 saniye:
+/* Derin Record — ana sayfa açılış ekranı (intro.js). Spotify gibi sessiz, 4 saniye, fade in:
    logo belirir, bantta ışık, REC ışığı yavaş yanıp söner, logo sitedeki kasetin yerine oturur. */
 html.dintro-bekle::after{content:"";position:fixed;inset:0;background:#0b0b0d;z-index:2147483000}
 html.dintro-acik,html.dintro-acik body{overflow:hidden!important}

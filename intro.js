@@ -1,14 +1,14 @@
-// Derin Record — ana sayfa açılış ekranı (Spotify gibi sessiz, 3 saniye).
+// Derin Record — ana sayfa açılış ekranı (Spotify gibi sessiz, 4 saniye, fade in ile başlar).
 // Logo belirir, yavaşça yakınlaşır, sarı bandın üstünden ışık geçer; kırmızı nokta REC ışığı gibi
 // yavaşça yanıp söner; sonunda logo sitedeki kaset logosunun yerine oturur ve site açılır.
-// Site erken hazırsa açılış tam 3 sn sürer; geç kalırsa site hazır olana kadar bekler (en fazla 3,6 sn).
+// Site erken hazırsa açılış tam 4 sn sürer; geç kalırsa site hazır olana kadar bekler (en fazla 4,6 sn).
 // Yalnız ana sayfada, oturumda bir kez. Aramadan gelen, site içinden dönen,
 // # bölüm bağlantısıyla gelen ve botlar açılışı görmez. Ekrana dokunan hemen geçer.
 // Deneme / tekrar izleme: derinrecord.com/?intro=1   (kapatmak için ?intro=0)
 (() => {
   'use strict';
   const ANAHTAR = 'derin-intro-goruldu';
-  const TOPLAM = 3;          // site erken hazırsa açılışın süresi (sn)
+  const TOPLAM = 4;          // site erken hazırsa açılışın süresi (sn)
   const BEKLEME = 0.6;       // site geç kalırsa en fazla bu kadar daha beklenir
   const CIKIS = 0.85;        // logonun yerine oturup sitenin açılması (sn)
   const ARAMA_MOTORU = /(^|\.)(google|bing|yandex|duckduckgo|yahoo|ecosia|baidu|naver|qwant|search\.brave)\./i;
@@ -39,14 +39,14 @@
     return true;
   }
 
-  // Çıkışın (logonun yerine kaymasının) başladığı an: toplam 3 sn olacak şekilde;
+  // Çıkışın (logonun yerine kaymasının) başladığı an: toplam 4 sn olacak şekilde;
   // site daha geç hazırsa onu bekler (en fazla +0,6 sn).
   const cikisZamani = hazir => Math.min(TOPLAM - CIKIS + BEKLEME, Math.max(TOPLAM - CIKIS, hazir));
 
   // Kırmızı nokta: kayıt ışığı gibi yavaşça yanar ve söner (yaklaşık saniyede bir), sonra yanık kalır.
   function recIsigi(t) {
     const yan = (a, b) => Math.min(ara(t, a, a + 0.1), 1 - ara(t, b, b + 0.1));
-    return Math.max(yan(0.55, 0.95), yan(1.35, 1.75), ara(t, 2.15, 2.25));
+    return Math.max(yan(1.0, 1.4), yan(1.8, 2.2), ara(t, 2.7, 2.8));
   }
 
   window.DerinIntro = { gosterilsinMi, cikisZamani, recIsigi, CIKIS, TOPLAM };
@@ -172,16 +172,16 @@
     const Tc = cikisZamani(hazir);
     if (kilit === null && t >= Tc) kilit = Tc;
     const T = kilit === null ? Tc : kilit;
-    const gir = ara(t, 0.05, 0.45);
-    // belirir ve çok yavaş yakınlaşır
-    let s = sade ? 1 : kar(0.92, 1, cikis(gir)) * (1 + 0.04 * ara(t, 0.45, T));
-    let x = 0, y = 0, r = 0, o = cikis(gir), zemin = 1;
+    const gir = ara(t, 0.05, 1.05);
+    // koyu ekrandan yavaşça belirir (fade in) ve çok yavaş yakınlaşır
+    let s = sade ? 1 : kar(0.94, 1, cikis(gir)) * (1 + 0.05 * ara(t, 1.05, T));
+    let x = 0, y = 0, r = 0, o = icdis(gir), zemin = 1;
     // sarı bandın üstünden ışık geçer
-    const p = sade ? 0 : ara(t, 1.0, 1.75);
+    const p = sade ? 0 : ara(t, 1.5, 2.3);
     el.isik.style.opacity = p > 0 && p < 1 ? Math.sin(p * Math.PI) : 0;
     el.isik.style.transform = `translateX(${kar(-40, 420, p)}%) skewX(-20deg)`;
     // REC ışığı
-    const rec = sade ? (t >= 0.55 ? 1 : 0) : recIsigi(t);
+    const rec = sade ? (t >= 1.0 ? 1 : 0) : recIsigi(t);
     el.nokta.style.opacity = rec;
     el.nokta.style.filter = rec > 0.05 ? `drop-shadow(0 0 ${(8 * rec).toFixed(1)}px rgba(247,8,17,.8))` : 'none';
     // çıkış: logo sitedeki kaset logosunun yerine kayar, site çevresinde açılır
@@ -197,7 +197,7 @@
         zemin = 1 - icdis(ara(t, T + 0.3, T + 0.65));
         o *= 1 - ara(t, T + 0.6, T + 0.85);
       } else {
-        // kaset logosu görünmüyorsa: logo kaybolur, sonra site açılır (yine 3 sn)
+        // kaset logosu görünmüyorsa: logo kaybolur, sonra site açılır (yine 4 sn)
         o *= 1 - cikis(ara(t, T + 0.4, T + 0.65));
         zemin = 1 - icdis(ara(t, T + 0.5, T + 0.85));
       }

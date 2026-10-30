@@ -1,7 +1,7 @@
-// Ana sayfa açılış ekranı (29 Ekim): Spotify gibi sessiz, 3 saniye. Derin'in seçimi üçünün birleşimi:
+// Ana sayfa açılış ekranı (29 Ekim): Spotify gibi sessiz, 4 saniye, koyu ekrandan yavaşça belirerek (fade in). Derin'in seçimi üçünün birleşimi:
 // logo yavaşça yakınlaşır ve sarı bandın üstünden ışık geçer (A), kırmızı nokta REC ışığı gibi
 // yavaşça yanıp söner (C), sonunda sitedeki kaset logosunun yerine oturur (B).
-// Site erken hazırsa tam 3 sn, geç kalırsa en fazla 3,6 sn.
+// Site erken hazırsa tam 4 sn, geç kalırsa en fazla 4,6 sn.
 // Yalnız ana sayfada, oturumda bir kez. Aramadan gelen, site içinden dönen,
 // # bölüm bağlantısıyla gelen ve botlar açılışı görmez.
 const test = require('node:test');
@@ -53,10 +53,10 @@ test('?intro=1 her durumda açar, ?intro=0 kapatır (deneme ve tekrar izleme iç
   assert.equal(goster({ arama: '?intro=0' }), false);
 });
 
-test('3 saniye: site erken hazırsa açılış tam 3 sn sürer; site geç kalırsa bekler ama en fazla 3,6 sn', () => {
+test('4 saniye: site erken hazırsa açılış tam 4 sn sürer; site geç kalırsa bekler ama en fazla 4,6 sn', () => {
   const D = yukle();
-  assert.ok(Math.abs(D.cikisZamani(0.3) + D.CIKIS - 3) < 1e-9, 'erken hazır: 3 sn');
-  assert.ok(D.cikisZamani(99) + D.CIKIS <= 3.6 + 1e-9, 'en fazla 3,6 sn');
+  assert.ok(Math.abs(D.cikisZamani(0.3) + D.CIKIS - 4) < 1e-9, 'erken hazır: 4 sn');
+  assert.ok(D.cikisZamani(99) + D.CIKIS <= 4.6 + 1e-9, 'en fazla 4,6 sn');
   const orta = D.cikisZamani(0.3) + 0.2;
   assert.ok(Math.abs(D.cikisZamani(orta) - orta) < 1e-9, 'site biraz geç hazırsa onu bekler');
 });
@@ -70,15 +70,15 @@ test('tek açılış kaldı: A/B/C seçenek harfleri yok', () => {
 
 test('REC ışığı yavaş yanıp söner (saniyede bir), uçuştan önce yanık kalır', () => {
   const { recIsigi } = yukle();
-  assert.equal(recIsigi(0.3), 0);          // logo belirirken kapalı
-  assert.equal(recIsigi(0.75), 1);         // ilk yanış
-  assert.equal(recIsigi(1.15), 0);         // söner
-  assert.equal(recIsigi(1.55), 1);         // yeniden yanar
-  assert.equal(recIsigi(1.95), 0);         // söner
-  for (const t of [2.3, 2.6, 2.95]) assert.equal(recIsigi(t), 1, 'sonda yanık: ' + t);
+  assert.equal(recIsigi(0.6), 0);          // logo belirirken kapalı
+  assert.equal(recIsigi(1.2), 1);          // ilk yanış
+  assert.equal(recIsigi(1.6), 0);          // söner
+  assert.equal(recIsigi(2.0), 1);          // yeniden yanar
+  assert.equal(recIsigi(2.45), 0);         // söner
+  for (const t of [2.9, 3.3, 3.9]) assert.equal(recIsigi(t), 1, 'sonda yanık: ' + t);
   // eskisinden yavaş: her yanış ve sönüş en az 0,3 sn sürer
   let onceki = recIsigi(0), degisim = 0, uzunluk = 0, enKisa = Infinity;
-  for (let t = 0.01; t < 2.2; t += 0.01) {
+  for (let t = 0.01; t < 2.7; t += 0.01) {
     const v = recIsigi(t) > 0.5 ? 1 : 0;
     if (v !== onceki) { if (degisim > 0) enKisa = Math.min(enKisa, uzunluk); degisim++; uzunluk = 0; onceki = v; }
     uzunluk += 0.01;
@@ -129,4 +129,8 @@ test('logo dosyaları var ve küçük (hızlı açılsın)', () => {
     assert.ok(fs.existsSync(yol), d);
     assert.ok(fs.statSync(yol).size < 60 * 1024, d + ' 60 KB altında');
   }
+});
+
+test('fade in: logo koyu ekrandan yaklaşık 1 sn içinde yavaşça belirir', () => {
+  assert.match(oku('intro.js'), /const gir = ara\(t, 0\.05, 1\.05\);/);
 });
