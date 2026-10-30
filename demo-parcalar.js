@@ -2,14 +2,15 @@
 // Kasetler veritabanından (demo_parcalari) çizilir; yönetici sayfadan demo
 // ekler (dosya R2'ye, demo/ klasörüne) ve siler. Tablo yoksa ya da okunamazsa
 // sayfada kodda duran eski kasetler olduğu gibi kalır.
-// Oynatıcı (player.js) ve geri bildirim (feedback.js) sayfadaki kasetleri
-// açılışta bir kez taradığı için, liste çizildikten SONRA buradan yüklenir.
+// Oynatıcı (player.js) sayfadaki kasetleri açılışta bir kez taradığı için,
+// liste çizildikten SONRA buradan yüklenir. Demo kasetlerinde yalnız dinleme var
+// (30 Ekim: dalga formu ve not alanı kaldırıldı).
 (() => {
   'use strict';
   const BETIK = document.currentScript;
   const BRANS = BETIK && BETIK.dataset.brans;
   const D = window.DerinDemo;
-  const SONRA = ['player.js?v=2', 'feedback.js?v=20261024'];
+  const SONRA = ['player.js?v=2'];
   const EN_BUYUK = 400 * 1024 * 1024; // 400 MB
 
   const betikYukle = src => new Promise(tamam => {

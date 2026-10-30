@@ -47,21 +47,12 @@
       A('.player-controls', 'Demoyu dinle', 'Play the demo',
         'Kaseti oynat; çubuğu kaydırarak müziği istediğin yerden başlat.',
         'Play the tape; drag the bar to start anywhere in the music.'),
-      A('.feedback-access', 'Geri bildirim alanı', 'Feedback area',
-        'Bu demoya not bırakmak için giriş yapman ve Derin Record\'un sana erişim vermesi gerekir.',
-        'To leave notes on this demo you need to log in and be granted access by Derin Record.'),
-      A('.feedback .load-wave', 'Dalga formunu aç', 'Open the waveform',
-        'Önce dalga formunu aç; müziğin şekli görünür.',
-        'First open the waveform to see the shape of the music.'),
-      A('.feedback .wave-wrap', 'Nokta ekle', 'Add points',
-        'Dalgada değişmesini istediğin yere dokun. Birden fazla nokta ekleyebilir, sürükleyerek yerini değiştirebilirsin.',
-        'Tap where you want a change. Add several points and drag them to move.'),
-      A('.feedback .movement-picker', 'Yaş ve kategori', 'Age and category',
-        'Sporcunun yaş grubunu ve yarışma kategorisini seç; FIG kuralları buna göre gösterilir.',
-        'Choose the athlete\'s age group and category; FIG rules are shown accordingly.'),
-      A('.feedback .note-actions', 'Not ve sesli not', 'Text and voice notes',
-        'Notunu yaz ya da SESLİ NOT KAYDET ile anlat, sonra BU NOKTAYI KAYDET\'e bas.',
-        'Type your note or record a voice note, then tap SAVE THIS POINT.')
+      A('.player-list', 'Demo kasetleri', 'Demo tapes',
+        'Bu branşın demoları alt alta sıralanır; istediğine dokunup dinle.',
+        'This discipline\'s demos are listed one under another; tap any to listen.'),
+      A('.home', 'Demolara dön', 'Back to demos',
+        'Diğer branşların demolarını dinlemek için buradan ana sayfaya dön.',
+        'Go back to the home page to listen to other disciplines\' demos.')
     ]
   };
 

@@ -46,7 +46,8 @@ test('turlar: Projelerim, parça odası ve branş sayfası; her adımda TR ve EN
   assert.ok(hedefler('proje-detay').includes('.td-addbtn'));
   assert.ok(hedefler('proje-detay').includes('.td-tools'));
   assert.ok(hedefler('brans').includes('.player-controls'));
-  assert.ok(hedefler('brans').includes('.feedback .wave-wrap'));
+  assert.ok(!hedefler('brans').some(h => /feedback/.test(h)), 'branş turunda geri bildirim adımı yok');
+  assert.ok(hedefler('brans').includes('.player-list'));
 });
 
 test('sayfalar öğreticiyi yükler', () => {

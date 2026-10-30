@@ -69,19 +69,19 @@ test('SQL: sitedeki 4 demo aynı anahtarlarla taşınır', () => {
 
 // ---------- Sayfalar ----------
 const SAYFALAR = { aerobik: 'aerobik', akrobatik: 'akrobatik', artistik: 'artistik', ritmik: 'ritmik', 'cocuk-fitness': 'cocuk-fitness' };
-test('branş sayfaları demo listesini yükler; oynatıcı ve notlar listeden sonra bağlanır', () => {
+test('branş sayfaları demo listesini yükler; oynatıcı listeden sonra bağlanır (geri bildirim yok)', () => {
   for (const [sayfa, brans] of Object.entries(SAYFALAR)) {
     const h = oku(sayfa + '.html');
     assert.match(h, new RegExp(`<script src="demo-parcalar\\.js\\?v=\\d+" data-brans="${brans}"></script>`), sayfa);
     assert.match(h, /<script src="r2-depo\.js\?v=\d+"><\/script>/, sayfa);
     assert.match(h, /<script src="demo-yardim\.js\?v=\d+"><\/script>/, sayfa);
     assert.doesNotMatch(h, /<script src="player\.js/, sayfa + ': player.js listeden sonra yüklenir');
-    assert.doesNotMatch(h, /<script src="feedback\.js/, sayfa + ': feedback.js listeden sonra yüklenir');
+    assert.doesNotMatch(h, /feedback\.(js|css)/, sayfa + ': demo sayfasında geri bildirim (dalga formu, not) yok');
     assert.match(h, /demo-yonetim\.css\?v=\d+/, sayfa);
   }
   const j = oku('demo-parcalar.js');
   assert.match(j, /'player\.js\?v=2'/);
-  assert.match(j, /'feedback\.js\?v=20261024'/);
+  assert.doesNotMatch(j, /feedback/, 'demo kasetlerinde yalnız dinleme var');
 });
 
 test('demo-parcalar.js: yalnız yönetici formu görür; yükleme yüzdeli; silme doğrulanır', () => {
