@@ -72,7 +72,8 @@
       + '<div class="track-info"><span class="track-type"' + (turAnahtar ? ' data-i18n="' + turAnahtar + '"' : '') + '>' + esc(tur) + '</span>'
       + '<h2 class="track-title">' + esc(baslik) + '</h2>'
       + '<p class="track-note">' + esc(d.not_metni || VARSAYILAN_NOT) + '</p>'
-      + (yonetici ? '<button type="button" class="demo-sil" data-demo-sil="' + esc(d.id) + '">SİL</button>' : '')
+      + (yonetici ? '<div class="demo-kaset-dugmeler"><button type="button" class="demo-duzenle" data-demo-duzenle="' + esc(d.id) + '">DÜZENLE</button>'
+        + '<button type="button" class="demo-sil" data-demo-sil="' + esc(d.id) + '">SİL</button></div>' : '')
       + '</div>'
       + '<div class="player-controls"><button class="play" data-media="#' + id + '" aria-label="Demoyu dinle" data-i18n-etiket="brans.dinle">▶</button>'
       + '<input class="seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="' + esc(baslik) + ' içinde ilerle">'
@@ -92,7 +93,17 @@
     return yeni.map(function (x, n) { return { id: x.id, sira: (n + 1) * 10 }; });
   }
 
-  var api = { siraTasi: siraTasi, TUR: TUR, VARSAYILAN_NOT: VARSAYILAN_NOT, esc: esc, demoAnahtari: demoAnahtari, uzanti: uzanti, dosyaTuru: dosyaTuru, r2Yolu: r2Yolu, guvenliAdres: guvenliAdres, kasetHtml: kasetHtml };
+  // Düzenleme: ad 1–80, not en çok 160 karakter (tablodaki sınırlar); boş not → varsayılan yazı.
+  function duzenlemeDenetle(baslik, not) {
+    var b = String(baslik == null ? '' : baslik).trim();
+    var n = String(not == null ? '' : not).trim();
+    if (!b) return { hata: 'Demo adı boş olamaz.' };
+    if (b.length > 80) return { hata: 'Demo adı en çok 80 harf olabilir.' };
+    if (n.length > 160) return { hata: 'Kısa not en çok 160 harf olabilir.' };
+    return { baslik: b, not_metni: n || null };
+  }
+
+  var api = { duzenlemeDenetle: duzenlemeDenetle, siraTasi: siraTasi, TUR: TUR, VARSAYILAN_NOT: VARSAYILAN_NOT, esc: esc, demoAnahtari: demoAnahtari, uzanti: uzanti, dosyaTuru: dosyaTuru, r2Yolu: r2Yolu, guvenliAdres: guvenliAdres, kasetHtml: kasetHtml };
   if (typeof window !== 'undefined') window.DerinDemo = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();

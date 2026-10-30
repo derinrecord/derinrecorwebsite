@@ -130,3 +130,27 @@ test('sürükle-bırak veritabanına yazılır; telefonda basılı tutma (sortab
   assert.match(j, /from\('demo_parcalari'\)\.update\(\{ sira: s\.sira \}\)\.eq\('id', s\.id\)/);
   for (const sayfa of Object.keys(SAYFALAR)) assert.match(oku(sayfa + '.html'), /<script src="sortable-touch\.js\?v=\d+"><\/script>/, sayfa);
 });
+
+// ---------- Düzenleme (30 Ekim): yönetici demo adını ve kısa notu değiştirir ----------
+test('düzenleme: DÜZENLE düğmesi yalnız yöneticide', () => {
+  const d = { id: 'x1', demo_key: 'k', brans: 'aerobik', baslik: 'A', medya_url: 'a.wav', medya_tur: 'audio' };
+  assert.match(D.kasetHtml(d, true), /data-demo-duzenle="x1"[^>]*>DÜZENLE</);
+  assert.doesNotMatch(D.kasetHtml(d, false), /data-demo-duzenle/);
+});
+
+test('düzenleme: ad boş olamaz; boşluklar kırpılır; boş not varsayılana döner', () => {
+  assert.deepEqual(D.duzenlemeDenetle('  Kuğu Gölü  ', '  yeni not '), { baslik: 'Kuğu Gölü', not_metni: 'yeni not' });
+  assert.deepEqual(D.duzenlemeDenetle('Ad', '   '), { baslik: 'Ad', not_metni: null });
+  assert.equal(D.duzenlemeDenetle('   ', 'not').hata, 'Demo adı boş olamaz.');
+  assert.match(D.duzenlemeDenetle('a'.repeat(81), '').hata, /80/);
+  assert.match(D.duzenlemeDenetle('Ad', 'n'.repeat(161)).hata, /160/);
+});
+
+test('düzenleme: demo-parcalar ad ve notu veritabanına yazar, kaseti yerinde günceller', () => {
+  const k = oku('demo-parcalar.js');
+  assert.match(k, /duzenlemeyiBagla\(client, demolar\)/);
+  assert.match(k, /D\.duzenlemeDenetle\(/);
+  assert.match(k, /update\(\{ baslik: [^}]*not_metni[^}]*\}\)\.eq\('id', [^)]+\)\.select\(/);
+  assert.match(k, /\.track-title/);
+  assert.match(k, /\.track-note/);
+});

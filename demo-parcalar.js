@@ -180,6 +180,57 @@
     });
   }
 
+  // ---------- Yönetici: ad ve kısa not düzenleme (30 Ekim) ----------
+  // Kasetin içinde küçük form açılır; kaydedince kaset yerinde güncellenir (sayfa yenilenmez).
+  function duzenlemeyiBagla(client, demolar) {
+    alan.addEventListener('click', async e => {
+      const dugme = e.target.closest('[data-demo-duzenle]');
+      if (!dugme) return;
+      const demo = demolar.find(d => d.id === dugme.dataset.demoDuzenle);
+      const kart = dugme.closest('.track');
+      if (!demo || !kart || kart.querySelector('.demo-duzenle-form')) return;
+      const form = document.createElement('form');
+      form.className = 'demo-duzenle-form';
+      form.innerHTML = `
+        <label>DEMO ADI<input name="baslik" maxlength="80" required></label>
+        <label>KISA NOT<input name="not" maxlength="160" placeholder="${D.esc(D.VARSAYILAN_NOT)}"></label>
+        <p class="demo-mesaj" role="status" aria-live="polite"></p>
+        <div class="demo-yonetim-dugmeler"><button type="button" class="demo-vazgec">VAZGEÇ</button><button type="submit" class="demo-kaydet">KAYDET</button></div>`;
+      form.elements.baslik.value = demo.baslik || '';
+      form.elements.not.value = demo.not_metni || '';
+      const dugmeler = dugme.parentElement;
+      dugmeler.hidden = true;
+      dugmeler.after(form);
+      kart.removeAttribute('draggable'); // form açıkken yanlışlıkla sürüklenmesin
+      form.elements.baslik.focus();
+      const kapat = () => { form.remove(); dugmeler.hidden = false; kart.setAttribute('draggable', 'true'); };
+      const mesaj = form.querySelector('.demo-mesaj');
+      form.querySelector('.demo-vazgec').onclick = kapat;
+      form.onsubmit = async ev => {
+        ev.preventDefault();
+        const yeni = D.duzenlemeDenetle(form.elements.baslik.value, form.elements.not.value);
+        if (yeni.hata) { mesaj.textContent = yeni.hata; mesaj.className = 'demo-mesaj err'; return; }
+        const kaydet = form.querySelector('.demo-kaydet');
+        kaydet.disabled = true; kaydet.textContent = 'KAYDEDİLİYOR…';
+        const { data, error } = await client.from('demo_parcalari')
+          .update({ baslik: yeni.baslik, not_metni: yeni.not_metni }).eq('id', demo.id).select('id');
+        if (error || !data || !data.length) {
+          kaydet.disabled = false; kaydet.textContent = 'KAYDET';
+          mesaj.textContent = 'Kaydedilemedi: ' + ((error && error.message) || 'kayıt bulunamadı ya da yetkin yok.');
+          mesaj.className = 'demo-mesaj err';
+          return;
+        }
+        demo.baslik = yeni.baslik; demo.not_metni = yeni.not_metni;
+        const ust = yeni.baslik.toUpperCase();
+        kart.querySelector('.track-title').textContent = ust;
+        kart.querySelector('.track-note').textContent = yeni.not_metni || D.VARSAYILAN_NOT;
+        const kaydir = kart.querySelector('.seek');
+        if (kaydir) kaydir.setAttribute('aria-label', ust + ' içinde ilerle');
+        kapat();
+      };
+    });
+  }
+
   // ---------- Yönetici: silme ----------
   function silmeyiBagla(client, demolar) {
     alan.addEventListener('click', async e => {
@@ -216,7 +267,7 @@
     const yonetici = window.DerinAuth.profile?.role === 'admin';
     const demolar = data || [];
     ciz(demolar, yonetici);
-    if (yonetici) { formKur(client); silmeyiBagla(client, demolar); siraBagla(client, demolar); }
+    if (yonetici) { formKur(client); silmeyiBagla(client, demolar); duzenlemeyiBagla(client, demolar); siraBagla(client, demolar); }
     await oynaticilariBagla();
   }
 
