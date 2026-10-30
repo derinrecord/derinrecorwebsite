@@ -106,22 +106,27 @@ test('Kullanıcılar sayfası: erişim verilecek demolar listeden gelir', () => 
   assert.match(oku('admin.js'), /from\('demo_parcalari'\)\.select\('demo_key,brans,baslik'\)/);
 });
 
-// 30 Ekim: yönetici branş sayfasında demoların sırasını ▲ ▼ ile değiştirir; ilk sıradaki ana sayfa kasetinde yazar.
-test('sıra: ▲ ▼ yalnız yöneticiye; yeni sıra 10, 20, 30… diye yeniden numaralanır', () => {
+// 30 Ekim: yönetici branş sayfasında demoları radyo panelindeki gibi basılı tutup sürükleyerek sıralar;
+// ilk sıradaki ana sayfa kasetinde yazar.
+test('sıra: kaset yalnız yöneticiye sürüklenebilir; ok düğmesi yok', () => {
   const demo = { id: 'u-1', demo_key: 'k', brans: 'aerobik', baslik: 'A', medya_url: 'a.wav', medya_tur: 'audio' };
-  assert.match(D.kasetHtml(demo, true), /<button type="button" class="demo-sira" data-demo-sira="yukari" data-id="u-1" aria-label="Yukarı taşı">▲<\/button>/);
-  assert.match(D.kasetHtml(demo, true), /data-demo-sira="asagi" data-id="u-1" aria-label="Aşağı taşı">▼</);
-  assert.doesNotMatch(D.kasetHtml(demo, false), /demo-sira/);
-  const liste = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
-  assert.deepEqual(D.siraDegistir(liste, 'c', 'yukari'), [{ id: 'a', sira: 10 }, { id: 'c', sira: 20 }, { id: 'b', sira: 30 }]);
-  assert.deepEqual(D.siraDegistir(liste, 'a', 'asagi'), [{ id: 'b', sira: 10 }, { id: 'a', sira: 20 }, { id: 'c', sira: 30 }]);
-  assert.equal(D.siraDegistir(liste, 'a', 'yukari'), null, 'en üstteki yukarı çıkamaz');
-  assert.equal(D.siraDegistir(liste, 'c', 'asagi'), null, 'en alttaki aşağı inemez');
-  assert.equal(D.siraDegistir(liste, 'yok', 'asagi'), null);
+  assert.match(D.kasetHtml(demo, true), /<article class="track" draggable="true" data-demo-key="k" data-demo-id="u-1">/);
+  assert.doesNotMatch(D.kasetHtml(demo, false), /draggable/);
+  assert.doesNotMatch(D.kasetHtml(demo, true), /demo-sira|▲|▼/);
 });
 
-test('sıra değişikliği veritabanına yazılır ve liste yeniden çizilir', () => {
+test('sıra: bırakılan yere taşınır, hepsi 10, 20, 30… diye yeniden numaralanır', () => {
+  const liste = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+  assert.deepEqual(D.siraTasi(liste, 'c', 'a'), [{ id: 'c', sira: 10 }, { id: 'a', sira: 20 }, { id: 'b', sira: 30 }]);
+  assert.deepEqual(D.siraTasi(liste, 'a', 'c'), [{ id: 'b', sira: 10 }, { id: 'c', sira: 20 }, { id: 'a', sira: 30 }]);
+  assert.deepEqual(D.siraTasi(liste, 'a', 'b'), [{ id: 'b', sira: 10 }, { id: 'a', sira: 20 }, { id: 'c', sira: 30 }]);
+  assert.equal(D.siraTasi(liste, 'a', 'a'), null);
+  assert.equal(D.siraTasi(liste, 'yok', 'a'), null);
+});
+
+test('sürükle-bırak veritabanına yazılır; telefonda basılı tutma (sortable-touch) yüklü', () => {
   const j = oku('demo-parcalar.js');
-  assert.match(j, /D\.siraDegistir\(demolar, dugme\.dataset\.id, dugme\.dataset\.demoSira\)/);
+  assert.match(j, /D\.siraTasi\(demolar, kaynakId, hedef\.dataset\.demoId\)/);
   assert.match(j, /from\('demo_parcalari'\)\.update\(\{ sira: s\.sira \}\)\.eq\('id', s\.id\)/);
+  for (const sayfa of Object.keys(SAYFALAR)) assert.match(oku(sayfa + '.html'), /<script src="sortable-touch\.js\?v=\d+"><\/script>/, sayfa);
 });

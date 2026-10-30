@@ -67,15 +67,12 @@
     var medya = d.medya_tur === 'video'
       ? '<video id="' + id + '" preload="metadata" playsinline><source src="' + adres + '" type="video/mp4"></video>'
       : '<audio id="' + id + '" preload="metadata"><source src="' + adres + '"></audio>';
-    return '<article class="track" data-demo-key="' + esc(d.demo_key) + '" data-demo-id="' + esc(d.id) + '">'
+    return '<article class="track"' + (yonetici ? ' draggable="true"' : '') + ' data-demo-key="' + esc(d.demo_key) + '" data-demo-id="' + esc(d.id) + '">'
       + '<div class="cassette"><i></i><b>DERİN</b><em>RECORD</em><i></i></div>'
       + '<div class="track-info"><span class="track-type"' + (turAnahtar ? ' data-i18n="' + turAnahtar + '"' : '') + '>' + esc(tur) + '</span>'
       + '<h2 class="track-title">' + esc(baslik) + '</h2>'
       + '<p class="track-note">' + esc(d.not_metni || VARSAYILAN_NOT) + '</p>'
-      + (yonetici ? '<div class="demo-yonet-dugmeler">'
-        + '<button type="button" class="demo-sira" data-demo-sira="yukari" data-id="' + esc(d.id) + '" aria-label="Yukarı taşı">▲</button>'
-        + '<button type="button" class="demo-sira" data-demo-sira="asagi" data-id="' + esc(d.id) + '" aria-label="Aşağı taşı">▼</button>'
-        + '<button type="button" class="demo-sil" data-demo-sil="' + esc(d.id) + '">SİL</button></div>' : '')
+      + (yonetici ? '<button type="button" class="demo-sil" data-demo-sil="' + esc(d.id) + '">SİL</button>' : '')
       + '</div>'
       + '<div class="player-controls"><button class="play" data-media="#' + id + '" aria-label="Demoyu dinle" data-i18n-etiket="brans.dinle">▶</button>'
       + '<input class="seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="' + esc(baslik) + ' içinde ilerle">'
@@ -83,19 +80,19 @@
       + medya + '</article>';
   }
 
-  // Yönetici sırayı değiştirir: demoyu bir yukarı/aşağı taşır, hepsini 10, 20, 30… diye numaralar.
-  // Taşınamıyorsa (en üst/en alt ya da bulunamadı) null döner.
-  function siraDegistir(liste, id, yon) {
-    var i = -1;
-    for (var k = 0; k < liste.length; k++) if (liste[k].id === id) i = k;
-    var j = yon === 'yukari' ? i - 1 : i + 1;
-    if (i < 0 || j < 0 || j >= liste.length) return null;
+  // Yönetici sürükleyip bırakır: demo, bırakıldığı kasetin yerine geçer
+  // (aşağı taşınırsa onun altına, yukarı taşınırsa üstüne); hepsi 10, 20, 30… diye numaralanır.
+  function siraTasi(liste, kaynakId, hedefId) {
+    var i = -1, j = -1;
+    for (var k = 0; k < liste.length; k++) { if (liste[k].id === kaynakId) i = k; if (liste[k].id === hedefId) j = k; }
+    if (i < 0 || j < 0 || i === j) return null;
     var yeni = liste.slice();
-    var t = yeni[i]; yeni[i] = yeni[j]; yeni[j] = t;
+    var tasinan = yeni.splice(i, 1)[0];
+    yeni.splice(j, 0, tasinan);
     return yeni.map(function (x, n) { return { id: x.id, sira: (n + 1) * 10 }; });
   }
 
-  var api = { siraDegistir: siraDegistir, TUR: TUR, VARSAYILAN_NOT: VARSAYILAN_NOT, esc: esc, demoAnahtari: demoAnahtari, uzanti: uzanti, dosyaTuru: dosyaTuru, r2Yolu: r2Yolu, guvenliAdres: guvenliAdres, kasetHtml: kasetHtml };
+  var api = { siraTasi: siraTasi, TUR: TUR, VARSAYILAN_NOT: VARSAYILAN_NOT, esc: esc, demoAnahtari: demoAnahtari, uzanti: uzanti, dosyaTuru: dosyaTuru, r2Yolu: r2Yolu, guvenliAdres: guvenliAdres, kasetHtml: kasetHtml };
   if (typeof window !== 'undefined') window.DerinDemo = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();

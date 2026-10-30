@@ -45,6 +45,7 @@
     kutu.className = 'demo-yonetim';
     kutu.innerHTML = `
       <button type="button" class="demo-yonetim-ac" aria-expanded="false">＋ DEMO EKLE</button>
+      <p class="demo-sira-ipucu">Sırayı değiştirmek için kasete basılı tutup sürükle. En üstteki şarkı ana sayfadaki kasette yazar.</p>
       <form class="demo-yonetim-form" hidden>
         <p class="demo-yonetim-baslik">YENİ DEMO · YALNIZ SEN GÖRÜRSÜN</p>
         <label>DEMO ADI<input name="baslik" maxlength="80" required placeholder="Örn. Kuğu Gölü Remix"></label>
@@ -120,33 +121,62 @@
     };
   }
 
-  // ---------- Yönetici: sıra (▲ ▼) — ilk sıradaki ana sayfa kasetinde yazar ----------
+  // ---------- Yönetici: sıra — radyo panelindeki gibi basılı tut ve sürükle ----------
+  // Bilgisayarda fareyle sürüklenir; telefonda sortable-touch.js basılı tutmayı sürüklemeye çevirir.
+  // İlk sıradaki demonun adı ana sayfadaki branş kasetinde yazar.
   function siraBagla(client, demolar) {
-    alan.addEventListener('click', async e => {
-      const dugme = e.target.closest('[data-demo-sira]');
-      if (!dugme) return;
-      const yeni = D.siraDegistir(demolar, dugme.dataset.id, dugme.dataset.demoSira);
+    let kaynakId = null, kontrolden = false;
+    alan.addEventListener('pointerdown', e => { kontrolden = !!e.target.closest('.player-controls, button, input, a'); });
+    alan.addEventListener('dragstart', e => {
+      const kart = e.target.closest && e.target.closest('.track[draggable="true"]');
+      if (!kart || kontrolden) { e.preventDefault(); return; }
+      kaynakId = kart.dataset.demoId;
+      kart.classList.add('surukleniyor');
+      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', kaynakId); } catch (err) { /* dokunmatik */ }
+    });
+    alan.addEventListener('dragover', e => {
+      const hedef = e.target.closest && e.target.closest('.track[draggable="true"]');
+      if (!hedef || !kaynakId) return;
+      e.preventDefault();
+      alan.querySelectorAll('.surukle-hedef').forEach(x => { if (x !== hedef) x.classList.remove('surukle-hedef'); });
+      if (hedef.dataset.demoId !== kaynakId) hedef.classList.add('surukle-hedef');
+    });
+    alan.addEventListener('dragleave', e => {
+      const hedef = e.target.closest && e.target.closest('.track');
+      if (hedef && !hedef.contains(e.relatedTarget)) hedef.classList.remove('surukle-hedef');
+    });
+    const bitir = () => {
+      alan.querySelectorAll('.surukleniyor, .surukle-hedef').forEach(x => x.classList.remove('surukleniyor', 'surukle-hedef'));
+    };
+    alan.addEventListener('dragend', () => { bitir(); setTimeout(() => { kaynakId = null; }, 0); });
+    alan.addEventListener('drop', async e => {
+      const hedef = e.target.closest && e.target.closest('.track[draggable="true"]');
+      if (!hedef || !kaynakId) return;
+      e.preventDefault();
+      bitir();
+      const yeni = D.siraTasi(demolar, kaynakId, hedef.dataset.demoId);
+      kaynakId = null;
       if (!yeni) return;
-      alan.querySelectorAll('[data-demo-sira]').forEach(b => { b.disabled = true; });
+      // önce ekranda yeni sıraya taşı (öğeler taşınır, oynatıcı bağlantıları korunur)
+      const eski = demolar.map(x => ({ id: x.id, sira: x.sira }));
+      const sira = new Map(yeni.map(s => [s.id, s.sira]));
+      const uygula = harita => {
+        demolar.forEach(x => { x.sira = harita.get(x.id); });
+        demolar.sort((a, b) => a.sira - b.sira);
+        const liste = listeAl();
+        demolar.forEach(x => {
+          const kart = liste.querySelector(`.track[data-demo-id="${CSS.escape(String(x.id))}"]`);
+          if (kart) liste.append(kart);
+        });
+      };
+      uygula(sira);
       const sonuclar = await Promise.all(yeni.map(s =>
         client.from('demo_parcalari').update({ sira: s.sira }).eq('id', s.id).select('id')));
       const hata = sonuclar.find(r => r.error || !r.data || !r.data.length);
       if (hata) {
-        alan.querySelectorAll('[data-demo-sira]').forEach(b => { b.disabled = false; });
+        uygula(new Map(eski.map(s => [s.id, s.sira])));
         alert('Sıra kaydedilemedi: ' + ((hata.error && hata.error.message) || 'kayıt bulunamadı ya da yetkin yok.'));
-        return;
       }
-      const sira = new Map(yeni.map(s => [s.id, s.sira]));
-      demolar.forEach(x => { x.sira = sira.get(x.id); });
-      demolar.sort((a, b) => a.sira - b.sira);
-      // kasetleri yeni sıraya taşı (öğeler taşınır, oynatıcı bağlantıları korunur)
-      const liste = listeAl();
-      demolar.forEach(x => {
-        const kart = liste.querySelector(`.track[data-demo-id="${CSS.escape(String(x.id))}"]`);
-        if (kart) liste.append(kart);
-      });
-      alan.querySelectorAll('[data-demo-sira]').forEach(b => { b.disabled = false; });
-      dugme.focus();
     });
   }
 
