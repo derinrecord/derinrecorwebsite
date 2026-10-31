@@ -1,6 +1,6 @@
 # Derin Record uygulaması (App Store + Google Play) — tasarım
 
-Tarih: 2026-10-31 · Durum: Derin'in onayını bekliyor
+Tarih: 2026-10-31 · Durum: Derin onayladı (31 Ekim); mekân girişi eklendi
 
 ## Amaç
 Derin Record'u herkese tanıtan, App Store ve Google Play'den indirilen bir uygulama.
@@ -11,7 +11,8 @@ Ziyaretçi demoları dinler; antrenör HESABIM'a girer; yönetici (Derin) ayrıc
 - Kitle: herkese tanıtım.
 - Yol: mevcut site uygulamanın içine konur (yeniden yazılmaz).
 - HESABIM uygulamada olacak (antrenör girişi).
-- Radyo paneli uygulamada yalnız yöneticiye görünür.
+- Radyo paneli (yönetim: yayın, marka, liste, şube, anons) uygulamada yalnız yöneticiye görünür.
+- Mekân sunum ekranı (Şube Yayını, `coffee-marka.html`) uygulamada da olacak: "Mekân girişi" ile şube kodu girilir (müşteri memnuniyeti için önemli).
 - Derin'in Mac'i var → iPhone paketi onun Mac'inde Xcode ile yapılır.
 - Ekran görüntüsü / ekran kaydı engellensin; sitede de zorlaştırılsın.
 
@@ -27,6 +28,10 @@ sezon, iletişim), branş demo sayfaları, film müziği ve lisans bölümleri, 
    tarafında küçük bir fonksiyonla yapılır; gizli anahtar telefona girmez, config.js'e eklenmez.
    Kurulmadan önce Derin'e ne yaptığı ayrıca anlatılıp onay alınır (RLS/SQL değişirse gerekçeyle).
 5. Radyo paneli: yalnız profiles.role = 'admin' girişinde menüde görünür.
+6. Mekân girişi: menüde "MEKÂN GİRİŞİ"; kafe şube kodunu (ya da şube linkini) girer, Şube Yayını
+   ekranı açılır. Uygulama kodu hatırlar, sonraki açılışta doğrudan yayına gider (çıkış düğmesiyle silinir).
+   Yayın telefon kilitliyken de sürer; ekran kararmasın seçeneği (mekân telefonu yayın cihazı olarak).
+   Mevcut şube kodu/link, cihaz kilidi ve sızıntı alarmı kuralları aynen geçerli; yeni yetki eklenmez.
 
 **Uygulamada yok:** sohbet, yönetici sayfaları (radyo paneli hariç), öğrenci işleri.
 
@@ -54,7 +59,7 @@ Not: sesin dışarıdan başka cihazla kaydı hiçbir yolla engellenemez.
 
 ## Çalışma sırası
 1. Android deneme paketi → Derin telefonda dener.
-2. Uygulamaya özel parçalar (kilit ekranı, internetsiz, bildirim, hesap silme, radyo, ekran koruması);
+2. Uygulamaya özel parçalar (kilit ekranı, internetsiz, bildirim, hesap silme, radyo, mekân girişi, ekran koruması);
    her biri test + önizleme.
 3. Sitede zorlaştırmalar (önizleme → "canlıya al").
 4. iPhone paketi (Mac + Xcode) → TestFlight ile deneme.
