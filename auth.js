@@ -27,7 +27,18 @@
   let fotoUrl = null; // HESABIM düğmesindeki profil fotoğrafının süreli bağlantısı
   let resolveReady;
   const ready = new Promise(resolve => { resolveReady = resolve; });
-  window.DerinAuth = { ...state, ready, open: () => openAuth('login'), _sayacYazisi: n => (!n || n < 1) ? '' : (n > 99 ? '99+' : String(n)) };
+  // Uygulamada (App Store / Google Play) yönetici sayfalarından yalnız Radyo Yönetimi menüde kalır;
+  // radyo bağlantısı yalnız yöneticiye görünür. Tarayıcıda menü hiç değişmez (31 Ekim).
+  const UYGULAMADA_GIZLI = ['kullanicilar.html', 'bildirimler.html', 'taleplerim.html', 'ajanlar.html', 'harmonic-mixer.html', 'mp3-donusturucu.html', 'chat.html', 'admin.html'];
+  const menuSuz = (hrefler, rol, uygulamada) => !uygulamada ? hrefler.slice()
+    : hrefler.filter(h => !UYGULAMADA_GIZLI.includes(h) && (h !== 'radyo-yonetim.html' || rol === 'admin'));
+  function menuyuUygulamayaGoreSuz(menu) {
+    if (!window.DerinApp?.uygulamada) return;
+    const baglantilar = [...menu.querySelectorAll('.account-menu-links a')];
+    const kalan = menuSuz(baglantilar.map(a => a.getAttribute('href')), state.profile?.role || null, true);
+    baglantilar.forEach(a => { if (!kalan.includes(a.getAttribute('href'))) a.remove(); });
+  }
+  window.DerinAuth = { ...state, ready, open: () => openAuth('login'), _menuSuz: menuSuz, _sayacYazisi: n => (!n || n < 1) ? '' : (n > 99 ? '99+' : String(n)) };
 
   const escapeHtml = value => String(value || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   // Dil: kısa metinler dil.js sözlüğünden gelir (TR varsayılan, EN karşılığı).
@@ -76,6 +87,7 @@
     button.classList.add('hb-fotolu');
     menu.querySelector('.account-menu-links').innerHTML = `<a href="profilim.html" class="menu-profil">PROFİLİM</a>${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a><a href="mp3-donusturucu.html">MP3 DÖNÜŞTÜRÜCÜ</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a>`;
     menuLinkleriniCevir(menu);
+    menuyuUygulamayaGoreSuz(menu);
     menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || dilMetni('hesap.hesabim', 'HESABIM');
     sayaclariYaz();
   }

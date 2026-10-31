@@ -47,7 +47,7 @@ test('SQL: yeni tablo, herkes okur, yalnız yönetici yönetir; döndürme sütu
 
 test('sayfa: oturum ve R2 betikleri yüklü; eski Drive betiği kalktı', () => {
   const h = oku('ses-tasarimi.html');
-  for (const b of ['config.js', 'auth.js?v=20261027a', 'r2-depo.js?v=3', 'ses-tasarimi-isleri.js?v=2']) assert.ok(h.includes(`src="${b}"`), b);
+  for (const b of ['config.js', 'auth.js?v=20261031a', 'r2-depo.js?v=3', 'ses-tasarimi-isleri.js?v=2']) assert.ok(h.includes(`src="${b}"`), b);
   assert.doesNotMatch(h, /iframe\.src = 'https:\/\/drive\.google\.com/);
 });
 
