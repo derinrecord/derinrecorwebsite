@@ -24,7 +24,7 @@
   function gosterilsinMi(o) {
     const zorla = new URLSearchParams(o.arama || '').get('intro');
     if (zorla === '0') return false;
-    if (zorla === '1') return true;
+    if (zorla === '1' || zorla === 'tani') return true;
     if (!/^\/(index\.html)?$/.test(o.yol || '')) return false;
     if (o.oturum) return false;
     // Uygulamada (App Store / Google Play) her açılışın ilk ana sayfasında gösterilir;
@@ -69,6 +69,19 @@
     yol: location.pathname, arama: location.search, hash: location.hash, oturum,
     referans: document.referrer, koken: location.origin, ajan: navigator.userAgent
   });
+  // Teşhis (derinrecord.com/?intro=tani): açılış zorla gösterilir; 6 sn sonra ekranın altında
+  // telefonun kimliği, karar ve varsa hata yazar. Derin'in telefonunda intro çıkmadığı için (31 Ekim).
+  if (new URLSearchParams(location.search).get('intro') === 'tani') {
+    const basla = Date.now();
+    setTimeout(() => {
+      const kutu = document.createElement('pre');
+      kutu.className = 'dintro-tani';
+      kutu.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;margin:0;padding:10px;background:#fffdf7;color:#17131a;font:12px/1.4 monospace;white-space:pre-wrap;word-break:break-all;border:2px solid #cb2468;border-radius:8px';
+      kutu.textContent = ['INTRO TEŞHİS', 'karar: ' + karar, 'durum: ' + durum, 'hata: ' + (sonHata || 'yok'),
+        'sade: ' + sade, 'ekran: ' + innerWidth + 'x' + innerHeight, 'süre: ' + (Date.now() - basla) + ' ms', 'tarayıcı: ' + navigator.userAgent].join('\n');
+      (document.body || document.documentElement).appendChild(kutu);
+    }, 6000);
+  }
   if (!karar) return;
   if (document.body) guvenli(ac)();
   else {
@@ -82,7 +95,8 @@
     kok = null; durum = 'bitti';
     document.documentElement.classList.remove('dintro-acik', 'dintro-bekle');
   }
-  function guvenli(f) { return (...a) => { try { return f(...a); } catch (e) { acil(); } }; }
+  let sonHata = '';
+  function guvenli(f) { return (...a) => { try { return f(...a); } catch (e) { sonHata = String((e && e.message) || e); acil(); } }; }
 
   // ---------------- kurulum ----------------
   function ac(onizleme) {
@@ -151,7 +165,7 @@
     raf = requestAnimationFrame(dongu_);
   }
   // fonksiyon bildirimi: ac() betik başında eşzamanlı çalışırken de hazır olsun
-  function dongu_() { try { dongu(); } catch (e) { acil(); } }
+  function dongu_() { try { dongu(); } catch (e) { sonHata = String((e && e.message) || e); acil(); } }
 
   function kapat() {
     if (!kok || durum === 'bitti') return;

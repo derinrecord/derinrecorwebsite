@@ -143,3 +143,11 @@ test('uygulamada (DerinRecordApp) açılışın ilk sayfasında gelen yerden ba�
   assert.equal(goster({ ajan, yol: '/aerobik.html' }), false);
   assert.equal(goster({ ajan, arama: '?intro=0' }), false);
 });
+
+test('?intro=tani: açılış zorla gösterilir ve teşhis kutusu çizilir (Derin\'in telefonunda intro çıkmadı, 31 Ekim)', () => {
+  assert.equal(goster({ arama: '?intro=tani', oturum: true, referans: 'https://www.google.com/' }), true);
+  const k = oku('intro.js');
+  assert.match(k, /intro=tani|'tani'/);
+  assert.match(k, /dintro-tani/);
+  assert.match(k, /sonHata/);
+});
