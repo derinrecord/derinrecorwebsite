@@ -39,6 +39,7 @@ jobs:
           npx cap add android
           npx capacitor-assets generate --android --iconBackgroundColor '#000000' --splashBackgroundColor '#0b0b0d' --splashBackgroundColorDark '#0b0b0d'
           npx cap sync android
+          node sessiz-acilis.js
       - name: APK derle
         working-directory: app/android
         run: ./gradlew assembleDebug --no-daemon

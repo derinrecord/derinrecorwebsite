@@ -62,3 +62,26 @@ test('uygulama simgesi ve açılış görseli Derin Record logosundan üretilir'
   assert.match(String(p.devDependencies['@capacitor/assets']), /^\^?3\./);
   assert.match(oku('.github/workflows/android-deneme.yml'), /npx capacitor-assets generate --android/);
 });
+
+// Android'in kendi açılış ekranı (simge) görünmesin; intro zaten var (31 Ekim, Derin).
+test('sessiz açılış: sistem açılış ekranı simgesiz ve intro renginde', () => {
+  const { sessizlestir, BOS_SIMGE } = require('../app/sessiz-acilis.js');
+  const ornek = `<resources>
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+    </style>
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@drawable/splash</item>
+    </style>
+</resources>`;
+  const s = sessizlestir(ornek);
+  assert.match(s, /<item name="windowSplashScreenAnimatedIcon">@drawable\/bos_simge<\/item>/);
+  assert.match(s, /<item name="windowSplashScreenBackground">#0b0b0d<\/item>/);
+  assert.match(s, /<item name="android:windowBackground">#0b0b0d<\/item>/);
+  assert.match(s, /<item name="postSplashScreenTheme">@style\/AppTheme.NoActionBar<\/item>/);
+  assert.doesNotMatch(s, /@drawable\/splash/);
+  assert.match(s, /AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar"/);
+  assert.throws(() => sessizlestir('<resources></resources>'), /NoActionBarLaunch/);
+  assert.match(BOS_SIMGE, /android:color="@android:color\/transparent"/);
+  assert.match(oku('.github/workflows/android-deneme.yml'), /node \.\.\/sessiz-acilis\.js|node sessiz-acilis\.js/);
+});
