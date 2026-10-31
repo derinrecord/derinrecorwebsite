@@ -14,7 +14,7 @@ const URETIM_SAYFALARI = execFileSync('git', ['ls-files', '*.html'], {
   cwd: KOK,
   encoding: 'utf8'
 }).trim().split('\n').filter(Boolean).filter(dosya =>
-  !dosya.startsWith('tests/') && !dosya.startsWith('graphify-out/')
+  !dosya.startsWith('tests/') && !dosya.startsWith('graphify-out/') && !dosya.startsWith('app/') // app/: uygulama kabuğu, yayına girmez
 );
 
 // Açık anahtarlı ve otomatik mod sayfaları depodaki gerçek üretim envanterinden türetilir.
