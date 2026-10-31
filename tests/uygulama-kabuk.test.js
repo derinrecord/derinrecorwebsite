@@ -31,3 +31,15 @@ test('internetsiz sayfa var; app/ yayına girmez', () => {
   assert.match(h, /YENİDEN DENE/);
   assert.match(oku('.vercelignore'), /^app\/$/m);
 });
+
+test('android deneme iş akışı: apk üretir, gizli anahtar kullanmaz', () => {
+  const y = oku('.github/workflows/android-deneme.yml');
+  assert.match(y, /workflow_dispatch/);
+  assert.match(y, /paths:[\s\S]*'app\/\*\*'/);
+  assert.match(y, /java-version: '21'/);
+  assert.match(y, /node-version: '22'/);
+  assert.match(y, /npx cap add android/);
+  assert.match(y, /assembleDebug/);
+  assert.match(y, /derin-record-deneme\.apk/);
+  assert.doesNotMatch(y, /secrets\./);
+});
