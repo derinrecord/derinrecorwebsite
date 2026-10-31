@@ -1,0 +1,18 @@
+{
+  "appId": "com.derinrecord.app",
+  "appName": "Derin Record",
+  "webDir": "www",
+  "server": {
+    "url": "https://derinrecord.com",
+    "errorPath": "index.html",
+    "allowNavigation": ["derinrecord.com", "www.derinrecord.com", "*.supabase.co"]
+  },
+  "android": {
+    "appendUserAgent": "DerinRecordApp/1",
+    "backgroundColor": "#0b0b0d"
+  },
+  "ios": {
+    "appendUserAgent": "DerinRecordApp/1",
+    "backgroundColor": "#0b0b0d"
+  }
+}

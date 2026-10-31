@@ -14,3 +14,6 @@ prova-gorseller/
 
 # config.js İSTENEREK hariç tutulmadı: publishable (anon) anahtar tarayıcıda
 # çalışmak zorunda ve zaten herkese açıktır; veriyi RLS korur.
+
+# Uygulama kabuğu (App Store / Google Play paketi) yayına girmez.
+app/

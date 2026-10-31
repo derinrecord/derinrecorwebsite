@@ -1,0 +1,13 @@
+{
+  "name": "derin-record-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Derin Record uygulaması (App Store + Google Play) — canlı siteyi açan Capacitor kabuğu",
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0"
+  }
+}
