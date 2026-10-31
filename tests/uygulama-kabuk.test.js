@@ -50,3 +50,15 @@ test('deneme APK telefondan indirilebilsin diye ön sürüme konur', () => {
   assert.match(y, /gh release upload android-deneme derin-record-deneme\.apk --clobber/);
   assert.match(y, /--prerelease/);
 });
+
+test('uygulama simgesi ve açılış görseli Derin Record logosundan üretilir', () => {
+  const { execFileSync } = require('node:child_process');
+  const olcu = f => execFileSync('python3', ['-c', `from PIL import Image;print(*Image.open('${path.join(KOK, f)}').size)`], { encoding: 'utf8' }).trim();
+  assert.equal(olcu('app/assets/icon-only.png'), '1024 1024');
+  assert.equal(olcu('app/assets/icon-foreground.png'), '1024 1024');
+  assert.equal(olcu('app/assets/icon-background.png'), '1024 1024');
+  assert.equal(olcu('app/assets/splash.png'), '2732 2732');
+  const p = JSON.parse(oku('app/package.json'));
+  assert.match(String(p.devDependencies['@capacitor/assets']), /^\^?3\./);
+  assert.match(oku('.github/workflows/android-deneme.yml'), /npx capacitor-assets generate --android/);
+});

@@ -37,6 +37,7 @@ jobs:
         working-directory: app
         run: |
           npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#000000' --splashBackgroundColor '#0b0b0d' --splashBackgroundColorDark '#0b0b0d'
           npx cap sync android
       - name: APK derle
         working-directory: app/android
