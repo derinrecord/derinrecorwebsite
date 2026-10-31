@@ -12,7 +12,8 @@ test('kabuk canlı siteyi açar ve kendini tanıtır', () => {
   assert.equal(c.appId, 'com.derinrecord.app');
   assert.equal(c.appName, 'Derin Record');
   assert.equal(c.webDir, 'www');
-  assert.equal(c.server.url, 'https://derinrecord.com');
+  // derinrecord.com 308 ile www'ye yönlenir; yönlenme uygulamada intro'yu ve bağlantıları bozuyordu (31 Ekim, Derin'in telefon denemesi)
+  assert.equal(c.server.url, 'https://www.derinrecord.com');
   assert.equal(c.server.errorPath, 'index.html');
   assert.equal(c.android.appendUserAgent, 'DerinRecordApp/1');
   assert.equal(c.ios.appendUserAgent, 'DerinRecordApp/1');

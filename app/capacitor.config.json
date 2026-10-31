@@ -3,9 +3,13 @@
   "appName": "Derin Record",
   "webDir": "www",
   "server": {
-    "url": "https://derinrecord.com",
+    "url": "https://www.derinrecord.com",
     "errorPath": "index.html",
-    "allowNavigation": ["derinrecord.com", "www.derinrecord.com", "*.supabase.co"]
+    "allowNavigation": [
+      "www.derinrecord.com",
+      "derinrecord.com",
+      "*.supabase.co"
+    ]
   },
   "android": {
     "appendUserAgent": "DerinRecordApp/1",
