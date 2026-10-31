@@ -27,6 +27,9 @@
     if (zorla === '1') return true;
     if (!/^\/(index\.html)?$/.test(o.yol || '')) return false;
     if (o.oturum) return false;
+    // Uygulamada (App Store / Google Play) her açılışın ilk ana sayfasında gösterilir;
+    // gelinen yer (yönlenme, uygulama kabuğu) hesaba katılmaz (31 Ekim).
+    if (/DerinRecordApp\/\d+/.test(o.ajan || '')) return true;
     if (o.hash && o.hash.length > 1) return false;
     if (BOT.test(o.ajan || '')) return false;
     if (o.referans) {

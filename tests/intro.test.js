@@ -134,3 +134,12 @@ test('logo dosyaları var ve küçük (hızlı açılsın)', () => {
 test('fade in: logo koyu ekrandan yaklaşık 1 sn içinde yavaşça belirir', () => {
   assert.match(oku('intro.js'), /const gir = ara\(t, 0\.05, 1\.05\);/);
 });
+
+test('uygulamada (DerinRecordApp) açılışın ilk sayfasında gelen yerden bağımsız gösterilir; oturumda bir kez', () => {
+  const ajan = 'Mozilla/5.0 (Linux; Android 14; wv) AppleWebKit/537.36 Version/4.0 Chrome/120 Mobile Safari/537.36 DerinRecordApp/1';
+  assert.equal(goster({ ajan, referans: 'https://derinrecord.com/' }), true);
+  assert.equal(goster({ ajan, referans: 'https://www.derinrecord.com/', koken: 'https://www.derinrecord.com' }), true);
+  assert.equal(goster({ ajan, oturum: true }), false);
+  assert.equal(goster({ ajan, yol: '/aerobik.html' }), false);
+  assert.equal(goster({ ajan, arama: '?intro=0' }), false);
+});
