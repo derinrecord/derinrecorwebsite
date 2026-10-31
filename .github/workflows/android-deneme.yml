@@ -12,7 +12,7 @@ on:
       - '.github/workflows/android-deneme.yml'
 
 permissions:
-  contents: read
+  contents: write # deneme APK'sı "android-deneme" ön sürümüne konur (telefondan doğrudan indirilir)
 
 jobs:
   apk:
@@ -48,3 +48,9 @@ jobs:
           name: derin-record-deneme
           path: derin-record-deneme.apk
           retention-days: 30
+      - name: Telefondan indirilecek yere koy (android-deneme ön sürümü)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view android-deneme >/dev/null 2>&1 || gh release create android-deneme --prerelease --target "$GITHUB_SHA" --title "Derin Record — Android deneme" --notes "Yalnız deneme içindir; mağaza sürümü değildir."
+          gh release upload android-deneme derin-record-deneme.apk --clobber

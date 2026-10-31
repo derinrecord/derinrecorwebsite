@@ -43,3 +43,9 @@ test('android deneme iş akışı: apk üretir, gizli anahtar kullanmaz', () => 
   assert.match(y, /derin-record-deneme\.apk/);
   assert.doesNotMatch(y, /secrets\./);
 });
+
+test('deneme APK telefondan indirilebilsin diye ön sürüme konur', () => {
+  const y = oku('.github/workflows/android-deneme.yml');
+  assert.match(y, /gh release upload android-deneme derin-record-deneme\.apk --clobber/);
+  assert.match(y, /--prerelease/);
+});
