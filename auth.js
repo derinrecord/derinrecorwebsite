@@ -38,7 +38,25 @@
     const kalan = menuSuz(baglantilar.map(a => a.getAttribute('href')), state.profile?.role || null, true);
     baglantilar.forEach(a => { if (!kalan.includes(a.getAttribute('href'))) a.remove(); });
   }
-  window.DerinAuth = { ...state, ready, open: () => openAuth('login'), _menuSuz: menuSuz, _sayacYazisi: n => (!n || n < 1) ? '' : (n > 99 ? '99+' : String(n)) };
+  // Supabase hata metinleri anlaşılır Türkçeye çevrilir (1 Kasım: antrenör İngilizce hatalarla takıldı).
+  function hataMetni(hata) {
+    const kod = String(hata?.code || ''), m = String(hata?.message || '');
+    if (kod === 'invalid_credentials' || /invalid login credentials/i.test(m)) return dilMetni('auth.hataSifre', 'E-posta ya da şifre yanlış.');
+    if (kod === 'email_not_confirmed' || /email not confirmed/i.test(m)) return dilMetni('auth.hataOnaysiz', 'E-postan henüz onaylanmamış. Sana gelen en son onay e-postasındaki bağlantıyı aç.');
+    if (kod.includes('rate_limit') || /rate limit|you can only request this after/i.test(m)) return dilMetni('auth.hataSik', 'Çok sık denendi. Bir dakika bekleyip yeniden dene.');
+    if (kod === 'user_already_exists' || /already registered/i.test(m)) return dilMetni('auth.hataKayitli', 'Bu e-posta zaten kayıtlı. Giriş yap ya da şifreni yenile.');
+    if (kod === 'weak_password' || /at least \d+ characters/i.test(m)) return dilMetni('auth.hataKisa', 'Şifre en az 8 karakter olmalı.');
+    return m;
+  }
+  // Onay e-postasındaki bağlantıdan dönüşte adres çubuğu: eskimiş bağlantı mı, başarılı onay mı?
+  function adresDurumu(hash) {
+    const h = new URLSearchParams(String(hash || '').replace(/^#/, ''));
+    if (h.get('error_code') === 'otp_expired' || (h.get('error') === 'access_denied' && /expired|invalid/i.test(h.get('error_description') || ''))) return 'eskimis';
+    if (h.get('access_token') && h.get('type') === 'signup') return 'onaylandi';
+    return null;
+  }
+  const YENIDEN_BEKLE = 60; // sn: yeniden gönderme düğmesi bu kadar sonra açılır (Supabase sınırı)
+  window.DerinAuth = { ...state, ready, open: () => openAuth('login'), _menuSuz: menuSuz, _hataMetni: hataMetni, _adresDurumu: adresDurumu, _sayacYazisi: n => (!n || n < 1) ? '' : (n > 99 ? '99+' : String(n)) };
 
   const escapeHtml = value => String(value || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   // Dil: kısa metinler dil.js sözlüğünden gelir (TR varsayılan, EN karşılığı).
@@ -162,6 +180,39 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
   }
 
   let acikMod = null;
+  // Onay e-postasını yeniden gönderen düğme: basınca 60 sn kilitli kalır, geri sayım gösterir.
+  function yenidenGonderDugmesi(epostaAl, mesaj) {
+    const d = document.createElement('button'); d.type = 'button'; d.className = 'auth-switch auth-resend';
+    const etiket = dilMetni('auth.yenidenGonder', 'ONAY E-POSTASINI YENİDEN GÖNDER');
+    let sayac = null;
+    const kilitle = () => {
+      let kalan = YENIDEN_BEKLE; d.disabled = true;
+      const yaz = () => { d.textContent = `${etiket} (${kalan})`; };
+      yaz(); clearInterval(sayac);
+      sayac = setInterval(() => { kalan -= 1; if (kalan <= 0) { clearInterval(sayac); d.disabled = false; d.textContent = etiket; } else yaz(); }, 1000);
+    };
+    d.textContent = etiket;
+    d.onclick = async () => {
+      const email = String(epostaAl() || '').trim();
+      if (!email) { mesaj.textContent = dilMetni('shell.onceEposta', 'Önce e-posta adresini yaz, sonra bu bağlantıya bas.'); return; }
+      kilitle();
+      const { error } = await state.client.auth.resend({ type: 'signup', email, options: { emailRedirectTo: `${location.origin}/` } });
+      mesaj.textContent = error ? hataMetni(error) : dilMetni('auth.yeniGitti', 'Yeni onay e-postası gönderildi. En son gelen e-postayı aç; eski e-postalardaki bağlantılar artık çalışmaz.');
+    };
+    return { d, kilitle };
+  }
+  // Eskimiş onay bağlantısıyla gelen kişiye açıklama + yeni bağlantı isteme (1 Kasım).
+  function eskimisBaglanti() {
+    openAuth('login');
+    const kart = document.querySelector('.auth-overlay .auth-card');
+    if (!kart) return;
+    const kutu = document.createElement('div'); kutu.className = 'auth-eskimis';
+    kutu.innerHTML = `<p><strong>${dilMetni('auth.eskimisBaslik', 'Bu onay bağlantısı eskimiş.')}</strong> ${dilMetni('auth.eskimisMetin', 'Daha yeni bir onay e-postası geldiyse onu aç. Gelmediyse e-postanı yazıp yeni bağlantı iste.')}</p>`;
+    kart.querySelector('h2').after(kutu);
+    const mesaj = kart.querySelector('.auth-message');
+    const { d } = yenidenGonderDugmesi(() => kart.querySelector('input[name="email"]').value, mesaj);
+    d.textContent = dilMetni('auth.yeniBaglanti', 'YENİ BAĞLANTI GÖNDER'); kutu.append(d);
+  }
 
   function openAuth(mode) {
     acikMod = mode;
@@ -193,15 +244,18 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
       // Üyelik onayı: sözleşme kutusu işaretlenmeden hesap açılmaz; kabul edilen
       // metin sürümleri ve zamanı hesabın kayıt bilgisine yazılır (kanıt).
       if (signup && !form.get('onay')) { message.textContent = dilMetni('shell.onayGerekli', 'Kayıt için Kullanıcı Sözleşmesi’ni kabul etmen gerekiyor.'); return; }
+      const submit = event.currentTarget.querySelector('.auth-submit');
+      if (submit.disabled) return; // çift basışla ikinci kayıt e-postası gitmesin (eskisini geçersiz yapıyordu)
+      submit.disabled = true;
       const onay = { sozlesme_surum: SOZLESME_SURUM, aydinlatma_surum: AYDINLATMA_SURUM, kabul_at: new Date().toISOString() };
       const result = signup ? await state.client.auth.signUp({ email, password, options: { data: Object.assign({ full_name: String(form.get('name')).trim() }, onay) } }) : await state.client.auth.signInWithPassword({ email, password });
       if (result.error) {
+        submit.disabled = false;
         if (!signup) hatirlaTercihi = localStorage.getItem(HATIRLA_ANAHTARI) === '1';
-        message.textContent = result.error.message;
-        if (!signup && /confirm|onay|verified/i.test(result.error.message)) {
-          const resendButton = document.createElement('button'); resendButton.type = 'button'; resendButton.className = 'auth-switch'; resendButton.textContent = dilMetni('auth.yenidenGonder', 'ONAY E-POSTASINI YENİDEN GÖNDER');
-          resendButton.onclick = async () => { const resend = await state.client.auth.resend({ type:'signup', email, options:{ emailRedirectTo:`${location.origin}${location.pathname}` } }); message.textContent = resend.error ? resend.error.message : 'Yeni onay e-postası gönderildi.'; };
-          message.append(document.createElement('br'), resendButton);
+        message.textContent = hataMetni(result.error);
+        if (!signup && (result.error.code === 'email_not_confirmed' || /not confirmed/i.test(result.error.message))) {
+          const { d } = yenidenGonderDugmesi(() => email, message);
+          message.append(document.createElement('br'), d);
         }
         return;
       }
@@ -209,11 +263,13 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
         hatirlaTercihi ? localStorage.setItem(HATIRLA_ANAHTARI, '1') : localStorage.removeItem(HATIRLA_ANAHTARI);
       }
       if (signup && !result.data.session) {
-        message.innerHTML = `${dilMetni('auth.onayBekliyor', 'Kayıt oluşturuldu. E-postandaki onay bağlantısını açtıktan sonra giriş yap.')} <button class="auth-switch auth-resend" type="button">${dilMetni('auth.yenidenGonder', 'ONAY E-POSTASINI YENİDEN GÖNDER')}</button>`;
-        message.querySelector('.auth-resend').onclick = async () => {
-          const resend = await state.client.auth.resend({ type:'signup', email, options:{ emailRedirectTo:`${location.origin}${location.pathname}` } });
-          message.textContent = resend.error ? resend.error.message : 'Yeni onay e-postası gönderildi.';
-        };
+        // Form kapanır: aynı kişi yeniden kayıt olamaz; tek e-posta, açık yönerge (1 Kasım).
+        overlay.querySelector('.auth-form').hidden = true;
+        overlay.querySelector('.auth-switch').hidden = true;
+        const ad = String(email).replace(/[<>&"]/g, '');
+        message.innerHTML = `<strong>${dilMetni('auth.kayitTamam', 'Kaydın alındı.')}</strong> ${dilMetni('auth.epostaGitti', 'Onay e-postası {eposta} adresine gönderildi.').replace('{eposta}', `<b>${ad}</b>`)} ${dilMetni('auth.enSon', 'En son gelen e-postayı aç ve içindeki bağlantıya bas. Gelmezse spam klasörüne bak.')}<br>`;
+        const { d, kilitle } = yenidenGonderDugmesi(() => email, message);
+        message.append(d); kilitle();
       } else message.textContent = dilMetni('shell.basarili', 'Giriş başarılı.');
       if (result.data.session) setTimeout(() => { overlay.hidden = true; acikMod = null; }, 450);
     };
@@ -289,9 +345,16 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
     }
     shell();
     if (!configured) { renderAccount(); resolveReady(state); return; }
+    const gelis = adresDurumu(location.hash);
     state.client = window.supabase.createClient(config.supabaseUrl, config.supabasePublishableKey, { auth: { persistSession: true, storage: oturumDeposu, autoRefreshToken: true, detectSessionInUrl: true } });
     emit();
     const { data } = await state.client.auth.getSession(); await loadProfile(data.session?.user || null); resolveReady(state);
+    if (gelis === 'eskimis') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* yok */ } eskimisBaglanti(); }
+    if (gelis === 'onaylandi' && data.session) {
+      openAuth('login');
+      const kart = document.querySelector('.auth-overlay .auth-card');
+      if (kart) { kart.querySelector('.auth-form').hidden = true; kart.querySelectorAll('.auth-switch').forEach(b => { b.hidden = true; }); kart.querySelector('.auth-message').textContent = dilMetni('auth.onaylandi', 'E-postan onaylandı, hesabına giriş yapıldı. Hoş geldin!'); }
+    }
     state.client.auth.onAuthStateChange((_event, session) => { loadProfile(session?.user || null); });
   }
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
