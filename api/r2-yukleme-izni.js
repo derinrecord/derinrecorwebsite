@@ -82,6 +82,23 @@ function imzaliAdres({ accessKeyId, secretAccessKey, bucket, key, host, yontem }
   return `https://${host}${yol}?${sorgu}&X-Amz-Signature=${imza}`;
 }
 
+// --- Yetki kuralı ---
+// null = izin var; aksi hâlde { kod, hata }.
+// - yönetici: izinli klasörlerde yükler/siler; gizli klasörleri (proje/, dj/) okur.
+// - antrenör: YALNIZ kendi proje klasöründe (proje/<kendi kimliği>/...) yükler, siler
+//   ve okur (2 Kasım: Projelerim'den "proje iste" ile dosya gönderebilsin diye).
+//   Başka antrenörün klasörüne, radyo/demo/kapak/anons/dj klasörlerine yazamaz.
+function yetki(islem, key, yonetici, kimlik) {
+  if (islem === 'oku' && !OKU_ONEK.some(o => key.startsWith(o))) return { kod: 403, hata: 'Bu klasör imzalı okumaya kapalı.' };
+  if (yonetici) return null;
+  if (key.startsWith('dj/')) return { kod: 403, hata: 'DJ deposu yalnızca yöneticilerce kullanılabilir.' };
+  if (!key.startsWith('proje/')) return { kod: 403, hata: 'Bu işlem için yönetici olmanız gerekiyor.' };
+  if (!kimlik) return { kod: 401, hata: 'Oturum doğrulanamadı.' };
+  const parcalar = key.split('/');
+  if (parcalar[1] !== kimlik || parcalar.length < 3 || !parcalar[2]) return { kod: 403, hata: 'Bu proje klasörü size ait değil.' };
+  return null;
+}
+
 // --- İstek işleyici ---
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -136,33 +153,12 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // İşleme göre yetkilendirme:
-  // - yukle/sil: eski davranış, yalnızca yönetici.
-  // - oku: yönetici her gizli klasörü; antrenör yalnız kendi proje klasörünü.
-  //   Antrenörün kimliği belirteçle Supabase'e doğrulatılır — imzasız JWT
-  //   gövdesi burada okunmaz, karar Supabase tarafında verilir.
-  if (islem === 'oku') {
-    if (!OKU_ONEK.some(o => key.startsWith(o))) {
-      res.status(403).json({ hata: 'Bu klasör imzalı okumaya kapalı.' });
-      return;
-    }
-    if (!yonetici) {
-      if (key.startsWith('dj/')) {
-        res.status(403).json({ hata: 'DJ deposu yalnızca yöneticilerce okunabilir.' });
-        return;
-      }
-      const kimlik = await kullaniciId(auth);
-      if (!kimlik) {
-        res.status(401).json({ hata: 'Oturum doğrulanamadı.' });
-        return;
-      }
-      if (key.split('/')[1] !== kimlik) {
-        res.status(403).json({ hata: 'Bu proje klasörü size ait değil.' });
-        return;
-      }
-    }
-  } else if (!yonetici) {
-    res.status(403).json({ hata: 'Bu işlem için yönetici olmanız gerekiyor.' });
+  // İşleme göre yetkilendirme (kural: yetki() — aşağıda, testli).
+  // Antrenörün kimliği yalnız gerektiğinde, belirteçle Supabase'e doğrulatılır.
+  const kimlik = yonetici ? null : await kullaniciId(auth);
+  const karar = yetki(islem, key, yonetici, kimlik);
+  if (karar) {
+    res.status(karar.kod).json({ hata: karar.hata });
     return;
   }
 
@@ -180,3 +176,5 @@ module.exports = async (req, res) => {
 
   res.status(200).json({ adres, key, islem, saniye });
 };
+
+module.exports.yetki = yetki;

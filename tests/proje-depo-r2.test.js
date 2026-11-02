@@ -38,7 +38,8 @@ test('api oku işlemini, süresini ve yetki kuralını taşır', () => {
   assert.ok(/auth\/v1\/user/.test(api), 'antrenör kimliği /auth/v1/user ile doğrulanmalı (imzasız JWT okunamaz)');
   assert.ok(/600/.test(api), 'oku imzası 600 saniye geçerli olmalı');
   // Yetki: api yöneticiyi is_admin ile bilir; antrenöre yalnız kendi ilk klasörü açılır.
-  assert.ok(/split\('\/'\)\[1\]/.test(api), "proje/ yolunun ilk klasörü kullanıcı kimliğiyle karşılaştırılmalı");
+  // (2 Kasım: kural yetki() içinde; davranışı tests/proje-istek.test.js sınar)
+  assert.ok(/parcalar\[1\] !== kimlik/.test(api), "proje/ yolunun ilk klasörü kullanıcı kimliğiyle karşılaştırılmalı");
   assert.ok(/403/.test(api), 'yetkisiz oku isteği 403 dönmeli');
   // oku yalnız proje/ ve dj/ yolunu imzalar; radyo kova adresleri imzaya gerek duymaz.
   assert.ok(/proje\/'|'dj\//.test(api), "oku yalnız 'proje/' ve 'dj/' öneklerinde çalışmalı");
