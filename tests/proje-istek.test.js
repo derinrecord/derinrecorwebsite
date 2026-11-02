@@ -70,7 +70,8 @@ test('bağlantı: yalnız http(s), boşluk kırpılır, www eksikse https ekleni
 test('denetim: ad zorunlu; bağlantı ya da dosyadan en az biri; en çok 10 dosya; dosya başına 500 MB', () => {
   const dosya = (name, size = 1000, type = '') => ({ name, size, type });
   assert.match(P.denetle({ ad: ' ', baglanti: 'https://a.co', dosyalar: [] }).hata, /Proje adı/);
-  assert.match(P.denetle({ ad: 'Kuğu', baglanti: '', dosyalar: [] }).hata, /bağlantı ya da dosya/);
+  // 2 Kasım: bağlantı ve dosya isteğe bağlı (Derin); yalnız proje adı zorunlu.
+  assert.equal(P.denetle({ ad: 'Kuğu', baglanti: '', dosyalar: [] }).hata, undefined);
   assert.match(P.denetle({ ad: 'Kuğu', baglanti: 'kötü bağlantı', dosyalar: [] }).hata, /bağlantı geçerli değil/);
   assert.match(P.denetle({ ad: 'Kuğu', baglanti: '', dosyalar: [dosya('a.exe')] }).hata, /a\.exe/);
   assert.match(P.denetle({ ad: 'Kuğu', baglanti: '', dosyalar: Array.from({ length: 11 }, (_, i) => dosya(i + '.mp3')) }).hata, /en çok 10/);
@@ -119,4 +120,14 @@ test('Projelerim: antrenöre PROJE İSTE formu; yönetici eski panelini görür;
   assert.match(k, /SUTUNLAR='[^']*istek_baglanti,istek_ekleri'/);
   const h = oku('my-projects.html');
   assert.ok(h.indexOf('proje-istek.js?v=') > -1 && h.indexOf('proje-istek.js?v=') < h.indexOf('projects.js?v='));
+});
+
+test('A tasarımı: branş çipleri, sürükle-bırak dosya alanı, dosya listesi kaldırılabilir; beyaz yerli düğme gizli', () => {
+  const k = oku('projects.js');
+  assert.match(k, /name="istek-brans"/);
+  assert.match(k, /class="istek-birak"/);
+  assert.match(k, /data-istek-kaldir/);
+  assert.match(k, /istekDosyalari/);
+  const h = oku('my-projects.html');
+  assert.match(h, /\.istek-birak input\[type=file\]\{[^}]*(position:absolute|display:none)/);
 });

@@ -1,5 +1,6 @@
 // Proje iste (2 Kasım) · saf yardımcılar (Node'da sınanır; tarayıcıda window.DerinProjeIstek).
-// Antrenör Projelerim'den yeni proje isterken bağlantı ve dosya (ses, video, PDF, resim) gönderir.
+// Antrenör Projelerim'den yeni proje isterken bağlantı ve dosya (ses, video, PDF, resim) gönderir;
+// ikisi de isteğe bağlıdır, yalnız proje adı zorunludur.
 // Ses dosyaları projenin parçası olur (çalınır); diğerleri istek_ekleri listesinde durur.
 (function () {
   'use strict';
@@ -63,7 +64,6 @@
     if (ad.length > 120) return { hata: 'Proje adı en çok 120 harf olabilir.' };
     var b = baglanti(o.baglanti);
     if (b === false) return { hata: 'Yazdığın bağlantı geçerli değil. Bağlantıyı kopyalayıp yapıştır (ör. https://youtu.be/…).' };
-    if (!b && !dosyalar.length) return { hata: 'Bir bağlantı ya da dosya ekle; en az biri gerekli.' };
     if (dosyalar.length > EN_COK) return { hata: 'Bir istekte en çok 10 dosya gönderebilirsin.' };
     for (var i = 0; i < dosyalar.length; i++) {
       var d = dosyalar[i];

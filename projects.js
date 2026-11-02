@@ -277,35 +277,60 @@
 
   // Antrenör: "PROJE İSTE" formu (2 Kasım) — ad, branş, açıklama, bağlantı ve/veya dosyalar.
   const PI=window.DerinProjeIstek||null;
+  let istekDosyalari=[]; // seçilen dosyalar (yerli input'un listesi değiştirilemediği için ayrı tutulur)
+  const TUR_SIMGE={ses:'🎵',video:'🎬',pdf:'📄',resim:'🖼️'};
+  const CIP_AD={aerobik:'Aerobik','aero-dans':'Aero Dans',akrobatik:'Akrobatik',artistik:'Artistik',ritmik:'Ritmik','cocuk-fitness':'Çocuk Fitness'};
   function istekPanel(){
     return `<div class="proj-newfolder-overlay" id="proj-newfolder-overlay">
       <div class="proj-newfolder-panel proj-istek-panel">
-        <h3>Proje iste</h3>
-        <p>Ne istediğini anlat; bir bağlantı (YouTube, Spotify, Drive…) ya da dosya (ses, video, PDF, resim) ekle. İsteğin Derin Record'a ulaşır.</p>
-        <label class="istek-etiket">PROJE ADI<input type="text" id="istek-ad" maxlength="120" placeholder="Ör. Kuğu Gölü — grup serbest" autocomplete="off"></label>
-        <label class="istek-etiket">BRANŞ<select id="istek-brans"><option value="">Seç (isteğe bağlı)</option>${Object.entries(PI.BRANS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label>
-        <label class="istek-etiket">AÇIKLAMA<textarea id="istek-aciklama" maxlength="1000" rows="3" placeholder="Ör. 2:30 sürsün, girişte sert vuruş, 1:10'da tempo artsın"></textarea></label>
-        <label class="istek-etiket">BAĞLANTI<input type="text" inputmode="url" id="istek-baglanti" maxlength="500" placeholder="https://…" autocomplete="off"></label>
-        <label class="istek-etiket">DOSYALAR<input type="file" id="istek-dosyalar" multiple accept="${PI.accept()}"></label>
-        <p class="proj-newfolder-hint">Ses, video, PDF ve resim · en çok ${PI.EN_COK} dosya · dosya başına en çok 500 MB<br><small class="proj-surum">${L('sürüm','version')} ${SURUM}</small></p>
+        <h3>Yeni <em>proje</em></h3>
+        <p class="istek-alt">Ne istediğini anlat; istersen bağlantı ya da dosya ekle. Derin Record'a anında ulaşır.</p>
+        <label class="istek-alan"><span>PROJE ADI</span><input type="text" id="istek-ad" maxlength="120" placeholder="Ör. Kuğu Gölü — grup serbest" autocomplete="off"></label>
+        <p class="istek-etk">BRANŞ · İSTEĞE BAĞLI</p>
+        <div class="istek-cipler" role="radiogroup" aria-label="Branş">${Object.entries(PI.BRANS).map(([k,v])=>`<label class="istek-cip"><input type="radio" name="istek-brans" value="${k}"><b>${safe(CIP_AD[k]||v)}</b></label>`).join('')}</div>
+        <label class="istek-alan"><span>AÇIKLAMA</span><textarea id="istek-aciklama" maxlength="1000" rows="3" placeholder="Ör. 2:30 sürsün, girişte sert vuruş, 1:10'da tempo artsın"></textarea></label>
+        <label class="istek-alan"><span>🔗 BAĞLANTI · İSTEĞE BAĞLI</span><input type="text" inputmode="url" id="istek-baglanti" maxlength="500" placeholder="YouTube, Spotify, Drive…" autocomplete="off"></label>
+        <label class="istek-birak" id="istek-birak"><input type="file" id="istek-dosyalar" multiple accept="${PI.accept()}"><b>⬆ Dosyaları buraya bırak ya da seç</b><small>İsteğe bağlı · ses, video, PDF, resim · en çok ${PI.EN_COK} dosya, her biri en çok 500 MB</small></label>
+        <ul class="istek-dosyalar" id="istek-liste"></ul>
         <p class="proj-newfolder-error" id="proj-newfolder-error" role="alert">${safe(newFolderError)}</p>
         <p class="proj-newfolder-note" id="proj-newfolder-note" role="status">${safe(newFolderNote)}</p>
-        <div class="proj-newfolder-actions">
-          <button type="button" class="proj-newfolder-cancel" id="proj-newfolder-cancel">VAZGEÇ</button>
-          <button type="button" class="proj-istek-gonder" id="istek-gonder" ${newFolderBusy?'disabled':''}>${newFolderBusy?'GÖNDERİLİYOR…':'İSTEĞİ GÖNDER'}</button>
+        <div class="istek-alt-bar">
+          <button type="button" class="istek-vazgec" id="proj-newfolder-cancel">Vazgeç</button>
+          <button type="button" class="proj-istek-gonder" id="istek-gonder" ${newFolderBusy?'disabled':''}>${newFolderBusy?'GÖNDERİLİYOR…':'İSTEĞİ GÖNDER →'}</button>
         </div>
       </div>
     </div>`;
+  }
+  // Seçilen dosyaların listesi (✕ ile kaldırılır); panel yeniden çizilmeden yerinde güncellenir.
+  function istekListesiCiz(){
+    const ul=list.querySelector('#istek-liste'); if(!ul)return;
+    ul.innerHTML=istekDosyalari.map((f,i)=>`<li><i aria-hidden="true">${TUR_SIMGE[PI.tur(f)]||'📎'}</i><span>${safe(f.name)}</span><em>${safe(PI.boyutYazi(f.size))}</em><button type="button" data-istek-kaldir="${i}" aria-label="${safe(f.name)} kaldır">✕</button></li>`).join('');
+    ul.querySelectorAll('[data-istek-kaldir]').forEach(b=>{ b.onclick=()=>{ istekDosyalari.splice(Number(b.dataset.istekKaldir),1); istekListesiCiz(); }; });
+  }
+  function istekDosyaEkle(liste){
+    istekDosyalari=istekDosyalari.concat([...liste]).slice(0,PI.EN_COK*2);
+    istekListesiCiz();
+    const el=list.querySelector('#proj-newfolder-error');
+    if(el)el.textContent=PI.denetle({ad:'x',dosyalar:istekDosyalari}).hata||'';
+  }
+  function istekBagla(){
+    const birak=list.querySelector('#istek-birak'), giris=list.querySelector('#istek-dosyalar');
+    if(!birak||!giris||typeof birak.addEventListener!=='function')return;
+    giris.onchange=()=>{ istekDosyaEkle(giris.files||[]); giris.value=''; };
+    ['dragenter','dragover'].forEach(t=>birak.addEventListener(t,e=>{ e.preventDefault(); birak.classList.add('ustunde'); }));
+    ['dragleave','drop'].forEach(t=>birak.addEventListener(t,e=>{ e.preventDefault(); birak.classList.remove('ustunde'); }));
+    birak.addEventListener('drop',e=>{ if(e.dataTransfer?.files?.length)istekDosyaEkle(e.dataTransfer.files); });
+    istekListesiCiz();
   }
 
   async function istekGonder(){
     if(newFolderBusy)return;
     const $=id=>list.querySelector('#'+id);
-    const dosyalar=[...($('istek-dosyalar')?.files||[])]; // panel yeniden çizilmeden önce oku (iOS)
+    const dosyalar=istekDosyalari.slice();
     const yaz=(id,t)=>{ const el=$(id); if(el)el.textContent=t; };
     const v=PI.denetle({ad:$('istek-ad')?.value,baglanti:$('istek-baglanti')?.value,dosyalar});
     if(v.hata){ yaz('proj-newfolder-error',v.hata); return; }
-    const brans=$('istek-brans')?.value||null, aciklama=($('istek-aciklama')?.value||'').trim();
+    const brans=list.querySelector('input[name="istek-brans"]:checked')?.value||null, aciklama=($('istek-aciklama')?.value||'').trim();
     yaz('proj-newfolder-error','');
     newFolderBusy=true;
     const dugme=$('istek-gonder'); if(dugme){ dugme.disabled=true; dugme.textContent='GÖNDERİLİYOR…'; }
@@ -343,7 +368,7 @@
       // Antrenör notu: Derin Record'a Telegram bildirimi gider (proje_notu_bildir).
       await client.from('project_feedback').insert({project_id:proj.id,author_id:me,kind:'note',
         body:PI.notMetni({brans,aciklama,baglanti:v.baglanti,dosyalar})});
-      newFolderOpen=false; newFolderNote=''; newFolderError='';
+      newFolderOpen=false; newFolderNote=''; newFolderError=''; istekDosyalari=[];
       bildir('İsteğin Derin Record\'a gönderildi. Onaylandığında üretim burada başlar.','ok');
       await load();
     }catch(e){
@@ -358,7 +383,7 @@
       yaz('proj-newfolder-error','İstek gönderilemedi: '+neden+' Dosyaların seçili duruyor; tekrar deneyebilirsin.');
     }finally{
       newFolderBusy=false;
-      const d=$('istek-gonder'); if(d){ d.disabled=false; d.textContent='İSTEĞİ GÖNDER'; }
+      const d=$('istek-gonder'); if(d){ d.disabled=false; d.textContent='İSTEĞİ GÖNDER →'; }
     }
   }
 
@@ -1846,7 +1871,7 @@
     });
 
     const fabBtn=list.querySelector('#proj-fab-btn');
-    if(fabBtn)fabBtn.onclick=()=>{ newFolderOpen=!newFolderOpen; render(); };
+    if(fabBtn)fabBtn.onclick=()=>{ newFolderOpen=!newFolderOpen; istekDosyalari=[]; newFolderError=''; render(); };
 
     const nfOverlay=list.querySelector('#proj-newfolder-overlay');
     if(nfOverlay){
@@ -1958,6 +1983,7 @@
 
     const istekBtn=list.querySelector('#istek-gonder');
     if(istekBtn)istekBtn.onclick=istekGonder;
+    if(istekBtn&&!admin)istekBagla();
     // İstekle gelen dosya: kısa ömürlü imzalı adresle yeni sekmede açılır (2 Kasım).
     list.querySelectorAll('[data-istek-ek]').forEach(b=>{ b.onclick=async()=>{
       const pencere=window.open('','_blank');
