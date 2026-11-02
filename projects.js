@@ -6,8 +6,8 @@
   // otomatik çeviriyle eşleşmediği için burada seçilir; dil değişince sayfa yeniden çizilir.
   const L=(tr,en)=>document.documentElement?.getAttribute?.('data-dil')==='en'?en:tr;
   // Branş adı (veride Türkçe saklanır) ekranda seçili dilde büyük harfle.
-  const BRANS_EN={aerobik:'AEROBIC',akrobatik:'ACROBATIC',artistik:'ARTISTIC',ritmik:'RHYTHMIC','çocuk fitness':'KIDS FITNESS','cocuk-fitness':'KIDS FITNESS',proje:'PROJECT'};
-  const bransAdi=b=>{ const ham=String(b||''); const en=BRANS_EN[ham.toLocaleLowerCase('tr-TR')]; return L(ham.toLocaleUpperCase('tr-TR'),en||ham.toUpperCase()); };
+  const BRANS_EN={aerobik:'AEROBIC',akrobatik:'ACROBATIC',artistik:'ARTISTIC',ritmik:'RHYTHMIC','çocuk fitness':'KIDS FITNESS','cocuk-fitness':'KIDS FITNESS','aero-dans':'AERO DANCE',proje:'PROJECT'};
+  const bransAdi=b=>{ const ham=String(b||''); const en=BRANS_EN[ham.toLocaleLowerCase('tr-TR')]; const tr=(window.DerinProjeIstek&&window.DerinProjeIstek.BRANS[ham])||ham.toLocaleUpperCase('tr-TR'); return L(tr,en||ham.toUpperCase()); };
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   // "3 gün önce" gibi okunur zaman; bir haftadan eskiyse kısa tarih.
   const goreli=v=>{
@@ -88,7 +88,7 @@
     if(!client||!me)return;
     if(busy)return; busy=true;
     try{
-      const SUTUNLAR='id,coach_id,title,song,branch,status,note,download_allowed,created_at,updated_at';
+      const SUTUNLAR='id,coach_id,title,song,branch,status,note,download_allowed,created_at,updated_at,istek_baglanti,istek_ekleri';
       // Arşiv (26 Ekim): antrenör arşivdeki projeleri hiç çekmez; yönetici ayrı bölümde görür.
       let q=client.from('music_projects').select(SUTUNLAR+',arsivde,arsiv_tarihi').order('created_at',{ascending:false});
       if(!admin)q=q.eq('coach_id',me).eq('arsivde',false);
@@ -190,6 +190,7 @@
       <div class="proj-fold" id="proj-body-${p.id}">
       <div class="proj-fold-inner"${katli?' inert':''}>
       ${p.status==='pending'?'<div class="pj-bekleme"><strong>ONAY BEKLİYOR</strong>Talep Derin Record\'a ulaştı. Onaylandığında üretim süreci burada adım adım ilerler.</div>':bar(p.status)}
+      ${PI?PI.kutuHtml(p):''}
       <p class="pj-baslik"><span>PARÇALAR</span><i>${trs.length}</i></p>
       <div class="proj-tracks">${trs.length ? trs.map((tr,i)=>trackBlock(tr,i,p)).join('') : `<p class="proj-empty-track">Henüz parça yok. İlk taslak yüklendiğinde burada görünecek.</p>`}</div>
       ${admin?`<div class="proj-actions proj-yonetim"><span>YÖNETİM</span>
@@ -236,7 +237,7 @@
     }
     const groupsHtml=GROUPS.map(g=>{const it=projects.filter(p=>g.has(p.status));
       return `<section class="proj-group"><h2>${g.t} <i>${it.length}</i></h2>${it.length?it.map(card).join(''):'<p class="proj-empty">Bu grupta proje yok.</p>'}</section>`;}).join('');
-    list.innerHTML=`<button type="button" class="proj-fab" id="proj-fab-btn" aria-label="Yeni proje klasörü aç" title="Yeni proje klasörü aç"><b>${newFolderOpen?'×':'+'}</b><span>${newFolderOpen?'KAPAT':'YENİ PROJE'}</span></button>
+    list.innerHTML=`<button type="button" class="proj-fab" id="proj-fab-btn" aria-label="${admin?'Yeni proje klasörü aç':'Yeni proje iste'}" title="${admin?'Yeni proje klasörü aç':'Yeni proje iste'}"><b>${newFolderOpen?'×':'+'}</b><span>${newFolderOpen?'KAPAT':(admin?'YENİ PROJE':'PROJE İSTE')}</span></button>
       ${newFolderOpen?newFolderPanel():''}
       ${groupsHtml}${arsivBolumu()}`;
     status.textContent=projects.length?'● Canlı — değişiklikler anında yansır':'Henüz proje yok.';
@@ -274,7 +275,95 @@
     kutu.hidden=false;
   }
 
+  // Antrenör: "PROJE İSTE" formu (2 Kasım) — ad, branş, açıklama, bağlantı ve/veya dosyalar.
+  const PI=window.DerinProjeIstek||null;
+  function istekPanel(){
+    return `<div class="proj-newfolder-overlay" id="proj-newfolder-overlay">
+      <div class="proj-newfolder-panel proj-istek-panel">
+        <h3>Proje iste</h3>
+        <p>Ne istediğini anlat; bir bağlantı (YouTube, Spotify, Drive…) ya da dosya (ses, video, PDF, resim) ekle. İsteğin Derin Record'a ulaşır.</p>
+        <label class="istek-etiket">PROJE ADI<input type="text" id="istek-ad" maxlength="120" placeholder="Ör. Kuğu Gölü — grup serbest" autocomplete="off"></label>
+        <label class="istek-etiket">BRANŞ<select id="istek-brans"><option value="">Seç (isteğe bağlı)</option>${Object.entries(PI.BRANS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label>
+        <label class="istek-etiket">AÇIKLAMA<textarea id="istek-aciklama" maxlength="1000" rows="3" placeholder="Ör. 2:30 sürsün, girişte sert vuruş, 1:10'da tempo artsın"></textarea></label>
+        <label class="istek-etiket">BAĞLANTI<input type="text" inputmode="url" id="istek-baglanti" maxlength="500" placeholder="https://…" autocomplete="off"></label>
+        <label class="istek-etiket">DOSYALAR<input type="file" id="istek-dosyalar" multiple accept="${PI.accept()}"></label>
+        <p class="proj-newfolder-hint">Ses, video, PDF ve resim · en çok ${PI.EN_COK} dosya · dosya başına en çok 500 MB<br><small class="proj-surum">${L('sürüm','version')} ${SURUM}</small></p>
+        <p class="proj-newfolder-error" id="proj-newfolder-error" role="alert">${safe(newFolderError)}</p>
+        <p class="proj-newfolder-note" id="proj-newfolder-note" role="status">${safe(newFolderNote)}</p>
+        <div class="proj-newfolder-actions">
+          <button type="button" class="proj-newfolder-cancel" id="proj-newfolder-cancel">VAZGEÇ</button>
+          <button type="button" class="proj-istek-gonder" id="istek-gonder" ${newFolderBusy?'disabled':''}>${newFolderBusy?'GÖNDERİLİYOR…':'İSTEĞİ GÖNDER'}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  async function istekGonder(){
+    if(newFolderBusy)return;
+    const $=id=>list.querySelector('#'+id);
+    const dosyalar=[...($('istek-dosyalar')?.files||[])]; // panel yeniden çizilmeden önce oku (iOS)
+    const yaz=(id,t)=>{ const el=$(id); if(el)el.textContent=t; };
+    const v=PI.denetle({ad:$('istek-ad')?.value,baglanti:$('istek-baglanti')?.value,dosyalar});
+    if(v.hata){ yaz('proj-newfolder-error',v.hata); return; }
+    const brans=$('istek-brans')?.value||null, aciklama=($('istek-aciklama')?.value||'').trim();
+    yaz('proj-newfolder-error','');
+    newFolderBusy=true;
+    const dugme=$('istek-gonder'); if(dugme){ dugme.disabled=true; dugme.textContent='GÖNDERİLİYOR…'; }
+    let proj=null; const yuklenen=[]; const sesYollari=[];
+    try{
+      yaz('proj-newfolder-note','İstek kaydediliyor…');
+      const kayit=await client.from('music_projects')
+        .insert({coach_id:me,title:v.ad,status:'pending',branch:brans,note:aciklama||null,istek_baglanti:v.baglanti})
+        .select().single();
+      if(kayit.error)throw new Error(kayit.error.message);
+      proj=kayit.data;
+      const ekler=[];
+      for(let i=0;i<dosyalar.length;i++){
+        const f=dosyalar[i], tur=PI.tur(f);
+        const sira=`${i+1}/${dosyalar.length}`;
+        if(tur==='ses'&&sesGecerli(f)){
+          // Ses dosyası projenin parçası olur: oynatıcıda çalınır, not bırakılabilir.
+          const up=await yukleSesParcali(`${me}/${proj.id}-${Date.now()}`,f,(a,n,b,t)=>yaz('proj-newfolder-note',`${sira} · ${f.name} yükleniyor… ${yuzdeYazi(b,t)}`));
+          if(up.error)throw up.error;
+          sesYollari.push(up.path);
+          const tr=await client.from('project_tracks').insert({project_id:proj.id,label:f.name.replace(/\.[^.]+$/,'').slice(0,120),audio_path:up.path,version:1,sort_order:i});
+          if(tr.error)throw new Error('Parça kaydı yazılamadı: '+tr.error.message);
+        }else{
+          yaz('proj-newfolder-note',`${sira} · ${f.name} yükleniyor…`);
+          const yol=PI.yol(me,proj.id,i,f.name);
+          const up=await window.DerinR2.yukle('project-audio',yol,f,f.type||'application/octet-stream');
+          if(up.error)throw new Error(`“${f.name}” yüklenemedi: ${up.error.message}`);
+          yuklenen.push(yol);
+          ekler.push({yol,ad:f.name.slice(0,160),tur,boyut:f.size});
+        }
+      }
+      if(ekler.length){
+        await tekSatir(client.from('music_projects').update({istek_ekleri:ekler}).eq('id',proj.id),'Dosya listesi kaydedilemedi.');
+      }
+      // Antrenör notu: Derin Record'a Telegram bildirimi gider (proje_notu_bildir).
+      await client.from('project_feedback').insert({project_id:proj.id,author_id:me,kind:'note',
+        body:PI.notMetni({brans,aciklama,baglanti:v.baglanti,dosyalar})});
+      newFolderOpen=false; newFolderNote=''; newFolderError='';
+      bildir('İsteğin Derin Record\'a gönderildi. Onaylandığında üretim burada başlar.','ok');
+      await load();
+    }catch(e){
+      const neden=e?.message||'Bilinmeyen hata.';
+      // Yarım kalan isteği geri al: yüklenen dosyalar ve kayıt silinir; dosyalar seçili kalır.
+      if(proj){
+        try{ if(yuklenen.length)await window.DerinR2.sil('project-audio',yuklenen); }catch{}
+        try{ for(const y of sesYollari)await window.DerinR2.sil('project-audio',Ses.parcalariCoz(y).map(p=>p.path)); }catch{}
+        try{ await tekSatir(client.from('music_projects').delete().eq('id',proj.id),'Yarım istek geri alınamadı.'); }catch{}
+      }
+      yaz('proj-newfolder-note','');
+      yaz('proj-newfolder-error','İstek gönderilemedi: '+neden+' Dosyaların seçili duruyor; tekrar deneyebilirsin.');
+    }finally{
+      newFolderBusy=false;
+      const d=$('istek-gonder'); if(d){ d.disabled=false; d.textContent='İSTEĞİ GÖNDER'; }
+    }
+  }
+
   function newFolderPanel(){
+    if(!admin&&PI)return istekPanel();
     return `<div class="proj-newfolder-overlay" id="proj-newfolder-overlay">
       <div class="proj-newfolder-panel">
         <h3>Yeni proje klasörü</h3>
@@ -1866,6 +1955,18 @@
         }
       };
     }
+
+    const istekBtn=list.querySelector('#istek-gonder');
+    if(istekBtn)istekBtn.onclick=istekGonder;
+    // İstekle gelen dosya: kısa ömürlü imzalı adresle yeni sekmede açılır (2 Kasım).
+    list.querySelectorAll('[data-istek-ek]').forEach(b=>{ b.onclick=async()=>{
+      const pencere=window.open('','_blank');
+      try{
+        const adres=await window.DerinR2.korumaliAdres('project-audio',b.dataset.istekEk);
+        if(!adres)throw new Error('adres alınamadı');
+        if(pencere)pencere.location.href=adres; else location.href=adres;
+      }catch(e){ if(pencere)pencere.close(); bildir('Dosya açılamadı: '+(e?.message||''),'hata'); }
+    }; });
 
     // Proje kartını katla/aç — başlık satırı tıklanabilir (klavyeyle de).
     list.querySelectorAll('[data-projfold]').forEach(head=>{

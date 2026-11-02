@@ -95,7 +95,7 @@ test('r2-depo.js v2, R2 kullanan üç sayfada sayfa betiğinden önce yüklenir'
     assert.ok(betikAni >= 0 && depoAni < betikAni, ad + ' tarafında r2-depo.js ' + betik + "'ten önce gelmeli");
   }
   // Sayfa betik sürümleri değişen JS'te yükseltilmiş olmalı.
-  assert.ok(/projects\.js\?v=202610/.test(oku('my-projects.html')), 'projects.js sürümü artırılmış olmalı');
+  assert.ok(/projects\.js\?v=2026(10|11)/.test(oku('my-projects.html')), 'projects.js sürümü artırılmış olmalı');
   assert.ok(/chat\.js\?v=28/.test(oku('chat.html')), 'chat.js sürümü artırılmış olmalı');
   assert.ok(/harmonic-mixer\.js\?v=12/.test(oku('harmonic-mixer.html')), 'harmonic-mixer.js sürümü artırılmış olmalı');
 });
