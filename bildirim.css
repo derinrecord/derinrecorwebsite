@@ -1,0 +1,22 @@
+/* Web bildirimi daveti (4 Kasım) — ana sayfada, sol altta; koyu kart, sarı düğme. */
+.bildirim-davet{position:fixed;left:16px;bottom:16px;z-index:60;width:min(360px,calc(100vw - 32px));box-sizing:border-box;display:grid;grid-template-columns:auto 1fr auto;gap:8px 12px;align-items:start;padding:14px 14px 14px 16px;background:#17131a;color:#f4f1e9;border:1px solid rgba(244,241,233,.18);border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.55),4px 4px 0 #cb2468;font:400 13px/1.45 Arial,Helvetica,sans-serif;transform:translateY(20px);opacity:0;transition:transform .35s ease,opacity .35s ease}
+.bildirim-davet.gorunur{transform:none;opacity:1}
+.bildirim-davet .bd-zil{font-size:22px;line-height:1}
+.bildirim-davet p{margin:0}.bildirim-davet b{color:#e8d15a}
+.bildirim-davet .bd-kapat{grid-column:3;grid-row:1;border:0;background:none;color:#a8a5a0;font-size:15px;cursor:pointer;padding:2px 4px}
+.bildirim-davet .bd-ac{grid-column:2/4;justify-self:start;min-height:42px;padding:0 16px;border:0;border-radius:10px;background:#d8bb2c;color:#0b0b0d;font:900 12px Arial;letter-spacing:.08em;cursor:pointer}
+.bildirim-davet .bd-ac[disabled]{opacity:.55}
+.bildirim-davet .bd-mesaj{grid-column:2/4;color:#e8d15a;font-size:12px}.bildirim-davet .bd-mesaj:empty{display:none}
+@media (prefers-reduced-motion:reduce){.bildirim-davet{transition:none}}
+/* Bildirimler sayfası · yönetici gönderme kutusu */
+.bp-kutu{max-width:640px;margin:0 0 34px;padding:22px;border-radius:18px;background:#17131a;border:1px solid rgba(244,241,233,.18);box-shadow:6px 6px 0 #cb2468;color:#f4f1e9;font-family:Arial,Helvetica,sans-serif}
+.bp-etiket{margin:0 0 4px;color:#e8d15a;font:900 12px Arial;letter-spacing:.14em}.bp-sayi{margin:0 0 14px;color:#a8a5a0;font-size:13px}
+.bp-kutu label{display:block;margin:0 0 12px;font:800 11px Arial;letter-spacing:.1em}
+.bp-kutu input,.bp-kutu textarea,.bp-kutu select{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:12px 14px;border-radius:12px;border:1px solid rgba(244,241,233,.22);background:rgba(0,0,0,.35);color:#f4f1e9;font:16px Arial}
+.bp-kutu select option{color:#111}
+.bp-alt{display:flex;gap:10px;flex-wrap:wrap}
+.bp-alt button{min-height:46px;padding:0 18px;border:0;border-radius:12px;background:#d8bb2c;color:#0b0b0d;font:900 12px Arial;letter-spacing:.08em;cursor:pointer}
+.bp-alt button.ikinci{background:transparent;color:#f4f1e9;border:1px solid rgba(244,241,233,.3)}
+.bp-alt button[disabled]{opacity:.55}
+.bp-mesaj{margin:12px 0 0;color:#e8d15a;font-size:13px}.bp-mesaj:empty{display:none}
+@media (max-width:700px){.bildirim-davet{width:calc(100vw - 112px);left:12px;bottom:12px;font-size:12.5px;padding:12px}.bildirim-davet .bd-ac{min-height:40px;padding:0 12px;font-size:11px}}
