@@ -520,6 +520,8 @@
     display:flex;align-items:center;justify-content:center;transition:box-shadow .2s ease}
   .proj-newfolder-confirm:hover{background:var(--pj-altin2)}
   .proj-newfolder-confirm:disabled{opacity:.55;cursor:default}
+  .pj-bildirim{margin:14px 0 18px;min-height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--pj-cizgi2);background:rgba(255,255,255,.05);color:var(--pj-krem);font:800 11px Arial;letter-spacing:.1em;cursor:pointer}
+  .pj-bildirim:hover{border-color:var(--pj-altin);color:var(--pj-altin2)}
   /* Proje iste (2 Kasım) — A tasarımı: cam kart, kutu içi etiketler, branş çipleri, sürükle-bırak */
   .proj-istek-panel{max-width:460px;max-height:calc(100vh - 40px);overflow-y:auto;padding:28px 24px;
     background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02)),var(--pj-yuzey);
@@ -602,6 +604,7 @@
   <link rel="stylesheet" href="mobil.css?v=4">
   <link rel="stylesheet" href="ogretici.css?v=1">
   <link rel="stylesheet" href="dil.css?v=2026102401">
+<link rel="stylesheet" href="bildirim.css?v=2">
 </head>
 <body>
 <div class="noise"></div>
@@ -614,6 +617,7 @@
     <p class="eyebrow">DERİN RECORD · PROJE ODASI</p>
     <h1>Projelerim<br><em>ve aşamalar.</em></h1>
     <p class="pj-lead">Müziğinin her adımı tek yerde: onay, yapım, teslim. Yeni sürümler ve notlar anında burada.</p>
+    <button type="button" class="pj-bildirim" data-bildirim-ac>🔔 BİLDİRİMLERİ AÇ</button>
     <div class="pj-ozet" id="ozet" hidden></div>
     <div class="pj-arac">
       <p id="s" role="status">Hesap kontrol ediliyor…</p>
@@ -625,7 +629,7 @@
 </main>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
-<script src="uygulama.js?v=1"></script><script src="auth.js?v=20261101a"></script>
+<script src="uygulama.js?v=1"></script><script src="auth.js?v=20261101a"></script><script src="bildirim.js?v=2"></script>
 <script src="audio-file-types.js?v=4"></script>
 <script src="r2-depo.js?v=2"></script>
 <script src="project-track-controls.js?v=1"></script>
@@ -634,7 +638,7 @@
 <script src="ses-donustur.js?v=1"></script>
 <script src="not-islemleri.js?v=1"></script>
 <script src="proje-istek.js?v=2"></script>
-<script src="projects.js?v=20261102b"></script>
+<script src="proje-bildirim.js?v=1"></script><script src="projects.js?v=20261104a"></script>
 <script src="ogretici-turlar.js?v=3"></script><script src="ogretici.js?v=3" data-sayfa="projelerim"></script>
 <script src="dil.js?v=2026110101" defer></script>
 </body>

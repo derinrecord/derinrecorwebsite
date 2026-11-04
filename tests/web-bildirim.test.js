@@ -101,3 +101,13 @@ test('sayfalar: ana sayfa davet betiğini, Bildirimler sayfası gönderme kutusu
   assert.match(p, /\/api\/bildirim-gonder/);
   assert.match(p, /Bearer /);
 });
+
+test('davet: izin önceden verilmiş ama abonelik yoksa da çıkar; Projelerim ve alt bağlantıdan her zaman açılır', () => {
+  const b = oku('bildirim.js');
+  assert.doesNotMatch(b, /Notification\.permission !== 'default'\) return/);
+  assert.ok(b.includes('my-projects\\.html'));
+  assert.match(b, /\[data-bildirim-ac\]/);
+  assert.ok(oku('index.html').includes('data-bildirim-ac'));
+  const m = oku('my-projects.html');
+  assert.ok(m.includes('data-bildirim-ac') && m.includes('bildirim.js?v='));
+});

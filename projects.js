@@ -8,6 +8,20 @@
   // Branş adı (veride Türkçe saklanır) ekranda seçili dilde büyük harfle.
   const BRANS_EN={aerobik:'AEROBIC',akrobatik:'ACROBATIC',artistik:'ARTISTIC',ritmik:'RHYTHMIC','çocuk fitness':'KIDS FITNESS','cocuk-fitness':'KIDS FITNESS','aero-dans':'AERO DANCE',proje:'PROJECT'};
   const bransAdi=b=>{ const ham=String(b||''); const en=BRANS_EN[ham.toLocaleLowerCase('tr-TR')]; const tr=(window.DerinProjeIstek&&window.DerinProjeIstek.BRANS[ham])||ham.toLocaleUpperCase('tr-TR'); return L(tr,en||ham.toUpperCase()); };
+  // Proje bildirimi (4 Kasım): yönetici bir iş yaptığında projenin sahibinin telefonuna
+  // bildirim gider. Arka planda gönderilir; bildirim gitmese bile işlem bozulmaz.
+  async function musteriyeBildir(proje,tur,ek){
+    try{
+      const coach=proje&&proje.coach_id;
+      if(!admin||!coach||coach===me)return;
+      const m=window.DerinProjeBildirim&&window.DerinProjeBildirim.mesaj(tur,Object.assign({proje},ek||{}));
+      if(!m)return;
+      const {data}=await client.auth.getSession();
+      const t=data&&data.session&&data.session.access_token; if(!t)return;
+      fetch('/api/bildirim-gonder',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+t},
+        body:JSON.stringify(Object.assign({kullanici:coach},m))}).catch(()=>{});
+    }catch{}
+  }
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   // "3 gün önce" gibi okunur zaman; bir haftadan eskiyse kısa tarih.
   const goreli=v=>{
@@ -1698,6 +1712,7 @@
           start_sec:p.time,kind:'note',body:p.body||null,voice_path
         }).select('id').single();
         if(error)throw error;
+        musteriyeBildir(project,'not',{parca:tr.label});
         // Taslak kaydedildi: listeden çıkar ki ekranda "KAYDET VE GÖNDER" ile
         // kalıp ikinci kez gönderilmesin (25 Ekim çift not hatası).
         if(p.voiceBlobUrl){ try{ URL.revokeObjectURL(p.voiceBlobUrl); }catch(_){} }
@@ -1717,6 +1732,7 @@
       b.disabled=true;
       try{
         await tekSatir(client.from('project_tracks').update({indirme_izni:yeni}).eq('id',b.dataset.tddlizin),L('İndirme izni kaydedilemedi.','Download permission could not be saved.'));
+        if(yeni){ const t=Object.values(tracks).flat().find(x=>x.id===b.dataset.tddlizin); const pr=t&&tumProjeler().find(x=>x.id===t.project_id); musteriyeBildir(pr,'indirme',{parca:t&&t.label}); }
         bildir(yeni?L('Bu parçanın indirmesi açıldı.','Download allowed for this track.'):L('Bu parçanın indirmesi kapatıldı.','Download turned off for this track.'),'ok');
         await load();
       }catch(error){ bildir(L('İndirme izni kaydedilemedi: ','Download permission could not be saved: ')+error.message,'hata'); b.disabled=false; }
@@ -1755,6 +1771,7 @@
         if(insertRes.error)throw insertRes.error;
         await client.from('project_feedback').insert({project_id:project.id,author_id:me,kind:'system',
           body:`Yeni bir varyasyon eklendi (${tr.label||'parça'}). Lütfen inceleyiniz.`});
+        musteriyeBildir(project,'surum',{parca:tr.label});
         bildir('Yeni varyasyon eklendi, antrenöre bildirildi.','ok');
         openTrackId=null; detail={};
         await load();
@@ -1771,6 +1788,7 @@
       if(!body){ kutu?.focus(); return; }   // boş not gönderilmez
       genelGonder.disabled=true;
       const {error}=await client.from('project_feedback').insert({project_id:project.id,author_id:me,track_id:tr.id,kind:'note',body});
+      if(!error)musteriyeBildir(project,'not',{parca:tr.label});
       bildir(error?'Gönderilemedi: '+error.message:L('Not eklendi.','Note added.'),error?'hata':'ok');
       genelGonder.disabled=false;
       if(!error){ detail.selPointLocalId=GENEL; await load(); }
@@ -1945,6 +1963,7 @@
             if(trackResult.error)throw new Error(['Parça kaydı yazılamadı.',trackResult.error.message,tabloHint(trackResult.error.message)].filter(Boolean).join(' '));
           }
           newFolderOpen=false; newFolderNote='';
+          musteriyeBildir(proj,'proje');
           bildir(file?'Yeni klasör ve ses dosyası oluşturuldu.':'Yeni klasör oluşturuldu.','ok');
           await load();
         }catch(e){
@@ -2018,6 +2037,7 @@
       s.disabled=true;
       try{
         await tekSatir(client.from('music_projects').update({status:s.value,updated_at:new Date().toISOString()}).eq('id',s.dataset.stage),'Aşama kaydedilemedi: kayıt bulunamadı ya da yetkiniz yok.');
+        musteriyeBildir(tumProjeler().find(x=>x.id===s.dataset.stage),'asama',{asama:s.value});
         bildir('Aşama güncellendi.','ok');
       }catch(error){ bildir('Kaydedilemedi: '+error.message,'hata'); }
       s.disabled=false;load();
@@ -2067,6 +2087,7 @@
         const label=file.name.replace(/\.[^.]+$/,'');
         const result=await client.from('project_tracks').insert({project_id:project.id,label,audio_path:uploaded.path,version:1,sort_order:(tracks[project.id]||[]).length});
         if(result.error)throw new Error(['Parça kaydı yazılamadı.',result.error.message,tabloHint(result.error.message)].filter(Boolean).join(' '));
+        musteriyeBildir(project,'parca',{parca:label});
         bildir('Yeni parça projeye eklendi.','ok'); load();
       }catch(error){bildir('Parça eklenemedi: '+error.message,'hata');}
       finally{inp.disabled=false;inp.value='';}
@@ -2101,6 +2122,7 @@
       if(eskiParcalar.length){ try{ await window.DerinR2.sil('project-audio',eskiParcalar); }catch{} }
       await client.from('project_feedback').insert({project_id:proj.id,author_id:me,kind:'system',
         body:`Parçanız düzenlenmiş haliyle gönderildi (v${(tr.version||1)+1} · ${tr.label||'parça'}). Lütfen inceleyiniz.`});
+      musteriyeBildir(proj,'surum',{parca:tr.label});
       bildir('Varyasyon gönderildi, antrenöre bildirildi.','ok');
       load();
     });
@@ -2110,6 +2132,7 @@
       const body=box.value.trim(); if(!body)return;
       b.disabled=true;
       const {error}=await client.from('project_feedback').insert({project_id:b.dataset.fbsend,author_id:me,body,kind:'note'});
+      if(!error)musteriyeBildir(tumProjeler().find(x=>x.id===b.dataset.fbsend),'not');
       bildir(error?'Gönderilemedi: '+error.message:'Geri bildirim gönderildi.',error?'hata':'ok');
       box.value='';b.disabled=false;load();
     });
@@ -2124,6 +2147,7 @@
         project_id:tr.project_id,author_id:me,track_id:id,kind:'note',
         body:body||'Bu parça hakkında not.'
       });
+      if(!error)musteriyeBildir(tumProjeler().find(x=>x.id===tr.project_id),'not',{parca:tr.label});
       bildir(error?'Gönderilemedi: '+error.message:'Not gönderildi.',error?'hata':'ok');
       if(!error && inp)inp.value='';
       b.disabled=false;

@@ -509,6 +509,7 @@
     'Projelerim': 'My projects',
     've aşamalar.': 'and stages.',
     'Müziğinin her adımı tek yerde: onay, yapım, teslim. Yeni sürümler ve notlar anında burada.': 'Every step of your music in one place: approval, production, delivery. New versions and notes appear here instantly.',
+    '🔔 BİLDİRİMLERİ AÇ': '🔔 TURN ON NOTIFICATIONS',
     '↻ YENİLE': '↻ REFRESH',
     'Parçayı oynat': 'Play track',
     'Parçayı duraklat': 'Pause track',

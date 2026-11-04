@@ -20,3 +20,4 @@
 .bp-alt button[disabled]{opacity:.55}
 .bp-mesaj{margin:12px 0 0;color:#e8d15a;font-size:13px}.bp-mesaj:empty{display:none}
 @media (max-width:700px){.bildirim-davet{width:calc(100vw - 112px);left:12px;bottom:12px;font-size:12.5px;padding:12px}.bildirim-davet .bd-ac{min-height:40px;padding:0 12px;font-size:11px}}
+.bildirim-davet .bd-kapa-bildirim{grid-column:2/4;justify-self:start;min-height:40px;padding:0 14px;border:1px solid rgba(244,241,233,.3);border-radius:10px;background:transparent;color:#f4f1e9;font:900 11px Arial;letter-spacing:.08em;cursor:pointer}

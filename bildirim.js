@@ -54,33 +54,53 @@
     return { tamam: true };
   }
 
-  // Ana sayfada küçük davet: yalnız izin henüz sorulmadıysa ve kapatılmadıysa.
-  async function davetGoster() {
-    if (!/^\/(index\.html)?$/.test(location.pathname)) return;
-    try { if (localStorage.getItem(KAPATILDI) === '1') return; } catch (e) { /* gizli mod */ }
+  // Davet kutusu. Kendiliğinden: ana sayfada ve Projelerim'de, abone değilse ve kapatılmadıysa.
+  // İzin daha önce verilmiş ama abonelik kaydı yoksa da gösterilir (4 Kasım: telefon ayarından
+  // izin verilen müşteride kutu hiç çıkmamıştı). "🔔 Bildirimler" bağlantısı kutuyu her zaman açar.
+  const OTOMATIK_SAYFA = /^\/(index\.html|my-projects\.html)?$/;
+  async function davetGoster(zorla) {
+    if (document.querySelector('.bildirim-davet')) return;
+    if (!zorla) {
+      if (!OTOMATIK_SAYFA.test(location.pathname)) return;
+      try { if (localStorage.getItem(KAPATILDI) === '1') return; } catch (e) { /* gizli mod */ }
+    }
     const d = await durum();
-    if (d !== 'kapali' && d !== 'ana-ekran-gerekli') return;
-    if (d === 'kapali' && Notification.permission !== 'default') return;
+    if (!zorla && d !== 'kapali' && d !== 'ana-ekran-gerekli') return;
     const kutu = document.createElement('div');
     kutu.className = 'bildirim-davet';
     kutu.setAttribute('role', 'dialog');
     kutu.setAttribute('aria-label', 'Bildirimler');
-    kutu.innerHTML = '<span class="bd-zil" aria-hidden="true">🔔</span><p><b>Yeni demoları kaçırma.</b> Derin Record yeni şarkı ve duyuruları telefonuna bildirim olarak göndersin.</p><button type="button" class="bd-ac">BİLDİRİMLERİ AÇ</button><button type="button" class="bd-kapat" aria-label="Kapat">✕</button><small class="bd-mesaj" role="status"></small>';
+    const metin = d === 'acik' ? '<b>Bildirimler bu cihazda açık.</b> Yeni şarkı ve proje haberleri telefonuna gelecek.'
+      : '<b>Yeni demoları ve proje haberlerini kaçırma.</b> Derin Record telefonuna bildirim olarak göndersin.';
+    const dugme = d === 'acik' ? '<button type="button" class="bd-kapa-bildirim">BİLDİRİMLERİ KAPAT</button>' : '<button type="button" class="bd-ac">BİLDİRİMLERİ AÇ</button>';
+    kutu.innerHTML = '<span class="bd-zil" aria-hidden="true">🔔</span><p>' + metin + '</p>' + dugme + '<button type="button" class="bd-kapat" aria-label="Kapat">✕</button><small class="bd-mesaj" role="status"></small>';
     document.body.append(kutu);
     const mesaj = kutu.querySelector('.bd-mesaj');
-    kutu.querySelector('.bd-kapat').onclick = () => { try { localStorage.setItem(KAPATILDI, '1'); } catch (e) {} kutu.remove(); };
-    kutu.querySelector('.bd-ac').onclick = async e => {
+    if (d === 'ana-ekran-gerekli' || d === 'desteklenmiyor' || d === 'engelli') {
+      const r = await ac(); mesaj.textContent = r.hata || '';
+    }
+    kutu.querySelector('.bd-kapat').onclick = () => { if (!zorla) { try { localStorage.setItem(KAPATILDI, '1'); } catch (e) {} } kutu.remove(); };
+    const acB = kutu.querySelector('.bd-ac');
+    if (acB) acB.onclick = async e => {
       e.currentTarget.disabled = true;
       const r = await ac();
-      if (r.tamam) { mesaj.textContent = 'Bildirimler açıldı. Teşekkürler!'; setTimeout(() => kutu.remove(), 2200); try { localStorage.setItem(KAPATILDI, '1'); } catch (er) {} }
+      if (r.tamam) { mesaj.textContent = 'Bildirimler açıldı. Teşekkürler!'; setTimeout(() => kutu.remove(), 2200); }
       else { mesaj.textContent = r.hata; e.currentTarget.disabled = false; }
     };
+    const kapaB = kutu.querySelector('.bd-kapa-bildirim');
+    if (kapaB) kapaB.onclick = async () => { await kapat(); mesaj.textContent = 'Bildirimler kapatıldı.'; setTimeout(() => kutu.remove(), 1600); };
     requestAnimationFrame(() => kutu.classList.add('gorunur'));
   }
 
-  window.DerinBildirim = { durum, ac, kapat };
+  window.DerinBildirim = { durum, ac, kapat, davetGoster };
   if (typeof document !== 'undefined') {
-    const basla = () => setTimeout(davetGoster, 4000);
+    const basla = () => {
+      setTimeout(() => davetGoster(false), 4000);
+      document.addEventListener('click', e => {
+        const b = e.target.closest && e.target.closest('[data-bildirim-ac]');
+        if (b) { e.preventDefault(); davetGoster(true); }
+      });
+    };
     document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', basla) : basla();
   }
 })();

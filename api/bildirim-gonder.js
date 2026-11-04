@@ -5,7 +5,8 @@
 // Ek paket yok: şifreleme (RFC 8291, aes128gcm) ve VAPID imzası (RFC 8292)
 // Node'un kendi crypto modülüyle yapılır.
 //
-// Gövde: { baslik, metin, adres }   (adres: site içi yol, ör. "/ritmik.html")
+// Gövde: { baslik, metin, adres, kullanici? }   (adres: site içi yol, ör. "/ritmik.html")
+// kullanici verilirse bildirim yalnız o kişinin cihazlarına gider (Projelerim bildirimleri).
 //
 // Gerekli ortam değişkenleri (Vercel → Settings → Environment Variables):
 //   VAPID_ACIK  — herkese açık anahtar (bildirim.js'tekiyle aynı)
@@ -42,6 +43,14 @@ function icerik(g) {
   let adres = String((g && g.adres) || '/').trim();
   if (!/^\/(?!\/)[\w\-./?=&#%]*$/.test(adres)) adres = '/';
   return { baslik, metin, adres };
+}
+
+// Hedef kişi: yok → null (herkese), geçerli kimlik → kimlik, bozuk değer → false (reddedilir).
+const KIMLIK = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function hedef(g) {
+  const k = g && g.kullanici;
+  if (k == null || k === '') return null;
+  return KIMLIK.test(String(k)) ? String(k).toLowerCase() : false;
 }
 
 const hmac = (anahtar, veri) => crypto.createHmac('sha256', anahtar).update(veri).digest();
@@ -117,8 +126,11 @@ module.exports = async (req, res) => {
   if (typeof g === 'string') { try { g = JSON.parse(g); } catch (e) { g = {}; } }
   const yuk = icerik(g);
   if (yuk.hata) { res.status(400).json({ hata: yuk.hata }); return; }
+  const kisi = hedef(g);
+  if (kisi === false) { res.status(400).json({ hata: 'Geçersiz kullanıcı.' }); return; }
 
-  const liste = await fetch(`${SUPABASE_URL}/rest/v1/bildirim_aboneleri?select=id,endpoint,p256dh,auth`, { headers: basliklar });
+  const filtre = kisi ? `&user_id=eq.${kisi}` : '';
+  const liste = await fetch(`${SUPABASE_URL}/rest/v1/bildirim_aboneleri?select=id,endpoint,p256dh,auth${filtre}`, { headers: basliklar });
   if (!liste.ok) { res.status(502).json({ hata: 'Abone listesi okunamadı.' }); return; }
   const aboneler = await liste.json();
 
@@ -142,3 +154,4 @@ module.exports.sifrele = sifrele;
 module.exports.vapidBasligi = vapidBasligi;
 module.exports.izinliUc = izinliUc;
 module.exports.icerik = icerik;
+module.exports.hedef = hedef;
