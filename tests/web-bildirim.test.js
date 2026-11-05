@@ -111,3 +111,10 @@ test('davet: izin önceden verilmiş ama abonelik yoksa da çıkar; Projelerim v
   const m = oku('my-projects.html');
   assert.ok(m.includes('data-bildirim-ac') && m.includes('bildirim.js?v='));
 });
+
+test('bildirimi açık cihaz giriş yapınca aboneliği kendiliğinden o hesaba bağlanır', () => {
+  const b = oku('bildirim.js');
+  assert.match(b, /async function hesabaBagla\(/);
+  assert.match(b, /derin:authchange', hesabaBagla/);
+  assert.match(b, /Notification\.permission !== 'granted'\) return/);
+});

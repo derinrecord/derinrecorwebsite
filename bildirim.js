@@ -92,10 +92,30 @@
     requestAnimationFrame(() => kutu.classList.add('gorunur'));
   }
 
+  // Giriş yapan kişinin bu cihazdaki aboneliği onun hesabına bağlanır (5 Kasım): böylece
+  // bildirimleri girişten önce açmış olsa da Projelerim bildirimleri ona ulaşır.
+  let sonBaglanan = '';
+  async function hesabaBagla() {
+    try {
+      const a = window.DerinAuth;
+      const kim = a && a.user && a.user.id;
+      if (!kim || kim === sonBaglanan || !destek()) return;
+      if (Notification.permission !== 'granted') return;
+      const k = await navigator.serviceWorker.getRegistration();
+      const s = k && await k.pushManager.getSubscription();
+      if (!s) return;
+      const c = a.client || await istemci(); if (!c) return;
+      const { error } = await c.rpc('bildirim_abone_ol', { p_endpoint: s.endpoint, p_p256dh: b64url(s.getKey('p256dh')), p_auth: b64url(s.getKey('auth')) });
+      if (!error) sonBaglanan = kim;
+    } catch (e) { /* sessiz: bildirim bağlanamazsa sayfa etkilenmez */ }
+  }
+
   window.DerinBildirim = { durum, ac, kapat, davetGoster };
   if (typeof document !== 'undefined') {
     const basla = () => {
       setTimeout(() => davetGoster(false), 4000);
+      window.addEventListener('derin:authchange', hesabaBagla);
+      setTimeout(hesabaBagla, 1500);
       document.addEventListener('click', e => {
         const b = e.target.closest && e.target.closest('[data-bildirim-ac]');
         if (b) { e.preventDefault(); davetGoster(true); }
