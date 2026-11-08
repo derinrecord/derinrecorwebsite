@@ -1,0 +1,17 @@
+/* Derin Record arka planı (8 Kasım 2026): gren kaldırıldı; yerine Derin Record
+   noktaları (sağ üstte pembe, sol altta sarı) ve çok şeffaf, yavaş hareket eden
+   aurora ışıkları. Sayfalardaki <div class="arka"> öğesiyle çalışır. */
+.noise{display:none!important}
+html{background:#09090b}
+body{background:transparent!important}
+.arka{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;background:#09090b}
+.arka i{position:absolute;border-radius:50%;filter:blur(110px);animation:arka-suz 26s ease-in-out infinite alternate}
+.arka .p{width:46vw;height:46vw;left:-12vw;top:-14vw;background:#cb2468;opacity:.22}
+.arka .s{width:36vw;height:36vw;right:-10vw;top:10vh;background:#e8d15a;opacity:.1;animation-duration:32s}
+.arka .m{width:44vw;height:44vw;left:30vw;top:60vh;background:#5b2a8c;opacity:.16;animation-duration:38s}
+.arka b{position:absolute;inset:0;background-size:22px 22px}
+.arka .t{background-image:radial-gradient(circle,rgba(203,36,104,.55) 1.6px,transparent 2.4px);-webkit-mask-image:radial-gradient(ellipse 70% 60% at 85% 0%,#000,transparent 70%);mask-image:radial-gradient(ellipse 70% 60% at 85% 0%,#000,transparent 70%)}
+.arka .t2{background-image:radial-gradient(circle,rgba(232,209,90,.35) 1.4px,transparent 2.2px);-webkit-mask-image:radial-gradient(ellipse 45% 40% at 0% 75%,#000,transparent 70%);mask-image:radial-gradient(ellipse 45% 40% at 0% 75%,#000,transparent 70%)}
+@keyframes arka-suz{to{transform:translate(5vw,4vh) scale(1.1)}}
+@media (prefers-reduced-motion:reduce){.arka i{animation:none}}
+@media print{.arka{display:none}}

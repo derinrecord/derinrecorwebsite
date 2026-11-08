@@ -1041,6 +1041,17 @@
     klasorleriSirala();
     D.kurulum['plan-takvimi.sql'] = !planItems.error;
 
+    // Mekân vitrini (supabase/mekan-vitrini.sql). Kurulmadıysa sorgular hata
+    // döner: liste detayındaki vitrin kutusu kurulum uyarısı gösterir.
+    const vitrin = await client.from('brand_playlists').select('id,vitrin_goster,vitrin_tur,vitrin_ad,vitrin_tarz,vitrin_sira');
+    D.kurulum['mekan-vitrini.sql'] = !vitrin.error;
+    if (!vitrin.error) {
+      (vitrin.data || []).forEach(v => { const pl = D.playlists.find(x => x.id === v.id); if (pl) Object.assign(pl, v); });
+      const dalgali = await client.from('radio_tracks').select('id').not('dalga', 'is', null);
+      const var_ = new Set(((dalgali && dalgali.data) || []).map(x => x.id));
+      D.tracks.forEach(t => { t.dalgaVar = var_.has(t.id); });
+    }
+
     // Telefon bildirimi (supabase/radio-telegram.sql): alarmı sunucudan
     // Telegram'a taşıyan ayar ve tetikleyici.
     //
@@ -2977,6 +2988,49 @@
         }
         if (state.openPlaylist === id) { state.openPlaylist = null; git('#/markalar'); }
         await yenile(false); bildir('Liste silindi.');
+        return;
+      }
+      case 'list-vitrin': {
+        // Mekân vitrini (8 Kasım): listeyi /coffee'de göster / kaldır. Gösterirken
+        // dalgası olmayan parçaların gerçek ses dalgası tarayıcıda çıkarılıp kaydedilir.
+        const pl = D.playlists.find(x => x.id === id);
+        if (!pl) return;
+        const msg = el('vt-msg');
+        const goster = hedef.dataset.goster === '1';
+        if (!goster) {
+          const sorun = await yazDogrula(client.from('brand_playlists').update({ vitrin_goster: false }).eq('id', id), 'Liste siteden kaldırılamadı');
+          if (sorun) return hata(sorun);
+          await yenile(false); bildir('Liste mekân sayfasından kaldırıldı.');
+          return;
+        }
+        const ad = (el('vt-ad').value || '').trim().replace(/\s+/g, ' ');
+        if (!ad) return hata('Sitedeki ad boş olamaz.');
+        const guncel = { vitrin_goster: true, vitrin_tur: el('vt-tur').value, vitrin_ad: ad, vitrin_tarz: (el('vt-tarz').value || '').trim() || null };
+        const MV = window.DerinMekanVitrini;
+        const parcalar = D.playlistTracks.filter(x => x.playlist_id === id).map(x => D.tracks.find(t => t.id === x.track_id)).filter(t => t && !t.dalgaVar);
+        if (MV && parcalar.length && (window.AudioContext || window.webkitAudioContext)) {
+          for (let i = 0; i < parcalar.length; i++) {
+            const t = parcalar[i];
+            if (msg) msg.textContent = 'Ses dalgaları çıkarılıyor… ' + (i + 1) + ' / ' + parcalar.length + ' · ' + t.title;
+            try {
+              const yol = Ses && Ses.parcalariCoz ? Ses.parcalariCoz(t.storage_path)[0].path : t.storage_path;
+              const veri = await (await fetch(ui.ses(yol))).arrayBuffer();
+              const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100);
+              const buf = await ctx.decodeAudioData(veri);
+              const kanallar = [];
+              for (let k = 0; k < Math.min(2, buf.numberOfChannels); k++) kanallar.push(buf.getChannelData(k));
+              // Vitrin yalnız ilk 60 saniyeyi çalar; dalga da o bölümü gösterir.
+              const sinir = Math.min(buf.length, Math.round(MV.DEMO_SANIYE * buf.sampleRate));
+              const dalga = MV.tepeler(kanallar.map(k => k.subarray(0, sinir)), 120);
+              const sorun = await yazDogrula(client.from('radio_tracks').update({ dalga }).eq('id', t.id), 'Dalga kaydedilemedi');
+              if (!sorun) t.dalgaVar = true;
+            } catch (e) { /* bu parçanın dalgası çıkarılamadı; sitede düz çubuk görünür */ }
+          }
+        }
+        const sorun = await yazDogrula(client.from('brand_playlists').update(guncel).eq('id', id), 'Liste sitede gösterilemedi');
+        if (sorun) return hata(sorun);
+        await yenile(false);
+        bildir('Liste mekân sayfasında yayında: derinrecord.com/coffee');
         return;
       }
       case 'list-rename': {

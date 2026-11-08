@@ -1706,7 +1706,9 @@
     { anahtar: 'radio-yayin-durdurma.sql', ad: 'Yayın durumu ayrımı',
       aciklama: '“Yayın yok” cevabının sebebini ayırır: durdurulmuş mu, marka mı kapalı, abonelik mi bitti.', etki: 'Oynatıcı' },
     { anahtar: 'marka-kapagi.sql', ad: 'Marka kapağı',
-      aciklama: 'Marka başına bir görsel; kendi kapağı olmayan liste ve parçaların varsayılanı olur.', etki: 'Markalar · sunum' }
+      aciklama: 'Marka başına bir görsel; kendi kapağı olmayan liste ve parçaların varsayılanı olur.', etki: 'Markalar · sunum' },
+    { anahtar: 'mekan-vitrini.sql', ad: 'Mekân vitrini',
+      aciklama: 'Çalma listelerini mekân sayfasında (/coffee) demo olarak gösterir; marka adı sitede görünmez.', etki: 'Liste detayı · mekân sayfası' }
   ];
 
   function kurulumDurum(durum) {
@@ -2393,6 +2395,35 @@
   }
 
 
+  // Mekân vitrini (8 Kasım): listeyi /coffee sayfasında demo olarak göster.
+  // Sitede marka adı değil, burada yazılan "sitedeki ad" görünür.
+  const VITRIN_TURLERI = [['kafe', 'Kafe'], ['restoran', 'Restoran'], ['otel', 'Otel'], ['magaza', 'Mağaza']];
+  function vitrinPaneli(pl, D, adet) {
+    if (D.kurulum && D.kurulum['mekan-vitrini.sql'] === false) {
+      return `<div class="panel" style="margin-bottom:18px"><h3>MEKÂN SAYFASINDA GÖSTER</h3>
+        <p class="panel-sub">Bu özellik için <b>supabase/mekan-vitrini.sql</b> çalıştırılmalı.</p></div>`;
+    }
+    const dalgasiz = D.playlistTracks.filter(x => x.playlist_id === pl.id)
+      .map(x => D.tracks.find(t => t.id === x.track_id)).filter(t => t && !t.dalgaVar).length;
+    return `<div class="panel" style="margin-bottom:18px" data-vitrin-panel>
+        <h3>MEKÂN SAYFASINDA GÖSTER ${pl.vitrin_goster ? chip('live', 'SİTEDE') : ''}</h3>
+        <p class="panel-sub">İşaretlersen bu liste mekân sayfasında (/coffee) demo olarak dinlenir: her şarkıdan 60 saniye. Sitede <b>marka adı görünmez</b>, aşağıya yazdığın ad görünür.</p>
+        <div class="form-grid">
+          <div class="field"><label for="vt-tur">MEKÂN TÜRÜ</label>
+            <select id="vt-tur">${VITRIN_TURLERI.map(([k, ad]) => `<option value="${k}" ${pl.vitrin_tur === k ? 'selected' : ''}>${ad}</option>`).join('')}</select></div>
+          <div class="field"><label for="vt-ad">SİTEDEKİ AD</label>
+            <input id="vt-ad" value="${esc(pl.vitrin_ad || pl.name)}" maxlength="60" placeholder="Örn. Sabah Açılış" autocomplete="off"></div>
+          <div class="field"><label for="vt-tarz">TARZ (isteğe bağlı)</label>
+            <input id="vt-tarz" value="${esc(pl.vitrin_tarz || '')}" maxlength="60" placeholder="Örn. Akustik · Lo-fi" autocomplete="off"></div>
+        </div>
+        <div class="row">
+          <button class="btn primary" data-act="list-vitrin" data-id="${esc(pl.id)}" data-goster="1" type="button" ${adet ? '' : 'disabled'}>${pl.vitrin_goster ? 'SİTEDEKİ BİLGİLERİ KAYDET' : 'SİTEDE GÖSTER'}</button>
+          ${pl.vitrin_goster ? `<button class="btn danger" data-act="list-vitrin" data-id="${esc(pl.id)}" data-goster="0" type="button">SİTEDEN KALDIR</button>` : ''}
+          <span class="sub" id="vt-msg">${adet ? (dalgasiz ? dalgasiz + ' şarkının ses dalgası kaydederken çıkarılacak.' : 'Bütün şarkıların ses dalgası hazır.') : 'Boş liste sitede gösterilemez.'}</span>
+        </div>
+      </div>`;
+  }
+
   // Liste detayı marka sayfasından açılır (#/markalar/<marka>/listeler/<liste>).
   // Liste silinmişse marka listesine dönülür: indeks ekranı yok.
   function listeDetay(state, D, ui) {
@@ -2459,6 +2490,7 @@
           ? 'Bu liste ' + kullanan + ' şubede yayında; adı değişince panelde ve sunumda yeni ad görünür.'
           : 'Bu liste hiçbir şubeye atanmamış; personel cihazdan seçerse çalar.'}</span>
       </div>
+      ${vitrinPaneli(pl, D, kayitlar.length)}
       <div class="panel">
         <h3>AKIŞ (${kayitlar.length})${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</h3>
         <table>

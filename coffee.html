@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="branch.css">
 <link rel="stylesheet" href="auth.css?v=20261101a">
 <link rel="stylesheet" href="glass.css?v=3">
+<link rel="stylesheet" href="mekan-vitrini.css?v=1">
 <style>
   .cf-hero{padding:70px 0 40px}
   .cf-hero h1{font-size:clamp(38px,7vw,82px);line-height:.98;letter-spacing:-.03em;margin:10px 0 18px}
@@ -43,9 +44,10 @@
 </style>
   <link rel="stylesheet" href="mobil.css?v=4">
   <link rel="stylesheet" href="dil.css?v=2026102401">
+<link rel="stylesheet" href="arka-plan.css?v=1">
 </head>
 <body>
-<div class="noise"></div>
+<div class="arka" aria-hidden="true"><i class="p"></i><i class="s"></i><i class="m"></i><b class="t"></b><b class="t2"></b></div>
 <header class="header">
   <a class="home" href="index.html"><span>←</span> ANA SAYFA</a>
   <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
@@ -57,6 +59,14 @@
     <p>Ticari mekanlarda kişisel müzik hesaplarını çalmak lisans ihlalidir.
        Derin Record, tamamı kendi stüdyomuzda üretilmiş özgün elektronik müzik arşivini
        yıllık lisansla sunar — telif sorunu olmadan, markanızın karakterine göre kurgulanmış olarak.</p>
+  </section>
+
+  <!-- Mekân demoları (8 Kasım): radyo panelinde "sitede göster" işaretli listeler. Liste yoksa gizli kalır. -->
+  <section class="mv" id="mekan-vitrini" hidden aria-labelledby="mv-baslik">
+    <p class="eyebrow">MEKAN DEMOLARI</p>
+    <div class="mv-bas"><h2 id="mv-baslik">Mekanınızı seçin,<br><span>sesini dinleyin.</span></h2>
+      <p>Her mekan türü için gün dilimlerine göre hazırlanmış çalma listeleri. Bir listeyi açın, mekanınızda nasıl duyulacağını dinleyin.</p></div>
+    <div data-mv-icerik></div>
   </section>
 
   <div class="cf-grid">
@@ -100,6 +110,10 @@
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="coffee.js?v=2"></script>
+<script src="audio-file-types.js?v=4"></script>
+<script src="r2-depo.js?v=3"></script>
+<script src="mekan-vitrini-yardim.js?v=1"></script>
+<script src="mekan-vitrini.js?v=1"></script>
   <!-- Ziyaretçi ölçümü (Vercel Web Analytics): çerez kullanmaz, kişisel veri tutmaz. -->
   <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
   <script defer src="/_vercel/insights/script.js"></script>
