@@ -7,7 +7,7 @@
 .mv-bas h2 span{color:#e8d15a}
 .mv-bas p{margin:0;max-width:360px;font-size:14px;line-height:1.6;opacity:.72}
 
-.mv-tur{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.mv-tur{display:grid;grid-template-columns:repeat(var(--mv-n,4),1fr);gap:14px;margin-bottom:22px}
 .mv-tur button{position:relative;height:140px;padding:18px;border-radius:24px;border:1px solid rgba(255,255,255,.14);color:inherit;font:inherit;text-align:left;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;transition:transform .2s}
 .mv-tur button:hover{transform:translateY(-2px)}
 .mv-tur button:disabled{opacity:.42;cursor:default;transform:none}
@@ -60,7 +60,7 @@
 body.mv-calar-acik{padding-bottom:96px}
 
 @media(max-width:700px){
-  .mv-tur{grid-template-columns:1fr 1fr}.mv-tur button{height:104px}
+  .mv-tur{grid-template-columns:1fr 1fr!important}.mv-tur button{height:104px}
   .mv-listeler{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:82%;overflow-x:auto;padding-bottom:4px}
   .mv-k{grid-template-columns:80px 1fr}.mv-kp{width:80px;height:80px}
   .mv-s{grid-template-columns:26px 1fr 36px;gap:10px;padding:10px 14px}

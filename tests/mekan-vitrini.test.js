@@ -57,7 +57,7 @@ test('SQL: yalnız sütun + güvenli fonksiyon; marka adı dönmez; RLS değişm
   assert.match(s, /add column if not exists dalga smallint\[\]/);
   assert.match(s, /function public\.mekan_vitrini\(\)/);
   assert.match(s, /security definer/);
-  assert.doesNotMatch(s, /create policy|drop policy|brands b|b\.name/);
+  assert.doesNotMatch(s, /on public\.(brand_playlists|radio_tracks|brands|brand_playlist_tracks) for|brands b|b\.name/);
 });
 
 test('mekân sayfası: bölüm başlığın altında, betikler yüklü', () => {
@@ -68,4 +68,26 @@ test('mekân sayfası: bölüm başlığın altında, betikler yüklü', () => {
   const j = oku('mekan-vitrini.js');
   assert.match(j, /rpc\('mekan_vitrini'\)/);
   assert.match(j, /DEMO_SANIYE/);
+});
+
+test('yazılar yöneticiden: varsayılanla birleşir, boş alan varsayılana döner, kapalı tür gizlenir', () => {
+  const a = MV.ayar({ baslik: 'Sesinizi bulun,', vurgu: '', turler: { otel: { ad: 'Butik Otel', ikon: '🏨', acik: true }, magaza: { acik: false } } });
+  assert.equal(a.baslik, 'Sesinizi bulun,');
+  assert.equal(a.vurgu, 'sesini dinleyin.');
+  assert.equal(a.ust, 'MEKAN DEMOLARI');
+  assert.equal(a.turler.otel.ad, 'Butik Otel');
+  assert.equal(a.turler.otel.ikon, '🏨');
+  assert.equal(a.turler.kafe.ad, 'Kafe');
+  assert.deepEqual(MV.acikTurler(a), ['kafe', 'restoran', 'otel']);
+  assert.deepEqual(MV.acikTurler(MV.ayar(null)), ['kafe', 'restoran', 'otel', 'magaza']);
+});
+
+test('SQL: yazı tablosu yalnız yöneticiye yazılır; vitrin yazıları da döndürür', () => {
+  const s = oku('supabase/mekan-vitrini.sql');
+  assert.match(s, /create table if not exists public\.mekan_vitrini_ayar/);
+  assert.match(s, /on public\.mekan_vitrini_ayar for all using \(public\.is_admin\(\)\)/);
+  assert.match(s, /'ayar'/);
+  const p = oku('radyo-panel-views.js') + oku('radyo-yonetim.js');
+  assert.match(p, /data-act="vitrin-yazilar"/);
+  assert.match(p, /from\('mekan_vitrini_ayar'\)\.upsert/);
 });

@@ -1047,6 +1047,8 @@
     D.kurulum['mekan-vitrini.sql'] = !vitrin.error;
     if (!vitrin.error) {
       (vitrin.data || []).forEach(v => { const pl = D.playlists.find(x => x.id === v.id); if (pl) Object.assign(pl, v); });
+      const ayar = await client.from('mekan_vitrini_ayar').select('ust,baslik,vurgu,aciklama,turler').eq('id', 1).maybeSingle();
+      D.vitrinAyar = (ayar && !ayar.error && ayar.data) || null;
       const dalgali = await client.from('radio_tracks').select('id').not('dalga', 'is', null);
       const var_ = new Set(((dalgali && dalgali.data) || []).map(x => x.id));
       D.tracks.forEach(t => { t.dalgaVar = var_.has(t.id); });
@@ -2988,6 +2990,41 @@
         }
         if (state.openPlaylist === id) { state.openPlaylist = null; git('#/markalar'); }
         await yenile(false); bildir('Liste silindi.');
+        return;
+      }
+      case 'vitrin-yazilar': {
+        // Mekân sayfasındaki bölüm yazıları ve mekân türleri (ad, simge, açık/kapalı).
+        // Boş bırakılan alan sitede varsayılan yazıya döner.
+        const MV = window.DerinMekanVitrini;
+        if (!MV) return hata('Sayfayı yenileyip tekrar dene.');
+        const a = MV.ayar(D.vitrinAyar), ham = D.vitrinAyar || {};
+        const alan = (id, etiket, deger, ipucu, uzun) => `<div class="field"><label for="${id}">${etiket}</label>${uzun
+          ? `<textarea id="${id}" rows="3" maxlength="300" placeholder="${esc(ipucu)}">${esc(deger || '')}</textarea>`
+          : `<input id="${id}" value="${esc(deger || '')}" maxlength="80" placeholder="${esc(ipucu)}" autocomplete="off">`}</div>`;
+        const turSatir = k => `<div class="form-grid" style="align-items:end">
+            ${alan('vy-' + k + '-ad', a.turler[k].ad.toLocaleUpperCase('tr-TR') + ' · AD', (ham.turler && ham.turler[k] && ham.turler[k].ad) || '', MV.TURLER[k].ad)}
+            ${alan('vy-' + k + '-ikon', 'SİMGE', (ham.turler && ham.turler[k] && ham.turler[k].ikon) || '', MV.TURLER[k].ikon)}
+            <label class="sub" style="display:flex;gap:8px;align-items:center;padding-bottom:10px"><input type="checkbox" id="vy-${k}-acik" ${a.turler[k].acik ? 'checked' : ''}> Sitede göster</label></div>`;
+        pencere({
+          baslik: 'Mekân sayfası yazıları',
+          govde: `<p class="sub">Boş bıraktığın alan sitede varsayılan yazıyla görünür (soluk yazılar varsayılan).</p>
+            ${alan('vy-ust', 'ÜST YAZI', ham.ust, MV.VARSAYILAN.ust)}
+            ${alan('vy-baslik', 'BAŞLIK (beyaz)', ham.baslik, MV.VARSAYILAN.baslik)}
+            ${alan('vy-vurgu', 'BAŞLIK (sarı)', ham.vurgu, MV.VARSAYILAN.vurgu)}
+            ${alan('vy-aciklama', 'AÇIKLAMA', ham.aciklama, MV.VARSAYILAN.aciklama, true)}
+            <h4 style="margin:18px 0 6px">MEKÂN TÜRLERİ</h4>${MV.SIRA.map(turSatir).join('')}`,
+          onayMetni: 'KAYDET',
+          onOnay: async () => {
+            const deger = id => (el(id).value || '').trim() || null;
+            const turler = {};
+            MV.SIRA.forEach(k => { turler[k] = { ad: deger('vy-' + k + '-ad'), ikon: deger('vy-' + k + '-ikon'), acik: el('vy-' + k + '-acik').checked }; });
+            const kayit = { id: 1, ust: deger('vy-ust'), baslik: deger('vy-baslik'), vurgu: deger('vy-vurgu'), aciklama: deger('vy-aciklama'), turler, guncellendi: new Date().toISOString() };
+            const sorun = await yazDogrula(client.from('mekan_vitrini_ayar').upsert(kayit), 'Yazılar kaydedilemedi');
+            if (sorun) return hata(sorun);
+            pencereKapat(); await yenile(false);
+            bildir('Mekân sayfası yazıları kaydedildi: derinrecord.com/coffee');
+          }
+        });
         return;
       }
       case 'list-vitrin': {

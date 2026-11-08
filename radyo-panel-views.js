@@ -2419,6 +2419,7 @@
         <div class="row">
           <button class="btn primary" data-act="list-vitrin" data-id="${esc(pl.id)}" data-goster="1" type="button" ${adet ? '' : 'disabled'}>${pl.vitrin_goster ? 'SİTEDEKİ BİLGİLERİ KAYDET' : 'SİTEDE GÖSTER'}</button>
           ${pl.vitrin_goster ? `<button class="btn danger" data-act="list-vitrin" data-id="${esc(pl.id)}" data-goster="0" type="button">SİTEDEN KALDIR</button>` : ''}
+          <button class="btn" data-act="vitrin-yazilar" type="button">SİTEDEKİ YAZILARI DÜZENLE</button>
           <span class="sub" id="vt-msg">${adet ? (dalgasiz ? dalgasiz + ' şarkının ses dalgası kaydederken çıkarılacak.' : 'Bütün şarkıların ses dalgası hazır.') : 'Boş liste sitede gösterilemez.'}</span>
         </div>
       </div>`;

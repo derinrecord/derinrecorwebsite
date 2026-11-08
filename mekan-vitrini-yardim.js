@@ -65,8 +65,28 @@
     return '<svg class="mv-dalga" viewBox="0 0 ' + W.toFixed(1) + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ffe680"/><stop offset="1" stop-color="#e0a92c"/></linearGradient></defs>' + parca + ibre + '</svg>';
   }
 
+  // Bölüm yazıları ve mekân türleri yöneticinin panelden düzenlediği ayardan gelir;
+  // boş bırakılan alan varsayılana döner.
+  var VARSAYILAN = {
+    ust: 'MEKAN DEMOLARI', baslik: 'Mekanınızı seçin,', vurgu: 'sesini dinleyin.',
+    aciklama: 'Her mekan türü için gün dilimlerine göre hazırlanmış çalma listeleri. Bir listeyi açın, mekanınızda nasıl duyulacağını dinleyin.'
+  };
+  function ayar(a) {
+    a = a || {};
+    var bos = function (v) { return v == null || String(v).trim() === ''; };
+    var sonuc = {};
+    Object.keys(VARSAYILAN).forEach(function (k) { sonuc[k] = bos(a[k]) ? VARSAYILAN[k] : String(a[k]).trim(); });
+    sonuc.turler = {};
+    SIRA.forEach(function (k) {
+      var t = (a.turler && a.turler[k]) || {};
+      sonuc.turler[k] = { ad: bos(t.ad) ? TURLER[k].ad : String(t.ad).trim(), ikon: bos(t.ikon) ? TURLER[k].ikon : String(t.ikon).trim(), renk: TURLER[k].renk, acik: t.acik !== false };
+    });
+    return sonuc;
+  }
+  function acikTurler(a) { return SIRA.filter(function (k) { return a.turler[k].acik; }); }
+
   function teklifMetni(l) {
-    var tur = TURLER[l && l.tur] ? TURLER[l.tur].ad : '';
+    var tur = (l && l.turAd) || (TURLER[l && l.tur] ? TURLER[l.tur].ad : '');
     return 'Mekân demosu: ' + (tur ? tur + ' · ' : '') + (l && l.ad ? l.ad : '') + ' — bu sesi istiyorum.';
   }
 
@@ -75,7 +95,7 @@
     return Math.floor(sn / 60) + ':' + String(sn % 60).padStart(2, '0');
   }
 
-  var api = { DEMO_SANIYE: DEMO_SANIYE, TURLER: TURLER, SIRA: SIRA, grupla: grupla, ilkDolu: ilkDolu, saatYazi: saatYazi, tepeler: tepeler, dalgaSvg: dalgaSvg, teklifMetni: teklifMetni, zamanYazi: zamanYazi };
+  var api = { DEMO_SANIYE: DEMO_SANIYE, TURLER: TURLER, SIRA: SIRA, grupla: grupla, ayar: ayar, acikTurler: acikTurler, VARSAYILAN: VARSAYILAN, ilkDolu: ilkDolu, saatYazi: saatYazi, tepeler: tepeler, dalgaSvg: dalgaSvg, teklifMetni: teklifMetni, zamanYazi: zamanYazi };
   if (typeof window !== 'undefined') window.DerinMekanVitrini = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();
