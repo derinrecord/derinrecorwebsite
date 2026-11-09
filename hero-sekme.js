@@ -31,6 +31,16 @@
     document.querySelectorAll('[data-hero-etiket]').forEach(function (e) { e.hidden = e.dataset.heroEtiket !== ad; });
     var hero = document.querySelector('.hero');
     if (hero) hero.dataset.sekme = ad;
+    isaretKoy();
+  }
+
+  // Sarı vurgu seçili sekmenin altına kayar (genişlik ve konum ölçülür).
+  function isaretKoy() {
+    var kutu = document.querySelector('.hero-sekmeler'), b = document.querySelector('[data-hero-sekme][aria-selected="true"]');
+    if (!kutu || !b || !b.offsetWidth) return;
+    kutu.style.setProperty('--hs-x', b.offsetLeft + 'px');
+    kutu.style.setProperty('--hs-w', b.offsetWidth + 'px');
+    kutu.classList.add('hs-hazir');
   }
 
   function kur() {
@@ -39,6 +49,10 @@
     var kayitli = null;
     try { kayitli = localStorage.getItem(ANAHTAR); } catch (e) { /* gizli pencere: varsayılan */ }
     goster(kayitli, false);
+    // Dil değişince ya da ekran boyu değişince yazı genişliği değişir: vurguyu yeniden ölç.
+    if (window.ResizeObserver) new ResizeObserver(isaretKoy).observe(kutu);
+    window.addEventListener('resize', isaretKoy);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(isaretKoy);
     kutu.addEventListener('click', function (e) {
       var b = e.target.closest('[data-hero-sekme]');
       if (!b) return;

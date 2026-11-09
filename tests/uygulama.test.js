@@ -55,3 +55,10 @@ test('antrenör uygulamada radyo görmez; kendi menüsü aynı kalır', () => {
 test('menü çizilince uygulamadaysa süzülür', () => {
   assert.match(oku('auth.js'), /window\.DerinApp\?\.uygulamada[\s\S]{0,200}_menuSuz|menuyuUygulamayaGoreSuz\(menu\)/);
 });
+
+test('üst menü: "MÜZİĞİNİ ARAŞTIR" düğmesi kaldırıldı (9 Kasım); hesap menüsünde MÜZİK ARAŞTIR kalır', () => {
+  const a = fs.readFileSync(path.join(__dirname, '..', 'auth.js'), 'utf8');
+  assert.doesNotMatch(a, /coach-action/);
+  assert.doesNotMatch(a, /MÜZİĞİNİ ARAŞTIR/);
+  assert.match(a, /<a href="music-request\.html">MÜZİK ARAŞTIR<\/a>/);
+});

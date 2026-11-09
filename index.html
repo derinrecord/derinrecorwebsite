@@ -46,7 +46,7 @@
 <link rel="stylesheet" href="bildirim.css?v=2" />
 <link rel="stylesheet" href="arka-plan.css?v=1">
 <link rel="stylesheet" href="mekan-vitrini.css?v=4">
-<link rel="stylesheet" href="hero-sekme.css?v=1">
+<link rel="stylesheet" href="hero-sekme.css?v=2">
 </head>
   <body>
     <script src="intro.js?v=8"></script>
@@ -76,9 +76,10 @@
         <div class="hero-copy">
           <p class="eyebrow hs-soru" data-i18n="ana.soru">NE İÇİN MÜZİK ARIYORSUNUZ?</p>
           <div class="hero-sekmeler" role="tablist" aria-label="Müzik türü seçimi">
-            <button type="button" role="tab" id="hs-spor" aria-controls="hp-spor" aria-selected="true" data-hero-sekme="spor" data-i18n="ana.sekmeSpor">SPORCU &amp; ANTRENÖR</button>
-            <button type="button" role="tab" id="hs-mekan" aria-controls="hp-mekan" aria-selected="false" tabindex="-1" data-hero-sekme="mekan" data-i18n="ana.sekmeMekan">MEKÂN &amp; İŞLETME</button>
-            <button type="button" role="tab" id="hs-film" aria-controls="hp-film" aria-selected="false" tabindex="-1" data-hero-sekme="film" data-i18n="ana.sekmeFilm">FİLM &amp; REKLAM</button>
+            <i class="hs-isaret" aria-hidden="true"></i>
+            <button type="button" role="tab" id="hs-spor" aria-controls="hp-spor" aria-selected="true" data-hero-sekme="spor"><svg class="hs-ikon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="15" r="6"/><path d="M8.5 3h7l-2 5.2M8.5 3l2.6 6.5M12 12.5v5M10.5 13.5 12 12.5"/></svg><span data-i18n="ana.sekmeSpor">SPORCU &amp; ANTRENÖR</span></button>
+            <button type="button" role="tab" id="hs-mekan" aria-controls="hp-mekan" aria-selected="false" tabindex="-1" data-hero-sekme="mekan"><svg class="hs-ikon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16M7.5 3.5c-.8 1 .8 2 0 3M11.5 3.5c-.8 1 .8 2 0 3"/></svg><span data-i18n="ana.sekmeMekan">MEKÂN &amp; İŞLETME</span></button>
+            <button type="button" role="tab" id="hs-film" aria-controls="hp-film" aria-selected="false" tabindex="-1" data-hero-sekme="film"><svg class="hs-ikon" aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="9" width="17" height="11" rx="1.5"/><path d="m3.5 9 1.2-4.5 15.4 4.1M8.3 5.8l2 3.2M13.2 7.1l2 3.2"/></svg><span data-i18n="ana.sekmeFilm">FİLM &amp; REKLAM</span></button>
           </div>
           <div class="hero-pano" id="hp-spor" role="tabpanel" aria-labelledby="hs-spor" data-hero-pano="spor">
             <h1 data-i18n="ana.baslik">SAHNEDE<br /><em>İZ</em> BIRAK.</h1>
@@ -227,13 +228,13 @@
     </footer>
     <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="uygulama.js?v=1"></script><script src="auth.js?v=20261101a"></script><script src="bildirim.js?v=3"></script>
+    <script src="uygulama.js?v=1"></script><script src="auth.js?v=20261109a"></script><script src="bildirim.js?v=3"></script>
     <script src="demo-catalog.js?v=6"></script>
     <script src="audio-file-types.js?v=4"></script>
     <script src="r2-depo.js?v=3"></script>
     <script src="mekan-vitrini-yardim.js?v=4"></script>
     <script src="mekan-vitrini.js?v=4"></script>
-    <script src="hero-sekme.js?v=1"></script>
+    <script src="hero-sekme.js?v=2"></script>
     <script src="script.js"></script>
     <script src="pwa.js"></script>
     <div class="float-actions">

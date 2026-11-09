@@ -1,17 +1,33 @@
-/* Ana sayfa giriş sekmeleri (9 Kasım 2026) · "Ne için müzik arıyorsunuz?" */
-.hero-copy .hs-soru{margin:0 0 12px}
-.hero-sekmeler{display:inline-flex;gap:4px;padding:4px;margin:0 0 30px;border-radius:999px;background:rgba(20,16,24,.66);border:1px solid rgba(255,255,255,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.hero-sekmeler button{border:0;background:none;color:#e9e4da;font:inherit;font-size:11px;font-weight:900;letter-spacing:.1em;padding:11px 15px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s}
-.hero-sekmeler button:hover{color:#fff;background:rgba(255,255,255,.08)}
-.hero-sekmeler button[aria-selected="true"]{background:var(--yellow,#e8d15a);color:#16131a}
+/* Ana sayfa giriş sekmeleri (9 Kasım 2026) · "Ne için müzik arıyorsunuz?"
+   Cam görünümlü seçici; seçili sekmenin sarı vurgusu sekmeler arasında kayar. */
+.hero-copy .hs-soru{margin:0 0 14px}
+.hero-sekmeler{position:relative;display:inline-flex;gap:2px;padding:5px;margin:0 0 32px;border-radius:20px;
+  background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 18px 40px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%)}
+.hs-isaret{position:absolute;z-index:0;top:5px;bottom:5px;left:var(--hs-x,5px);width:var(--hs-w,0);border-radius:15px;
+  background:linear-gradient(145deg,#f3dc6a,#d4b834);box-shadow:0 8px 24px rgba(232,209,90,.35),inset 0 1px 0 rgba(255,255,255,.55);
+  transition:left .42s cubic-bezier(.2,.9,.25,1.1),width .42s cubic-bezier(.2,.9,.25,1.1)}
+.hero-sekmeler button{position:relative;z-index:1;display:flex;align-items:center;gap:7px;border:0;background:none;color:#e9e4da;font:inherit;
+  font-size:10.5px;font-weight:900;letter-spacing:.07em;padding:11px 13px;border-radius:15px;cursor:pointer;white-space:nowrap;transition:color .3s}
+.hero-sekmeler button:hover{color:#fff}
+.hero-sekmeler button[aria-selected="true"]{color:#16131a}
 .hero-sekmeler button:focus-visible{outline:2px solid var(--yellow,#e8d15a);outline-offset:2px}
-.hero-pano:not([hidden]){animation:heroPano .45s ease both}
+.hs-ikon{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.9;transition:transform .35s}
+.hero-sekmeler button[aria-selected="true"] .hs-ikon{transform:scale(1.12) rotate(-6deg)}
+.hero-sekmeler:not(.hs-hazir) button[aria-selected="true"]{background:linear-gradient(145deg,#f3dc6a,#d4b834)}
+.hero-pano:not([hidden]){animation:heroPano .5s cubic-bezier(.2,.8,.2,1) both}
 .hero-pano h1.uzun{font-size:clamp(54px,7vw,104px)}
 .tape-label [hidden]{display:none}
-@keyframes heroPano{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes heroPano{from{opacity:0;transform:translateY(12px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+@media(min-width:761px) and (max-width:1180px){
+  .hero-sekmeler button{padding:10px 10px;font-size:9.5px;letter-spacing:.05em}
+  .hs-ikon{display:none}
+}
 @media(max-width:760px){
-  .hero-sekmeler{display:flex;width:100%;margin-bottom:24px}
-  .hero-sekmeler button{flex:1;padding:10px 6px;font-size:9.5px;letter-spacing:.06em;white-space:normal;line-height:1.25}
+  .hero-sekmeler{display:flex;width:100%;margin-bottom:24px;border-radius:18px}
+  .hero-sekmeler button{flex:1;flex-direction:column;justify-content:center;gap:6px;padding:11px 4px;font-size:9.5px;letter-spacing:.05em;white-space:normal;line-height:1.25;text-align:center}
+  .hs-ikon{width:20px;height:20px}
+  .hs-isaret{border-radius:13px}
   .hero-pano h1.uzun{font-size:clamp(40px,11.5vw,64px)}
 }
-@media(prefers-reduced-motion:reduce){.hero-pano:not([hidden]){animation:none}.hero-sekmeler button{transition:none}}
+@media(prefers-reduced-motion:reduce){.hero-pano:not([hidden]){animation:none}.hs-isaret,.hero-sekmeler button,.hs-ikon{transition:none}}

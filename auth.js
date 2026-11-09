@@ -68,7 +68,7 @@
     const header = document.querySelector('.header, .site-header');
     if (!header || document.querySelector('.account-actions')) return;
     const actions = document.createElement('div'); actions.className = 'account-actions';
-    actions.innerHTML = `<a class="account-button secondary coach-action" href="music-request.html" hidden>${dilMetni('shell.arastir', 'MÜZİĞİNİ ARAŞTIR')}</a><button class="account-button" type="button" data-login>${dilMetni('shell.giris', 'GİRİŞ YAP')}</button><button class="account-button secondary" type="button" data-signup>${dilMetni('shell.kayit', 'KAYIT OL')}</button>`;
+    actions.innerHTML = `<button class="account-button" type="button" data-login>${dilMetni('shell.giris', 'GİRİŞ YAP')}</button><button class="account-button secondary" type="button" data-signup>${dilMetni('shell.kayit', 'KAYIT OL')}</button>`;
   const menu = document.createElement('div');
   menu.className = 'account-menu';
   menu.hidden = true;
@@ -88,12 +88,13 @@
   }
   function renderAccount() {
     const actions = document.querySelector('.account-actions'); if (!actions) return;
-    const button = actions.querySelector('[data-login]'), signup = actions.querySelector('[data-signup]'), coachAction = actions.querySelector('.coach-action'), menu = document.querySelector('.account-menu');
+    const button = actions.querySelector('[data-login]'), signup = actions.querySelector('[data-signup]'), menu = document.querySelector('.account-menu');
     // Menü artık ziyaretçiye de açık; gizleme kararı burada verilmez (mobil menü mobil.css + script.js).
     button.classList.remove('hb-fotolu');
-    if (!configured) { coachAction.hidden = true; button.textContent = dilMetni('shell.hesapSistemi', 'HESAP SİSTEMİ'); button.classList.add('secondary'); signup.hidden = true; button.onclick = () => openAuth('login'); return; }
-    if (!state.user) { coachAction.hidden = true; button.textContent = dilMetni('shell.giris', 'GİRİŞ YAP'); button.classList.remove('secondary'); signup.hidden = false; coachAction.textContent = dilMetni('shell.arastir', 'MÜZİĞİNİ ARAŞTIR'); return; }
-    signup.hidden = true; coachAction.hidden = false;
+    // Üst menüdeki müzik araştırma düğmesi 9 Kasım'da kaldırıldı; MÜZİK ARAŞTIR hesap menüsünde.
+    if (!configured) { button.textContent = dilMetni('shell.hesapSistemi', 'HESAP SİSTEMİ'); button.classList.add('secondary'); signup.hidden = true; button.onclick = () => openAuth('login'); return; }
+    if (!state.user) { button.textContent = dilMetni('shell.giris', 'GİRİŞ YAP'); button.classList.remove('secondary'); signup.hidden = false; return; }
+    signup.hidden = true;
     // HESABIM düğmesinde solda profil fotoğrafı; yoksa baş harf (24 Ekim).
     const foto = document.createElement(fotoUrl ? 'img' : 'span');
     foto.className = 'hb-foto';
