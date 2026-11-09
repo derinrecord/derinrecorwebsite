@@ -36,13 +36,47 @@ test('tepeler: ses örneklerinden 0–100 arası, en yüksek 100, en düşük 4'
   assert.deepEqual(MV.tepeler([new Float32Array(100)], 10), new Array(10).fill(4));
 });
 
-test('dalgaSvg: ayna çubuk; çalan kısım sarı, ibre yalnız çalarken', () => {
+test('dalgaSvg: sık, ortadan simetrik ince çizgiler; çalan kısım sarı katmanda kırpılır', () => {
   const s = MV.dalgaSvg([10, 50, 100, 30], 0.5, 'k1');
   assert.match(s, /^<svg/);
-  assert.equal((s.match(/<rect /g) || []).length, 4 * 2 + 1);
-  assert.match(s, /url\(#mvA-k1\)/);
-  assert.doesNotMatch(MV.dalgaSvg([10, 50], 0, 'k2'), /class="mv-ibre"/);
+  assert.equal((s.match(/<path /g) || []).length, 2, 'gri katman + sarı katman');
+  assert.equal((s.match(/M/g) || []).length, 4 * 2, 'her nokta iki katmanda birer çizgi');
+  assert.match(s, /clip-path="url\(#mvK-k1\)"/);
+  assert.match(s, /url\(#mvG-k1\)/);
+  assert.match(s, /class="mv-ibre"/);
+  // 100 değeri tam yüksekliğe yakın, ortadan iki yöne eşit açılır
+  const orta = /M[\d.]+ ([\d.]+)V([\d.]+)/g; let m, cift = [];
+  while ((m = orta.exec(s))) cift.push([+m[1], +m[2]]);
+  cift.slice(0, 4).forEach(([y1, y2]) => assert.ok(Math.abs((y1 + y2) / 2 - 30) < 0.01));
+  assert.doesNotMatch(MV.dalgaSvg([10, 50], 0, 'k2'), /class="mv-ibre"|clip-path/);
   assert.match(MV.dalgaSvg(null, 0, 'k3'), /<svg/);
+});
+
+test('dalgaTam: 400 noktalı yeni dalga tam sayılır, eski 120 noktalı yenilenir', () => {
+  assert.equal(MV.DALGA_NOKTA, 400);
+  assert.equal(MV.dalgaTam(new Array(400).fill(5)), true);
+  assert.equal(MV.dalgaTam(new Array(120).fill(5)), false);
+  assert.equal(MV.dalgaTam(null), false);
+});
+
+test('SQL: klasörden yalnız seçili şarkılar; seçim yoksa hepsi; RLS değişmez', () => {
+  const s = oku('supabase/mekan-vitrini-secim.sql');
+  assert.match(s, /alter table public\.radio_folders\s+add column if not exists vitrin_parcalar uuid\[\]/);
+  assert.match(s, /f\.vitrin_parcalar is null or t\.id = any\(f\.vitrin_parcalar\)/);
+  assert.doesNotMatch(s, /create policy|drop policy|disable row level/);
+  assert.match(s, /grant execute on function public\.mekan_vitrini\(\) to anon, authenticated/);
+});
+
+test('panel: vitrin kutusunda şarkı kutucukları, hepsini seç / temizle; yalnız seçililere dalga', () => {
+  const v = oku('radyo-panel-views.js');
+  assert.match(v, /data-vt-parca=/);
+  assert.match(v, /data-act="vt-hepsi"/);
+  assert.match(v, /data-act="vt-temizle"/);
+  const y = oku('radyo-yonetim.js');
+  assert.match(y, /vitrin_parcalar/);
+  assert.match(y, /case 'vt-hepsi'/);
+  assert.match(y, /MV\.dalgaTam\(/);
+  assert.match(y, /MV\.DALGA_NOKTA/);
 });
 
 test('teklifMetni ve zamanYazi', () => {

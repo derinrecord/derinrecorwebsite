@@ -51,18 +51,29 @@
     return ham.map(function (v) { return tepe > 0 ? Math.max(4, Math.round(v / tepe * 100)) : 4; });
   }
 
-  // A · ayna çubuklar: üstte çubuk, altta soluk yansıma; oran (0–1) kadarı sarı.
+  // Dalga (9 Kasım): müzik kütüphanelerindeki gibi sık, ortadan simetrik ince
+  // çizgiler. Panel her şarkının ilk 60 saniyesinden DALGA_NOKTA tepe çıkarır;
+  // eski (120 noktalı) kayıtlar da aynı biçimde çizilir, panel onları yeniler.
+  var DALGA_NOKTA = 400;
+  function dalgaTam(d) { return Array.isArray(d) && d.length >= DALGA_NOKTA; }
+
   function dalgaSvg(tepe, oran, kimlik) {
-    var t = Array.isArray(tepe) && tepe.length ? tepe : new Array(60).fill(18);
-    var w = 3, g = 1.4, H = 60, orta = 40, W = t.length * (w + g), id = 'mvA-' + kimlik;
-    var parca = '';
+    var t = Array.isArray(tepe) && tepe.length ? tepe : new Array(120).fill(18);
+    var H = 60, orta = 30, yari = 28, W = t.length;
+    var yol = '';
     t.forEach(function (v, i) {
-      var x = (i * (w + g)).toFixed(1), h = Math.max(1.5, v / 100 * 38), cal = oran > 0 && i / t.length < oran;
-      parca += '<rect x="' + x + '" y="' + (orta - h).toFixed(1) + '" width="' + w + '" height="' + h.toFixed(1) + '" rx="1.2" fill="' + (cal ? 'url(#' + id + ')' : '#5a5760') + '"/>';
-      parca += '<rect x="' + x + '" y="' + (orta + 1.5) + '" width="' + w + '" height="' + (h * 0.42).toFixed(1) + '" rx="1.2" fill="' + (cal ? '#e8d15a' : '#5a5760') + '" opacity=".35"/>';
+      var h = Math.max(0.6, Math.min(100, Number(v) || 0) / 100 * yari), x = (i + 0.5).toFixed(1);
+      yol += 'M' + x + ' ' + (orta - h).toFixed(2) + 'V' + (orta + h).toFixed(2);
     });
-    var ibre = oran > 0 ? '<rect class="mv-ibre" x="' + (oran * W).toFixed(1) + '" y="0" width="1.5" height="' + H + '" fill="#fff"/>' : '';
-    return '<svg class="mv-dalga" viewBox="0 0 ' + W.toFixed(1) + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ffe680"/><stop offset="1" stop-color="#e0a92c"/></linearGradient></defs>' + parca + ibre + '</svg>';
+    var cizgi = function (renk, ek) { return '<path d="' + yol + '" stroke="' + renk + '" stroke-width="0.82" fill="none"' + (ek || '') + '/>'; };
+    var gri = cizgi("#625f69");
+    if (!(oran > 0)) return '<svg class="mv-dalga" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' + gri + '</svg>';
+    var g = 'mvG-' + kimlik, k = 'mvK-' + kimlik, x = Math.min(1, oran) * W;
+    return '<svg class="mv-dalga" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs>'
+      + '<linearGradient id="' + g + '" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="' + (orta - yari) + '" y2="' + (orta + yari) + '"><stop offset="0" stop-color="#ffe680"/><stop offset=".5" stop-color="#f0c94a"/><stop offset="1" stop-color="#e0a92c"/></linearGradient>'
+      + '<clipPath id="' + k + '"><rect x="0" y="0" width="' + x.toFixed(1) + '" height="' + H + '"/></clipPath></defs>'
+      + gri + cizgi('url(#' + g + ')', ' clip-path="url(#' + k + ')"')
+      + '<rect class="mv-ibre" x="' + x.toFixed(1) + '" y="0" width="0.9" height="' + H + '" fill="#fff"/></svg>';
   }
 
   // Bölüm yazıları ve mekân türleri yöneticinin panelden düzenlediği ayardan gelir;
@@ -100,7 +111,7 @@
     return Math.floor(sn / 60) + ':' + String(sn % 60).padStart(2, '0');
   }
 
-  var api = { DEMO_SANIYE: DEMO_SANIYE, TURLER: TURLER, SIRA: SIRA, grupla: grupla, ayar: ayar, acikTurler: acikTurler, VARSAYILAN: VARSAYILAN, ilkDolu: ilkDolu, saatYazi: saatYazi, tepeler: tepeler, dalgaSvg: dalgaSvg, teklifMetni: teklifMetni, teklifAdresi: teklifAdresi, zamanYazi: zamanYazi };
+  var api = { DEMO_SANIYE: DEMO_SANIYE, TURLER: TURLER, SIRA: SIRA, grupla: grupla, ayar: ayar, acikTurler: acikTurler, VARSAYILAN: VARSAYILAN, ilkDolu: ilkDolu, saatYazi: saatYazi, tepeler: tepeler, dalgaSvg: dalgaSvg, DALGA_NOKTA: DALGA_NOKTA, dalgaTam: dalgaTam, teklifMetni: teklifMetni, teklifAdresi: teklifAdresi, zamanYazi: zamanYazi };
   if (typeof window !== 'undefined') window.DerinMekanVitrini = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();

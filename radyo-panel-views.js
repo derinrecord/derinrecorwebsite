@@ -1710,7 +1710,9 @@
     { anahtar: 'mekan-vitrini.sql', ad: 'Mekân vitrini',
       aciklama: 'Çalma listelerini ana sayfadaki mekân demolarında gösterir; marka adı sitede görünmez.', etki: 'Liste detayı · ana sayfa' },
     { anahtar: 'mekan-vitrini-klasor.sql', ad: 'Mekân vitrini · klasörler',
-      aciklama: 'Yayın klasörlerini de ana sayfadaki mekân demolarında gösterir. mekan-vitrini.sql\'den sonra çalışır.', etki: 'Klasör detayı · ana sayfa' }
+      aciklama: 'Yayın klasörlerini de ana sayfadaki mekân demolarında gösterir. mekan-vitrini.sql\'den sonra çalışır.', etki: 'Klasör detayı · ana sayfa' },
+    { anahtar: 'mekan-vitrini-secim.sql', ad: 'Mekân vitrini · şarkı seçimi',
+      aciklama: 'Klasörün yalnız seçilen şarkıları ana sayfada çıkar. mekan-vitrini-klasor.sql\'den sonra çalışır.', etki: 'Klasör detayı · ana sayfa' }
   ];
 
   function kurulumDurum(durum) {
@@ -2410,9 +2412,22 @@
       return `<div class="panel" style="margin-bottom:18px"><h3>ANA SAYFADA GÖSTER</h3>
         <p class="panel-sub">Bu özellik için <b>supabase/${kurulum}</b> çalıştırılmalı.</p></div>`;
     }
+    // Klasörde şarkı seçimi (mekan-vitrini-secim.sql): seçim yoksa (null) hepsi.
+    const secimVar = klasor && !(D.kurulum && D.kurulum['mekan-vitrini-secim.sql'] === false);
+    const secili = secimVar && Array.isArray(kayit.vitrin_parcalar) ? new Set(kayit.vitrin_parcalar) : null;
+    const gidecek = secili ? parcalar.filter(t => t && secili.has(t.id)) : parcalar;
     const adet = parcalar.length;
-    const dalgasiz = parcalar.filter(t => t && !t.dalgaVar).length;
+    const dalgasiz = gidecek.filter(t => t && !t.dalgaVar).length;
     const act = klasor ? 'folder-vitrin' : 'list-vitrin';
+    const secimHtml = !klasor ? '' : (secimVar ? `
+        <div class="field" style="margin:4px 0 14px"><label>ANA SAYFADA ÇIKACAK ŞARKILAR <span class="sub" data-vt-sayac>${gidecek.length} / ${adet}</span></label>
+          <div class="row" style="margin:6px 0 8px">
+            <button class="btn sm" data-act="vt-hepsi" type="button">HEPSİNİ SEÇ</button>
+            <button class="btn sm" data-act="vt-temizle" type="button">TEMİZLE</button>
+          </div>
+          <div class="vt-parcalar" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:4px 16px;max-height:280px;overflow:auto;padding:8px 10px;border:1px solid rgba(255,255,255,.12);border-radius:12px">
+            ${parcalar.map(t => `<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" data-vt-parca="${esc(t.id)}" ${!secili || secili.has(t.id) ? 'checked' : ''}> <span>${esc(clean(t.title))}</span></label>`).join('')}
+          </div></div>` : '<p class="panel-sub">Şarkı seçmek için <b>supabase/mekan-vitrini-secim.sql</b> çalıştırılmalı; şimdilik klasörün bütün şarkıları çıkar.</p>');
     return `<div class="panel" style="margin-bottom:18px" data-vitrin-panel>
         <h3>ANA SAYFADA GÖSTER ${kayit.vitrin_goster ? chip('live', 'SİTEDE') : ''}</h3>
         <p class="panel-sub">İşaretlersen bu ${klasor ? 'klasör' : 'liste'} ana sayfadaki “Mekan demoları” bölümünde dinlenir: her şarkıdan 60 saniye. Sitede ${klasor ? 'klasör adı' : '<b>marka adı</b>'} görünmez, aşağıya yazdığın ad görünür.</p>
@@ -2423,12 +2438,12 @@
             <input id="vt-ad" value="${esc(kayit.vitrin_ad || kayit.name)}" maxlength="60" placeholder="Örn. Sabah Açılış" autocomplete="off"></div>
           <div class="field"><label for="vt-tarz">TARZ (isteğe bağlı)</label>
             <input id="vt-tarz" value="${esc(kayit.vitrin_tarz || '')}" maxlength="60" placeholder="Örn. Akustik · Lo-fi" autocomplete="off"></div>
-        </div>
+        </div>${secimHtml}
         <div class="row">
           <button class="btn primary" data-act="${act}" data-id="${esc(kayit.id)}" data-goster="1" type="button" ${adet ? '' : 'disabled'}>${kayit.vitrin_goster ? 'SİTEDEKİ BİLGİLERİ KAYDET' : 'SİTEDE GÖSTER'}</button>
           ${kayit.vitrin_goster ? `<button class="btn danger" data-act="${act}" data-id="${esc(kayit.id)}" data-goster="0" type="button">SİTEDEN KALDIR</button>` : ''}
           <button class="btn" data-act="vitrin-yazilar" type="button">SİTEDEKİ YAZILARI DÜZENLE</button>
-          <span class="sub" id="vt-msg">${adet ? (dalgasiz ? dalgasiz + ' şarkının ses dalgası kaydederken çıkarılacak.' : 'Bütün şarkıların ses dalgası hazır.') : 'Boş ' + (klasor ? 'klasör' : 'liste') + ' sitede gösterilemez.'}</span>
+          <span class="sub" id="vt-msg">${adet ? (dalgasiz ? dalgasiz + ' şarkının ses dalgası kaydederken çıkarılacak.' : 'Seçili şarkıların ses dalgası hazır.') : 'Boş ' + (klasor ? 'klasör' : 'liste') + ' sitede gösterilemez.'}</span>
         </div>
       </div>`;
   }

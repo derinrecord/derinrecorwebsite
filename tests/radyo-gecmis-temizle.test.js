@@ -37,6 +37,6 @@ test('panel önce sayar, onay sorar, sonra siler', () => {
 
 test('sürümler artırıldı', () => {
   const h = oku('radyo-yonetim.html');
-  assert.match(h, /radyo-panel-views\.js\?v=102/);
-  assert.match(h, /radyo-yonetim\.js\?v=20261109a/);
+  assert.match(h, /radyo-panel-views\.js\?v=103/);
+  assert.match(h, /radyo-yonetim\.js\?v=20261109b/);
 });

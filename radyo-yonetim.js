@@ -1051,10 +1051,16 @@
       const kv = await client.from('radio_folders').select('id,vitrin_goster,vitrin_tur,vitrin_ad,vitrin_tarz,vitrin_sira');
       D.kurulum['mekan-vitrini-klasor.sql'] = !kv.error;
       if (!kv.error) (kv.data || []).forEach(v => { const f = D.folders.find(x => x.id === v.id); if (f) Object.assign(f, v); });
+      // Klasörden şarkı seçimi (supabase/mekan-vitrini-secim.sql).
+      const ks = await client.from('radio_folders').select('id,vitrin_parcalar');
+      D.kurulum['mekan-vitrini-secim.sql'] = !ks.error;
+      if (!ks.error) (ks.data || []).forEach(v => { const f = D.folders.find(x => x.id === v.id); if (f) f.vitrin_parcalar = v.vitrin_parcalar; });
       const ayar = await client.from('mekan_vitrini_ayar').select('ust,baslik,vurgu,aciklama,turler').eq('id', 1).maybeSingle();
       D.vitrinAyar = (ayar && !ayar.error && ayar.data) || null;
-      const dalgali = await client.from('radio_tracks').select('id').not('dalga', 'is', null);
-      const var_ = new Set(((dalgali && dalgali.data) || []).map(x => x.id));
+      // Dalgası eski biçimde (120 nokta) olanlar "yok" sayılır; kaydederken yenilenir.
+      const dalgali = await client.from('radio_tracks').select('id,dalga').not('dalga', 'is', null);
+      const MV = window.DerinMekanVitrini;
+      const var_ = new Set(((dalgali && dalgali.data) || []).filter(x => !MV || MV.dalgaTam(x.dalga)).map(x => x.id));
       D.tracks.forEach(t => { t.dalgaVar = var_.has(t.id); });
     }
 
@@ -3031,6 +3037,15 @@
         });
         return;
       }
+      case 'vt-hepsi':
+      case 'vt-temizle': {
+        // Vitrin şarkı kutucukları: hepsini seç / temizle (kaydetmez; SİTEDE GÖSTER kaydeder).
+        const kutular = Array.from(document.querySelectorAll('[data-vt-parca]'));
+        kutular.forEach(k => { k.checked = act === 'vt-hepsi'; });
+        const sayac = document.querySelector('[data-vt-sayac]');
+        if (sayac) sayac.textContent = kutular.filter(k => k.checked).length + ' / ' + kutular.length;
+        return;
+      }
       case 'folder-vitrin':
       case 'list-vitrin': {
         // Mekân vitrini: klasörü ya da listeyi ana sayfada göster / kaldır. Gösterirken
@@ -3039,9 +3054,13 @@
         const tablo = klasorMu ? 'radio_folders' : 'brand_playlists';
         const kayit = klasorMu ? D.folders.find(x => x.id === id) : D.playlists.find(x => x.id === id);
         if (!kayit) return;
-        const tum = klasorMu
+        let tum = klasorMu
           ? D.tracks.filter(t => t.folder_id === id)
           : D.playlistTracks.filter(x => x.playlist_id === id).map(x => D.tracks.find(t => t.id === x.track_id)).filter(Boolean);
+        // Klasörde yalnız işaretlenen şarkılar ana sayfaya çıkar.
+        const kutular = klasorMu ? Array.from(document.querySelectorAll('[data-vt-parca]')) : [];
+        const seciliIdler = kutular.filter(k => k.checked).map(k => k.dataset.vtParca);
+        if (kutular.length) tum = tum.filter(t => seciliIdler.includes(t.id));
         const msg = el('vt-msg');
         const goster = hedef.dataset.goster === '1';
         if (!goster) {
@@ -3052,7 +3071,9 @@
         }
         const ad = (el('vt-ad').value || '').trim().replace(/\s+/g, ' ');
         if (!ad) return hata('Sitedeki ad boş olamaz.');
+        if (kutular.length && !seciliIdler.length) return hata('Ana sayfada çıkacak en az bir şarkı seç.');
         const guncel = { vitrin_goster: true, vitrin_tur: el('vt-tur').value, vitrin_ad: ad, vitrin_tarz: (el('vt-tarz').value || '').trim() || null };
+        if (kutular.length) guncel.vitrin_parcalar = seciliIdler;
         const MV = window.DerinMekanVitrini;
         const parcalar = tum.filter(t => !t.dalgaVar);
         if (MV && parcalar.length && (window.AudioContext || window.webkitAudioContext)) {
@@ -3068,7 +3089,7 @@
               for (let k = 0; k < Math.min(2, buf.numberOfChannels); k++) kanallar.push(buf.getChannelData(k));
               // Vitrin yalnız ilk 60 saniyeyi çalar; dalga da o bölümü gösterir.
               const sinir = Math.min(buf.length, Math.round(MV.DEMO_SANIYE * buf.sampleRate));
-              const dalga = MV.tepeler(kanallar.map(k => k.subarray(0, sinir)), 120);
+              const dalga = MV.tepeler(kanallar.map(k => k.subarray(0, sinir)), MV.DALGA_NOKTA);
               const sorun = await yazDogrula(client.from('radio_tracks').update({ dalga }).eq('id', t.id), 'Dalga kaydedilemedi');
               if (!sorun) t.dalgaVar = true;
             } catch (e) { /* bu parçanın dalgası çıkarılamadı; sitede düz çubuk görünür */ }
@@ -3431,6 +3452,13 @@
   document.addEventListener('change', async e => {
     if (!client) return;
     const hedef = e.target;
+    // Vitrin şarkı kutucuğu: yalnız sayacı tazeler, kaydetmez.
+    if (hedef && hedef.matches && hedef.matches('[data-vt-parca]')) {
+      const kutular = Array.from(document.querySelectorAll('[data-vt-parca]'));
+      const sayac = document.querySelector('[data-vt-sayac]');
+      if (sayac) sayac.textContent = kutular.filter(k => k.checked).length + ' / ' + kutular.length;
+      return;
+    }
     // Beklenmeyen hata sessizce yutulmasın (bkz. tıklama dinleyicisi).
     try {
 
