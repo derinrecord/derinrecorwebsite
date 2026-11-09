@@ -3089,7 +3089,7 @@
               for (let k = 0; k < Math.min(2, buf.numberOfChannels); k++) kanallar.push(buf.getChannelData(k));
               // Vitrin yalnız ilk 60 saniyeyi çalar; dalga da o bölümü gösterir.
               const sinir = Math.min(buf.length, Math.round(MV.DEMO_SANIYE * buf.sampleRate));
-              const dalga = MV.tepeler(kanallar.map(k => k.subarray(0, sinir)), MV.DALGA_NOKTA);
+              const dalga = MV.ustAlt(kanallar.map(k => k.subarray(0, sinir)), MV.DALGA_NOKTA);
               const sorun = await yazDogrula(client.from('radio_tracks').update({ dalga }).eq('id', t.id), 'Dalga kaydedilemedi');
               if (!sorun) t.dalgaVar = true;
             } catch (e) { /* bu parçanın dalgası çıkarılamadı; sitede düz çubuk görünür */ }

@@ -52,16 +52,42 @@ test('dalgaSvg: sık, ortadan simetrik ince çizgiler; çalan kısım sarı katm
   assert.match(MV.dalgaSvg(null, 0, 'k3'), /<svg/);
 });
 
-test('dalgaTam: 400 noktalı yeni dalga tam sayılır, eski 120 noktalı yenilenir', () => {
-  assert.equal(MV.DALGA_NOKTA, 400);
-  assert.equal(MV.dalgaTam(new Array(400).fill(5)), true);
+test('ustAlt: Ableton gibi her dilimde en üst / en alt; -100..100, sırayla [üst, alt, …]', () => {
+  const n = 1200, a = new Float32Array(n), b = new Float32Array(n);
+  for (let i = 0; i < n; i++) { a[i] = (i < 600 ? 0.1 : 0.9) * Math.sin(i); b[i] = (i < 600 ? 0.05 : 0.5) * Math.sin(i); }
+  const d = MV.ustAlt([a, b], 6);
+  assert.equal(d.length, 12);
+  assert.equal(Math.max(...d), 100);
+  for (let i = 0; i < 6; i++) assert.ok(d[2 * i] >= d[2 * i + 1], 'üst alttan küçük olamaz');
+  assert.ok(d[0] < d[10], 'sessiz bölüm alçak, yüksek bölüm yüksek');
+  assert.ok(d[11] <= -50, 'alt kontur negatif');
+  assert.deepEqual(MV.ustAlt([new Float32Array(60)], 3), [0, 0, 0, 0, 0, 0]);
+});
+
+test('dalgaTam: 600 dilimlik üst/alt dalga tam; eski biçimler yenilenir', () => {
+  assert.equal(MV.DALGA_NOKTA, 600);
+  assert.equal(MV.dalgaTam(new Array(1200).fill(5)), true);
+  assert.equal(MV.dalgaTam(new Array(400).fill(5)), false);
   assert.equal(MV.dalgaTam(new Array(120).fill(5)), false);
   assert.equal(MV.dalgaTam(null), false);
+});
+
+test('dalgaSvg: tam dalga dolu kontur olarak çizilir (gri + kırpılmış sarı)', () => {
+  const d = []; for (let i = 0; i < 600; i++) d.push(60, -40);
+  const s = MV.dalgaSvg(d, 0.3, 'u1');
+  assert.equal((s.match(/<path /g) || []).length, 2);
+  assert.equal((s.match(/M/g) || []).length, 2, 'her katman tek kapalı şekil');
+  assert.match(s, /Z"/);
+  assert.match(s, /clip-path="url\(#mvK-u1\)"/);
+  assert.match(s, /fill="url\(#mvG-u1\)"/);
+  const g = MV.dalgaSvg(d, 0, 'u2');
+  assert.equal((g.match(/<path /g) || []).length, 1);
 });
 
 test('SQL: klasörden yalnız seçili şarkılar; seçim yoksa hepsi; RLS değişmez', () => {
   const s = oku('supabase/mekan-vitrini-secim.sql');
   assert.match(s, /alter table public\.radio_folders\s+add column if not exists vitrin_parcalar uuid\[\]/);
+  assert.match(s, /check \(dalga is null or cardinality\(dalga\) <= 1200\)/);
   assert.match(s, /f\.vitrin_parcalar is null or t\.id = any\(f\.vitrin_parcalar\)/);
   assert.doesNotMatch(s, /create policy|drop policy|disable row level/);
   assert.match(s, /grant execute on function public\.mekan_vitrini\(\) to anon, authenticated/);
@@ -76,6 +102,7 @@ test('panel: vitrin kutusunda şarkı kutucukları, hepsini seç / temizle; yaln
   assert.match(y, /vitrin_parcalar/);
   assert.match(y, /case 'vt-hepsi'/);
   assert.match(y, /MV\.dalgaTam\(/);
+  assert.match(y, /MV\.ustAlt\(/);
   assert.match(y, /MV\.DALGA_NOKTA/);
 });
 

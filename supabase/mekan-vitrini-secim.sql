@@ -1,6 +1,7 @@
 -- =====================================================================
 -- Mekân vitrini · şarkı seçimi (9 Kasım 2026). mekan-vitrini-klasor.sql'den SONRA.
--- Yönetici klasörün hangi şarkılarının ana sayfada çıkacağını seçer.
+-- Yönetici klasörün hangi şarkılarının ana sayfada çıkacağını seçer; dalga
+-- alanı ayrıntılı (üst/alt) dalga için 1200 değere genişler.
 -- vitrin_parcalar boşsa (null) klasörün bütün şarkıları çıkar (eski davranış).
 --
 -- Güvenlik: radio_folders'a yalnız yeni SÜTUN eklenir; RLS politikalarına
@@ -13,6 +14,11 @@ begin;
 
 alter table public.radio_folders
   add column if not exists vitrin_parcalar uuid[];
+
+-- Ayrıntılı dalga (Ableton tarzı): 600 dilim × (üst, alt) = 1200 değer.
+alter table public.radio_tracks drop constraint if exists radio_tracks_dalga_check;
+alter table public.radio_tracks add constraint radio_tracks_dalga_check
+  check (dalga is null or cardinality(dalga) <= 1200);
 
 create or replace function public.mekan_vitrini()
 returns jsonb language sql stable security definer set search_path to 'public' as $$
