@@ -90,6 +90,32 @@
     gece: { zemin: '#1c1f26', calan: '#3a3524', dalga: '#ece6d6', izgara: 'rgba(244,241,233,.08)', ibre: '#e8d15a' }
   };
 
+  // SoundCloud tarzı: alttan yükselen ince çubuklar; çalınan kısım renkli.
+  // Tam (üst/alt) veride her çubuk o dilimlerin en büyük genliğidir.
+  var CUBUK_RENKLERI = {
+    turuncu: { calan: '#ff5500', bos: '#e9e6df' },
+    sari: { calan: '#e8c548', bos: '#e9e6df' }
+  };
+  function cubukSvg(veri, oran, renk, adet) {
+    var R = CUBUK_RENKLERI[renk] || CUBUK_RENKLERI.sari;
+    adet = adet || 180;
+    var g = [];
+    if (dalgaTam(veri)) { for (var i = 0; i < veri.length; i += 2) g.push(Math.max(Math.abs(veri[i]), Math.abs(veri[i + 1]))); }
+    else g = (Array.isArray(veri) && veri.length ? veri : new Array(120).fill(18)).map(function (v) { return Math.abs(Number(v) || 0); });
+    var cubuk = [];
+    for (var c = 0; c < adet; c++) {
+      var bas = Math.floor(c * g.length / adet), son = Math.max(bas + 1, Math.floor((c + 1) * g.length / adet)), m = 0;
+      for (var j = bas; j < son && j < g.length; j++) if (g[j] > m) m = g[j];
+      cubuk.push(m);
+    }
+    var H = 60, adim = 3, gen = 2.1, W = adet * adim, sinir = (oran > 0 ? Math.min(1, oran) : 0) * adet, s = '';
+    cubuk.forEach(function (v, k) {
+      var h = Math.max(1.5, v / 100 * (H - 2));
+      s += '<rect x="' + (k * adim) + '" y="' + (H - h).toFixed(1) + '" width="' + gen + '" height="' + h.toFixed(1) + '" fill="' + (k < sinir ? R.calan : R.bos) + '"' + (k < sinir ? '' : ' fill-opacity=".82"') + '/>';
+    });
+    return '<svg class="mv-dalga mv-cubuk" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' + s + '</svg>';
+  }
+
   function dalgaSvg(tepe, oran, kimlik, klip) {
     var K = klip && KLIP_RENKLERI[klip];
     var H = 60, orta = 30, yari = K ? 29 : 28, W, govde;
@@ -172,7 +198,7 @@
     return Math.floor(sn / 60) + ':' + String(sn % 60).padStart(2, '0');
   }
 
-  var api = { DEMO_SANIYE: DEMO_SANIYE, TURLER: TURLER, SIRA: SIRA, grupla: grupla, ayar: ayar, acikTurler: acikTurler, VARSAYILAN: VARSAYILAN, ilkDolu: ilkDolu, saatYazi: saatYazi, tepeler: tepeler, dalgaSvg: dalgaSvg, DALGA_NOKTA: DALGA_NOKTA, dalgaTam: dalgaTam, ustAlt: ustAlt, KLIP_RENKLERI: KLIP_RENKLERI, teklifMetni: teklifMetni, teklifAdresi: teklifAdresi, zamanYazi: zamanYazi };
+  var api = { DEMO_SANIYE: DEMO_SANIYE, TURLER: TURLER, SIRA: SIRA, grupla: grupla, ayar: ayar, acikTurler: acikTurler, VARSAYILAN: VARSAYILAN, ilkDolu: ilkDolu, saatYazi: saatYazi, tepeler: tepeler, dalgaSvg: dalgaSvg, DALGA_NOKTA: DALGA_NOKTA, dalgaTam: dalgaTam, ustAlt: ustAlt, KLIP_RENKLERI: KLIP_RENKLERI, CUBUK_RENKLERI: CUBUK_RENKLERI, cubukSvg: cubukSvg, teklifMetni: teklifMetni, teklifAdresi: teklifAdresi, zamanYazi: zamanYazi };
   if (typeof window !== 'undefined') window.DerinMekanVitrini = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();
