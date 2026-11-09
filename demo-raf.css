@@ -1,0 +1,40 @@
+/* Ana sayfa demo rafı (9 Kasım 2026) · A: yana kaydırılan, branş renginde büyük
+   kaset kartları; tıklanınca altta demo listesi (mekan-vitrini.css'teki liste ve
+   çalar görünümünü kullanır). */
+.demos{background:#0d0b10;padding:80px 0 80px 7vw}
+.demos:after{opacity:.08}
+.demos-heading{grid-template-columns:1fr auto;padding-right:7vw;gap:30px}
+.demos-heading h2{font-size:clamp(34px,4.4vw,60px)}
+
+#demolar .cassette-grid{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;margin-top:34px;padding:8px 7vw 26px 0;scrollbar-width:none;align-items:stretch}
+#demolar .cassette-grid::-webkit-scrollbar{display:none}
+#demolar .cassette-card{--r:#e8d15a;flex:0 0 clamp(230px,24vw,300px);scroll-snap-align:start;transform:none;border-radius:22px;padding:18px;color:#111;
+  background:linear-gradient(160deg,var(--r),color-mix(in srgb,var(--r) 55%,#000));box-shadow:0 18px 40px rgba(0,0,0,.45);transition:transform .25s ease,box-shadow .25s ease,outline-color .25s}
+#demolar .cassette-card:nth-child(even){transform:none}
+#demolar .cassette-card.renk-aerobik{--r:#fe4b6a}#demolar .cassette-card.renk-akrobatik{--r:#f1ece1}#demolar .cassette-card.renk-artistik{--r:#3fc1c9}#demolar .cassette-card.renk-ritmik{--r:#ab6ee7}#demolar .cassette-card.renk-cocuk-fitness{--r:#9be15d}
+#demolar .cassette-card:hover{transform:translateY(-6px);box-shadow:0 26px 50px rgba(0,0,0,.55)}
+#demolar .cassette-card[aria-expanded="true"]{box-shadow:inset 0 0 0 3px #f4f1e9,0 18px 40px rgba(0,0,0,.45)}
+#demolar .demo-cassette-image{margin:10px 0 14px}
+#demolar .card-meta{border-top:0;flex-direction:row;justify-content:space-between;align-items:flex-end;gap:10px}
+#demolar .card-meta strong{font-size:20px}
+#demolar .card-meta span{font-size:10px;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.82);color:#f4f1e9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
+#demolar .card-number{position:absolute;top:16px;right:18px;font-size:12px;opacity:.6}
+/* Demo listesi */
+.dr-liste{position:relative;z-index:1;margin:6px 7vw 0 0}
+.dr-liste[hidden]{display:none}
+.dr-liste .mv-liste{border-color:color-mix(in srgb,var(--r,#e8d15a) 55%,transparent);animation:drAc .35s ease both}
+.dr-liste .mv-liste-bas span{color:var(--r,#e8d15a)}
+.dr-liste .mv-liste-bas .dr-git{font-size:11px;letter-spacing:.12em;opacity:.8}
+.dr-liste .mv-liste-bas .dr-git:hover{opacity:1;color:var(--r,#e8d15a)}
+.dr-bos{margin:0;padding:22px 18px;font-size:14px;opacity:.75}
+.dr-mini{background:radial-gradient(circle at 50% 50%,#111 18%,transparent 19%),var(--r,#e8d15a)}
+@keyframes drAc{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media(max-width:760px){
+  .demos{padding:60px 0 60px 6vw}
+  .demos-heading{grid-template-columns:1fr;padding-right:6vw;gap:18px}
+  #demolar .cassette-grid{gap:12px;padding-right:6vw}
+  #demolar .cassette-card{flex-basis:72%;padding:14px}
+  #demolar .card-meta strong{font-size:16px}
+  .dr-liste{margin-right:6vw}
+}
+@media(prefers-reduced-motion:reduce){#demolar .cassette-card{transition:none}.dr-liste .mv-liste{animation:none}}

@@ -55,7 +55,7 @@
     'ana.hst.m3': '<strong>Studio production</strong><span>Recording to mixing, all under one roof.</span>',
     'ana.hst.m4': '<strong>Sample work</strong><span>Sound design studies applied to different film scenes.</span>',
     'ana.hst.cta': 'VIEW THE WORK →',
-    'ana.demolar.kicker': '03 — DEMO TAPES',
+    'ana.demolar.kicker': 'DEMO TAPES',
     'ana.demolar.baslik': 'PICK YOUR<br /><span>BRANCH. LISTEN.</span>',
     'ana.demolar.metin': 'Step up to the tape and explore the sound world of your discipline. Every page has demos you can play without downloading.',
     'ana.demolar.c2': '2 DEMOS →',

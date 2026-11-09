@@ -33,7 +33,7 @@
     + `<span class="mv-zg">${DEMO_YAZI}</span>`;
   const calarAdet = () => (window.innerWidth < 700 ? 110 : 220);
 
-  const durum = { gruplar: null, tur: null, liste: null, sira: -1, oran: 0, ayar: MV.ayar(null) };
+  const durum = { gruplar: null, tur: null, liste: null, sira: -1, oran: 0, ayar: MV.ayar(null), kapali: false };
   const turAd = k => durum.ayar.turler[k].ad;
   const ses = new Audio();
   ses.preload = 'none';
@@ -88,6 +88,7 @@
     calar.querySelector('p').textContent = turAd(l.tur) + ' · ' + l.ad + ' listesi';
     calar.querySelector('.ana').innerHTML = ses.paused ? CAL : DUR;
     calar.querySelector('[data-mv="sar"]').innerHTML = dalga(p.dalga, durum.oran, calarAdet(), ses.currentTime || 0);
+    if (durum.kapali) return; // başka çalar başladı: bu kapalı kalır
     calar.classList.add('acik');
     document.body.classList.add('mv-calar-acik');
   }
@@ -120,7 +121,18 @@
     if (simdi - sonCizim > 400) { sonCizim = simdi; calarGuncelle(); const d = kok.querySelector('.mv-s[aria-current="true"] .mv-d'); if (d) d.innerHTML = dalga(durum.liste.parcalar[durum.sira].dalga, durum.oran, 150, ses.currentTime); }
   });
   ses.addEventListener('ended', () => sonraki(1));
-  ses.addEventListener('play', () => { ciz(); calarGuncelle(); });
+  ses.addEventListener('play', () => {
+    durum.kapali = false;
+    document.dispatchEvent(new CustomEvent('derin:calar', { detail: { kaynak: 'mekan' } }));
+    ciz(); calarGuncelle();
+  });
+  // Branş demosu başlarsa bu çalar susar ve kapanır (ikisi aynı anda çalmaz).
+  document.addEventListener('derin:calar', e => {
+    if (e.detail && e.detail.kaynak === 'mekan') return;
+    durum.kapali = true;
+    ses.pause();
+    calar.classList.remove('acik');
+  });
   ses.addEventListener('pause', () => { ciz(); calarGuncelle(); });
 
   function listeBul(id) {

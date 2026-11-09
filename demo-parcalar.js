@@ -255,6 +255,22 @@
     });
   }
 
+  // Ana sayfadaki demo listesi için (9 Kasım): dalgası olmayan demoların ses
+  // dalgası ve süresi yönetici sayfayı açınca arka planda bir kez çıkarılır.
+  // Sütunlar yoksa (supabase/demo-dalga.sql çalışmadıysa) sessizce atlanır.
+  async function dalgalariTamamla(client, demolar) {
+    if (!window.DerinSesDalga) return;
+    const eksik = demolar.filter(d => 'dalga' in d && (!Array.isArray(d.dalga) || d.dalga.length < 1200) && d.medya_url);
+    for (const d of eksik) {
+      try {
+        const { dalga, sure } = await window.DerinSesDalga.cikar(d.medya_url);
+        // Yazma doğrulanır: dönen satır yoksa (yetki/RLS) sessizce geçilir, sonraki açılışta yeniden denenir.
+        const { data: yazilan } = await client.from('demo_parcalari').update({ dalga, sure }).eq('id', d.id).select('id');
+        if (!yazilan || !yazilan.length) continue;
+      } catch (e) { /* bu demonun dalgası çıkarılamadı; ana sayfada düz çubuk görünür */ }
+    }
+  }
+
   async function basla() {
     if (!alan || !BRANS || !D) { await oynaticilariBagla(); return; }
     let auth = null;
@@ -269,6 +285,7 @@
     ciz(demolar, yonetici);
     if (yonetici) { formKur(client); silmeyiBagla(client, demolar); duzenlemeyiBagla(client, demolar); siraBagla(client, demolar); }
     await oynaticilariBagla();
+    if (yonetici) dalgalariTamamla(client, demolar);
   }
 
   basla();
