@@ -82,8 +82,17 @@
     return sonuc;
   }
 
-  function dalgaSvg(tepe, oran, kimlik) {
-    var H = 60, orta = 30, yari = 28, W, govde;
+  // Klip görünümü (Projelerim / Ableton gibi): renkli zemin, koyu dalga, ince
+  // zaman çizgileri; çalınmış kısmın zemini bir ton koyulaşır.
+  var KLIP_RENKLERI = {
+    lavanta: { zemin: '#9a8bd0', calan: '#8577bb', dalga: '#121314', izgara: 'rgba(10,12,14,.16)', ibre: '#ffffff' },
+    altin: { zemin: '#d8bb2c', calan: '#bea323', dalga: '#121314', izgara: 'rgba(10,12,14,.16)', ibre: '#ffffff' },
+    gece: { zemin: '#1c1f26', calan: '#3a3524', dalga: '#ece6d6', izgara: 'rgba(244,241,233,.08)', ibre: '#e8d15a' }
+  };
+
+  function dalgaSvg(tepe, oran, kimlik, klip) {
+    var K = klip && KLIP_RENKLERI[klip];
+    var H = 60, orta = 30, yari = K ? 29 : 28, W, govde;
     if (dalgaTam(tepe)) {
       // Tek kapalı şekil: üst kontur soldan sağa, alt kontur sağdan sola.
       var n = tepe.length / 2, ustY = [], altY = [];
@@ -107,6 +116,16 @@
         yol += 'M' + xx + ' ' + (orta - h).toFixed(2) + 'V' + (orta + h).toFixed(2);
       });
       govde = function (renk, ek) { return '<path d="' + yol + '" stroke="' + renk + '" stroke-width="0.82" fill="none"' + (ek || '') + '/>'; };
+    }
+    if (K) {
+      var cxK = (oran > 0 ? Math.min(1, oran) : 0) * W, izgara = '';
+      for (var z = 1; z < 12; z++) izgara += '<rect x="' + (z * W / 12).toFixed(1) + '" y="0" width="' + (W / 900).toFixed(2) + '" height="' + H + '" fill="' + K.izgara + '"/>';
+      return '<svg class="mv-dalga mv-klip" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">'
+        + '<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="' + K.zemin + '"/>'
+        + (cxK > 0 ? '<rect x="0" y="0" width="' + cxK.toFixed(1) + '" height="' + H + '" fill="' + K.calan + '"/>' : '')
+        + izgara + govde(K.dalga)
+        + (cxK > 0 ? '<rect class="mv-ibre" x="' + cxK.toFixed(1) + '" y="0" width="' + (W / 380).toFixed(2) + '" height="' + H + '" fill="' + K.ibre + '"/>' : '')
+        + '</svg>';
     }
     var gri = govde('#6a6772');
     if (!(oran > 0)) return '<svg class="mv-dalga" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' + gri + '</svg>';
@@ -153,7 +172,7 @@
     return Math.floor(sn / 60) + ':' + String(sn % 60).padStart(2, '0');
   }
 
-  var api = { DEMO_SANIYE: DEMO_SANIYE, TURLER: TURLER, SIRA: SIRA, grupla: grupla, ayar: ayar, acikTurler: acikTurler, VARSAYILAN: VARSAYILAN, ilkDolu: ilkDolu, saatYazi: saatYazi, tepeler: tepeler, dalgaSvg: dalgaSvg, DALGA_NOKTA: DALGA_NOKTA, dalgaTam: dalgaTam, ustAlt: ustAlt, teklifMetni: teklifMetni, teklifAdresi: teklifAdresi, zamanYazi: zamanYazi };
+  var api = { DEMO_SANIYE: DEMO_SANIYE, TURLER: TURLER, SIRA: SIRA, grupla: grupla, ayar: ayar, acikTurler: acikTurler, VARSAYILAN: VARSAYILAN, ilkDolu: ilkDolu, saatYazi: saatYazi, tepeler: tepeler, dalgaSvg: dalgaSvg, DALGA_NOKTA: DALGA_NOKTA, dalgaTam: dalgaTam, ustAlt: ustAlt, KLIP_RENKLERI: KLIP_RENKLERI, teklifMetni: teklifMetni, teklifAdresi: teklifAdresi, zamanYazi: zamanYazi };
   if (typeof window !== 'undefined') window.DerinMekanVitrini = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();
