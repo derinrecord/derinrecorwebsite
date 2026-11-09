@@ -26,6 +26,13 @@
     return u ? `background-image:url('${esc(u)}')` : `background:radial-gradient(circle at 50% 62%,${r[0]} 26%,transparent 27%),linear-gradient(145deg,${r[1]},#111114)`;
   };
 
+  // SoundCloud tarzı çubuk dalga (sarı); köşelerde geçen süre ve demo süresi.
+  const DEMO_YAZI = MV.zamanYazi(MV.DEMO_SANIYE);
+  const dalga = (veri, oran, adet, gecen) => MV.cubukSvg(veri, oran, 'sari', adet)
+    + (gecen != null ? `<span class="mv-zs" data-mv-z="gecen">${MV.zamanYazi(gecen)}</span>` : '')
+    + `<span class="mv-zg">${DEMO_YAZI}</span>`;
+  const calarAdet = () => (window.innerWidth < 700 ? 110 : 220);
+
   const durum = { gruplar: null, tur: null, liste: null, sira: -1, oran: 0, ayar: MV.ayar(null) };
   const turAd = k => durum.ayar.turler[k].ad;
   const ses = new Audio();
@@ -37,7 +44,7 @@
   calar.setAttribute('aria-label', 'Demo çalar');
   calar.innerHTML = '<div class="mini"></div><div class="bilgi"><h4></h4><p></p></div>'
     + `<button class="yan" data-mv="onceki" aria-label="Önceki">${ONCEKI}</button><button class="ana" data-mv="calar" aria-label="Çal / durdur">${CAL}</button><button class="yan" data-mv="sonraki" aria-label="Sonraki">${SONRAKI}</button>`
-    + '<span class="z" data-mv-z="gecen">0:00</span><div class="mv-d" data-mv="sar" aria-label="Demoda ilerle"></div><span class="z">' + MV.zamanYazi(MV.DEMO_SANIYE) + '</span>'
+    + '<div class="mv-d" data-mv="sar" aria-label="Demoda ilerle"></div>'
     + '<a class="teklif" href="/coffee#cf-note" data-mv="teklif"><span class="uzun">BU SESİ </span>İSTİYORUM</a>';
   document.body.append(calar);
 
@@ -65,7 +72,7 @@
     return `<div class="mv-liste"><div class="mv-liste-bas"><span>${esc(turAd(l.tur).toLocaleUpperCase('tr-TR'))} · ${esc(l.ad.toLocaleUpperCase('tr-TR'))}</span><em>${l.parcalar.length} ŞARKI · HER BİRİNDEN ${MV.DEMO_SANIYE / 60 === 1 ? '1 DK' : MV.DEMO_SANIYE + ' SN'}</em></div>`
       + l.parcalar.map((p, i) => {
         const aktif = i === durum.sira, calan = aktif && !ses.paused;
-        return `<div class="mv-s" ${aktif ? 'aria-current="true"' : ''}><span class="no">${String(i + 1).padStart(2, '0')}</span><strong>${esc(p.ad)}</strong><div class="mv-d">${MV.dalgaSvg(p.dalga, aktif ? durum.oran : 0, 's' + i)}</div><span class="sure">${p.sure ? MV.zamanYazi(p.sure) : ''}</span><button class="mv-cal" type="button" data-mv-sarki="${i}" aria-label="${esc(p.ad)} ${calan ? 'durdur' : 'çal'}">${calan ? DUR : CAL}</button></div>`;
+        return `<div class="mv-s" ${aktif ? 'aria-current="true"' : ''}><span class="no">${String(i + 1).padStart(2, '0')}</span><strong>${esc(p.ad)}</strong><div class="mv-d">${dalga(p.dalga, aktif ? durum.oran : 0, 150, aktif ? ses.currentTime || 0 : null)}</div><span class="sure">${p.sure ? MV.zamanYazi(p.sure) : ''}</span><button class="mv-cal" type="button" data-mv-sarki="${i}" aria-label="${esc(p.ad)} ${calan ? 'durdur' : 'çal'}">${calan ? DUR : CAL}</button></div>`;
       }).join('') + '</div>';
   }
 
@@ -80,7 +87,7 @@
     calar.querySelector('h4').textContent = p.ad;
     calar.querySelector('p').textContent = turAd(l.tur) + ' · ' + l.ad + ' listesi';
     calar.querySelector('.ana').innerHTML = ses.paused ? CAL : DUR;
-    calar.querySelector('[data-mv="sar"]').innerHTML = MV.dalgaSvg(p.dalga, durum.oran, 'c');
+    calar.querySelector('[data-mv="sar"]').innerHTML = dalga(p.dalga, durum.oran, calarAdet(), ses.currentTime || 0);
     calar.classList.add('acik');
     document.body.classList.add('mv-calar-acik');
   }
@@ -108,9 +115,9 @@
   ses.addEventListener('timeupdate', () => {
     if (ses.currentTime >= MV.DEMO_SANIYE) { sonraki(1); return; }
     durum.oran = Math.min(1, ses.currentTime / Math.min(MV.DEMO_SANIYE, ses.duration || MV.DEMO_SANIYE));
-    calar.querySelector('[data-mv-z="gecen"]').textContent = MV.zamanYazi(ses.currentTime);
+    calar.querySelectorAll('[data-mv-z="gecen"]').forEach(z => { z.textContent = MV.zamanYazi(ses.currentTime); });
     const simdi = Date.now();
-    if (simdi - sonCizim > 400) { sonCizim = simdi; calarGuncelle(); const d = kok.querySelector('.mv-s[aria-current="true"] .mv-d'); if (d) d.innerHTML = MV.dalgaSvg(durum.liste.parcalar[durum.sira].dalga, durum.oran, 's' + durum.sira); }
+    if (simdi - sonCizim > 400) { sonCizim = simdi; calarGuncelle(); const d = kok.querySelector('.mv-s[aria-current="true"] .mv-d'); if (d) d.innerHTML = dalga(durum.liste.parcalar[durum.sira].dalga, durum.oran, 150, ses.currentTime); }
   });
   ses.addEventListener('ended', () => sonraki(1));
   ses.addEventListener('play', () => { ciz(); calarGuncelle(); });

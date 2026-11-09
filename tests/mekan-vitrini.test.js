@@ -84,6 +84,29 @@ test('dalgaSvg: tam dalga dolu kontur olarak çizilir (gri + kırpılmış sarı
   assert.equal((g.match(/<path /g) || []).length, 1);
 });
 
+test('cubukSvg: SoundCloud gibi alttan yükselen çubuklar; çalınan kısım sarı, kalanı açık gri', () => {
+  const d = []; for (let i = 0; i < 600; i++) d.push(i < 300 ? 20 : 90, i < 300 ? -10 : -95);
+  const s = MV.cubukSvg(d, 0.25, 'sari', 40);
+  assert.equal((s.match(/<rect /g) || []).length, 40);
+  assert.equal((s.match(/fill="#e8c548"/g) || []).length, 10, 'ilk %25 sarı');
+  assert.equal((s.match(/fill="#e9e6df"/g) || []).length, 30);
+  // hepsi alta dayalı: y + yükseklik = 60
+  const r = /y="([\d.]+)" width="[\d.]+" height="([\d.]+)"/g; let m;
+  while ((m = r.exec(s))) assert.ok(Math.abs(+m[1] + +m[2] - 60) < 0.11);
+  const ilk = /height="([\d.]+)"/.exec(s)[1], son = /height="([\d.]+)"[^>]*\/><\/svg>/.exec(s)[1];
+  assert.ok(+ilk < +son, 'sessiz yer alçak, yüksek yer uzun');
+  assert.equal((MV.cubukSvg(d, 0, 'sari', 40).match(/#e8c548/g) || []).length, 0);
+});
+
+test('vitrin: satır ve oynatıcı sarı çubuk dalgayla; köşelerde geçen / demo süresi', () => {
+  const j = oku('mekan-vitrini.js');
+  assert.match(j, /MV\.cubukSvg\([^)]*'sari'/);
+  assert.doesNotMatch(j, /MV\.dalgaSvg\(/);
+  assert.match(j, /class="mv-zs"/);
+  assert.match(j, /class="mv-zg"/);
+  assert.match(oku('mekan-vitrini.css'), /\.mv-zs/);
+});
+
 test('SQL: klasörden yalnız seçili şarkılar; seçim yoksa hepsi; RLS değişmez', () => {
   const s = oku('supabase/mekan-vitrini-secim.sql');
   assert.match(s, /alter table public\.radio_folders\s+add column if not exists vitrin_parcalar uuid\[\]/);
