@@ -1,0 +1,17 @@
+/* Ana sayfa giriş sekmeleri (9 Kasım 2026) · "Ne için müzik arıyorsunuz?" */
+.hero-copy .hs-soru{margin:0 0 12px}
+.hero-sekmeler{display:inline-flex;gap:4px;padding:4px;margin:0 0 30px;border-radius:999px;background:rgba(20,16,24,.66);border:1px solid rgba(255,255,255,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.hero-sekmeler button{border:0;background:none;color:#e9e4da;font:inherit;font-size:11px;font-weight:900;letter-spacing:.1em;padding:11px 15px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s}
+.hero-sekmeler button:hover{color:#fff;background:rgba(255,255,255,.08)}
+.hero-sekmeler button[aria-selected="true"]{background:var(--yellow,#e8d15a);color:#16131a}
+.hero-sekmeler button:focus-visible{outline:2px solid var(--yellow,#e8d15a);outline-offset:2px}
+.hero-pano:not([hidden]){animation:heroPano .45s ease both}
+.hero-pano h1.uzun{font-size:clamp(54px,7vw,104px)}
+.tape-label [hidden]{display:none}
+@keyframes heroPano{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(max-width:760px){
+  .hero-sekmeler{display:flex;width:100%;margin-bottom:24px}
+  .hero-sekmeler button{flex:1;padding:10px 6px;font-size:9.5px;letter-spacing:.06em;white-space:normal;line-height:1.25}
+  .hero-pano h1.uzun{font-size:clamp(40px,11.5vw,64px)}
+}
+@media(prefers-reduced-motion:reduce){.hero-pano:not([hidden]){animation:none}.hero-sekmeler button{transition:none}}
