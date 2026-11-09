@@ -1,5 +1,6 @@
-/* Mekân vitrini (8 Kasım 2026) · /coffee "MEKANINIZIN KENDİ SESİ." altındaki demo bölümü. */
-.mv{margin:10px 0 40px;max-width:1100px}
+/* Mekân vitrini (8 Kasım 2026; 9 Kasım'da ana sayfaya taşındı) · "MEKANINIZIN KENDİ SESİ." altındaki demo bölümü.
+   Kenar boşluğu ana sayfanın kurumsal bölümleriyle aynı (7vw). */
+.mv{margin:0;padding:40px 7vw 70px;position:relative}
 .mv[hidden]{display:none}
 .mv .eyebrow{margin-bottom:10px}
 .mv-bas{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:22px}
@@ -58,6 +59,9 @@
 .mv-calar .teklif{padding:10px 14px;border-radius:12px;background:linear-gradient(145deg,#e6cf55,#c1a52f);color:#131313;font-size:12px;font-weight:700;white-space:nowrap}
 .mv-bos{padding:22px;border-radius:22px;border:1px dashed rgba(255,255,255,.2);font-size:14px;opacity:.75}
 body.mv-calar-acik{padding-bottom:96px}
+/* Çalar açıkken sağ alttaki TEKLİF AL / WHATSAPP düğmeleri çaların üstüne çıkar. */
+.float-actions{transition:bottom .35s ease}
+body.mv-calar-acik .float-actions{bottom:104px}
 
 @media(max-width:700px){
   .mv-tur{grid-template-columns:1fr 1fr!important}.mv-tur button{height:104px}
@@ -72,5 +76,6 @@ body.mv-calar-acik{padding-bottom:96px}
   .mv-calar .bilgi{flex:1}
   .mv-calar .uzun{display:none}
   body.mv-calar-acik{padding-bottom:150px}
+  body.mv-calar-acik .float-actions{bottom:150px}
 }
-@media (prefers-reduced-motion:reduce){.mv-calar{transition:none}.mv-tur button{transition:none}}
+@media (prefers-reduced-motion:reduce){.mv-calar,.float-actions{transition:none}.mv-tur button{transition:none}}

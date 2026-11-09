@@ -1,5 +1,5 @@
-// Mekân vitrini (8 Kasım 2026): /coffee sayfasında, yöneticinin radyo panelinde
-// "sitede göster" diye işaretlediği çalma listelerinin demoları. Her şarkıdan
+// Mekân vitrini (8 Kasım 2026; 9 Kasım'da ana sayfaya taşındı): yöneticinin radyo
+// panelinde "sitede göster" diye işaretlediği klasör ve çalma listelerinin demoları. Her şarkıdan
 // DEMO_SANIYE kadar çalar. Veri tek güvenli fonksiyondan gelir (mekan_vitrini);
 // marka/şube bilgisi gelmez.
 (() => {
@@ -38,7 +38,7 @@
   calar.innerHTML = '<div class="mini"></div><div class="bilgi"><h4></h4><p></p></div>'
     + `<button class="yan" data-mv="onceki" aria-label="Önceki">${ONCEKI}</button><button class="ana" data-mv="calar" aria-label="Çal / durdur">${CAL}</button><button class="yan" data-mv="sonraki" aria-label="Sonraki">${SONRAKI}</button>`
     + '<span class="z" data-mv-z="gecen">0:00</span><div class="mv-d" data-mv="sar" aria-label="Demoda ilerle"></div><span class="z">' + MV.zamanYazi(MV.DEMO_SANIYE) + '</span>'
-    + '<a class="teklif" href="#cf-note" data-mv="teklif"><span class="uzun">BU SESİ </span>İSTİYORUM</a>';
+    + '<a class="teklif" href="/coffee#cf-note" data-mv="teklif"><span class="uzun">BU SESİ </span>İSTİYORUM</a>';
   document.body.append(calar);
 
   function turlerHtml() {
@@ -158,6 +158,13 @@
       ses.currentTime = oran * Math.min(MV.DEMO_SANIYE, ses.duration || MV.DEMO_SANIYE);
     } else if (n === 'teklif') {
       const not = document.getElementById('cf-note');
+      if (!not && durum.liste) {
+        // Ana sayfada form yok: /coffee formuna liste adıyla gidilir.
+        e.preventDefault();
+        ses.pause();
+        location.href = MV.teklifAdresi(Object.assign({}, durum.liste, { turAd: turAd(durum.liste.tur) }));
+        return;
+      }
       if (not && durum.liste) {
         const satir = MV.teklifMetni(Object.assign({}, durum.liste, { turAd: turAd(durum.liste.tur) }));
         if (!not.value.includes(satir)) not.value = (not.value ? not.value.trim() + '\n' : '') + satir;

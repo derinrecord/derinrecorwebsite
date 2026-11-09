@@ -4,6 +4,15 @@
   const client = window.supabase.createClient(
     window.DERIN_CONFIG.supabaseUrl, window.DERIN_CONFIG.supabasePublishableKey);
 
+  // Ana sayfadaki mekân demolarından "BU SESİ İSTİYORUM" ile gelindiyse
+  // (/coffee?demo=...) istenen liste notun başına yazılır. Kullanıcı
+  // değiştirebilir; textContent değil value olduğu için HTML çalışmaz.
+  try {
+    const demo = new URLSearchParams(location.search).get('demo');
+    const not = byId('cf-note');
+    if (demo && not && !not.value.includes(demo)) not.value = demo.slice(0, 300) + (not.value ? '\n' + not.value : '');
+  } catch (e) { /* adres okunamazsa form boş kalır */ }
+
   byId('cf-send').onclick = async () => {
     const msg = byId('cf-msg');
     const company = byId('cf-company').value.trim();

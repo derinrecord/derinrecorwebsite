@@ -90,12 +90,17 @@
     return 'Mekân demosu: ' + (tur ? tur + ' · ' : '') + (l && l.ad ? l.ad : '') + ' — bu sesi istiyorum.';
   }
 
+  // Ana sayfadan /coffee teklif formuna gider; form notu bu satırla dolar.
+  function teklifAdresi(l) {
+    return '/coffee?demo=' + encodeURIComponent(teklifMetni(l)) + '#cf-note';
+  }
+
   function zamanYazi(sn) {
     sn = Math.max(0, Math.floor(Number(sn) || 0));
     return Math.floor(sn / 60) + ':' + String(sn % 60).padStart(2, '0');
   }
 
-  var api = { DEMO_SANIYE: DEMO_SANIYE, TURLER: TURLER, SIRA: SIRA, grupla: grupla, ayar: ayar, acikTurler: acikTurler, VARSAYILAN: VARSAYILAN, ilkDolu: ilkDolu, saatYazi: saatYazi, tepeler: tepeler, dalgaSvg: dalgaSvg, teklifMetni: teklifMetni, zamanYazi: zamanYazi };
+  var api = { DEMO_SANIYE: DEMO_SANIYE, TURLER: TURLER, SIRA: SIRA, grupla: grupla, ayar: ayar, acikTurler: acikTurler, VARSAYILAN: VARSAYILAN, ilkDolu: ilkDolu, saatYazi: saatYazi, tepeler: tepeler, dalgaSvg: dalgaSvg, teklifMetni: teklifMetni, teklifAdresi: teklifAdresi, zamanYazi: zamanYazi };
   if (typeof window !== 'undefined') window.DerinMekanVitrini = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();

@@ -1708,7 +1708,9 @@
     { anahtar: 'marka-kapagi.sql', ad: 'Marka kapağı',
       aciklama: 'Marka başına bir görsel; kendi kapağı olmayan liste ve parçaların varsayılanı olur.', etki: 'Markalar · sunum' },
     { anahtar: 'mekan-vitrini.sql', ad: 'Mekân vitrini',
-      aciklama: 'Çalma listelerini mekân sayfasında (/coffee) demo olarak gösterir; marka adı sitede görünmez.', etki: 'Liste detayı · mekân sayfası' }
+      aciklama: 'Çalma listelerini ana sayfadaki mekân demolarında gösterir; marka adı sitede görünmez.', etki: 'Liste detayı · ana sayfa' },
+    { anahtar: 'mekan-vitrini-klasor.sql', ad: 'Mekân vitrini · klasörler',
+      aciklama: 'Yayın klasörlerini de ana sayfadaki mekân demolarında gösterir. mekan-vitrini.sql\'den sonra çalışır.', etki: 'Klasör detayı · ana sayfa' }
   ];
 
   function kurulumDurum(durum) {
@@ -1884,6 +1886,7 @@
         </table>
         ${liste.length > 1 ? '<p class="panel-sub" style="margin:12px 0 0">Sırayı ⋮⋮ tutamacından sürükleyerek ya da dokunarak değiştirebilirsin.</p>' : ''}
       </div>
+      ${vitrinPaneli(f, D, liste, 'klasor')}
       <div class="panel">
         <h3>KLASÖR AYARLARI</h3>
         <div class="form-grid">
@@ -2398,29 +2401,34 @@
   // Mekân vitrini (8 Kasım): listeyi /coffee sayfasında demo olarak göster.
   // Sitede marka adı değil, burada yazılan "sitedeki ad" görünür.
   const VITRIN_TURLERI = [['kafe', 'Kafe'], ['restoran', 'Restoran'], ['otel', 'Otel'], ['magaza', 'Mağaza']];
-  function vitrinPaneli(pl, D, adet) {
-    if (D.kurulum && D.kurulum['mekan-vitrini.sql'] === false) {
-      return `<div class="panel" style="margin-bottom:18px"><h3>MEKÂN SAYFASINDA GÖSTER</h3>
-        <p class="panel-sub">Bu özellik için <b>supabase/mekan-vitrini.sql</b> çalıştırılmalı.</p></div>`;
+  // Vitrin kutusu hem klasör hem çalma listesi sayfasında: tip 'klasor' ise
+  // klasöre (radio_folders), değilse listeye (brand_playlists) yazar.
+  function vitrinPaneli(kayit, D, parcalar, tip) {
+    const klasor = tip === 'klasor';
+    const kurulum = klasor ? 'mekan-vitrini-klasor.sql' : 'mekan-vitrini.sql';
+    if (D.kurulum && (D.kurulum['mekan-vitrini.sql'] === false || (klasor && D.kurulum[kurulum] === false))) {
+      return `<div class="panel" style="margin-bottom:18px"><h3>ANA SAYFADA GÖSTER</h3>
+        <p class="panel-sub">Bu özellik için <b>supabase/${kurulum}</b> çalıştırılmalı.</p></div>`;
     }
-    const dalgasiz = D.playlistTracks.filter(x => x.playlist_id === pl.id)
-      .map(x => D.tracks.find(t => t.id === x.track_id)).filter(t => t && !t.dalgaVar).length;
+    const adet = parcalar.length;
+    const dalgasiz = parcalar.filter(t => t && !t.dalgaVar).length;
+    const act = klasor ? 'folder-vitrin' : 'list-vitrin';
     return `<div class="panel" style="margin-bottom:18px" data-vitrin-panel>
-        <h3>MEKÂN SAYFASINDA GÖSTER ${pl.vitrin_goster ? chip('live', 'SİTEDE') : ''}</h3>
-        <p class="panel-sub">İşaretlersen bu liste mekân sayfasında (/coffee) demo olarak dinlenir: her şarkıdan 60 saniye. Sitede <b>marka adı görünmez</b>, aşağıya yazdığın ad görünür.</p>
+        <h3>ANA SAYFADA GÖSTER ${kayit.vitrin_goster ? chip('live', 'SİTEDE') : ''}</h3>
+        <p class="panel-sub">İşaretlersen bu ${klasor ? 'klasör' : 'liste'} ana sayfadaki “Mekan demoları” bölümünde dinlenir: her şarkıdan 60 saniye. Sitede ${klasor ? 'klasör adı' : '<b>marka adı</b>'} görünmez, aşağıya yazdığın ad görünür.</p>
         <div class="form-grid">
           <div class="field"><label for="vt-tur">MEKÂN TÜRÜ</label>
-            <select id="vt-tur">${VITRIN_TURLERI.map(([k, ad]) => `<option value="${k}" ${pl.vitrin_tur === k ? 'selected' : ''}>${ad}</option>`).join('')}</select></div>
+            <select id="vt-tur">${VITRIN_TURLERI.map(([k, ad]) => `<option value="${k}" ${kayit.vitrin_tur === k ? 'selected' : ''}>${ad}</option>`).join('')}</select></div>
           <div class="field"><label for="vt-ad">SİTEDEKİ AD</label>
-            <input id="vt-ad" value="${esc(pl.vitrin_ad || pl.name)}" maxlength="60" placeholder="Örn. Sabah Açılış" autocomplete="off"></div>
+            <input id="vt-ad" value="${esc(kayit.vitrin_ad || kayit.name)}" maxlength="60" placeholder="Örn. Sabah Açılış" autocomplete="off"></div>
           <div class="field"><label for="vt-tarz">TARZ (isteğe bağlı)</label>
-            <input id="vt-tarz" value="${esc(pl.vitrin_tarz || '')}" maxlength="60" placeholder="Örn. Akustik · Lo-fi" autocomplete="off"></div>
+            <input id="vt-tarz" value="${esc(kayit.vitrin_tarz || '')}" maxlength="60" placeholder="Örn. Akustik · Lo-fi" autocomplete="off"></div>
         </div>
         <div class="row">
-          <button class="btn primary" data-act="list-vitrin" data-id="${esc(pl.id)}" data-goster="1" type="button" ${adet ? '' : 'disabled'}>${pl.vitrin_goster ? 'SİTEDEKİ BİLGİLERİ KAYDET' : 'SİTEDE GÖSTER'}</button>
-          ${pl.vitrin_goster ? `<button class="btn danger" data-act="list-vitrin" data-id="${esc(pl.id)}" data-goster="0" type="button">SİTEDEN KALDIR</button>` : ''}
+          <button class="btn primary" data-act="${act}" data-id="${esc(kayit.id)}" data-goster="1" type="button" ${adet ? '' : 'disabled'}>${kayit.vitrin_goster ? 'SİTEDEKİ BİLGİLERİ KAYDET' : 'SİTEDE GÖSTER'}</button>
+          ${kayit.vitrin_goster ? `<button class="btn danger" data-act="${act}" data-id="${esc(kayit.id)}" data-goster="0" type="button">SİTEDEN KALDIR</button>` : ''}
           <button class="btn" data-act="vitrin-yazilar" type="button">SİTEDEKİ YAZILARI DÜZENLE</button>
-          <span class="sub" id="vt-msg">${adet ? (dalgasiz ? dalgasiz + ' şarkının ses dalgası kaydederken çıkarılacak.' : 'Bütün şarkıların ses dalgası hazır.') : 'Boş liste sitede gösterilemez.'}</span>
+          <span class="sub" id="vt-msg">${adet ? (dalgasiz ? dalgasiz + ' şarkının ses dalgası kaydederken çıkarılacak.' : 'Bütün şarkıların ses dalgası hazır.') : 'Boş ' + (klasor ? 'klasör' : 'liste') + ' sitede gösterilemez.'}</span>
         </div>
       </div>`;
   }
@@ -2491,7 +2499,7 @@
           ? 'Bu liste ' + kullanan + ' şubede yayında; adı değişince panelde ve sunumda yeni ad görünür.'
           : 'Bu liste hiçbir şubeye atanmamış; personel cihazdan seçerse çalar.'}</span>
       </div>
-      ${vitrinPaneli(pl, D, kayitlar.length)}
+      ${vitrinPaneli(pl, D, kayitlar.map(r => r.t), 'liste')}
       <div class="panel">
         <h3>AKIŞ (${kayitlar.length})${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</h3>
         <table>

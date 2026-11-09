@@ -60,14 +60,57 @@ test('SQL: yalnız sütun + güvenli fonksiyon; marka adı dönmez; RLS değişm
   assert.doesNotMatch(s, /on public\.(brand_playlists|radio_tracks|brands|brand_playlist_tracks) for|brands b|b\.name/);
 });
 
-test('mekân sayfası: bölüm başlığın altında, betikler yüklü', () => {
-  const h = oku('coffee.html');
-  assert.ok(h.indexOf('id="mekan-vitrini"') > h.indexOf('KENDİ SESİ') && h.indexOf('id="mekan-vitrini"') < h.indexOf('class="cf-grid"'));
+test('ana sayfa: bölüm "KENDİ SESİ" kurumsal bölümünün hemen altında, betikler ve stil yüklü', () => {
+  const h = oku('index.html');
+  const yer = h.indexOf('id="mekan-vitrini"');
+  assert.ok(yer > h.indexOf('id="kurumsal"') && yer < h.indexOf('id="ses-tasarimi"'));
+  assert.match(h, /audio-file-types\.js\?v=\d+/);
+  assert.match(h, /r2-depo\.js\?v=\d+/);
   assert.match(h, /mekan-vitrini-yardim\.js\?v=\d+/);
   assert.match(h, /mekan-vitrini\.js\?v=\d+/);
+  assert.match(h, /mekan-vitrini\.css\?v=\d+/);
   const j = oku('mekan-vitrini.js');
   assert.match(j, /rpc\('mekan_vitrini'\)/);
   assert.match(j, /DEMO_SANIYE/);
+});
+
+test('mekân sayfası (/coffee): vitrin artık yalnız ana sayfada', () => {
+  const h = oku('coffee.html');
+  assert.doesNotMatch(h, /id="mekan-vitrini"/);
+  assert.doesNotMatch(h, /mekan-vitrini\.js/);
+});
+
+test('BU SESİ İSTİYORUM: ana sayfadan /coffee formuna liste adıyla gider, form notu doldurur', () => {
+  const l = { tur: 'kafe', turAd: 'Kafe', ad: 'Coffee & Jazz' };
+  const u = MV.teklifAdresi(l);
+  assert.ok(u.startsWith('/coffee?demo='));
+  assert.ok(u.endsWith('#cf-note'));
+  assert.equal(new URL(u, 'https://derinrecord.com').searchParams.get('demo'), MV.teklifMetni(l));
+  const c = oku('coffee.js');
+  assert.match(c, /URLSearchParams\(location\.search\)\.get\('demo'\)/);
+  assert.match(oku('mekan-vitrini.js'), /teklifAdresi/);
+});
+
+test('SQL: klasörler de vitrine çıkar; yalnız sütun eklenir, RLS değişmez, klasör adı dönmez', () => {
+  const s = oku('supabase/mekan-vitrini-klasor.sql');
+  assert.match(s, /alter table public\.radio_folders\s+add column if not exists vitrin_goster/);
+  assert.match(s, /from public\.radio_folders f\s+where f\.vitrin_goster/);
+  assert.match(s, /union all/);
+  assert.match(s, /where t\.folder_id = f\.id/);
+  assert.doesNotMatch(s, /create policy|drop policy|disable row level/);
+  assert.doesNotMatch(s, /'ad', f\.name|f\.name/);
+  assert.match(s, /grant execute on function public\.mekan_vitrini\(\) to anon, authenticated/);
+});
+
+test('panel: klasör sayfasında SİTEDE GÖSTER; klasöre yazar, dalgaları çıkarır', () => {
+  const v = oku('radyo-panel-views.js');
+  assert.match(v, /'folder-vitrin'/);
+  assert.ok(v.includes("vitrinPaneli(f, D, liste, 'klasor')"));
+  assert.match(v, /mekan-vitrini-klasor\.sql/);
+  const y = oku('radyo-yonetim.js');
+  assert.match(y, /case 'folder-vitrin'/);
+  assert.match(y, /from\('radio_folders'\)\.select\('id,vitrin_goster,vitrin_tur,vitrin_ad,vitrin_tarz,vitrin_sira'\)/);
+  assert.match(y, /from\(tablo\)\.update\(guncel\)/);
 });
 
 test('yazılar yöneticiden: varsayılanla birleşir, boş alan varsayılana döner, kapalı tür gizlenir', () => {

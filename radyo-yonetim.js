@@ -1047,6 +1047,10 @@
     D.kurulum['mekan-vitrini.sql'] = !vitrin.error;
     if (!vitrin.error) {
       (vitrin.data || []).forEach(v => { const pl = D.playlists.find(x => x.id === v.id); if (pl) Object.assign(pl, v); });
+      // Klasörler de vitrine çıkar (supabase/mekan-vitrini-klasor.sql).
+      const kv = await client.from('radio_folders').select('id,vitrin_goster,vitrin_tur,vitrin_ad,vitrin_tarz,vitrin_sira');
+      D.kurulum['mekan-vitrini-klasor.sql'] = !kv.error;
+      if (!kv.error) (kv.data || []).forEach(v => { const f = D.folders.find(x => x.id === v.id); if (f) Object.assign(f, v); });
       const ayar = await client.from('mekan_vitrini_ayar').select('ust,baslik,vurgu,aciklama,turler').eq('id', 1).maybeSingle();
       D.vitrinAyar = (ayar && !ayar.error && ayar.data) || null;
       const dalgali = await client.from('radio_tracks').select('id').not('dalga', 'is', null);
@@ -3027,24 +3031,30 @@
         });
         return;
       }
+      case 'folder-vitrin':
       case 'list-vitrin': {
-        // Mekân vitrini (8 Kasım): listeyi /coffee'de göster / kaldır. Gösterirken
+        // Mekân vitrini: klasörü ya da listeyi ana sayfada göster / kaldır. Gösterirken
         // dalgası olmayan parçaların gerçek ses dalgası tarayıcıda çıkarılıp kaydedilir.
-        const pl = D.playlists.find(x => x.id === id);
-        if (!pl) return;
+        const klasorMu = act === 'folder-vitrin';
+        const tablo = klasorMu ? 'radio_folders' : 'brand_playlists';
+        const kayit = klasorMu ? D.folders.find(x => x.id === id) : D.playlists.find(x => x.id === id);
+        if (!kayit) return;
+        const tum = klasorMu
+          ? D.tracks.filter(t => t.folder_id === id)
+          : D.playlistTracks.filter(x => x.playlist_id === id).map(x => D.tracks.find(t => t.id === x.track_id)).filter(Boolean);
         const msg = el('vt-msg');
         const goster = hedef.dataset.goster === '1';
         if (!goster) {
-          const sorun = await yazDogrula(client.from('brand_playlists').update({ vitrin_goster: false }).eq('id', id), 'Liste siteden kaldırılamadı');
+          const sorun = await yazDogrula(client.from(tablo).update({ vitrin_goster: false }).eq('id', id), 'Siteden kaldırılamadı');
           if (sorun) return hata(sorun);
-          await yenile(false); bildir('Liste mekân sayfasından kaldırıldı.');
+          await yenile(false); bildir((klasorMu ? 'Klasör' : 'Liste') + ' ana sayfadan kaldırıldı.');
           return;
         }
         const ad = (el('vt-ad').value || '').trim().replace(/\s+/g, ' ');
         if (!ad) return hata('Sitedeki ad boş olamaz.');
         const guncel = { vitrin_goster: true, vitrin_tur: el('vt-tur').value, vitrin_ad: ad, vitrin_tarz: (el('vt-tarz').value || '').trim() || null };
         const MV = window.DerinMekanVitrini;
-        const parcalar = D.playlistTracks.filter(x => x.playlist_id === id).map(x => D.tracks.find(t => t.id === x.track_id)).filter(t => t && !t.dalgaVar);
+        const parcalar = tum.filter(t => !t.dalgaVar);
         if (MV && parcalar.length && (window.AudioContext || window.webkitAudioContext)) {
           for (let i = 0; i < parcalar.length; i++) {
             const t = parcalar[i];
@@ -3064,10 +3074,10 @@
             } catch (e) { /* bu parçanın dalgası çıkarılamadı; sitede düz çubuk görünür */ }
           }
         }
-        const sorun = await yazDogrula(client.from('brand_playlists').update(guncel).eq('id', id), 'Liste sitede gösterilemedi');
+        const sorun = await yazDogrula(client.from(tablo).update(guncel).eq('id', id), 'Sitede gösterilemedi');
         if (sorun) return hata(sorun);
         await yenile(false);
-        bildir('Liste mekân sayfasında yayında: derinrecord.com/coffee');
+        bildir((klasorMu ? 'Klasör' : 'Liste') + ' ana sayfada yayında: derinrecord.com');
         return;
       }
       case 'list-rename': {
