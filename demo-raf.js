@@ -25,7 +25,13 @@
     const l = /^\/?([a-z-]+)\.html(?:[#?].*)?$/i.exec(String(href || '').trim());
     return l && BRANSLAR.includes(l[1].toLowerCase()) ? l[1].toLowerCase() : null;
   }
-  if (typeof module !== 'undefined') module.exports = { BRANSLAR, BRANS_AD, grupla, bransBul, guvenliAdres };
+  const escH = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // Yönetici: her şarkı satırında DÜZENLE ve SİL (ziyaretçiye hiçbir şey basılmaz).
+  const yonetimDugmeleri = (yonetici, id) => !yonetici ? ''
+    : `<span class="dr-y"><button type="button" data-dr-y="duzenle" data-id="${escH(id)}">DÜZENLE</button><button type="button" class="dr-y-sil" data-dr-y="sil" data-id="${escH(id)}">SİL</button></span>`;
+  // Yeni demo branşın en sonuna eklenir.
+  const yeniSira = liste => (liste || []).reduce((m, d) => Math.max(m, Number(d && d.sira) || 0), 0) + 10;
+  if (typeof module !== 'undefined') module.exports = { BRANSLAR, BRANS_AD, grupla, bransBul, guvenliAdres, yonetimDugmeleri, yeniSira };
   if (typeof document === 'undefined') return;
 
   const MV = window.DerinMekanVitrini;
@@ -39,7 +45,7 @@
   const ONCEKI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z" fill="currentColor"/></svg>';
   const SONRAKI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z" fill="currentColor"/></svg>';
 
-  const durum = { gruplar: null, brans: null, sira: -1, oran: 0, kapali: false };
+  const durum = { gruplar: null, brans: null, sira: -1, oran: 0, kapali: false, yonetici: false, client: null };
   const ses = new Audio();
   ses.preload = 'none';
 
@@ -74,12 +80,16 @@
     const kart = document.querySelector(`#demolar .renk-${b}`);
     liste.style.setProperty('--r', (kart && getComputedStyle(kart).getPropertyValue('--r').trim()) || '#e8d15a');
     okKoy(kart);
-    liste.innerHTML = `<i class="dr-ok" aria-hidden="true"></i><div class="mv-liste"><div class="mv-liste-bas"><span><i class="dr-kaset" aria-hidden="true"></i>${esc(BRANS_AD[b])} KASETİ · ${ps.length ? ps.length + ' DEMO' : 'YAKINDA'}</span><a class="dr-git" href="${href}">BRANŞ SAYFASI →</a></div>`
+    const yon = durum.yonetici;
+    liste.classList.toggle('dr-yonetici', yon);
+    liste.innerHTML = `<i class="dr-ok" aria-hidden="true"></i><div class="mv-liste"><div class="mv-liste-bas"><span><i class="dr-kaset" aria-hidden="true"></i>${esc(BRANS_AD[b])} KASETİ · ${ps.length ? ps.length + ' DEMO' : 'YAKINDA'}</span>${yon ? '<button class="dr-y-ekle" type="button" data-dr-y="ekle">＋ DEMO EKLE</button>' : ''}<a class="dr-git" href="${href}">BRANŞ SAYFASI →</a></div>`
       + (ps.length ? ps.map((d, i) => {
         const aktif = i === durum.sira, calan = aktif && !ses.paused;
-        return `<div class="mv-s" ${aktif ? 'aria-current="true"' : ''}><button class="mv-cal" type="button" data-dr-sarki="${i}" aria-label="${esc(d.baslik)} ${calan ? 'durdur' : 'çal'}">${calan ? DUR : CAL}</button><span class="no dr-no"><i class="dr-kaset" aria-hidden="true"></i><small>${esc(BRANS_AD[b])}</small>${String(i + 1).padStart(2, '0')}</span><strong>${esc(String(d.baslik || '').toLocaleUpperCase('tr-TR'))}</strong><div class="mv-d">${dalga(d, aktif ? durum.oran : 0, 150, aktif ? ses.currentTime || 0 : null)}</div><span class="sure">${sureOf(d) ? MV.zamanYazi(sureOf(d)) : ''}</span></div>`;
+        return `<div class="mv-s" ${aktif ? 'aria-current="true"' : ''}><button class="mv-cal" type="button" data-dr-sarki="${i}" aria-label="${esc(d.baslik)} ${calan ? 'durdur' : 'çal'}">${calan ? DUR : CAL}</button><span class="no dr-no"><i class="dr-kaset" aria-hidden="true"></i><small>${esc(BRANS_AD[b])}</small>${String(i + 1).padStart(2, '0')}</span><strong>${esc(String(d.baslik || '').toLocaleUpperCase('tr-TR'))}</strong><div class="mv-d">${dalga(d, aktif ? durum.oran : 0, 150, aktif ? ses.currentTime || 0 : null)}</div><span class="sure">${sureOf(d) ? MV.zamanYazi(sureOf(d)) : ''}</span>${yonetimDugmeleri(yon, d.id)}</div>`;
       }).join('') : '<p class="dr-bos">Bu branşın demoları yakında burada. Şimdilik branş sayfasına göz atabilirsin.</p>')
       + '</div>';
+    // Açık yönetim formu liste her yeniden çizildiğinde aynı düğüm olarak geri konur (yazılanlar kaybolmaz).
+    if (yon && formKutu.dataset.brans === b) liste.querySelector('.mv-liste-bas').after(formKutu);
   }
 
   // Listenin üstündeki ok seçili kasetin ortasına gelir (raf kaydırılınca da).
@@ -181,15 +191,165 @@
     }
   });
 
+  // ---------- Yönetici: ana sayfadan demo ekle / düzenle / sil (11 Kasım) ----------
+  // Branş sayfasındakiyle aynı tablo ve depo: demo_parcalari + R2 demo/ klasörü.
+  // Yetkiyi veritabanı (RLS) ve yükleme izni fonksiyonu denetler; burası yalnız düğmeleri gösterir.
+  const D = window.DerinDemo;
+  const EN_BUYUK = 400 * 1024 * 1024;
+  const formKutu = document.createElement('form');
+  formKutu.className = 'dr-form';
+  const formKapat = () => { formKutu.remove(); formKutu.innerHTML = ''; delete formKutu.dataset.brans; };
+  const formYaz = (m, tip) => { const p = formKutu.querySelector('.dr-mesaj'); if (p) { p.textContent = m || ''; p.className = 'dr-mesaj' + (tip ? ' ' + tip : ''); } };
+
+  function kasetEtiketi(b) {
+    const span = document.querySelector(`#demolar .renk-${b} .card-meta span`);
+    const ilk = durum.gruplar[b][0];
+    if (span) span.textContent = (ilk ? String(ilk.baslik || '') : 'YAKINDA').toUpperCase() + ' →';
+  }
+
+  function formAc(tur, demo) {
+    const b = durum.brans;
+    formKutu.dataset.brans = b;
+    formKutu.dataset.tur = tur;
+    formKutu.dataset.id = demo ? demo.id : '';
+    formKutu.innerHTML = `<p class="dr-form-baslik">${tur === 'ekle' ? esc(BRANS_AD[b]) + ' · YENİ DEMO · YALNIZ SEN GÖRÜRSÜN' : 'DEMOYU DÜZENLE'}</p>
+      <label>DEMO ADI<input name="baslik" maxlength="80" required></label>
+      <label>KISA NOT<input name="not" maxlength="160" placeholder="${esc(D ? D.VARSAYILAN_NOT : '')}"></label>
+      ${tur === 'ekle' ? '<label>DOSYA (WAV, MP3 ya da MP4 video)<input name="dosya" type="file" accept="audio/*,video/mp4,.wav,.mp3,.m4a,.aiff,.flac" required></label><div class="dr-ilerleme" hidden><i></i><span>0%</span></div>' : ''}
+      <p class="dr-mesaj" role="status" aria-live="polite"></p>
+      <div class="dr-form-dugmeler"><button type="button" data-dr-y="vazgec">VAZGEÇ</button><button type="submit">${tur === 'ekle' ? 'YÜKLE VE EKLE' : 'KAYDET'}</button></div>`;
+    if (demo) { formKutu.elements.baslik.value = demo.baslik || ''; formKutu.elements.not.value = demo.not_metni || ''; }
+    listeCiz();
+    formKutu.elements.baslik.focus();
+  }
+
+  const r2Yukle = (adres, dosya) => new Promise((tamam, hata) => {
+    const x = new XMLHttpRequest();
+    x.open('PUT', adres);
+    x.upload.onprogress = e => {
+      if (!e.lengthComputable) return;
+      const y = Math.round(e.loaded / e.total * 100);
+      const ilerleme = formKutu.querySelector('.dr-ilerleme');
+      if (ilerleme) { ilerleme.querySelector('i').style.width = y + '%'; ilerleme.querySelector('span').textContent = y + '%'; }
+    };
+    x.onload = () => (x.status >= 200 && x.status < 300 ? tamam() : hata(new Error('Yükleme reddedildi (' + x.status + ')')));
+    x.onerror = () => hata(new Error('Bağlantı koptu, tekrar dene.'));
+    x.send(dosya);
+  });
+
+  // Dalgası olmayan demonun dalgası ve süresi çıkarılıp kaydedilir (yazma doğrulanır).
+  async function dalgaCikar(d) {
+    if (!window.DerinSesDalga || !d.medya_url) return;
+    try {
+      const { dalga, sure } = await window.DerinSesDalga.cikar(d.medya_url);
+      const { data } = await durum.client.from('demo_parcalari').update({ dalga, sure }).eq('id', d.id).select('id');
+      if (!data || !data.length) return;
+      d.dalga = dalga; d.sure = sure;
+      if (durum.brans === d.brans) listeCiz();
+    } catch (e) { /* çıkarılamadı: düz çubuk görünür, sonraki açılışta yeniden denenir */ }
+  }
+
+  async function ekle() {
+    const b = formKutu.dataset.brans, client = durum.client;
+    const baslik = String(formKutu.elements.baslik.value || '').trim();
+    const notMetni = String(formKutu.elements.not.value || '').trim() || null;
+    const dosya = formKutu.elements.dosya.files[0];
+    const tur = dosya && D.dosyaTuru(dosya);
+    if (!baslik) { formYaz('Demo adı boş olamaz.', 'err'); return; }
+    if (!tur) { formYaz('Bu dosya türü olmaz. WAV, MP3 ya da MP4 video seç.', 'err'); return; }
+    if (dosya.size > EN_BUYUK) { formYaz('Dosya çok büyük (en çok 400 MB).', 'err'); return; }
+    const demoKey = D.demoAnahtari(b, baslik, Date.now().toString(36).slice(-5));
+    const yol = D.r2Yolu(b, demoKey, dosya.name);
+    formYaz('Yükleniyor…');
+    formKutu.querySelector('.dr-ilerleme').hidden = false;
+    const adres = await window.DerinR2.imzaAdresi('demo-audio', yol, 'yukle');
+    await r2Yukle(adres, dosya);
+    formYaz('Kaydediliyor…');
+    const { data, error } = await client.from('demo_parcalari').insert({
+      demo_key: demoKey, brans: b, baslik, not_metni: notMetni,
+      medya_url: window.DerinR2.adres('demo-audio', yol), medya_tur: tur, r2_key: yol, sira: yeniSira(durum.gruplar[b])
+    }).select('id,brans,baslik,not_metni,medya_url,medya_tur,r2_key,sira,created_at');
+    if (error || !data || !data.length) {
+      await window.DerinR2.sil('demo-audio', [yol]);
+      throw error || new Error('kayıt yapılamadı ya da yetkin yok.');
+    }
+    const yeni = data[0];
+    durum.gruplar[b].push(yeni);
+    formKapat(); listeCiz(); kasetEtiketi(b);
+    dalgaCikar(yeni);
+  }
+
+  async function kaydet() {
+    const demo = durum.gruplar[formKutu.dataset.brans].find(d => String(d.id) === formKutu.dataset.id);
+    if (!demo) { formKapat(); listeCiz(); return; }
+    const yeni = D.duzenlemeDenetle(formKutu.elements.baslik.value, formKutu.elements.not.value);
+    if (yeni.hata) { formYaz(yeni.hata, 'err'); return; }
+    const { data, error } = await durum.client.from('demo_parcalari')
+      .update({ baslik: yeni.baslik, not_metni: yeni.not_metni }).eq('id', demo.id).select('id');
+    if (error || !data || !data.length) throw error || new Error('kayıt bulunamadı ya da yetkin yok.');
+    demo.baslik = yeni.baslik; demo.not_metni = yeni.not_metni;
+    formKapat(); listeCiz(); calarGuncelle(); kasetEtiketi(demo.brans);
+  }
+
+  async function sil(demo, dugme) {
+    if (!confirm(`"${demo.baslik}" demosu silinsin mi?\nBu geri alınamaz.`)) return;
+    dugme.disabled = true; dugme.textContent = 'SİLİNİYOR…';
+    const { data, error } = await durum.client.from('demo_parcalari').delete().eq('id', demo.id).select('id');
+    if (error || !data || !data.length) {
+      dugme.disabled = false; dugme.textContent = 'SİL';
+      alert('Silinemedi: ' + ((error && error.message) || 'kayıt bulunamadı ya da yetkin yok.'));
+      return;
+    }
+    if (demo.r2_key) { try { await window.DerinR2.sil('demo-audio', [demo.r2_key]); } catch (e) { /* dosya kalır, kayıt silindi */ } }
+    const grup = durum.gruplar[demo.brans], i = grup.indexOf(demo);
+    if (durum.brans === demo.brans && i === durum.sira) { ses.pause(); ses.removeAttribute('src'); durum.sira = -1; calar.classList.remove('acik'); document.body.classList.remove('mv-calar-acik'); }
+    else if (durum.brans === demo.brans && i < durum.sira) durum.sira -= 1;
+    grup.splice(i, 1);
+    listeCiz(); kasetEtiketi(demo.brans);
+  }
+
+  liste.addEventListener('click', e => {
+    const t = e.target.closest('[data-dr-y]');
+    if (!t || !durum.yonetici) return;
+    const n = t.dataset.drY, demo = parcalar().find(d => String(d.id) === t.dataset.id);
+    if (n === 'ekle') formAc('ekle');
+    else if (n === 'duzenle' && demo) formAc('duzenle', demo);
+    else if (n === 'sil' && demo) sil(demo, t);
+    else if (n === 'vazgec') { formKapat(); listeCiz(); }
+  });
+  formKutu.addEventListener('submit', async e => {
+    e.preventDefault();
+    const dugme = formKutu.querySelector('[type="submit"]');
+    dugme.disabled = true;
+    try { await (formKutu.dataset.tur === 'ekle' ? ekle() : kaydet()); }
+    catch (err) {
+      formYaz((formKutu.dataset.tur === 'ekle' ? 'Eklenemedi: ' : 'Kaydedilemedi: ') + ((err && err.message) || ''), 'err');
+      const ilerleme = formKutu.querySelector('.dr-ilerleme'); if (ilerleme) ilerleme.hidden = true;
+    } finally { dugme.disabled = false; }
+  });
+
+  function yoneticiMi() {
+    const yeni = !!(D && window.DerinR2 && window.DerinAuth && window.DerinAuth.profile?.role === 'admin');
+    if (yeni === durum.yonetici) return;
+    durum.yonetici = yeni;
+    if (!yeni) formKapat();
+    if (durum.gruplar) listeCiz();
+    // Yönetici açınca dalgası eksik demoların dalgası arka planda tamamlanır.
+    if (yeni && durum.gruplar) Object.values(durum.gruplar).flat().filter(d => 'dalga' in d && (!Array.isArray(d.dalga) || d.dalga.length < 1200)).reduce((p, d) => p.then(() => dalgaCikar(d)), Promise.resolve());
+  }
+  window.addEventListener('derin:authchange', yoneticiMi);
+
   async function yukle() {
     try {
       const auth = window.DerinAuth && await window.DerinAuth.ready;
       const client = auth && auth.client;
       if (!client) return;
-      let r = await client.from('demo_parcalari').select('id,brans,baslik,medya_url,medya_tur,sira,created_at,dalga,sure');
+      durum.client = client;
+      let r = await client.from('demo_parcalari').select('id,brans,baslik,not_metni,r2_key,medya_url,medya_tur,sira,created_at,dalga,sure');
       if (r.error) r = await client.from('demo_parcalari').select('id,brans,baslik,medya_url,medya_tur,sira,created_at'); // dalga sütunu henüz yoksa
       if (r.error) return; // tablo yoksa kasetler eskisi gibi branş sayfasına gider
       durum.gruplar = grupla(r.data);
+      yoneticiMi();
     } catch (e) { /* bağlantı yoksa kasetler eskisi gibi çalışır */ }
   }
   yukle();

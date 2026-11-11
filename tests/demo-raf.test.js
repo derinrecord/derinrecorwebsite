@@ -80,3 +80,33 @@ test('demo listesi: oynat düğmesi satırın solunda (ilk sütun)', () => {
   assert.match(c, /\.dr-liste \.mv-s\{grid-template-columns:40px 150px 1fr 1\.3fr 52px\}/);
   assert.match(c, /\.dr-liste \.mv-s\{grid-template-columns:36px auto 1fr\}/);
 });
+
+test('yönetim düğmeleri yalnız yöneticiye: ziyaretçiye boş, yöneticiye DÜZENLE + SİL', () => {
+  assert.equal(DR.yonetimDugmeleri(false, 'x1'), '');
+  const h = DR.yonetimDugmeleri(true, 'a"b');
+  assert.match(h, /data-dr-y="duzenle" data-id="a&quot;b"/);
+  assert.match(h, /data-dr-y="sil" data-id="a&quot;b"/);
+  assert.match(h, />DÜZENLE</);
+  assert.match(h, />SİL</);
+});
+
+test('yeniSira: branşın en büyük sırasının 10 fazlası; boşsa 10', () => {
+  assert.equal(DR.yeniSira([]), 10);
+  assert.equal(DR.yeniSira([{ sira: 30 }, { sira: 5 }, {}]), 40);
+});
+
+test('ana sayfa demo yönetimi: ekle (R2 + kayıt + dalga), düzenle, sil (onaylı); yazmalar doğrulanır', () => {
+  const j = oku('demo-raf.js');
+  assert.match(j, /profile\?\.role === 'admin'/);
+  assert.match(j, /data-dr-y="ekle"/);
+  assert.match(j, /DerinR2\.imzaAdresi\('demo-audio'/);
+  assert.match(j, /from\('demo_parcalari'\)\.insert\(/);
+  assert.match(j, /DerinSesDalga\.cikar\(/);
+  assert.match(j, /update\(\{ baslik: yeni\.baslik, not_metni: yeni\.not_metni \}\)\.eq\('id', demo\.id\)\.select\('id'\)/);
+  assert.match(j, /confirm\(/);
+  assert.match(j, /delete\(\)\.eq\('id', demo\.id\)\.select\('id'\)/);
+  assert.match(j, /DerinR2\.sil\('demo-audio'/);
+  const h = oku('index.html');
+  for (const f of ['demo-yardim.js', 'ses-dalga.js', 'r2-depo.js']) assert.ok(h.indexOf(f) > 0 && h.indexOf(f) < h.indexOf('demo-raf.js'), f + ' demo-raf.js’ten önce');
+  assert.match(oku('demo-raf.css'), /\.dr-liste\.dr-yonetici \.mv-s\{grid-template-columns:/);
+});
