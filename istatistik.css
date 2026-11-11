@@ -1,64 +1,113 @@
-/* İstatistikler (11 Kasım 2026) — C "Sade" görünümü: siyah zemin, tek büyük grafik, sakin kartlar. */
-body.ist{--ist-zemin:#000;--ist-kart:#1c1c1e;--ist-cizgi:#2c2c2e;--ist-yazi:#f5f5f7;--ist-ikincil:#8e8e93;--ist-sari:#e8d15a;--ist-camgobegi:#3fc1c9;--ist-pembe:#fe4b6a;--ist-yesil:#30d158;--ist-kirmizi:#ff6961;
-  background:var(--ist-zemin);color:var(--ist-yazi);font-family:"Inter Display",Inter,-apple-system,BlinkMacSystemFont,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
-.ist-sayfa{max-width:1080px;margin:0 auto;padding:28px 24px 64px}
-.ist-sayfa h1{margin:0;font:700 44px/1.05 "Inter Display",Inter,sans-serif;letter-spacing:-.025em;text-transform:none}
-.ist-alt{margin:6px 0 26px;color:var(--ist-ikincil)}
-.ist-secimler{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.ist-secim{display:inline-flex;background:var(--ist-kart);border-radius:10px;padding:3px;gap:2px}
-.ist-secim button{border:0;background:none;font:500 14px/1 inherit;font-family:inherit;color:var(--ist-ikincil);padding:9px 16px;border-radius:8px;cursor:pointer}
-.ist-secim button[aria-pressed="true"]{background:#3a3a3c;color:var(--ist-yazi)}
-.ist-secim button:focus-visible{outline:2px solid var(--ist-sari);outline-offset:1px}
-.ist-kart{background:var(--ist-kart);border-radius:22px;padding:22px;min-width:0}
-.ist-kart h2{margin:0 0 6px;font:650 20px/1.2 "Inter Display",Inter,sans-serif;letter-spacing:-.01em;color:var(--ist-yazi);text-transform:none}
-.ist-buyuk{margin-top:14px}
-.ist-metrik{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:6px 0 4px}
-.ist-metrik b{font:700 64px/1 "Inter Display",Inter,sans-serif;letter-spacing:-.03em}
-.ist-egilim{font-weight:600;font-size:14px;padding:4px 10px;border-radius:99px;white-space:nowrap}
-.ist-egilim.asagi{color:var(--ist-kirmizi);background:rgba(255,105,97,.14)}
-.ist-egilim.yukari{color:var(--ist-yesil);background:rgba(48,209,88,.14)}
-.ist-egilim.ayni{color:var(--ist-ikincil);background:rgba(142,142,147,.14)}
-.ist-metrik-alt,.ist-not{color:var(--ist-ikincil);font-size:14px;margin:0}
-.ist-grafik{display:block;width:100%;height:auto;margin-top:12px}
-.ist-grafik text{fill:var(--ist-ikincil);font:12px "Inter Display",Inter,sans-serif}
-.ist-bos{padding:40px 0 20px;color:var(--ist-ikincil);max-width:46ch}
-.ist-bos strong{display:block;color:var(--ist-yazi);font-size:18px;margin-bottom:6px}
+/* İstatistikler (11 Kasım 2026) — ana sayfanın yeni görünümüyle: arka plandaki ışıklar,
+   cam kartlar, kayan sarı vurgulu seçici, demo listesindeki gibi sarı çubuk grafik.
+   body.ist-raf: küçük sayı kartları branş kasetlerinin renginde (seçenek 1).
+   body.ist-liste: kartlar cam, liste başlık şeritleri branş renginde (seçenek 2). */
+body.ist{--sari:#e8d15a;--pembe:#fe4b6a;--camgobegi:#3fc1c9;--mor:#ab6ee7;--yesil:#9be15d;--krem:#f1ece1;--yazi:#f4f1e9;--soluk:rgba(244,241,233,.62);--cizgi:rgba(255,255,255,.1);
+  color:var(--yazi);font-family:Arial,Helvetica,sans-serif;font-variant-numeric:tabular-nums}
+.ist-sayfa{max-width:1180px;margin:0 auto;padding:38px 6vw 72px}
+.ist-sayfa .eyebrow{margin:0 0 12px;color:var(--sari);font-size:12px;font-weight:900;letter-spacing:2px;opacity:1}
+.ist-sayfa h1{margin:0;font-size:clamp(46px,7vw,92px);line-height:.85;letter-spacing:-.06em;font-weight:900}
+.ist-sayfa h1 span{color:var(--sari)}
+.ist-alt{margin:14px 0 30px;color:var(--soluk);font-size:14px}
+
+/* Seçiciler: giriş sekmeleri gibi cam kutu ve kayan sarı vurgu */
+.ist-secimler{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.ist-secim{position:relative;display:inline-flex;gap:2px;padding:5px;border-radius:20px;background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 18px 40px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%)}
+.ist-isaret{position:absolute;z-index:0;top:5px;bottom:5px;left:var(--x,5px);width:var(--w,0);border-radius:15px;background:linear-gradient(145deg,#f3dc6a,#d4b834);box-shadow:0 8px 24px rgba(232,209,90,.35),inset 0 1px 0 rgba(255,255,255,.55);transition:left .42s cubic-bezier(.2,.9,.25,1.1),width .42s cubic-bezier(.2,.9,.25,1.1)}
+.ist-secim button{position:relative;z-index:1;border:0;background:none;color:#e9e4da;font:inherit;font-size:11px;font-weight:900;letter-spacing:.08em;padding:11px 15px;border-radius:15px;cursor:pointer;white-space:nowrap;transition:color .3s}
+.ist-secim button[aria-pressed="true"]{color:#16131a}
+.ist-secim:not(.hazir) button[aria-pressed="true"]{background:linear-gradient(145deg,#f3dc6a,#d4b834)}
+.ist-secim button:focus-visible{outline:2px solid var(--sari);outline-offset:2px}
+
+/* Cam kart (mekân demolarının listesi gibi) */
+.ist-kart{position:relative;min-width:0;border-radius:24px;padding:22px;border:1px solid rgba(255,255,255,.14);background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.02));box-shadow:0 18px 40px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.ist-kart h2{margin:0;font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--sari)}
+.ist-kart-bas{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:-22px -22px 14px;padding:16px 22px;border-bottom:1px solid var(--cizgi)}
+.ist-kart-bas em{font-style:normal;font-size:11px;letter-spacing:.12em;font-weight:700;opacity:.6}
+
+/* Büyük grafik */
+.ist-metrik{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.ist-metrik b{font-size:clamp(56px,8vw,96px);line-height:.9;letter-spacing:-.06em;font-weight:900}
+.ist-egilim{font-size:12px;font-weight:900;letter-spacing:.06em;padding:6px 11px;border-radius:999px;white-space:nowrap}
+.ist-egilim.asagi{color:#111;background:#ff8a8a}
+.ist-egilim.yukari{color:#111;background:var(--yesil)}
+.ist-egilim.ayni{color:var(--yazi);background:rgba(255,255,255,.12)}
+.ist-metrik-alt,.ist-not{margin:8px 0 0;color:var(--soluk);font-size:13px}
+.ist-grafik{display:block;width:100%;height:auto;margin-top:18px}
+.ist-grafik text{fill:var(--soluk);font:700 12px Arial,sans-serif;letter-spacing:.06em}
+.ist-bos{padding:30px 0 10px;color:var(--soluk);max-width:52ch;font-size:14px;line-height:1.6}
+.ist-bos strong{display:block;color:var(--yazi);font-size:18px;margin-bottom:6px}
+
+/* Küçük sayı kartları */
 .ist-dort{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px}
-.ist-kucuk h3{margin:0;font-weight:500;font-size:14px;color:var(--ist-ikincil)}
-.ist-kucuk b{display:block;font:650 34px/1.1 "Inter Display",Inter,sans-serif;margin:8px 0 4px;letter-spacing:-.02em}
-.ist-kucuk svg{display:block;width:100%;height:36px;margin-top:10px}
+.ist-kucuk{display:flex;flex-direction:column;min-height:168px}
+.ist-kucuk h3{margin:0;font-size:11px;font-weight:900;letter-spacing:.12em}
+.ist-kucuk b{display:block;font-size:48px;line-height:1;letter-spacing:-.05em;font-weight:900;margin:12px 0 6px}
+.ist-kucuk .ist-not{margin:0}
+.ist-kucuk svg{display:block;width:100%;height:34px;margin-top:auto;padding-top:12px}
+.ist-kucuk .ist-egilim{align-self:flex-start;white-space:normal;line-height:1.3}
+
+/* Satır listeleri (demo listesi satırları gibi) */
 .ist-iki{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
-.ist-ara{margin-top:22px!important}
-.ist-satirlar{margin:8px 0 0;padding:0;list-style:none}
-.ist-satirlar li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--ist-cizgi)}
-.ist-satirlar li:first-child{border:0}
-.ist-satirlar .ist-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:16px;background:var(--ist-cizgi)}
-.ist-satirlar .ist-ad{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ist-satirlar .ist-ad i{display:block;height:4px;border-radius:99px;background:var(--ist-camgobegi);margin-top:6px}
-.ist-satirlar b{font-weight:600}
-.ist-satirlar .ist-yok{grid-template-columns:1fr;color:var(--ist-ikincil)}
-.ist-cihaz{display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:center}
-.ist-cihaz svg{width:150px;height:150px}
+.ist-ara{margin-top:26px}
+.ist-satirlar{margin:0;padding:0;list-style:none}
+.ist-satirlar li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 0;border-top:1px solid rgba(255,255,255,.07)}
+.ist-satirlar li:first-child{border:0;padding-top:4px}
+.ist-ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:15px;border:1px solid rgba(255,255,255,.22)}
+.ist-ad{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;font-size:15px}
+.ist-ad i{display:block;height:6px;border-radius:99px;background:var(--sari);margin-top:7px}
+.ist-satirlar b{font-weight:900;font-size:15px}
+.ist-yok{grid-template-columns:1fr!important;color:var(--soluk);font-size:14px}
+.ist-cihaz{display:grid;grid-template-columns:140px 1fr;gap:20px;align-items:center}
+.ist-cihaz svg{width:140px;height:140px}
 .ist-cihaz dl{margin:0;display:grid;gap:12px}
-.ist-cihaz dt{color:var(--ist-ikincil);font-size:14px;display:flex;align-items:center;gap:8px}
+.ist-cihaz dt{color:var(--soluk);font-size:11px;font-weight:900;letter-spacing:.12em;display:flex;align-items:center;gap:8px}
 .ist-cihaz dt::before{content:'';width:10px;height:10px;border-radius:50%;background:var(--r)}
-.ist-cihaz dd{margin:0;font:650 26px/1.1 "Inter Display",Inter,sans-serif}
-.ist-bolum{margin:40px 0 0;font:700 30px/1.1 "Inter Display",Inter,sans-serif!important;letter-spacing:-.02em;color:var(--ist-yazi);text-transform:none}
-.ist-av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:600;background:#3a3a3c;position:relative}
-.ist-av.taze::after{content:'';position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:var(--ist-yesil);border:2px solid var(--ist-kart)}
-.ist-uye small{display:block;color:var(--ist-ikincil);font-size:13px;overflow:hidden;text-overflow:ellipsis}
-.ist-uye em{font-style:normal;color:var(--ist-ikincil);font-size:14px;white-space:nowrap}
-.ist-etiket{font-size:12px;padding:2px 8px;border-radius:99px;background:rgba(255,105,97,.14);color:var(--ist-kirmizi);margin-left:6px}
-.ist-uyari{color:var(--ist-kirmizi)}
+.ist-cihaz dd{margin:4px 0 0;font-size:28px;font-weight:900;letter-spacing:-.04em}
+.ist-bolum{margin:52px 0 0;font-size:clamp(34px,4.6vw,52px);line-height:.95;letter-spacing:-.05em;font-weight:900}
+.ist-bolum span{color:var(--sari)}
+.ist-av{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-weight:900;color:#111;background:var(--r,#e8d15a);position:relative}
+.ist-av.taze::after{content:'';position:absolute;right:-3px;top:-3px;width:11px;height:11px;border-radius:50%;background:var(--yesil);border:2px solid #16131a}
+.ist-uye small{display:block;color:var(--soluk);font-size:12px;font-weight:400;margin-top:3px;overflow:hidden;text-overflow:ellipsis}
+.ist-uye em{font-style:normal;color:var(--soluk);font-size:13px;white-space:nowrap}
+.ist-etiket{font-size:10px;font-weight:900;letter-spacing:.08em;padding:3px 8px;border-radius:99px;background:#ff8a8a;color:#111;margin-left:8px;vertical-align:2px}
+.ist-uyari{color:#ff8a8a}
+
+/* Seçenek 1 — kaset rafı: küçük kartlar branş kasetlerinin renginde */
+body.ist-raf .ist-kucuk{--r:#e8d15a;color:#111;border:0;background:linear-gradient(160deg,var(--r),color-mix(in srgb,var(--r) 55%,#000));box-shadow:0 18px 40px rgba(0,0,0,.45)}
+body.ist-raf .ist-kucuk .ist-not{color:rgba(17,17,17,.7)}
+body.ist-raf .ist-kucuk .ist-egilim.ayni{color:#111;background:rgba(0,0,0,.14)}
+body.ist-raf .ist-kucuk .ist-egilim.asagi,body.ist-raf .ist-kucuk .ist-egilim.yukari{background:rgba(0,0,0,.82);color:#f4f1e9}
+body.ist-raf .ist-kucuk:nth-child(1){--r:#fe4b6a}
+body.ist-raf .ist-kucuk:nth-child(2){--r:#3fc1c9}
+body.ist-raf .ist-kucuk:nth-child(3){--r:#ab6ee7}
+body.ist-raf .ist-kucuk:nth-child(4){--r:#9be15d}
+body.ist-raf .ist-kucuk h3{padding-right:34px}
+body.ist-raf .ist-kucuk::after{content:'';position:absolute;right:16px;top:16px;width:26px;height:16px;border-radius:4px;opacity:.55;background:radial-gradient(circle at 30% 55%,transparent 2.6px,#111 3px) 0 0/50% 100% no-repeat,radial-gradient(circle at 70% 55%,transparent 2.6px,#111 3px) 100% 0/50% 100% no-repeat}
+
+/* Seçenek 2 — demo listesi: başlık şeritleri branş renginde, küçük kartlarda renkli sayı */
+body.ist-liste .ist-kart-bas{background:var(--r,#e8d15a);border:0;border-radius:23px 23px 0 0}
+body.ist-liste .ist-kart-bas h2,body.ist-liste .ist-kart-bas em{color:#111}
+body.ist-liste .ist-kart-bas em{opacity:.7}
+body.ist-liste .ist-kucuk b{color:var(--r,#e8d15a)}
+body.ist-liste .ist-kucuk:nth-child(1){--r:#fe4b6a}
+body.ist-liste .ist-kucuk:nth-child(2){--r:#3fc1c9}
+body.ist-liste .ist-kucuk:nth-child(3){--r:#ab6ee7}
+body.ist-liste .ist-kucuk:nth-child(4){--r:#9be15d}
+body.ist-liste .ist-kucuk{border-top:4px solid var(--r)}
+body.ist-liste .ist-kucuk h3{color:var(--soluk)}
+
 @media(max-width:760px){
-  .ist-sayfa{padding:20px 16px 48px}
-  .ist-sayfa h1{font-size:34px}
-  .ist-metrik b{font-size:48px}
+  .ist-sayfa{padding:24px 16px 56px}
+  .ist-secim{display:flex;width:100%}
+  .ist-secim button{flex:1;padding:11px 6px;font-size:10px;letter-spacing:.05em;white-space:normal;line-height:1.2}
   .ist-dort{grid-template-columns:1fr 1fr;gap:10px}
+  .ist-kucuk{min-height:150px;padding:16px}.ist-kucuk b{font-size:38px}
   .ist-iki{grid-template-columns:1fr;gap:10px}
-  .ist-kart{border-radius:18px;padding:18px}
-  .ist-secim button{padding:9px 12px}
-  .ist-cihaz{grid-template-columns:120px 1fr}.ist-cihaz svg{width:120px;height:120px}
-  .ist-grafik text{font-size:20px}
+  .ist-kart{border-radius:20px;padding:18px}
+  .ist-kart-bas{margin:-18px -18px 12px;padding:14px 18px}
+  body.ist-liste .ist-kart-bas{border-radius:19px 19px 0 0}
+  .ist-cihaz{grid-template-columns:110px 1fr}.ist-cihaz svg{width:110px;height:110px}
+  .ist-grafik text{font-size:22px}
 }
-@media(prefers-reduced-motion:no-preference){.ist-cizgi-yol{transition:d .35s ease}}
+@media(prefers-reduced-motion:reduce){.ist-isaret,.ist-secim button{transition:none}}

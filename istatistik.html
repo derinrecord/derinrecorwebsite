@@ -1,29 +1,29 @@
 <!doctype html><html lang="tr" data-dil-otomatik data-baslik-en="Statistics — Derin Record"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>İstatistikler — Derin Record</title><meta name="robots" content="noindex">
 <link rel="icon" href="/favicon.ico?v=3" sizes="any"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=3">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap">
-<link rel="stylesheet" href="branch.css"><link rel="stylesheet" href="auth.css?v=20261101a"><link rel="stylesheet" href="glass.css?v=2"><link rel="stylesheet" href="mobil.css?v=4"><link rel="stylesheet" href="dil.css?v=2026102401">
-<link rel="stylesheet" href="istatistik.css?v=1">
-</head><body class="ist"><header class="header"><a class="home" href="index.html"><span>←</span> SİTEYE DÖN</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
+<link rel="stylesheet" href="branch.css"><link rel="stylesheet" href="auth.css?v=20261101a"><link rel="stylesheet" href="glass.css?v=2"><link rel="stylesheet" href="mobil.css?v=4"><link rel="stylesheet" href="dil.css?v=2026102401"><link rel="stylesheet" href="arka-plan.css?v=1">
+<link rel="stylesheet" href="istatistik.css?v=2">
+</head><body class="ist ist-raf"><div class="arka" aria-hidden="true"><i class="p"></i><i class="s"></i><i class="m"></i><b class="t"></b><b class="t2"></b></div><header class="header"><a class="home" href="index.html"><span>←</span> SİTEYE DÖN</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
 <main class="ist-sayfa" data-dil-yok>
-  <h1>İstatistikler</h1>
+  <p class="eyebrow">YÖNETİCİ ALANI</p>
+  <h1>İSTATİSTİKLER<span>.</span></h1>
   <p class="ist-alt" id="ist-durum">Hesap kontrol ediliyor…</p>
   <div id="ist-app" hidden>
     <div class="ist-secimler">
-      <div class="ist-secim" role="group" aria-label="Ölçü"><button type="button" data-olcu="z" aria-pressed="true">Ziyaretçi</button><button type="button" data-olcu="s" aria-pressed="false">Sayfa görüntüleme</button><button type="button" data-olcu="g" aria-pressed="false">Üye girişi</button></div>
-      <div class="ist-secim" role="group" aria-label="Dönem"><button type="button" data-gun="7" aria-pressed="false">7 gün</button><button type="button" data-gun="30" aria-pressed="true">30 gün</button><button type="button" data-gun="90" aria-pressed="false">90 gün</button></div>
+      <div class="ist-secim" role="group" aria-label="Ölçü"><i class="ist-isaret" aria-hidden="true"></i><button type="button" data-olcu="z" aria-pressed="true">ZİYARETÇİ</button><button type="button" data-olcu="s" aria-pressed="false">SAYFA GÖRÜNTÜLEME</button><button type="button" data-olcu="g" aria-pressed="false">ÜYE GİRİŞİ</button></div>
+      <div class="ist-secim" role="group" aria-label="Dönem"><i class="ist-isaret" aria-hidden="true"></i><button type="button" data-gun="7" aria-pressed="false">7 GÜN</button><button type="button" data-gun="30" aria-pressed="true">30 GÜN</button><button type="button" data-gun="90" aria-pressed="false">90 GÜN</button></div>
     </div>
     <section class="ist-kart ist-buyuk" aria-live="polite" id="ist-buyuk"></section>
     <div class="ist-dort" id="ist-dort"></div>
     <div class="ist-iki">
-      <section class="ist-kart"><h2>En çok bakılan sayfalar</h2><ul class="ist-satirlar" id="ist-sayfalar"></ul></section>
-      <section class="ist-kart"><h2>Ülkeler</h2><ul class="ist-satirlar" id="ist-ulkeler"></ul><h2 class="ist-ara">Cihaz</h2><div class="ist-cihaz" id="ist-cihaz"></div></section>
+      <section class="ist-kart" style="--r:#3fc1c9"><div class="ist-kart-bas"><h2>EN ÇOK BAKILAN SAYFALAR</h2><em>ZİYARETÇİ</em></div><ul class="ist-satirlar" id="ist-sayfalar"></ul></section>
+      <section class="ist-kart" style="--r:#ab6ee7"><div class="ist-kart-bas"><h2>ÜLKELER VE CİHAZ</h2><em>ZİYARETÇİ</em></div><ul class="ist-satirlar" id="ist-ulkeler"></ul><div class="ist-cihaz ist-ara" id="ist-cihaz"></div></section>
     </div>
-    <h2 class="ist-bolum">Üyeler</h2>
+    <h2 class="ist-bolum">ÜYELER<span>.</span></h2>
     <div class="ist-iki">
-      <section class="ist-kart"><h2>Haftalık yeni kayıt</h2><p class="ist-not">Son 12 hafta</p><div id="ist-kayit"></div></section>
-      <section class="ist-kart"><h2>Son giriş yapanlar</h2><ul class="ist-satirlar ist-uye" id="ist-uyeler"></ul></section>
+      <section class="ist-kart" style="--r:#fe4b6a"><div class="ist-kart-bas"><h2>HAFTALIK YENİ KAYIT</h2><em>SON 12 HAFTA</em></div><div id="ist-kayit"></div></section>
+      <section class="ist-kart" style="--r:#e8d15a"><div class="ist-kart-bas"><h2>SON GİRİŞ YAPANLAR</h2><em id="ist-uye-sayi"></em></div><ul class="ist-satirlar ist-uye" id="ist-uyeler"></ul></section>
     </div>
   </div>
 </main>
-<script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="uygulama.js?v=1"></script><script src="auth.js?v=20261111a"></script><script src="istatistik.js?v=2"></script><script src="dil.js?v=2026110101" defer></script>
+<script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="uygulama.js?v=1"></script><script src="auth.js?v=20261111a"></script><script src="istatistik.js?v=3"></script><script src="dil.js?v=2026110101" defer></script>
 </body></html>

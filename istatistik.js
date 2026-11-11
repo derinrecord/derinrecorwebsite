@@ -83,7 +83,7 @@
     const parca = veri.map((v, i) => {
       const h = Math.max(2, (v.deger || 0) / m * (Y - alt - 20)), y = Y - alt - h;
       return `<rect x="${(i * a + 6).toFixed(1)}" y="${y.toFixed(1)}" width="${(a - 12).toFixed(1)}" height="${h.toFixed(1)}" rx="5" fill="${v.deger ? (renk || '#fe4b6a') : '#2c2c2e'}"><title>${esc(v.etiket)}: ${v.deger || 0}</title></rect>`
-        + (i % 3 === 0 ? `<text x="${(i * a + a / 2).toFixed(1)}" y="${Y - 12}" text-anchor="middle">${esc(v.etiket)}</text>` : '');
+        + (i % 3 === 1 ? `<text x="${(i * a + a / 2).toFixed(1)}" y="${Y - 12}" text-anchor="middle">${esc(v.etiket)}</text>` : '');
     }).join('');
     return `<svg class="ist-grafik" viewBox="0 0 ${G} ${Y}" role="img">${parca}</svg>`;
   }
@@ -97,7 +97,7 @@
   const kisaGun = g => +g.slice(8, 10) + ' ' + AYLAR[+g.slice(5, 7) - 1];
   const ROL = { admin: 'Yönetici', coach: 'Antrenör', business: 'İşletme', sound_design: 'Film & ses' };
   const OLCU = { z: 'ziyaretçi', s: 'sayfa görüntüleme', g: 'üye girişi' };
-  const RENK = { z: '#e8d15a', s: '#3fc1c9', g: '#30d158' };
+  const RENK = { z: '#e8d15a', s: '#3fc1c9', g: '#9be15d' };
   let ulkeAdi = k => k;
   try { const dn = new Intl.DisplayNames(['tr'], { type: 'region' }); ulkeAdi = k => { try { return dn.of(k) || k; } catch (e) { return k; } }; } catch (e) { /* eski tarayıcı */ }
   const CIHAZ = { mobile: 'Telefon', desktop: 'Bilgisayar', tablet: 'Tablet' };
@@ -127,7 +127,21 @@
   }
 
   const egilimHtml = (e, ek) => `<span class="ist-egilim ${e.yon}">${esc(e.yazi)}${ek && /%/.test(e.yazi) ? ' ' + esc(ek) : ''}</span>`;
-  const spark = (degerler, renk) => { const { d } = egriYol(degerler.length ? degerler : [0, 0], 200, 36, 3, 3); return `<svg viewBox="0 0 200 36" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="${renk}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`; };
+  const spark = degerler => { const { d } = egriYol(degerler.length ? degerler : [0, 0], 200, 34, 3, 3); return `<svg viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>`; };
+  // Ana sayfadaki demo listesi gibi alttan yükselen çubuklar; bugünün çubuğu parlak, üstünde değer kutusu.
+  function cubukDalga(degerler, etiketler, renk) {
+    const W = 1000, H = 250, alt = 30, ust = 34, n = Math.max(1, degerler.length), a = W / n, g = Math.max(2, a * (n > 60 ? 0.7 : 0.58)), m = Math.max(1, ...degerler);
+    const adim = Math.max(1, Math.round(n / 6));
+    let h = `<line x1="0" x2="${W}" y1="${H - alt}" y2="${H - alt}" stroke="rgba(255,255,255,.12)"/>`;
+    degerler.forEach((v, i) => {
+      const yuk = Math.max(3, v / m * (H - alt - ust)), x = i * a + (a - g) / 2, son = i === n - 1;
+      h += `<rect x="${x.toFixed(1)}" y="${(H - alt - yuk).toFixed(1)}" width="${g.toFixed(1)}" height="${yuk.toFixed(1)}" rx="${Math.min(4, g / 2).toFixed(1)}" fill="${renk}" opacity="${son ? 1 : .62}"><title>${esc(etiketler[i])}: ${v}</title></rect>`;
+      const ox = x + g / 2;
+      if (i % adim === 0 && ox > 30 && ox < W - 90) h += `<text x="${ox.toFixed(1)}" y="${H - 8}" text-anchor="middle">${esc(etiketler[i])}</text>`;
+      if (son) { const kx = Math.min(W - 130, Math.max(0, ox - 65)), ky = Math.max(0, H - alt - yuk - 36); h += `<rect x="${kx.toFixed(1)}" y="${ky.toFixed(1)}" width="130" height="30" rx="6" fill="rgba(0,0,0,.82)"/><text x="${(kx + 65).toFixed(1)}" y="${(ky + 20).toFixed(1)}" text-anchor="middle" style="fill:${renk}">BUGÜN ${v}</text>`; }
+    });
+    return `<svg class="ist-grafik" viewBox="0 0 ${W} ${H}" aria-hidden="true">${h}</svg>`;
+  }
 
   function buyukCiz(z, simdi) {
     const { olcu, gun } = secim, kutu = $('ist-buyuk');
@@ -137,17 +151,12 @@
     }
     const tum = dizi(olcu, z, gun, simdi), [once, son] = ikiyeBol(tum, gun);
     const toplam = topla(son.map(v => v.deger)), e = egilim(toplam, topla(once.map(v => v.deger)));
-    const W = 1000, H = 260, alt = 34, { d, p } = egriYol(son.map(v => v.deger), W, H, 20, alt), renk = RENK[olcu];
-    const uc = p[p.length - 1], adim = Math.max(1, Math.round(son.length / 5));
-    let svg = `<defs><linearGradient id="ist-dg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${renk}" stop-opacity=".35"/><stop offset="1" stop-color="${renk}" stop-opacity="0"/></linearGradient></defs>`;
-    [0, .5, 1].forEach(r => { const y = 20 + r * (H - alt - 20); svg += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="#2c2c2e"/>`; });
-    svg += `<path d="${d} L${W},${H - alt} L0,${H - alt}Z" fill="url(#ist-dg)"/><path class="ist-cizgi-yol" d="${d}" fill="none" stroke="${renk}" stroke-width="3"/>`;
-    svg += `<circle cx="${Math.min(uc[0], W - 6)}" cy="${uc[1]}" r="6" fill="#000" stroke="${renk}" stroke-width="3"/>`;
-    son.forEach((v, i) => { const x = i / Math.max(1, son.length - 1) * W; if (i % adim === Math.floor(adim / 2) && x > 40 && x < W - 40) svg += `<text x="${x.toFixed(1)}" y="${H - 8}" text-anchor="middle">${esc(kisaGun(v.gun))}</text>`; });
+    const renk = RENK[olcu];
+    const svg = cubukDalga(son.map(v => v.deger), son.map(v => kisaGun(v.gun).toLocaleUpperCase('tr-TR')), renk);
     const bugun = son.length ? son[son.length - 1].deger : 0;
     kutu.innerHTML = `<div class="ist-metrik"><b>${toplam}</b>${egilimHtml(e, 'önceki ' + gun + ' güne göre')}</div>
       <p class="ist-metrik-alt">${esc(OLCU[olcu])}, son ${gun} gün · bugün ${bugun}${olcu === 'g' ? ' · her üye günde bir kez sayılır, 11 Kasım 2026’dan beri' : ''}</p>
-      <svg class="ist-grafik" viewBox="0 0 ${W} ${H}" role="img" aria-label="Son ${gun} gün ${esc(OLCU[olcu])} grafiği">${svg}</svg>`;
+      <div role="img" aria-label="Son ${gun} gün ${esc(OLCU[olcu])} grafiği">${svg}</div>`;
   }
 
   function dortCiz(z, simdi) {
@@ -160,12 +169,12 @@
     let birikim = once12; const uyeCizgi = hafta.map(h => (birikim += h.deger));
     const kart = (baslik, sayi, alt, svg) => `<section class="ist-kart ist-kucuk"><h3>${esc(baslik)}</h3><b>${sayi}</b>${alt}${svg}</section>`;
     $('ist-dort').innerHTML = [
-      z.bagli ? kart('Sayfa görüntüleme', topla(sSon.map(v => v.deger)), egilimHtml(egilim(topla(sSon.map(v => v.deger)), topla(sOnce.map(v => v.deger)))), spark(sSon.map(v => v.deger), RENK.s))
-        : kart('Sayfa görüntüleme', '—', '<p class="ist-not">bağlanmadı</p>', ''),
-      z.bagli ? kart('Bugün', zDizi.length ? zDizi[zDizi.length - 1].deger : 0, '<p class="ist-not">ziyaretçi</p>', spark(zDizi.slice(-7).map(v => v.deger), RENK.z))
-        : kart('Bugün girdi', o.bugun, '<p class="ist-not">üye</p>', spark(g7, RENK.g)),
-      kart('Toplam üye', o.toplam, `<p class="ist-not">${o.buAyYeni} yeni bu ay</p>`, spark(uyeCizgi, '#fe4b6a')),
-      kart('Son 7 günde giren', o.gun7, '<p class="ist-not">üye</p>', spark(g7, RENK.g))
+      z.bagli ? kart('SAYFA GÖRÜNTÜLEME', topla(sSon.map(v => v.deger)), egilimHtml(egilim(topla(sSon.map(v => v.deger)), topla(sOnce.map(v => v.deger)))), spark(sSon.map(v => v.deger)))
+        : kart('SAYFA GÖRÜNTÜLEME', '—', '<p class="ist-not">bağlanmadı</p>', ''),
+      z.bagli ? kart('BUGÜN', zDizi.length ? zDizi[zDizi.length - 1].deger : 0, '<p class="ist-not">ziyaretçi</p>', spark(zDizi.slice(-7).map(v => v.deger)))
+        : kart('BUGÜN GİRDİ', o.bugun, '<p class="ist-not">üye</p>', spark(g7)),
+      kart('TOPLAM ÜYE', o.toplam, `<p class="ist-not">${o.buAyYeni} yeni bu ay</p>`, spark(uyeCizgi)),
+      kart('SON 7 GÜNDE GİREN', o.gun7, '<p class="ist-not">üye</p>', spark(g7))
     ].join('');
   }
 
@@ -195,20 +204,33 @@
   }
 
   function uyelerCiz(simdi) {
-    $('ist-kayit').innerHTML = cubukGrafik(haftalik(veri.uyeler, 12, simdi).map(v => ({ etiket: kisaGun(v.gun), deger: v.deger })), '#fe4b6a');
+    $('ist-kayit').innerHTML = cubukGrafik(haftalik(veri.uyeler, 12, simdi).map(v => ({ etiket: kisaGun(v.gun).toLocaleUpperCase('tr-TR'), deger: v.deger })), '#fe4b6a');
     if (veri.hata) { $('ist-uyeler').innerHTML = `<li class="ist-yok ist-uyari">${esc(veri.hata)}</li>`; return; }
-    $('ist-uyeler').innerHTML = veri.uyeler.map(u => {
+    const AV = ['#e8d15a', '#fe4b6a', '#3fc1c9', '#ab6ee7', '#9be15d', '#f1ece1'];
+    $('ist-uye-sayi').textContent = veri.uyeler.length + ' ÜYE';
+    $('ist-uyeler').innerHTML = veri.uyeler.map((u, i) => {
       const taze = u.last_sign_in_at && +simdi - Date.parse(u.last_sign_in_at) < GUN_MS;
       const alt = [ROL[u.role] || u.role, u.kulup, u.sehir].filter(Boolean).join(' · ');
-      return `<li><span class="ist-av${taze ? ' taze' : ''}" aria-hidden="true">${esc(String(u.full_name || '?').trim().charAt(0).toLocaleUpperCase('tr-TR'))}</span><div class="ist-ad">${esc(u.full_name || '—')}${u.status === 'suspended' ? '<span class="ist-etiket">dondurulmuş</span>' : ''}<small>${esc(alt)}</small></div><em title="${esc(u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('tr-TR', { timeZone: BOLGE }) : '')}">${esc(onceYazi(u.last_sign_in_at, simdi))}</em></li>`;
+      return `<li><span class="ist-av${taze ? ' taze' : ''}" style="--r:${AV[i % AV.length]}" aria-hidden="true">${esc(String(u.full_name || '?').trim().charAt(0).toLocaleUpperCase('tr-TR'))}</span><div class="ist-ad">${esc(u.full_name || '—')}${u.status === 'suspended' ? '<span class="ist-etiket">dondurulmuş</span>' : ''}<small>${esc(alt)}</small></div><em title="${esc(u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('tr-TR', { timeZone: BOLGE }) : '')}">${esc(onceYazi(u.last_sign_in_at, simdi))}</em></li>`;
     }).join('') || '<li class="ist-yok">Henüz üye yok.</li>';
   }
+
+  // Seçili düğmenin altına sarı vurgu kayar (giriş sekmelerindeki gibi).
+  function isaretleriKoy() {
+    document.querySelectorAll('.ist-secim').forEach(k => {
+      const b = k.querySelector('button[aria-pressed="true"]');
+      if (!b || !b.offsetWidth) return;
+      k.style.setProperty('--x', b.offsetLeft + 'px'); k.style.setProperty('--w', b.offsetWidth + 'px'); k.classList.add('hazir');
+    });
+  }
+  window.addEventListener('resize', isaretleriKoy);
 
   async function ciz() {
     const simdi = new Date(), z = await ziyaretAl(secim.gun);
     buyukCiz(z, simdi); dortCiz(z, simdi); listelerCiz(z); uyelerCiz(simdi);
     document.querySelectorAll('[data-olcu]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.olcu === secim.olcu)));
     document.querySelectorAll('[data-gun]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.gun === secim.gun)));
+    isaretleriKoy();
     $('ist-durum').textContent = 'Son güncelleme ' + simdi.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: BOLGE });
   }
 
@@ -240,6 +262,7 @@
     if (b.dataset.olcu) secim.olcu = b.dataset.olcu; else secim.gun = +b.dataset.gun;
     ciz();
   });
+  if (/[?&]gorunum=liste\b/.test(location.search)) { document.body.classList.remove('ist-raf'); document.body.classList.add('ist-liste'); }
   basla();
   window.addEventListener('derin:authchange', basla);
 })();
