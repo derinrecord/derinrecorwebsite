@@ -285,6 +285,7 @@
     '← SİTEYE DÖN': '← BACK TO SITE',
     'ANA SAYFA': 'HOME',
     'Müzik türü seçimi': 'Choose music type',
+    'SİPARİŞ VER': 'ORDER NOW',
     '← ANA SAYFA': '← HOME',
     'DEMOLARA DÖN': 'BACK TO DEMOS',
     '← DEMOLARA DÖN': '← BACK TO DEMOS',

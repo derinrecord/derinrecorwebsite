@@ -55,7 +55,7 @@
   calar.innerHTML = '<div class="mini dr-mini"></div><div class="bilgi"><h4></h4><p></p></div>'
     + `<button class="yan" data-dr="onceki" aria-label="Önceki">${ONCEKI}</button><button class="ana" data-dr="calar" aria-label="Çal / durdur">${CAL}</button><button class="yan" data-dr="sonraki" aria-label="Sonraki">${SONRAKI}</button>`
     + '<div class="mv-d" data-dr="sar" aria-label="Demoda ilerle"></div>'
-    + '<a class="teklif" href="#iletisim"><span class="uzun">BENZERİNİ </span>İSTİYORUM</a>';
+    + '<a class="teklif" href="#iletisim">SİPARİŞ VER</a>';
   document.body.append(calar);
 
   const parcalar = () => (durum.gruplar && durum.brans ? durum.gruplar[durum.brans] : []);
