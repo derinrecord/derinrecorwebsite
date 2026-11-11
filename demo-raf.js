@@ -67,17 +67,31 @@
   function listeCiz() {
     const b = durum.brans;
     document.querySelectorAll('#demolar .cassette-card').forEach(c => c.setAttribute('aria-expanded', String(bransBul(c.className, c.getAttribute('href')) === b)));
+    grid.classList.toggle('dr-secili', !!b);
     if (!b) { liste.hidden = true; return; }
     const ps = parcalar(), href = `${b}.html`;
     liste.hidden = false;
-    liste.style.setProperty('--r', getComputedStyle(document.querySelector(`#demolar .renk-${b}`) || liste).getPropertyValue('--r') || '#e8d15a');
-    liste.innerHTML = `<div class="mv-liste"><div class="mv-liste-bas"><span>${esc(BRANS_AD[b])} · ${ps.length ? ps.length + ' DEMO' : 'YAKINDA'}</span><a class="dr-git" href="${href}">BRANŞ SAYFASI →</a></div>`
+    const kart = document.querySelector(`#demolar .renk-${b}`);
+    liste.style.setProperty('--r', (kart && getComputedStyle(kart).getPropertyValue('--r').trim()) || '#e8d15a');
+    okKoy(kart);
+    liste.innerHTML = `<i class="dr-ok" aria-hidden="true"></i><div class="mv-liste"><div class="mv-liste-bas"><span><i class="dr-kaset" aria-hidden="true"></i>${esc(BRANS_AD[b])} KASETİ · ${ps.length ? ps.length + ' DEMO' : 'YAKINDA'}</span><a class="dr-git" href="${href}">BRANŞ SAYFASI →</a></div>`
       + (ps.length ? ps.map((d, i) => {
         const aktif = i === durum.sira, calan = aktif && !ses.paused;
-        return `<div class="mv-s" ${aktif ? 'aria-current="true"' : ''}><span class="no">${String(i + 1).padStart(2, '0')}</span><strong>${esc(String(d.baslik || '').toLocaleUpperCase('tr-TR'))}</strong><div class="mv-d">${dalga(d, aktif ? durum.oran : 0, 150, aktif ? ses.currentTime || 0 : null)}</div><span class="sure">${sureOf(d) ? MV.zamanYazi(sureOf(d)) : ''}</span><button class="mv-cal" type="button" data-dr-sarki="${i}" aria-label="${esc(d.baslik)} ${calan ? 'durdur' : 'çal'}">${calan ? DUR : CAL}</button></div>`;
+        return `<div class="mv-s" ${aktif ? 'aria-current="true"' : ''}><span class="no dr-no"><i class="dr-kaset" aria-hidden="true"></i><small>${esc(BRANS_AD[b])}</small>${String(i + 1).padStart(2, '0')}</span><strong>${esc(String(d.baslik || '').toLocaleUpperCase('tr-TR'))}</strong><div class="mv-d">${dalga(d, aktif ? durum.oran : 0, 150, aktif ? ses.currentTime || 0 : null)}</div><span class="sure">${sureOf(d) ? MV.zamanYazi(sureOf(d)) : ''}</span><button class="mv-cal" type="button" data-dr-sarki="${i}" aria-label="${esc(d.baslik)} ${calan ? 'durdur' : 'çal'}">${calan ? DUR : CAL}</button></div>`;
       }).join('') : '<p class="dr-bos">Bu branşın demoları yakında burada. Şimdilik branş sayfasına göz atabilirsin.</p>')
       + '</div>';
   }
+
+  // Listenin üstündeki ok seçili kasetin ortasına gelir (raf kaydırılınca da).
+  function okKoy(kart) {
+    kart = kart || (durum.brans && document.querySelector(`#demolar .renk-${durum.brans}`));
+    if (!kart || liste.hidden) return;
+    const k = kart.getBoundingClientRect(), l = liste.getBoundingClientRect();
+    const x = Math.max(24, Math.min(l.width - 24, k.left + k.width / 2 - l.left));
+    liste.style.setProperty('--ok-x', x + 'px');
+  }
+  grid.addEventListener('scroll', () => okKoy(), { passive: true });
+  window.addEventListener('resize', () => okKoy());
 
   function calarGuncelle() {
     const d = parcalar()[durum.sira];
