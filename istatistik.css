@@ -1,0 +1,64 @@
+/* İstatistikler (11 Kasım 2026) — C "Sade" görünümü: siyah zemin, tek büyük grafik, sakin kartlar. */
+body.ist{--ist-zemin:#000;--ist-kart:#1c1c1e;--ist-cizgi:#2c2c2e;--ist-yazi:#f5f5f7;--ist-ikincil:#8e8e93;--ist-sari:#e8d15a;--ist-camgobegi:#3fc1c9;--ist-pembe:#fe4b6a;--ist-yesil:#30d158;--ist-kirmizi:#ff6961;
+  background:var(--ist-zemin);color:var(--ist-yazi);font-family:"Inter Display",Inter,-apple-system,BlinkMacSystemFont,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.ist-sayfa{max-width:1080px;margin:0 auto;padding:28px 24px 64px}
+.ist-sayfa h1{margin:0;font:700 44px/1.05 "Inter Display",Inter,sans-serif;letter-spacing:-.025em;text-transform:none}
+.ist-alt{margin:6px 0 26px;color:var(--ist-ikincil)}
+.ist-secimler{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.ist-secim{display:inline-flex;background:var(--ist-kart);border-radius:10px;padding:3px;gap:2px}
+.ist-secim button{border:0;background:none;font:500 14px/1 inherit;font-family:inherit;color:var(--ist-ikincil);padding:9px 16px;border-radius:8px;cursor:pointer}
+.ist-secim button[aria-pressed="true"]{background:#3a3a3c;color:var(--ist-yazi)}
+.ist-secim button:focus-visible{outline:2px solid var(--ist-sari);outline-offset:1px}
+.ist-kart{background:var(--ist-kart);border-radius:22px;padding:22px;min-width:0}
+.ist-kart h2{margin:0 0 6px;font:650 20px/1.2 "Inter Display",Inter,sans-serif;letter-spacing:-.01em;color:var(--ist-yazi);text-transform:none}
+.ist-buyuk{margin-top:14px}
+.ist-metrik{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:6px 0 4px}
+.ist-metrik b{font:700 64px/1 "Inter Display",Inter,sans-serif;letter-spacing:-.03em}
+.ist-egilim{font-weight:600;font-size:14px;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.ist-egilim.asagi{color:var(--ist-kirmizi);background:rgba(255,105,97,.14)}
+.ist-egilim.yukari{color:var(--ist-yesil);background:rgba(48,209,88,.14)}
+.ist-egilim.ayni{color:var(--ist-ikincil);background:rgba(142,142,147,.14)}
+.ist-metrik-alt,.ist-not{color:var(--ist-ikincil);font-size:14px;margin:0}
+.ist-grafik{display:block;width:100%;height:auto;margin-top:12px}
+.ist-grafik text{fill:var(--ist-ikincil);font:12px "Inter Display",Inter,sans-serif}
+.ist-bos{padding:40px 0 20px;color:var(--ist-ikincil);max-width:46ch}
+.ist-bos strong{display:block;color:var(--ist-yazi);font-size:18px;margin-bottom:6px}
+.ist-dort{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px}
+.ist-kucuk h3{margin:0;font-weight:500;font-size:14px;color:var(--ist-ikincil)}
+.ist-kucuk b{display:block;font:650 34px/1.1 "Inter Display",Inter,sans-serif;margin:8px 0 4px;letter-spacing:-.02em}
+.ist-kucuk svg{display:block;width:100%;height:36px;margin-top:10px}
+.ist-iki{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.ist-ara{margin-top:22px!important}
+.ist-satirlar{margin:8px 0 0;padding:0;list-style:none}
+.ist-satirlar li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--ist-cizgi)}
+.ist-satirlar li:first-child{border:0}
+.ist-satirlar .ist-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:16px;background:var(--ist-cizgi)}
+.ist-satirlar .ist-ad{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ist-satirlar .ist-ad i{display:block;height:4px;border-radius:99px;background:var(--ist-camgobegi);margin-top:6px}
+.ist-satirlar b{font-weight:600}
+.ist-satirlar .ist-yok{grid-template-columns:1fr;color:var(--ist-ikincil)}
+.ist-cihaz{display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:center}
+.ist-cihaz svg{width:150px;height:150px}
+.ist-cihaz dl{margin:0;display:grid;gap:12px}
+.ist-cihaz dt{color:var(--ist-ikincil);font-size:14px;display:flex;align-items:center;gap:8px}
+.ist-cihaz dt::before{content:'';width:10px;height:10px;border-radius:50%;background:var(--r)}
+.ist-cihaz dd{margin:0;font:650 26px/1.1 "Inter Display",Inter,sans-serif}
+.ist-bolum{margin:40px 0 0;font:700 30px/1.1 "Inter Display",Inter,sans-serif!important;letter-spacing:-.02em;color:var(--ist-yazi);text-transform:none}
+.ist-av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:600;background:#3a3a3c;position:relative}
+.ist-av.taze::after{content:'';position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:var(--ist-yesil);border:2px solid var(--ist-kart)}
+.ist-uye small{display:block;color:var(--ist-ikincil);font-size:13px;overflow:hidden;text-overflow:ellipsis}
+.ist-uye em{font-style:normal;color:var(--ist-ikincil);font-size:14px;white-space:nowrap}
+.ist-etiket{font-size:12px;padding:2px 8px;border-radius:99px;background:rgba(255,105,97,.14);color:var(--ist-kirmizi);margin-left:6px}
+.ist-uyari{color:var(--ist-kirmizi)}
+@media(max-width:760px){
+  .ist-sayfa{padding:20px 16px 48px}
+  .ist-sayfa h1{font-size:34px}
+  .ist-metrik b{font-size:48px}
+  .ist-dort{grid-template-columns:1fr 1fr;gap:10px}
+  .ist-iki{grid-template-columns:1fr;gap:10px}
+  .ist-kart{border-radius:18px;padding:18px}
+  .ist-secim button{padding:9px 12px}
+  .ist-cihaz{grid-template-columns:120px 1fr}.ist-cihaz svg{width:120px;height:120px}
+  .ist-grafik text{font-size:20px}
+}
+@media(prefers-reduced-motion:no-preference){.ist-cizgi-yol{transition:d .35s ease}}

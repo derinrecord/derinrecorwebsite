@@ -13,7 +13,8 @@ const SUPABASE_URL = 'https://abqhakgoluntpzgfyjye.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_FrRGXIb3-x8-Lzx1Ijg75w_teFbP2oa';
 const PROJE = 'prj_bpMFM1IOdKo13M7zjH1HVES6i2gU';
 const EKIP = 'team_Y00tSlNV9SszGBM1DlbVikMc';
-const GUN = 30;
+// Dönem: 7, 30 ya da 90 gün. Günlük dizi 2×dönem uzunluğunda gelir (önceki dönemle karşılaştırma için).
+const DONEMLER = [7, 30, 90];
 
 async function sorgu(anahtar, by, limit, since, until) {
   const q = new URLSearchParams({ projectId: PROJE, teamId: EKIP, since, until, limit: String(limit) });
@@ -50,17 +51,22 @@ module.exports = async (req, res) => {
   const anahtar = process.env.VERCEL_ISTATISTIK_ANAHTARI;
   if (!anahtar) { res.status(200).json({ bagli: false }); return; }
 
+  const istek = Number(new URL(req.url || '/', 'http://x').searchParams.get('gun'));
+  const gun = DONEMLER.includes(istek) ? istek : 30;
   const until = new Date().toISOString();
-  const since = new Date(Date.now() - (GUN - 1) * 864e5).toISOString().slice(0, 10) + 'T00:00:00.000Z';
+  const basi = n => new Date(Date.now() - (n - 1) * 864e5).toISOString().slice(0, 10) + 'T00:00:00.000Z';
+  // Bir sorgu en çok 100 satır döndürür: önceki ve bu dönem ayrı istenip uç uca eklenir.
+  const onceSon = new Date(Date.parse(basi(gun)) - 1).toISOString();
   try {
-    const [gunluk, sayfalar, ulkeler, cihazlar] = await Promise.all([
-      sorgu(anahtar, 'day', GUN, since, until),
-      sorgu(anahtar, 'requestPath', 8, since, until),
-      sorgu(anahtar, 'country', 8, since, until),
-      sorgu(anahtar, 'deviceType', 5, since, until)
+    const [onceki, buDonem, sayfalar, ulkeler, cihazlar] = await Promise.all([
+      sorgu(anahtar, 'day', 100, basi(gun * 2), onceSon),
+      sorgu(anahtar, 'day', 100, basi(gun), until),
+      sorgu(anahtar, 'requestPath', 10, basi(gun), until),
+      sorgu(anahtar, 'country', 8, basi(gun), until),
+      sorgu(anahtar, 'deviceType', 5, basi(gun), until)
     ]);
     res.setHeader('Cache-Control', 'private, max-age=300');
-    res.status(200).json({ bagli: true, gunluk, sayfalar, ulkeler, cihazlar });
+    res.status(200).json({ bagli: true, gun, gunluk: onceki.slice(-gun).concat(buDonem.slice(-gun)), sayfalar, ulkeler, cihazlar });
   } catch (e) {
     res.status(502).json({ hata: 'Ziyaretçi bilgisi alınamadı (' + (e && e.message) + '). Anahtarın doğru girildiğini kontrol et.' });
   }

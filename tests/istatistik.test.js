@@ -37,6 +37,33 @@ test('onceYazi: son giriş zamanı sade Türkçe', () => {
   assert.equal(IS.onceYazi('2026-11-08T15:00:00Z', SIMDI), '3 gün önce');
 });
 
+test('egilim: önceki döneme göre yüzde; önceki boşsa söylenir; eşitse değişmedi', () => {
+  assert.deepEqual(IS.egilim(54, 65), { yon: 'asagi', yazi: '▼ 17%' });
+  assert.deepEqual(IS.egilim(12, 10), { yon: 'yukari', yazi: '▲ 20%' });
+  assert.deepEqual(IS.egilim(5, 0), { yon: 'ayni', yazi: 'önceki dönemde veri yok' });
+  assert.deepEqual(IS.egilim(0, 0), { yon: 'ayni', yazi: 'değişmedi' });
+  assert.deepEqual(IS.egilim(10, 10), { yon: 'ayni', yazi: 'değişmedi' });
+});
+
+test('ikiyeBol: 2n uzunluk önceki ve son dönem olarak ayrılır', () => {
+  assert.deepEqual(IS.ikiyeBol([1, 2, 3, 4, 5, 6], 3), [[1, 2, 3], [4, 5, 6]]);
+  assert.deepEqual(IS.ikiyeBol([1, 2, 3, 4], 3), [[1], [2, 3, 4]]);
+});
+
+test('egriYol: her değer için bir nokta; tek değer ve sıfırlar çökmez', () => {
+  const { d, p } = IS.egriYol([0, 5, 10], 100, 50, 0, 0);
+  assert.equal(p.length, 3);
+  assert.deepEqual(p[2], [100, 0]);
+  assert.match(d, /^M0,50 C/);
+  assert.equal(IS.egriYol([0], 100, 50, 0, 0).p.length, 1);
+});
+
+test('bayrak: ülke kodundan bayrak, geçersiz kodda boş', () => {
+  assert.equal(IS.bayrak('TR'), '🇹🇷');
+  assert.equal(IS.bayrak('Others'), '');
+  assert.equal(IS.bayrak('<x>'), '');
+});
+
 test('cubukGrafik: her değer için bir çubuk, değerler kaçışlı, boş veride çökmez', () => {
   const s = IS.cubukGrafik([{ etiket: '<a>', deger: 3 }, { etiket: 'b', deger: 0 }]);
   assert.match(s, /^<svg/);
@@ -64,6 +91,8 @@ test('giriş yapınca günde bir kez giris_kaydet çağrılır', () => {
 test('sayfa: yalnız yönetici; menüde İSTATİSTİKLER yalnız yöneticiye', () => {
   const h = oku('istatistik.html');
   assert.match(h, /istatistik\.js\?v=\d+/);
+  assert.match(h, /istatistik\.css\?v=\d+/);
+  for (const k of ['data-olcu="z"', 'data-olcu="s"', 'data-olcu="g"', 'data-gun="7"', 'data-gun="30"', 'data-gun="90"']) assert.ok(h.includes(k), k);
   const j = oku('istatistik.js');
   assert.match(j, /role !== 'admin'/);
   assert.match(j, /rpc\('istatistik_uyeler'\)/);
@@ -78,6 +107,7 @@ test('sunucu: anahtar yoksa bağlı değil der; yönetici değilse reddeder; ana
   assert.match(s, /process\.env\.VERCEL_ISTATISTIK_ANAHTARI/);
   assert.match(s, /rpc\/is_admin/);
   assert.match(s, /api\.vercel\.com\/v1\/query\/web-analytics\/visits\/aggregate/);
+  assert.match(s, /DONEMLER = \[7, 30, 90\]/);
   const yanit = () => { const r = { kod: 0, govde: null, status(k) { r.kod = k; return r; }, json(g) { r.govde = g; return r; }, setHeader() {} }; return r; };
   const eski = process.env.VERCEL_ISTATISTIK_ANAHTARI;
   delete process.env.VERCEL_ISTATISTIK_ANAHTARI;
