@@ -211,6 +211,7 @@
     'shell.cikis': 'LOG OUT',
     'shell.kapat': 'Close',
     'shell.hesapSistemi': 'ACCOUNT SYSTEM',
+    'shell.istatistik': 'STATISTICS',
     'shell.kullanicilar': 'USERS',
     'shell.bildirimler': 'NOTIFICATIONS',
     'shell.taleplerim': 'MY REQUESTS',

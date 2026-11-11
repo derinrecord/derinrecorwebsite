@@ -29,7 +29,7 @@
   const ready = new Promise(resolve => { resolveReady = resolve; });
   // Uygulamada (App Store / Google Play) yönetici sayfalarından yalnız Radyo Yönetimi menüde kalır;
   // radyo bağlantısı yalnız yöneticiye görünür. Tarayıcıda menü hiç değişmez (31 Ekim).
-  const UYGULAMADA_GIZLI = ['kullanicilar.html', 'bildirimler.html', 'taleplerim.html', 'ajanlar.html', 'harmonic-mixer.html', 'mp3-donusturucu.html', 'chat.html', 'admin.html'];
+  const UYGULAMADA_GIZLI = ['kullanicilar.html', 'bildirimler.html', 'taleplerim.html', 'ajanlar.html', 'harmonic-mixer.html', 'mp3-donusturucu.html', 'chat.html', 'admin.html', 'istatistik.html'];
   const menuSuz = (hrefler, rol, uygulamada) => !uygulamada ? hrefler.slice()
     : hrefler.filter(h => !UYGULAMADA_GIZLI.includes(h) && (h !== 'radyo-yonetim.html' || rol === 'admin'));
   function menuyuUygulamayaGoreSuz(menu) {
@@ -104,7 +104,7 @@
     button.textContent = '';
     button.append(foto, document.createTextNode(dilMetni('hesap.hesabim', 'HESABIM')));
     button.classList.add('hb-fotolu');
-    menu.querySelector('.account-menu-links').innerHTML = `<a href="profilim.html" class="menu-profil">PROFİLİM</a>${state.profile?.role === 'admin' ? '<a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a><a href="mp3-donusturucu.html">MP3 DÖNÜŞTÜRÜCÜ</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a>`;
+    menu.querySelector('.account-menu-links').innerHTML = `<a href="profilim.html" class="menu-profil">PROFİLİM</a>${state.profile?.role === 'admin' ? '<a href="istatistik.html">İSTATİSTİKLER</a><a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a><a href="mp3-donusturucu.html">MP3 DÖNÜŞTÜRÜCÜ</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a>`;
     menuLinkleriniCevir(menu);
     menuyuUygulamayaGoreSuz(menu);
     menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || dilMetni('hesap.hesabim', 'HESABIM');
@@ -278,6 +278,7 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
   // Menü bağlantı metinleri kaynakta Türkçe kalır (testler bunları okur);
   // İngilizce seçiliyse görünen metin dile göre değiştirilir.
   const MENU_ANAHTARLARI = {
+    'istatistik.html': ['shell.istatistik', 'İSTATİSTİKLER'],
     'kullanicilar.html': ['shell.kullanicilar', 'KULLANICILAR'],
     'bildirimler.html': ['shell.bildirimler', 'BİLDİRİMLER'],
     'taleplerim.html': ['shell.taleplerim', 'TALEPLERİM'],
@@ -318,6 +319,17 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
     state.profile = profile || { id:user.id, full_name:user.user_metadata?.full_name || '', role:'coach' };
     emit(); renderAccount(); document.body.classList.toggle('is-admin', state.profile?.role === 'admin');
     hesapFotosu();
+    girisKaydet(user.id);
+  }
+  // İstatistikler için: üye o gün giriş yaptı (günde bir kez; supabase/istatistik.sql).
+  async function girisKaydet(id) {
+    const gun = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' });
+    const anahtar = 'derin-giris-' + id;
+    try { if (localStorage.getItem(anahtar) === gun) return; } catch (e) { /* gizli mod */ }
+    try {
+      const { error } = await state.client.rpc('giris_kaydet');
+      if (!error) { try { localStorage.setItem(anahtar, gun); } catch (e) { /* gizli mod */ } }
+    } catch (e) { /* tablo kurulmadıysa sessizce geçilir */ }
   }
   // Profil fotoğrafı gizli kovada; düğme için 1 saatlik bağlantı alınır.
   async function hesapFotosu() {
