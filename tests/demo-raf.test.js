@@ -71,3 +71,12 @@ test('branş sayfası: yönetici açınca dalgası olmayan demoların dalgası v
     assert.ok(h.indexOf('ses-dalga.js') < h.indexOf('demo-parcalar.js'), b + ': ses-dalga önce');
   }
 });
+
+test('demo listesi: oynat düğmesi satırın solunda (ilk sütun)', () => {
+  const j = oku('demo-raf.js');
+  const satir = j.slice(j.indexOf('<div class="mv-s"'), j.indexOf('</div>`', j.indexOf('<div class="mv-s"')));
+  assert.ok(satir.indexOf('class="mv-cal"') >= 0 && satir.indexOf('class="mv-cal"') < satir.indexOf('dr-no'), 'düğme numaradan önce');
+  const c = oku('demo-raf.css');
+  assert.match(c, /\.dr-liste \.mv-s\{grid-template-columns:40px 150px 1fr 1\.3fr 52px\}/);
+  assert.match(c, /\.dr-liste \.mv-s\{grid-template-columns:36px auto 1fr\}/);
+});

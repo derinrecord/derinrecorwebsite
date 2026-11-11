@@ -33,7 +33,7 @@
 .dr-no{display:flex;align-items:center;gap:6px;color:var(--r,#e8d15a)!important;opacity:1!important;white-space:nowrap}
 .dr-no .dr-kaset{margin:0;color:var(--r,#e8d15a)}
 .dr-no small{font-size:10px;letter-spacing:.12em;font-weight:900;opacity:.8}
-.dr-liste .mv-s{grid-template-columns:150px 1fr 1.3fr 52px 40px}
+.dr-liste .mv-s{grid-template-columns:40px 150px 1fr 1.3fr 52px}
 .dr-liste .mv-s[aria-current="true"]{background:linear-gradient(90deg,color-mix(in srgb,var(--r,#e8d15a) 22%,transparent),transparent 70%)}
 .dr-liste[hidden]{display:none}
 .dr-liste .mv-liste{animation:drAc .35s ease both}
@@ -49,7 +49,7 @@
   #demolar .cassette-card{flex-basis:72%;padding:14px}
   #demolar .card-meta strong{font-size:16px}
   .dr-liste{margin-right:6vw}
-  .dr-liste .mv-s{grid-template-columns:auto 1fr 36px}
+  .dr-liste .mv-s{grid-template-columns:36px auto 1fr}
   .dr-no small{display:none}
 }
 @media(prefers-reduced-motion:reduce){#demolar .cassette-card{transition:none}.dr-liste .mv-liste{animation:none}}

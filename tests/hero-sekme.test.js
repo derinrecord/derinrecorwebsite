@@ -52,3 +52,20 @@ test('çeviri: yeni giriş yazılarının hepsinin İngilizcesi var', () => {
   assert.ok(anahtarlar.length >= 18);
   anahtarlar.forEach(k => assert.ok(d.includes("'" + k + "':"), 'İngilizcesi yok: ' + k));
 });
+
+test('sirala: seçili sekmenin bölümü girişin hemen altına çıkar, diğerleri eski sırasında kalır', () => {
+  const asil = ['hero', 'demolar', 'kurumsal', 'mekan-vitrini', 'ses-tasarimi', 'hizmetler'];
+  assert.deepEqual(HS.BOLUMLER, { spor: 'demolar', mekan: 'mekan-vitrini', film: 'ses-tasarimi' });
+  assert.deepEqual(HS.sirala(asil, 'spor'), asil);
+  assert.deepEqual(HS.sirala(asil, 'mekan'), ['hero', 'mekan-vitrini', 'demolar', 'kurumsal', 'ses-tasarimi', 'hizmetler']);
+  assert.deepEqual(HS.sirala(asil, 'film'), ['hero', 'ses-tasarimi', 'demolar', 'kurumsal', 'mekan-vitrini', 'hizmetler']);
+  assert.deepEqual(HS.sirala(asil, '<x>'), asil, 'bilinmeyen sekme: sporcu sırası');
+  assert.deepEqual(HS.sirala(['hero', 'demolar'], 'film'), ['hero', 'demolar'], 'bölüm yoksa sıra değişmez');
+});
+
+test('ana sayfa: sekme bölümleri aynı kapta (yer değiştirebilsinler)', () => {
+  const h = oku('index.html');
+  const main = h.slice(h.indexOf('<main id="anasayfa">'), h.indexOf('</main>'));
+  ['class="hero"', 'id="demolar"', 'id="mekan-vitrini"', 'id="ses-tasarimi"'].forEach(s => assert.ok(main.includes(s), s));
+  assert.match(oku('hero-sekme.js'), /sirala\(/);
+});

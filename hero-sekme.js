@@ -14,7 +14,19 @@
     return SEKMELER[(i + yon + SEKMELER.length) % SEKMELER.length];
   }
 
-  var api = { SEKMELER: SEKMELER, sekmeSec: sekmeSec, komsu: komsu };
+  // Hangi sekme seçiliyse onun bölümü girişin hemen altına çıkar.
+  var BOLUMLER = { spor: 'demolar', mekan: 'mekan-vitrini', film: 'ses-tasarimi' };
+  // asil: sayfadaki ilk sıra (giriş başta). Seçilen bölüm girişten hemen sonraya
+  // alınır, geri kalanlar eski sırasını korur.
+  function sirala(asil, sekme) {
+    var hedef = BOLUMLER[sekmeSec(sekme)], i = asil.indexOf(hedef);
+    if (i < 1) return asil.slice();
+    var yeni = asil.slice(); yeni.splice(i, 1);
+    yeni.splice(1, 0, hedef);
+    return yeni;
+  }
+
+  var api = { SEKMELER: SEKMELER, sekmeSec: sekmeSec, komsu: komsu, BOLUMLER: BOLUMLER, sirala: sirala };
   if (typeof module !== 'undefined') module.exports = api;
   if (typeof document === 'undefined') return;
   window.DerinHeroSekme = api;
@@ -31,7 +43,24 @@
     document.querySelectorAll('[data-hero-etiket]').forEach(function (e) { e.hidden = e.dataset.heroEtiket !== ad; });
     var hero = document.querySelector('.hero');
     if (hero) hero.dataset.sekme = ad;
+    bolumleriDiz(ad);
     isaretKoy();
+  }
+
+  // Ana sayfadaki bölümlerin ilk sırası bir kez okunur; her seçimde o sıradan yeniden dizilir.
+  var ilkSira = null;
+  function bolumleriDiz(ad) {
+    var hero = document.querySelector('.hero'), kap = hero && hero.parentNode;
+    if (!kap) return;
+    if (!ilkSira) ilkSira = Array.prototype.filter.call(kap.children, function (el) { return el.tagName === 'SECTION'; });
+    var adlar = ilkSira.map(function (el) { return el === hero ? 'hero' : (el.id || ''); });
+    if (adlar[0] !== 'hero') return;
+    var son = hero;
+    sirala(adlar, ad).slice(1).forEach(function (a) {
+      var el = ilkSira[adlar.indexOf(a)];
+      if (el && son.nextElementSibling !== el) son.after(el);
+      son = el || son;
+    });
   }
 
   // Sarı vurgu seçili sekmenin altına kayar (genişlik ve konum ölçülür).
