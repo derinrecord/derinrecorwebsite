@@ -262,7 +262,6 @@
     if (b.dataset.olcu) secim.olcu = b.dataset.olcu; else secim.gun = +b.dataset.gun;
     ciz();
   });
-  if (/[?&]gorunum=liste\b/.test(location.search)) { document.body.classList.remove('ist-raf'); document.body.classList.add('ist-liste'); }
   basla();
   window.addEventListener('derin:authchange', basla);
 })();
