@@ -117,7 +117,8 @@
   .proj-track:hover,.proj-track:focus-visible{background:rgba(244,241,233,.04);outline:none}
   .proj-track:focus-visible{box-shadow:inset 0 0 0 2px var(--pj-altin)}
   .pt-no{font-family:var(--pj-serif);font-style:italic;font-size:14px;color:var(--pj-soluk)}
-  .pt-kaset{display:block;width:62px;aspect-ratio:1.55;border-radius:6px;padding:4px;box-sizing:border-box;background:#d4c24e}
+  /* Safari 17 (14 Kasım): aspect-ratio + %100 yükseklikli resim satır yüksekliğini resmin asıl boyuna (312px) şişiriyordu; yükseklik sabit. */
+  .pt-kaset{display:block;width:62px;height:40px;border-radius:6px;padding:4px;box-sizing:border-box;background:#d4c24e}
   .pt-kaset img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35));
     transition:transform .3s ease}
   .proj-track:hover .pt-kaset img{transform:rotate(-4deg) scale(1.06)}
@@ -292,7 +293,7 @@
     .stage-step{font-size:8px;letter-spacing:.02em}
     .proj-track{grid-template-columns:48px 1fr auto auto;gap:10px;padding:12px 4px}
     .pt-no,.pt-ok{display:none}
-    .pt-kaset{width:48px}
+    .pt-kaset{width:48px;height:31px}
     .fb-yaz button{padding:0 16px}
   }
 
@@ -725,7 +726,7 @@
 <script src="ses-donustur.js?v=1"></script>
 <script src="not-islemleri.js?v=1"></script>
 <script src="proje-istek.js?v=2"></script>
-<script src="proje-bildirim.js?v=1"></script><script src="satin-alma.js?v=6"></script><script src="projects.js?v=20261113d"></script><script src="tani.js?v=1"></script>
+<script src="proje-bildirim.js?v=1"></script><script src="satin-alma.js?v=6"></script><script src="projects.js?v=20261113d"></script><script src="tani.js?v=2"></script>
 <script src="ogretici-turlar.js?v=3"></script><script src="ogretici.js?v=4" data-sayfa="projelerim"></script>
 <script src="dil.js?v=2026110101" defer></script>
 </body>
