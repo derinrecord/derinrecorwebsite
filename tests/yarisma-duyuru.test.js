@@ -21,7 +21,9 @@ test('ana sayfa: sporcu panelinde, MÜZİĞİNİ OLUŞTUR\'un altında yarışma
   const pano = h.slice(h.indexOf('data-hero-pano="spor"'), h.indexOf('data-hero-pano="mekan"'));
   const cta = pano.indexOf('data-i18n="ana.cta1"'), serit = pano.indexOf('class="hero-yarisma"');
   assert.ok(cta > 0 && serit > cta, 'şerit düğmenin altında');
-  assert.match(pano, new RegExp('href="' + ADRES.replace(/[.?]/g, '\\$&') + '"[^>]*target="_blank"[^>]*rel="noreferrer"'));
+  assert.match(pano, /class="hero-yarisma" href="https:\/\/www\.youtube\.com\/channel\/UCneNJjXZoKZTbqH5QYdirvg\/live" target="_blank" rel="noreferrer"/);
+  assert.match(pano, /CANLI YAYIN/);
+  assert.match(oku('hero-sekme.css'), /@keyframes hyIsik/);
   assert.match(pano, /data-bitis="2026-11-15"/);
   assert.match(oku('hero-sekme.js'), /\[data-bitis\]/);
   assert.match(oku('hero-sekme.css'), /\.hero-yarisma/);
@@ -32,10 +34,12 @@ test('haberler: en üstte akrobatik kartı', () => {
   const izgara = h.slice(h.indexOf('<section class="news-grid">'));
   const ilk = izgara.slice(0, izgara.indexOf('</article>'));
   assert.match(ilk, /Akrobatik Cimnastik Federasyon Kupası/);
+  assert.match(ilk, /CANLI YAYIN · TIKLA/);
+  assert.ok(ilk.includes('href="https://www.youtube.com/channel/UCneNJjXZoKZTbqH5QYdirvg/live"'), 'federasyonun YouTube canlı yayın sayfası');
   assert.ok(ilk.includes('href="' + ADRES + '"'));
 });
 
 test('çeviri: yeni yazıların İngilizcesi var', () => {
   const d = oku('dil.js');
-  for (const k of ['ana.yarisma.etiket', 'ana.yarisma.metin', 'haber.akro.etiket', 'haber.akro.baslik', 'haber.akro.metin', 'haber.akro.link']) assert.ok(d.includes("'" + k + "':"), k);
+  for (const k of ['ana.yarisma.etiket', 'ana.yarisma.metin', 'ana.yarisma.baslik', 'ana.yarisma.izle', 'haber.akro.etiket', 'haber.akro.baslik', 'haber.akro.metin', 'haber.akro.link', 'haber.akro.canli']) assert.ok(d.includes("'" + k + "':"), k);
 });

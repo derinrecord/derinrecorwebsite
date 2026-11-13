@@ -1,1 +1,10 @@
 .news-main{max-width:72rem;margin:0 auto;padding:4rem 1.25rem 7rem}.news-main h1{margin:.4rem 0 1.3rem;font-size:clamp(3.8rem,10vw,8rem);line-height:.78;letter-spacing:-.08em}.news-main h1 span{color:var(--pink,#cb2468)}.news-intro{max-width:36rem;color:#c7c1ca;font-size:1.05rem;line-height:1.55}.news-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-top:3rem}.news-card{min-height:19rem;padding:1.5rem;display:flex;flex-direction:column;border:1px solid #4b454e;background:#1a171d;box-shadow:8px 8px 0 #302932}.news-card span{color:var(--yellow,#d8bb2c);font-size:.7rem;font-weight:900;letter-spacing:.14em}.news-card h2{margin:1.1rem 0 1rem;font-size:clamp(2rem,4vw,3.8rem);line-height:.86;letter-spacing:-.06em}.news-card p{max-width:25rem;color:#d6ced8;line-height:1.5}.news-card a{width:max-content;margin-top:auto;padding:.7rem .85rem;background:var(--yellow,#d8bb2c);color:#17151a;font-size:.68rem;font-weight:900;letter-spacing:.08em}.news-card.europe{background:#282037;box-shadow:8px 8px 0 var(--pink,#cb2468)}.news-card.world{background:#3a1d2b;box-shadow:8px 8px 0 var(--yellow,#d8bb2c)}.news-note{margin-top:3rem;color:#aba4ae;font-size:.8rem}@media(max-width:700px){.news-main{padding:3rem 7vw 5rem}.news-grid{grid-template-columns:1fr}.news-card{min-height:15rem}}
+
+/* Canlı yayın kartı (13 Kasım) */
+.news-canli{display:inline-flex;align-items:center;gap:8px;color:#ff5c7a!important}
+.news-canli::before{content:'';width:9px;height:9px;border-radius:50%;background:#ff3b5c;box-shadow:0 0 0 0 rgba(255,59,92,.6);animation:newsNabiz 1.6s ease-out infinite}
+@keyframes newsNabiz{70%{box-shadow:0 0 0 9px rgba(255,59,92,0)}100%{box-shadow:0 0 0 0 rgba(255,59,92,0)}}
+.news-card a.news-canli-dugme{background:#ff3b5c;color:#fff}
+.news-card a.news-canli-dugme:hover{background:#ff5c7a;color:#fff}
+.news-card a.news-ikincil{margin:14px 0 0;padding:0;background:none!important;color:#e8d15a!important;font-size:13px;text-decoration:underline;text-underline-offset:4px;box-shadow:none}
+@media(prefers-reduced-motion:reduce){.news-canli::before{animation:none}}

@@ -32,14 +32,29 @@
 }
 @media(prefers-reduced-motion:reduce){.hero-pano:not([hidden]){animation:none}.hs-isaret,.hero-sekmeler button,.hs-ikon{transition:none}}
 
-/* Süreli yarışma şeridi (13 Kasım): MÜZİĞİNİ OLUŞTUR'un altında; bitince hero-sekme.js gizler. */
-.hero-yarisma{display:inline-flex;align-items:center;gap:10px;max-width:100%;margin-top:18px;padding:9px 14px 9px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#f4f1e9;text-decoration:none;font-size:13px;line-height:1.3;transition:border-color .2s,background .2s}
-.hero-yarisma:hover,.hero-yarisma:focus-visible{border-color:#e8d15a;background:rgba(232,209,90,.12)}
+/* Canlı yayın şeridi (13 Kasım): MÜZİĞİNİ OLUŞTUR'un altında; 15 Kasım bitince hero-sekme.js gizler.
+   Stüdyodaki "ON AIR" lambası gibi: kırmızı yanıp sönen ışık + CANLI YAYIN.
+   body.hy-b: ikinci seçenek (kaset etiketi gibi krem kart, pembe gölge). */
+.hero-yarisma{position:relative;display:flex;align-items:stretch;gap:0;width:min(100%,560px);margin-top:22px;border-radius:18px;overflow:hidden;text-decoration:none;color:#f4f1e9;
+  background:linear-gradient(145deg,rgba(20,14,22,.86),rgba(20,14,22,.6));border:1px solid rgba(255,59,92,.45);box-shadow:0 0 0 1px rgba(255,59,92,.08),0 18px 44px rgba(0,0,0,.45),0 0 38px rgba(255,59,92,.18);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .2s ease,box-shadow .2s ease}
+.hero-yarisma:hover,.hero-yarisma:focus-visible{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(255,59,92,.3),0 22px 50px rgba(0,0,0,.5),0 0 54px rgba(255,59,92,.32)}
 .hero-yarisma[hidden]{display:none}
-.hy-nokta{flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:#ff3b5c;box-shadow:0 0 0 0 rgba(255,59,92,.6);animation:hyNabiz 1.8s ease-out infinite}
-.hy-etiket{font-size:10px;font-weight:900;letter-spacing:.14em;color:#e8d15a;white-space:nowrap}
-.hy-metin{min-width:0;font-weight:700}
-.hy-ok{color:#e8d15a;font-weight:900}
-@keyframes hyNabiz{70%{box-shadow:0 0 0 8px rgba(255,59,92,0)}100%{box-shadow:0 0 0 0 rgba(255,59,92,0)}}
-@media(prefers-reduced-motion:reduce){.hy-nokta{animation:none}}
-@media(max-width:760px){.hero-yarisma{font-size:12px;border-radius:16px;align-items:flex-start}.hy-nokta{margin-top:4px}}
+.hero-yarisma,.hero-yarisma *{text-shadow:none}
+.hy-lamba{display:flex;align-items:center;gap:9px;padding:0 16px;background:#e5163f;color:#fff;font-size:11px;font-weight:900;letter-spacing:.16em;white-space:nowrap;animation:hyLamba 1.4s ease-in-out infinite}
+.hy-lamba i{width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 10px #fff,0 0 18px rgba(255,255,255,.8);animation:hyIsik 1.4s ease-in-out infinite}
+.hy-metin{display:grid;gap:3px;min-width:0;padding:12px 16px;flex:1}
+.hy-metin b{font-size:15px;font-weight:900;letter-spacing:-.01em;line-height:1.2}
+.hy-metin small{font-size:12px;color:rgba(244,241,233,.65)}
+.hy-izle{display:flex;align-items:center;padding:0 16px;color:#16131a;background:#e8d15a;font-size:11px;font-weight:900;letter-spacing:.12em;white-space:nowrap}
+@keyframes hyIsik{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.8)}}
+@keyframes hyLamba{0%,100%{background:#e5163f;box-shadow:inset 0 0 18px rgba(255,255,255,.18)}50%{background:#a80f2e;box-shadow:none}}
+/* Seçenek B: kaset etiketi */
+body.hy-b .hero-yarisma{border-radius:6px;background:#f4f1e9;color:#17131a;border:0;box-shadow:6px 6px 0 #cb2468;transform:rotate(-1deg)}
+body.hy-b .hero-yarisma:hover{transform:rotate(-1deg) translateY(-2px);box-shadow:8px 8px 0 #cb2468}
+body.hy-b .hy-lamba{align-self:center;margin:10px 0 10px 10px;border-radius:999px;padding:9px 13px}
+body.hy-b .hy-metin b{color:#17131a}
+body.hy-b .hy-metin small{color:rgba(23,19,26,.6)}
+body.hy-b .hy-izle{background:#17131a;color:#e8d15a;margin:10px 10px 10px 0;border-radius:4px}
+@media(prefers-reduced-motion:reduce){.hy-lamba,.hy-lamba i{animation:none}}
+@media(max-width:760px){.hero-yarisma{width:100%;flex-wrap:wrap}.hy-lamba{padding:9px 14px;flex:1 0 100%;justify-content:flex-start}.hy-metin{padding:11px 14px}.hy-metin b{font-size:14px}.hy-izle{padding:0 14px}
+  body.hy-b .hero-yarisma{display:grid;grid-template-columns:1fr auto}body.hy-b .hy-lamba{grid-column:1/-1;justify-self:start;margin:12px 12px 0;padding:8px 13px}body.hy-b .hy-izle{margin:10px}}
