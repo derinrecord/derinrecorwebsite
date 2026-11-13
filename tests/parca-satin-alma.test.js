@@ -76,6 +76,8 @@ test('yönetici kutusu: tutar, dekontu gör, ödeme alındı, IBAN ayarı', () =
 
 test('projects.js: kutu yalnız indirme kapalıyken müşteriye; onay indirmeyi açar', () => {
   assert.match(j, /if\(indirmeAcik\(tr\)\)return '';/);
+  // İndirme yerinde doğrudan SATIN AL (indirme kapalıyken, yalnız müşteriye)
+  assert.match(j, /\(!admin && has && !indirmeAcik\(tr\) && SA && \('satin_alma_durum' in tr\)\) \? `<button type="button" class="td-tool-btn td-satinal" data-tdsatinal>/);
   assert.match(j, /update\(alanlar\)\.eq\('id',tr\.id\)/);
   assert.match(j, /kaydet\(\{satin_alma_durum:'odendi',indirme_izni:true\}/);
   assert.match(j, /window\.DerinR2\.yukle\('project-audio',yol,file/);
