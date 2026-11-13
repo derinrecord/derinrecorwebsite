@@ -104,7 +104,7 @@
     }
     const istendi = d === 'istendi' || d === 'dekont';
     const iban = ibanTemiz(ayar.iban);
-    const panel = istendi && o.acik ? `<div class="sa-bilet" id="sa-panel-${id}">
+    const panel = istendi ? `<div class="sa-bilet" id="sa-panel-${id}">
         <div class="sa-iban-blok">
           <span class="sa-etiket">IBAN</span>
           ${iban ? `<p class="sa-iban">${kacis(ibanGoster(iban))}</p><button type="button" class="sa-kopyala" data-sakopyala="${kacis(iban)}">${L('Kopyala', 'Copy')}</button>`
@@ -129,10 +129,6 @@
         ${fiyat(tr, L)}
       </div>
       ${adimlar(d, L)}
-      <div class="sa-dugmeler">
-        <button type="button" class="sa-istek${istendi ? ' onayli' : ''}" data-saistek="${id}" aria-pressed="${istendi}"${istendi ? ' disabled' : ''}>${istendi ? '✓ ' + L('Talebiniz alındı', 'Request received') : L('Satın almak istiyorum', 'I want to buy it')}</button>
-        <button type="button" class="sa-odeme${istendi && o.acik ? ' acik' : ''}" data-saodeme="${id}" aria-expanded="${!!(istendi && o.acik)}" aria-controls="sa-panel-${id}"${istendi ? '' : ` disabled title="${L('Önce satın alma butonuna basın.', 'Press the buy button first.')}"`}>${L('Ödeme', 'Payment')}<span aria-hidden="true">${istendi && o.acik ? '−' : '+'}</span></button>
-      </div>
       ${panel}
     </section>`;
   }

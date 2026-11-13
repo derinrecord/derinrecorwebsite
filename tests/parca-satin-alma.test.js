@@ -40,12 +40,12 @@ test('müşteri kutusu: metin, yeşil onay, ödeme paneli ve dekont alanı', () 
   const bos = SA.musteriKutusu({ tr, ayar: {} });
   assert.doesNotMatch(bos, /Projelerinizdeki parçayı beğendiyseniz/);
   assert.doesNotMatch(bos, /senin<\/em> olsun/);
-  assert.match(bos, /Satın almak istiyorum/);
-  assert.doesNotMatch(bos, /class="sa-istek onayli"/);
-  assert.match(bos, /data-saodeme="t1"[^>]*disabled/);
+  // Satın alma butonu yukarıda (indirme yerinde); kutuda ikinci buton yok.
+  assert.doesNotMatch(bos, /data-saistek|data-saodeme/);
+  assert.doesNotMatch(bos, /data-sadekont/);
 
-  const istendi = SA.musteriKutusu({ tr: { ...tr, satin_alma_durum: 'istendi', satin_alma_tutar: 3000 }, ayar: { iban: 'TR120006200000000000000001', alici: 'Derin' }, acik: true });
-  assert.match(istendi, /class="sa-istek onayli"/);
+  const istendi = SA.musteriKutusu({ tr: { ...tr, satin_alma_durum: 'istendi', satin_alma_tutar: 3000 }, ayar: { iban: 'TR120006200000000000000001', alici: 'Derin' } });
+  assert.doesNotMatch(istendi, /Satın almak istiyorum|data-saodeme/);
   assert.match(istendi, /KDV dahil/);
   assert.doesNotMatch(istendi, /\+ KDV/);
   assert.match(istendi, /3\.000<em class="sa-lira">₺<\/em>/);

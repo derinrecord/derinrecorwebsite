@@ -1173,7 +1173,7 @@
       <div class="td-tools">
         ${tr.source_url?`<a class="td-tool-link" href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">KAYNAĞI AÇ ↗</a>`:''}
         ${(!admin && indirmeAcik(tr) && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="wav">${sesUzantisi(tr.audio_path)==='wav'?L('⤓ WAV · ORİJİNAL','⤓ WAV · ORIGINAL'):'⤓ WAV'}</button><button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="mp3">⤓ MP3</button>` : ''}
-        ${(!admin && has && !indirmeAcik(tr) && SA && ('satin_alma_durum' in tr)) ? `<button type="button" class="td-tool-btn td-satinal" data-tdsatinal>${SA.durum(tr)?L('✓ SATIN AL · ÖDEME','✓ BUY · PAYMENT'):L('SATIN AL','BUY')}</button>` : ''}
+        ${(!admin && has && !indirmeAcik(tr) && SA && ('satin_alma_durum' in tr)) ? `<button type="button" class="td-tool-btn td-satinal" data-tdsatinal>${SA.durum(tr)?L('✓ TALEBİNİZ ALINDI','✓ REQUEST RECEIVED'):L('SATIN AL','BUY')}</button>` : ''}
         ${(admin && has)?`<button type="button" class="td-tool-btn td-dl-izin${indirmeAcik(tr)?' aktif':''}" data-tddlizin="${tr.id}" data-on="${indirmeAcik(tr)?1:0}" aria-pressed="${indirmeAcik(tr)}">${indirmeAcik(tr)?L('✓ İNDİRME AÇIK','✓ DOWNLOAD ON'):L('İNDİRMEYE İZİN VER','ALLOW DOWNLOAD')}</button>`:''}
         ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="${SES_ACCEPT}" data-newver="${tr.id}" hidden></label>`:''}
         ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
@@ -1486,7 +1486,7 @@
     const satinAl=root.querySelector('[data-tdsatinal]');
     const kutuyaGit=()=>{ const k=document.querySelector('.track-detail [data-sakutu]'); if(k)k.scrollIntoView({behavior:'smooth',block:'start'}); };
     if(satinAl)satinAl.onclick=async()=>{
-      if(SA.durum(tr)){ detail.odemeAcik=true; renderDetail(tr,project); kutuyaGit(); return; }
+      if(SA.durum(tr)){ kutuyaGit(); return; }
       satinAl.disabled=true;
       try{
         await kaydet({satin_alma_durum:'istendi'},L('Talep kaydedilemedi.','The request could not be saved.'));
