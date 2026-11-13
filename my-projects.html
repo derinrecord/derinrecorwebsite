@@ -216,8 +216,14 @@
   .sa-birak.alindi{border-color:rgba(95,207,143,.55)}
   .sa--yonetici.sa--dekont{border-top-color:var(--pj-pembe)}
   .sa--odendi{border-top-color:var(--pj-yesil)}
-  .td-tool-btn.td-satinal{background:var(--pj-yesil);border-color:var(--pj-yesil);color:#0b2416;font-weight:700;letter-spacing:.14em}
-  .td-tool-btn.td-satinal:hover{background:#7ddca5;border-color:#7ddca5}
+  /* SATIN AL (14 Kasım): sepet simgesi + ayırıcı + yazı, kabartmalı yeşil buton */
+  .td-tool-btn.td-satinal{display:inline-flex;align-items:stretch;padding:0;gap:0;border:0;border-radius:10px;background:var(--pj-yesil);color:#0b2416;
+    box-shadow:0 4px 0 #2e8c58,0 12px 26px rgba(0,0,0,.4);transition:transform .12s,box-shadow .12s,background .2s}
+  .td-tool-btn.td-satinal:hover{background:#6cd99b}
+  .td-tool-btn.td-satinal:active{transform:translateY(3px);box-shadow:0 1px 0 #2e8c58,0 4px 10px rgba(0,0,0,.35)}
+  .td-tool-btn.td-satinal:disabled{opacity:.7;cursor:wait}
+  .td-satinal-ikon{display:grid;place-items:center;padding:0 14px 0 16px;border-right:1px solid rgba(11,36,22,.3)}
+  .td-satinal-yazi{display:flex;align-items:center;padding:12px 22px 12px 16px;font-size:16px;font-weight:800;letter-spacing:.08em}
   .td-dl-izin.aktif{background:rgba(95,207,143,.14);border-color:rgba(95,207,143,.6);color:var(--pj-yesil)}
   .pt-surum.hazir{border-color:rgba(216,187,44,.45);color:var(--pj-altin2)}
   .pt-not{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:var(--pj-altin2)}
@@ -728,7 +734,7 @@
 <script src="ses-donustur.js?v=1"></script>
 <script src="not-islemleri.js?v=1"></script>
 <script src="proje-istek.js?v=2"></script>
-<script src="proje-bildirim.js?v=1"></script><script src="satin-alma.js?v=8"></script><script src="projects.js?v=20261114c"></script>
+<script src="proje-bildirim.js?v=1"></script><script src="satin-alma.js?v=8"></script><script src="projects.js?v=20261114d"></script>
 <script src="ogretici-turlar.js?v=3"></script><script src="ogretici.js?v=4" data-sayfa="projelerim"></script>
 <script src="dil.js?v=2026110101" defer></script>
 </body>
