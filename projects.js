@@ -1529,7 +1529,7 @@
     const onay=root.querySelector('[data-saonayla]');
     if(onay)onay.onclick=async()=>{
       const tutar=SA.tutarGoster(tr.satin_alma_tutar);
-      if(!confirm(L(`Ödeme${tutar?' ('+tutar+')':''} hesabına geldi mi? Onaylarsan “${tr.label||'Parça'}” indirmesi müşteriye açılacak.`,`Has the payment${tutar?' ('+tutar+')':''} arrived? If you confirm, the download of “${tr.label||'Track'}” opens for the customer.`)))return;
+      if(!confirm(L(`Ödeme${tutar?' ('+tutar+' + KDV)':''} hesabına geldi mi? Onaylarsan “${tr.label||'Parça'}” indirmesi müşteriye açılacak.`,`Has the payment${tutar?' ('+tutar+')':''} arrived? If you confirm, the download of “${tr.label||'Track'}” opens for the customer.`)))return;
       onay.disabled=true;
       try{
         await kaydet({satin_alma_durum:'odendi',indirme_izni:true},L('Onay kaydedilemedi.','The confirmation could not be saved.'));
