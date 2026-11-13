@@ -1184,7 +1184,6 @@
 
       <div class="td-shape-head">
         <div class="td-shape-sol">
-          <p class="td-eyebrow">BİRLİKTE ŞEKİLLENDİRELİM</p>
           <button type="button" class="td-bilgi-ac" data-tdbilgi aria-expanded="${bilgiAcik}" aria-controls="td-bilgi">ⓘ ${L('NASIL KULLANILIR','HOW IT WORKS')} <b aria-hidden="true">${bilgiAcik?'▴':'▾'}</b></button>
         </div>
         ${waveState?`<span class="td-badge">${waveState}</span>`:''}
