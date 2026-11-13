@@ -129,6 +129,50 @@
   .pt-surum{padding:5px 10px;border-radius:999px;border:1px solid var(--pj-cizgi2);font-size:10px;font-weight:900;letter-spacing:.08em}
   /* İndirme izni parça parça (25 Ekim) */
   .pt-indir{display:inline-grid;place-items:center;width:20px;height:20px;margin-left:4px;vertical-align:2px;border-radius:50%;background:rgba(95,207,143,.16);color:var(--pj-yesil);font-size:11px;font-weight:900}
+  /* Parça satın alma + dekont (13 Kasım) */
+  .sa-kutu{margin-top:18px;padding:18px 20px;border-radius:16px;border:1px solid var(--pj-cizgi2);background:var(--pj-yuzey2)}
+  .sa-baslik{margin:0 0 14px;font-size:14px;font-weight:700;line-height:1.5}
+  .sa-dugmeler{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .sa-istek,.sa-odeme{padding:11px 18px;border-radius:12px;font:inherit;font-size:12px;font-weight:800;letter-spacing:.05em;cursor:pointer;
+    border:1px solid rgba(232,209,90,.55);background:rgba(216,187,44,.14);color:var(--pj-altin2)}
+  .sa-istek:hover:not(:disabled),.sa-odeme:hover:not(:disabled){background:rgba(216,187,44,.24)}
+  .sa-istek.onayli{background:var(--pj-yesil);border-color:var(--pj-yesil);color:#0b2416;cursor:default;opacity:1}
+  .sa-odeme{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:var(--pj-krem)}
+  .sa-odeme.acik{background:rgba(255,255,255,.16)}
+  .sa-odeme:disabled{opacity:.4;cursor:not-allowed}
+  .sa-panel{margin-top:16px;padding-top:16px;border-top:1px solid var(--pj-cizgi)}
+  .sa-bilgi{display:grid;gap:10px;margin:0 0 12px}
+  .sa-bilgi div{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center}
+  .sa-bilgi dt{font-size:10px;font-weight:900;letter-spacing:.14em;color:var(--pj-soluk)}
+  .sa-bilgi dd{margin:0;font-size:14px;font-weight:700;word-break:break-word}
+  .sa-tutar{font-size:20px!important;color:var(--pj-altin2)}
+  .sa-iban{font-family:ui-monospace,Menlo,monospace;letter-spacing:.03em}
+  .sa-kopyala{margin-left:6px;padding:4px 10px;border-radius:8px;border:1px solid var(--pj-cizgi2);background:transparent;color:inherit;font:inherit;font-size:10px;font-weight:800;cursor:pointer}
+  .sa-bekle{font-weight:500;color:var(--pj-soluk);font-size:13px}
+  .sa-not{margin:0 0 12px;font-size:13px;color:var(--pj-soluk)}
+  .sa-durum.ok{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:rgba(95,207,143,.12);color:var(--pj-yesil);font-size:13px;font-weight:700}
+  .sa-yukle{display:inline-flex;align-items:center;padding:11px 18px;border-radius:12px;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:.05em;
+    border:1px dashed rgba(232,209,90,.7);background:rgba(216,187,44,.1);color:var(--pj-altin2)}
+  .sa-yukle.mesgul{opacity:.6;cursor:wait}
+  .sa-ipucu{margin:8px 0 0;font-size:11px;color:var(--pj-soluk)}
+  .sa-tamam{border-color:rgba(95,207,143,.5);background:rgba(95,207,143,.1)}
+  .sa-tamam .sa-baslik{margin:0;color:var(--pj-yesil)}
+  .sa-ust{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .sa-eyebrow{margin:0;font-size:11px;font-weight:900;letter-spacing:.2em;color:var(--pj-altin)}
+  .sa-rozet{padding:5px 10px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.06em;border:1px solid var(--pj-cizgi2);color:var(--pj-soluk)}
+  .sa-rozet.istendi{border-color:rgba(232,209,90,.6);color:var(--pj-altin2)}
+  .sa-rozet.dekont{border-color:rgba(203,36,104,.7);color:#ff9cc4;background:rgba(203,36,104,.14)}
+  .sa-rozet.odendi{border-color:rgba(95,207,143,.6);color:var(--pj-yesil)}
+  .sa-satir{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+  .sa-alan{display:grid;gap:6px;font-size:11px;font-weight:700;color:var(--pj-soluk);flex:1 1 220px;margin-bottom:10px}
+  .sa-satir .sa-alan{margin-bottom:0}
+  .sa-alan input{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.25);color:var(--pj-krem);font:inherit;font-size:14px}
+  .sa-onayla{border-color:rgba(95,207,143,.6)!important;background:rgba(95,207,143,.16)!important;color:var(--pj-yesil)!important}
+  .sa-ayar{margin-top:14px;padding-top:12px;border-top:1px solid var(--pj-cizgi)}
+  .sa-ayar summary{cursor:pointer;font-size:11px;font-weight:900;letter-spacing:.12em;color:var(--pj-soluk);margin-bottom:12px}
+  .pt-sa{display:inline-block;margin-top:5px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.04em;border:1px solid rgba(232,209,90,.5);color:var(--pj-altin2)}
+  .pt-sa.dekont{border-color:rgba(203,36,104,.7);color:#ff9cc4}
+  @media(max-width:560px){.sa-bilgi div{grid-template-columns:1fr;gap:2px}.sa-istek,.sa-odeme{flex:1 1 100%}}
   .td-dl-izin.aktif{background:rgba(95,207,143,.14);border-color:rgba(95,207,143,.6);color:var(--pj-yesil)}
   .pt-surum.hazir{border-color:rgba(216,187,44,.45);color:var(--pj-altin2)}
   .pt-not{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:var(--pj-altin2)}
@@ -639,7 +683,7 @@
 <script src="ses-donustur.js?v=1"></script>
 <script src="not-islemleri.js?v=1"></script>
 <script src="proje-istek.js?v=2"></script>
-<script src="proje-bildirim.js?v=1"></script><script src="projects.js?v=20261104a"></script>
+<script src="proje-bildirim.js?v=1"></script><script src="satin-alma.js?v=1"></script><script src="projects.js?v=20261113a"></script>
 <script src="ogretici-turlar.js?v=3"></script><script src="ogretici.js?v=3" data-sayfa="projelerim"></script>
 <script src="dil.js?v=2026110101" defer></script>
 </body>
