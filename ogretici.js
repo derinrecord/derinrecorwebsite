@@ -190,6 +190,9 @@
 
   function kendiliginden(tur) {
     if (aktif || !kendiligindenAcilsin({ rol: rol, gorduMu: gorduMu(tur) })) return;
+    // 13 Kasım: kendiliğinden yalnız BİR kez açılır. Tur yarıda bırakılsa ya da sayfadan
+    // çıkılsa bile "görüldü" sayılır; tekrar görmek için menüde ÖĞRETİCİ var.
+    depoYaz(tur);
     baslat(tur);
   }
 

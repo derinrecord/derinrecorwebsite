@@ -39,6 +39,7 @@
     if(!m)return null; const v=(m[1]?parseInt(m[1],10)*60:0)+parseFloat(m[2].replace(',','.')); return isFinite(v)?v:null; };
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
+  let odemeAyar={}; // IBAN / alıcı / not (parca-satin-alma.sql · odeme_ayarlari)
   let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],arsivProjeleri=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false,arsivAcik=false,arsivdeAcik={};
   // Arşivdeki projeler de parça odasında açılır (29 Ekim); ana listeye karışmazlar.
   const tumProjeler=()=>projects.concat(arsivProjeleri);
@@ -133,6 +134,8 @@
         }
       }
       await profilFotolariniYukle();
+      // Satın alma (13 Kasım): IBAN ve alıcı adı. Tablo henüz kurulmadıysa boş kalır.
+      try{ const oa=await client.from('odeme_ayarlari').select('iban,alici,aciklama').eq('id',1).maybeSingle(); odemeAyar=(!oa.error&&oa.data)||{}; }catch{ odemeAyar={}; }
       if(openTrackId){
         let found=null,foundProject=null;
         for(const p of tumProjeler()){const tr=(tracks[p.id]||[]).find(t=>t.id===openTrackId);if(tr){found=tr;foundProject=p;break;}}
@@ -152,14 +155,16 @@
     const has=!!tr.audio_path;
     const renkler=['aerobik','acrobatik','artistik','ritmik','trambolin'];
     const renk=renkler[i%renkler.length];
-    return `<button type="button" class="proj-track" data-tb="${tr.id}" data-tdopen="${tr.id}">
+    // Safari (13 Kasım): <button> ızgara olunca içeriği kutunun dışına, aşağıya kayıyordu.
+    // Satır div + role="button"; klavye (Enter/Boşluk) aşağıda bağlanır.
+    return `<div role="button" tabindex="0" class="proj-track" data-tb="${tr.id}" data-tdopen="${tr.id}">
       <span class="pt-no">${String(i+1).padStart(2,'0')}</span>
       <span class="pt-kaset ${renk}"><img src="assets/demo-cassette-derin-record.png" alt="" loading="lazy"></span>
-      <span class="pt-ad"><strong>${safe(tr.label||'Parça')}${tr.indirme_izni?` <span class="pt-indir" title="${L('İndirmesi açık','Download allowed')}" aria-label="${L('İndirmesi açık','Download allowed')}">⤓</span>`:''}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small></span>
+      <span class="pt-ad"><strong>${safe(tr.label||'Parça')}${tr.indirme_izni?` <span class="pt-indir" title="${L('İndirmesi açık','Download allowed')}" aria-label="${L('İndirmesi açık','Download allowed')}">⤓</span>`:''}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small>${(admin&&tr.satin_alma_durum&&tr.satin_alma_durum!=='odendi')?`<span class="pt-sa ${safe(tr.satin_alma_durum)}">${tr.satin_alma_durum==='dekont'?L('🧾 DEKONT YÜKLENDİ','🧾 RECEIPT UPLOADED'):L('🛒 SATIN ALMA TALEBİ','🛒 PURCHASE REQUEST')}</span>`:''}</span>
       ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${L(`${n} not — parçayı açıp klasöründe gör`,`${n} ${n===1?'note':'notes'} — open the track to see its folder`)}">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
       <span class="pt-surum${has?' hazir':''}">v${safe(tr.version||1)}</span>
       <span class="pt-ok" aria-hidden="true">→</span>
-    </button>`;
+    </div>`;
   }
 
   // Kart gövdesini "katla/aç": sınıfı değiştirmek yeterli (CSS yüksekliği
@@ -1129,6 +1134,15 @@
     </div>`;
   }
 
+  // Satın alma kutusu (13 Kasım). Sütunlar yoksa (SQL kurulmadıysa) hiç görünmez.
+  const SA=window.DerinSatinAlma;
+  function satinAlmaKutusu(tr,has){
+    if(!SA||!has||!('satin_alma_durum' in tr))return '';
+    if(admin)return SA.yoneticiKutusu({tr,ayar:odemeAyar,L});
+    if(indirmeAcik(tr))return '';
+    return SA.musteriKutusu({tr,ayar:odemeAyar,acik:!!detail.odemeAcik,yukleniyor:!!detail.dekontYukleniyor,L});
+  }
+
   function trackDetailView(tr,project){
     const has=!!tr.audio_path;
     const dur=detail.duration||0, cur=detail.curTime||0;
@@ -1163,6 +1177,7 @@
         ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="${SES_ACCEPT}" data-newver="${tr.id}" hidden></label>`:''}
         ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
       </div>
+      ${satinAlmaKutusu(tr,has)}
 
       <hr class="td-divider">
 
@@ -1449,6 +1464,95 @@
     };
     document.addEventListener('pointerup',bitir);
     document.addEventListener('pointercancel',bitir);
+  }
+
+  // Satın alma düğmeleri (13 Kasım). Kurallar sunucuda: tutar ve "ödendi"yi
+  // yalnız yönetici yazar (supabase/parca-satin-alma.sql).
+  function satinAlmaBagla(root,tr,project){
+    if(!SA)return;
+    const kaydet=(alanlar,hata)=>tekSatir(client.from('project_tracks').update(alanlar).eq('id',tr.id),hata);
+    const istek=root.querySelector('[data-saistek]');
+    if(istek)istek.onclick=async()=>{
+      istek.disabled=true;
+      try{
+        await kaydet({satin_alma_durum:'istendi'},L('Talep kaydedilemedi.','The request could not be saved.'));
+        detail.odemeAcik=true;
+        bildir(L('Satın alma talebiniz alındı. Şimdi ÖDEME bölümünden ödemeyi yapıp dekontu yükleyebilirsiniz.','Your purchase request was received. You can now pay in the PAYMENT section and upload the receipt.'),'ok');
+        await load();
+      }catch(e){ bildir(L('Talep kaydedilemedi: ','The request could not be saved: ')+e.message,'hata'); istek.disabled=false; }
+    };
+    const odeme=root.querySelector('[data-saodeme]');
+    if(odeme)odeme.onclick=()=>{ detail.odemeAcik=!detail.odemeAcik; renderDetail(tr,project); };
+    root.querySelectorAll('[data-sakopyala]').forEach(b=>b.onclick=async()=>{
+      try{ await navigator.clipboard.writeText(b.dataset.sakopyala); bildir(L('IBAN kopyalandı.','IBAN copied.'),'ok'); }
+      catch{ bildir(L('Kopyalanamadı; IBAN\'ı elle seçip kopyalayın.','Could not copy; select the IBAN and copy it manually.'),'hata'); }
+    });
+    const dekont=root.querySelector('[data-sadekont]');
+    const dekontGonder=async file=>{
+      const hata=SA.dekontHatasi(file,L); if(hata){ bildir(hata,'hata'); return; }
+      detail.dekontYukleniyor=true; renderDetail(tr,project);
+      try{
+        const yol=SA.dekontYolu(project.coach_id||me,tr.id,file.name);
+        const up=await window.DerinR2.yukle('project-audio',yol,file,file.type||undefined);
+        if(up&&up.error)throw up.error;
+        await kaydet({satin_alma_durum:'dekont',dekont_path:yol,dekont_adi:file.name},L('Dekont kaydedilemedi.','The receipt could not be saved.'));
+        bildir(L('Dekontunuz alındı. Ödeme onaylanınca indirme açılacak.','Your receipt was received. The download will open once the payment is confirmed.'),'ok');
+      }catch(e){ bildir(L('Dekont yüklenemedi: ','The receipt could not be uploaded: ')+(e.message||e),'hata'); }
+      finally{ detail.dekontYukleniyor=false; await load(); }
+    };
+    if(dekont)dekont.onchange=()=>{ const file=dekont.files&&dekont.files[0]; dekont.value=''; dekontGonder(file); };
+    // Sürükle-bırak: dekont dosyası "Dekontu buraya bırak" alanına bırakılabilir.
+    const birak=root.querySelector('[data-sabirak]');
+    if(birak&&dekont&&!dekont.disabled){
+      const ac=e=>{ e.preventDefault(); birak.classList.add('surukle'); };
+      const kapat=()=>birak.classList.remove('surukle');
+      birak.addEventListener('dragenter',ac); birak.addEventListener('dragover',ac);
+      birak.addEventListener('dragleave',kapat);
+      birak.addEventListener('drop',e=>{ e.preventDefault(); kapat(); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f)dekontGonder(f); });
+    }
+    // ---- Yönetici ----
+    const tutarDug=root.querySelector('[data-satutarkaydet]');
+    if(tutarDug)tutarDug.onclick=async()=>{
+      const kutu=root.querySelector('[data-satutar]'); const ham=kutu?kutu.value.trim():'';
+      const n=ham?SA.tutarCoz(ham):null;
+      if(ham&&n==null){ bildir(L('Tutar anlaşılmadı. Örnek: 3000 ya da 3.000,50','The amount was not understood. Example: 3000 or 3,000.50'),'hata'); return; }
+      tutarDug.disabled=true;
+      try{ await kaydet({satin_alma_tutar:n},L('Tutar kaydedilemedi.','The price could not be saved.')); bildir(n?L('Tutar kaydedildi: ','Price saved: ')+SA.tutarGoster(n):L('Tutar silindi.','Price removed.'),'ok'); await load(); }
+      catch(e){ bildir(L('Tutar kaydedilemedi: ','The price could not be saved: ')+e.message,'hata'); tutarDug.disabled=false; }
+    };
+    const gor=root.querySelector('[data-sadekontgor]');
+    if(gor)gor.onclick=async()=>{
+      // Açılır pencere engeline takılmamak için sekme önce açılır, adres sonra verilir.
+      const sekme=window.open('','_blank');
+      const url=await signed(gor.dataset.sadekontgor);
+      if(!url){ if(sekme)sekme.close(); bildir(L('Dekont açılamadı.','The receipt could not be opened.'),'hata'); return; }
+      if(sekme)sekme.location.href=url; else window.location.href=url;
+    };
+    const onay=root.querySelector('[data-saonayla]');
+    if(onay)onay.onclick=async()=>{
+      const tutar=SA.tutarGoster(tr.satin_alma_tutar);
+      if(!confirm(L(`Ödeme${tutar?' ('+tutar+' KDV dahil)':''} hesabına geldi mi? Onaylarsan “${tr.label||'Parça'}” indirmesi müşteriye açılacak.`,`Has the payment${tutar?' ('+tutar+')':''} arrived? If you confirm, the download of “${tr.label||'Track'}” opens for the customer.`)))return;
+      onay.disabled=true;
+      try{
+        await kaydet({satin_alma_durum:'odendi',indirme_izni:true},L('Onay kaydedilemedi.','The confirmation could not be saved.'));
+        musteriyeBildir(project,'indirme',{parca:tr.label});
+        bildir(L('Ödeme onaylandı, indirme açıldı.','Payment confirmed, download opened.'),'ok');
+        await load();
+      }catch(e){ bildir(L('Onay kaydedilemedi: ','The confirmation could not be saved: ')+e.message,'hata'); onay.disabled=false; }
+    };
+    const ayarDug=root.querySelector('[data-saayarkaydet]');
+    if(ayarDug)ayarDug.onclick=async()=>{
+      const deger=s=>{ const el=root.querySelector(s); return el?el.value.trim():''; };
+      const iban=SA.ibanTemiz(deger('[data-saiban]'));
+      if(iban&&!SA.ibanGecerliMi(iban)&&!confirm(L('Bu IBAN alışılmış biçimde görünmüyor (TR + 24 rakam). Yine de kaydedilsin mi?','This IBAN does not look standard (TR + 24 digits). Save anyway?')))return;
+      ayarDug.disabled=true;
+      try{
+        const alanlar={iban:iban||null,alici:deger('[data-saalici]')||null,aciklama:deger('[data-saaciklama]')||null,updated_at:new Date().toISOString()};
+        await tekSatir(client.from('odeme_ayarlari').update(alanlar).eq('id',1),L('Ödeme bilgileri kaydedilemedi. supabase/parca-satin-alma.sql çalıştırıldı mı?','Payment details could not be saved. Has supabase/parca-satin-alma.sql been run?'));
+        bildir(L('Ödeme bilgileri kaydedildi.','Payment details saved.'),'ok');
+        await load();
+      }catch(e){ bildir(L('Ödeme bilgileri kaydedilemedi: ','Payment details could not be saved: ')+e.message,'hata'); ayarDug.disabled=false; }
+    };
   }
 
   function wireDetail(tr,project){
@@ -1741,6 +1845,7 @@
       b.disabled=true;
       try{ await dosyaIndir(b.dataset.path,b.dataset.name,b.dataset.bicim||'wav'); } finally{ b.disabled=false; }
     });
+    satinAlmaBagla(root,tr,project);
 
     root.querySelectorAll('[data-trackdel]').forEach(button=>button.onclick=async()=>{
       if(!confirm('Bu parça ve ses dosyası silinsin mi?'))return;
@@ -2032,6 +2137,7 @@
       for(const p of tumProjeler()){const t=(tracks[p.id]||[]).find(x=>x.id===trackId);if(t){tr=t;project=p;break;}}
       if(tr&&project)openTrackDetail(tr,project);
     });
+    list.querySelectorAll('.proj-track[data-tdopen]').forEach(el=>el.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); el.click(); } });
 
     list.querySelectorAll('[data-stage]').forEach(s=>s.onchange=async()=>{
       s.disabled=true;
