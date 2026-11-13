@@ -153,7 +153,7 @@ begin
     v_baslik || E'\n'
     || coalesce(nullif(btrim(v_ad), ''), 'Müşteri') || coalesce(' · ' || v_proje, '') || E'\n'
     || 'Parça: ' || coalesce(new.label, '—')
-    || coalesce(E'\nTutar: ' || rtrim(rtrim(new.satin_alma_tutar::text, '0'), '.') || ' ₺ + KDV', '') || E'\n'
+    || coalesce(E'\nTutar: ' || rtrim(rtrim(new.satin_alma_tutar::text, '0'), '.') || ' ₺ (KDV dahil)', '') || E'\n'
     || 'derinrecord.com/my-projects.html' || E'\n'
     || to_char(now() at time zone 'Europe/Istanbul', 'DD.MM.YYYY HH24:MI'));
   return new;

@@ -46,7 +46,8 @@ test('müşteri kutusu: metin, yeşil onay, ödeme paneli ve dekont alanı', () 
 
   const istendi = SA.musteriKutusu({ tr: { ...tr, satin_alma_durum: 'istendi', satin_alma_tutar: 3000 }, ayar: { iban: 'TR120006200000000000000001', alici: 'Derin' }, acik: true });
   assert.match(istendi, /class="sa-istek onayli"/);
-  assert.match(istendi, /\+ KDV/);
+  assert.match(istendi, /KDV dahil/);
+  assert.doesNotMatch(istendi, /\+ KDV/);
   assert.match(istendi, /3\.000<em class="sa-lira">₺<\/em>/);
   assert.match(istendi, /TR12 0006 2000 0000 0000 0000 01/);
   assert.match(istendi, /data-sadekont="t1"/);
