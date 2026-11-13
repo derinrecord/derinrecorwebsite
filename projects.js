@@ -155,14 +155,16 @@
     const has=!!tr.audio_path;
     const renkler=['aerobik','acrobatik','artistik','ritmik','trambolin'];
     const renk=renkler[i%renkler.length];
-    return `<button type="button" class="proj-track" data-tb="${tr.id}" data-tdopen="${tr.id}">
+    // Safari (13 Kasım): <button> ızgara olunca içeriği kutunun dışına, aşağıya kayıyordu.
+    // Satır div + role="button"; klavye (Enter/Boşluk) aşağıda bağlanır.
+    return `<div role="button" tabindex="0" class="proj-track" data-tb="${tr.id}" data-tdopen="${tr.id}">
       <span class="pt-no">${String(i+1).padStart(2,'0')}</span>
       <span class="pt-kaset ${renk}"><img src="assets/demo-cassette-derin-record.png" alt="" loading="lazy"></span>
       <span class="pt-ad"><strong>${safe(tr.label||'Parça')}${tr.indirme_izni?` <span class="pt-indir" title="${L('İndirmesi açık','Download allowed')}" aria-label="${L('İndirmesi açık','Download allowed')}">⤓</span>`:''}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small>${(admin&&tr.satin_alma_durum&&tr.satin_alma_durum!=='odendi')?`<span class="pt-sa ${safe(tr.satin_alma_durum)}">${tr.satin_alma_durum==='dekont'?L('🧾 DEKONT YÜKLENDİ','🧾 RECEIPT UPLOADED'):L('🛒 SATIN ALMA TALEBİ','🛒 PURCHASE REQUEST')}</span>`:''}</span>
       ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${L(`${n} not — parçayı açıp klasöründe gör`,`${n} ${n===1?'note':'notes'} — open the track to see its folder`)}">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
       <span class="pt-surum${has?' hazir':''}">v${safe(tr.version||1)}</span>
       <span class="pt-ok" aria-hidden="true">→</span>
-    </button>`;
+    </div>`;
   }
 
   // Kart gövdesini "katla/aç": sınıfı değiştirmek yeterli (CSS yüksekliği
@@ -2135,6 +2137,7 @@
       for(const p of tumProjeler()){const t=(tracks[p.id]||[]).find(x=>x.id===trackId);if(t){tr=t;project=p;break;}}
       if(tr&&project)openTrackDetail(tr,project);
     });
+    list.querySelectorAll('.proj-track[data-tdopen]').forEach(el=>el.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); el.click(); } });
 
     list.querySelectorAll('[data-stage]').forEach(s=>s.onchange=async()=>{
       s.disabled=true;
