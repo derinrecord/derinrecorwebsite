@@ -27,8 +27,18 @@
   }
 
   var api = { SEKMELER: SEKMELER, sekmeSec: sekmeSec, komsu: komsu, BOLUMLER: BOLUMLER, sirala: sirala };
+  // Süreli duyurular (ör. yarışma şeridi): bitiş günü İstanbul saatiyle geçince gizlenir.
+  function suresiDoldu(bitis, simdi) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(bitis || ''))) return false;
+    var bugun = new Date(simdi).toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' });
+    return bugun > bitis;
+  }
+  api.suresiDoldu = suresiDoldu;
+
   if (typeof module !== 'undefined') module.exports = api;
   if (typeof document === 'undefined') return;
+
+  document.querySelectorAll('[data-bitis]').forEach(function (el) { if (suresiDoldu(el.getAttribute('data-bitis'), Date.now())) el.hidden = true; });
   window.DerinHeroSekme = api;
 
   function goster(ad, odakla) {
