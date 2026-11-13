@@ -146,7 +146,7 @@
       dekont: L('Dekont yüklendi · ödemeyi kontrol et', 'Receipt uploaded · check the payment'),
       odendi: L('Ödendi · indirme açık', 'Paid · download open')
     }[d] || L('Henüz talep yok', 'No request yet');
-    const tutarDeger = tr.satin_alma_tutar != null ? String(Number(tr.satin_alma_tutar)).replace('.', ',') : '';
+    const tutarDeger = tr.satin_alma_tutar != null ? tutarGoster(tr.satin_alma_tutar).replace(/ TL$/, '') : '';
     return `<section class="sa sa--yonetici sa--${d || 'yeni'}" data-sakutu>
       <div class="sa-bas">
         <div class="sa-metin">

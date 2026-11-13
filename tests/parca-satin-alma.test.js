@@ -64,7 +64,7 @@ test('müşteri verisi kaçışlanır', () => {
 
 test('yönetici kutusu: tutar, dekontu gör, ödeme alındı, IBAN ayarı', () => {
   const h = SA.yoneticiKutusu({ tr: { id: 't1', satin_alma_durum: 'dekont', dekont_path: 'u1/dekont/t1-1.pdf', satin_alma_tutar: 3000 }, ayar: {} });
-  assert.match(h, /data-satutar="t1" value="3000"/);
+  assert.match(h, /data-satutar="t1" value="3\.000"/);
   assert.match(h, /data-sadekontgor="u1\/dekont\/t1-1\.pdf"/);
   assert.match(h, /Ödeme alındı · indirmeyi aç/);
   assert.match(h, /data-saiban/);
