@@ -5,6 +5,11 @@
   const config = window.DERIN_CONFIG || {};
   const configured = Boolean(config.supabaseUrl && config.supabasePublishableKey && window.supabase);
   const HATIRLA_ANAHTARI = 'derin-auth-hatirla';
+  // Bu cihazda daha önce kayıt olundu ya da giriş yapıldı mı? Telefonda düğme buna göre
+  // GİRİŞ YAP ya da KAYIT OL der (13 Kasım; mobil.css).
+  const HESAP_IZI = 'derin-hesap-var';
+  const hesapVarMi = () => { try { return localStorage.getItem(HESAP_IZI) === '1'; } catch (e) { return false; } };
+  const hesapIziBirak = () => { try { localStorage.setItem(HESAP_IZI, '1'); } catch (e) { /* gizli mod */ } };
   const kaliciDepo = typeof localStorage === 'undefined' ? null : localStorage;
   const geciciDepo = typeof sessionStorage === 'undefined' ? null : sessionStorage;
   let hatirlaTercihi = kaliciDepo?.getItem(HATIRLA_ANAHTARI) === '1';
@@ -93,6 +98,8 @@
     button.classList.remove('hb-fotolu');
     // Üst menüdeki müzik araştırma düğmesi 9 Kasım'da kaldırıldı; MÜZİK ARAŞTIR hesap menüsünde.
     if (!configured) { button.textContent = dilMetni('shell.hesapSistemi', 'HESAP SİSTEMİ'); button.classList.add('secondary'); signup.hidden = true; button.onclick = () => openAuth('login'); return; }
+    if (state.user) hesapIziBirak();
+    actions.dataset.hesap = hesapVarMi() ? 'var' : 'yok';
     if (!state.user) { button.textContent = dilMetni('shell.giris', 'GİRİŞ YAP'); button.classList.remove('secondary'); signup.hidden = false; return; }
     signup.hidden = true;
     // HESABIM düğmesinde solda profil fotoğrafı; yoksa baş harf (24 Ekim).
@@ -250,6 +257,7 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
       submit.disabled = true;
       const onay = { sozlesme_surum: SOZLESME_SURUM, aydinlatma_surum: AYDINLATMA_SURUM, kabul_at: new Date().toISOString() };
       const result = signup ? await state.client.auth.signUp({ email, password, options: { data: Object.assign({ full_name: String(form.get('name')).trim() }, onay) } }) : await state.client.auth.signInWithPassword({ email, password });
+      if (!result.error) hesapIziBirak();
       if (result.error) {
         submit.disabled = false;
         if (!signup) hatirlaTercihi = localStorage.getItem(HATIRLA_ANAHTARI) === '1';

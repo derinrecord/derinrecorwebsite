@@ -423,6 +423,23 @@
     text-overflow: ellipsis;
   }
 
+  /* Bu cihazda hiç hesap açılmadıysa GİRİŞ YAP yerine KAYIT OL (13 Kasım). */
+  .site-header .account-actions[data-hesap="yok"] [data-login],
+  .header .account-actions[data-hesap="yok"] [data-login] {
+    display: none !important;
+  }
+
+  .site-header .account-actions[data-hesap="yok"] .secondary,
+  .header .account-actions[data-hesap="yok"] .secondary {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    background: #d8bb2c !important;
+    color: #16131a !important;
+    border-color: #d8bb2c !important;
+  }
+
   /* ---------- Branş sayfaları: demo oynatıcı ---------- */
   .hero .eyebrow {
     font-size: 10.5px;
