@@ -102,6 +102,8 @@
     if (d === 'odendi') {
       return `<section class="sa sa--odendi" data-sakutu><p class="sa-tamam">✓ ${L('Ödemeniz onaylandı.', 'Your payment has been confirmed.')}</p></section>`;
     }
+    // SATIN AL'a basılmadan alttaki kutu (tutar, adımlar, ödeme) hiç görünmez (14 Kasım).
+    if (!d) return '';
     const istendi = d === 'istendi' || d === 'dekont';
     const iban = ibanTemiz(ayar.iban);
     const panel = istendi ? `<div class="sa-bilet" id="sa-panel-${id}">

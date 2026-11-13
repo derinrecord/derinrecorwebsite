@@ -38,11 +38,8 @@ test('dekont: PDF/fotoğraf, 10 MB sınırı, müşterinin kendi klasörü', () 
 test('müşteri kutusu: metin, yeşil onay, ödeme paneli ve dekont alanı', () => {
   const tr = { id: 't1', label: 'Final', satin_alma_durum: null, satin_alma_tutar: null };
   const bos = SA.musteriKutusu({ tr, ayar: {} });
-  assert.doesNotMatch(bos, /Projelerinizdeki parçayı beğendiyseniz/);
-  assert.doesNotMatch(bos, /senin<\/em> olsun/);
-  // Satın alma butonu yukarıda (indirme yerinde); kutuda ikinci buton yok.
-  assert.doesNotMatch(bos, /data-saistek|data-saodeme/);
-  assert.doesNotMatch(bos, /data-sadekont/);
+  // SATIN AL'a basılmadan kutu hiç çıkmaz.
+  assert.equal(bos, '');
 
   const istendi = SA.musteriKutusu({ tr: { ...tr, satin_alma_durum: 'istendi', satin_alma_tutar: 3000 }, ayar: { iban: 'TR120006200000000000000001', alici: 'Derin' } });
   assert.doesNotMatch(istendi, /Satın almak istiyorum|data-saodeme/);
