@@ -1486,8 +1486,7 @@
       catch{ bildir(L('Kopyalanamadı; IBAN\'ı elle seçip kopyalayın.','Could not copy; select the IBAN and copy it manually.'),'hata'); }
     });
     const dekont=root.querySelector('[data-sadekont]');
-    if(dekont)dekont.onchange=async()=>{
-      const file=dekont.files&&dekont.files[0]; dekont.value='';
+    const dekontGonder=async file=>{
       const hata=SA.dekontHatasi(file,L); if(hata){ bildir(hata,'hata'); return; }
       detail.dekontYukleniyor=true; renderDetail(tr,project);
       try{
@@ -1499,6 +1498,16 @@
       }catch(e){ bildir(L('Dekont yüklenemedi: ','The receipt could not be uploaded: ')+(e.message||e),'hata'); }
       finally{ detail.dekontYukleniyor=false; await load(); }
     };
+    if(dekont)dekont.onchange=()=>{ const file=dekont.files&&dekont.files[0]; dekont.value=''; dekontGonder(file); };
+    // Sürükle-bırak: dekont dosyası "Dekontu buraya bırak" alanına bırakılabilir.
+    const birak=root.querySelector('[data-sabirak]');
+    if(birak&&dekont&&!dekont.disabled){
+      const ac=e=>{ e.preventDefault(); birak.classList.add('surukle'); };
+      const kapat=()=>birak.classList.remove('surukle');
+      birak.addEventListener('dragenter',ac); birak.addEventListener('dragover',ac);
+      birak.addEventListener('dragleave',kapat);
+      birak.addEventListener('drop',e=>{ e.preventDefault(); kapat(); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f)dekontGonder(f); });
+    }
     // ---- Yönetici ----
     const tutarDug=root.querySelector('[data-satutarkaydet]');
     if(tutarDug)tutarDug.onclick=async()=>{

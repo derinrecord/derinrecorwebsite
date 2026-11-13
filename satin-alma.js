@@ -80,38 +80,61 @@
     return `${musteriId}/dekont/${parcaId}-${zaman || Date.now()}.${uz}`;
   }
 
+  // Dört adım çizgisi (Projelerim'deki ÜRETİM SÜRECİ çizgisinin dili).
+  function adimlar(d, L) {
+    const sira = { null: 0, istendi: 1, dekont: 2, odendi: 4 }[d] || 0;
+    const ad = [L('TALEP', 'REQUEST'), L('ÖDEME', 'PAYMENT'), L('DEKONT', 'RECEIPT'), L('İNDİRME', 'DOWNLOAD')];
+    return `<ol class="sa-adim" aria-label="${L('Satın alma adımları', 'Purchase steps')}">${ad.map((a, i) =>
+      `<li class="${i < sira ? 'done' : i === sira ? 'now' : ''}"><i aria-hidden="true">${String(i + 1).padStart(2, '0')}</i>${a}</li>`).join('')}</ol>`;
+  }
+  function fiyat(tr, L) {
+    const t = tutarGoster(tr.satin_alma_tutar);
+    if (!t) return `<div class="sa-fiyat bos"><span>${L('TUTAR', 'PRICE')}</span><b>—</b><small>${L('yakında', 'soon')}</small></div>`;
+    const [sayi] = t.split(' ');
+    return `<div class="sa-fiyat"><span>${L('TUTAR', 'PRICE')}</span><b>${kacis(sayi)}<em>TL</em></b></div>`;
+  }
+
   // ---- Müşteri kutusu (indirme kapalıyken parça odasında) ----
   // o: { tr, ayar:{iban,alici,aciklama}, acik:boolean (ödeme paneli), L, yukleniyor }
   function musteriKutusu(o) {
     const L = o.L || varsayilanL, tr = o.tr || {}, ayar = o.ayar || {};
     const d = durum(tr), id = kacis(tr.id);
     if (d === 'odendi') {
-      return `<div class="sa-kutu sa-tamam" data-sakutu><p class="sa-baslik">✓ ${L('Ödemeniz onaylandı.', 'Your payment has been confirmed.')}</p></div>`;
+      return `<section class="sa sa--odendi" data-sakutu><p class="sa-tamam">✓ ${L('Ödemeniz onaylandı.', 'Your payment has been confirmed.')}</p></section>`;
     }
     const istendi = d === 'istendi' || d === 'dekont';
-    const tutar = tutarGoster(tr.satin_alma_tutar);
     const iban = ibanTemiz(ayar.iban);
-    const panel = istendi && o.acik ? `<div class="sa-panel" id="sa-panel-${id}">
-        <dl class="sa-bilgi">
-          <div><dt>${L('TUTAR', 'AMOUNT')}</dt><dd class="sa-tutar">${tutar ? kacis(tutar) : `<span class="sa-bekle">${L('Tutar kısa süre içinde burada yazacak.', 'The amount will appear here shortly.')}</span>`}</dd></div>
-          <div><dt>IBAN</dt><dd>${iban ? `<span class="sa-iban">${kacis(ibanGoster(iban))}</span> <button type="button" class="sa-kopyala" data-sakopyala="${kacis(iban)}">${L('KOPYALA', 'COPY')}</button>` : `<span class="sa-bekle">${L('IBAN kısa süre içinde burada yazacak.', 'The IBAN will appear here shortly.')}</span>`}</dd></div>
-          ${ayar.alici ? `<div><dt>${L('ALICI', 'RECIPIENT')}</dt><dd>${kacis(ayar.alici)}</dd></div>` : ''}
-          <div><dt>${L('AÇIKLAMA', 'REFERENCE')}</dt><dd>${kacis(tr.label || L('Parça', 'Track'))}</dd></div>
-        </dl>
+    const panel = istendi && o.acik ? `<div class="sa-bilet" id="sa-panel-${id}">
+        <div class="sa-iban-blok">
+          <span class="sa-etiket">IBAN</span>
+          ${iban ? `<p class="sa-iban">${kacis(ibanGoster(iban))}</p><button type="button" class="sa-kopyala" data-sakopyala="${kacis(iban)}">${L('Kopyala', 'Copy')}</button>`
+                 : `<p class="sa-bekle">${L('IBAN kısa süre içinde burada yazacak.', 'The IBAN will appear here shortly.')}</p>`}
+        </div>
+        <div class="sa-satirlar">
+          ${ayar.alici ? `<p><span class="sa-etiket">${L('ALICI', 'RECIPIENT')}</span>${kacis(ayar.alici)}</p>` : ''}
+          <p><span class="sa-etiket">${L('AÇIKLAMA', 'REFERENCE')}</span>${kacis(tr.label || L('Parça', 'Track'))}</p>
+        </div>
         ${ayar.aciklama ? `<p class="sa-not">${kacis(ayar.aciklama)}</p>` : ''}
-        ${d === 'dekont' ? `<p class="sa-durum ok">✓ ${L('Dekontunuz alındı. Ödeme onaylanınca indirme açılacak.', 'Your receipt was received. The download will open once the payment is confirmed.')}</p>` : ''}
-        <label class="sa-yukle${o.yukleniyor ? ' mesgul' : ''}">${o.yukleniyor ? L('YÜKLENİYOR…', 'UPLOADING…') : (d === 'dekont' ? L('DEKONTU DEĞİŞTİR', 'REPLACE RECEIPT') : L('⤒ DEKONT YÜKLE', '⤒ UPLOAD RECEIPT'))}
-          <input type="file" accept="${DEKONT_ACCEPT}" data-sadekont="${id}" hidden${o.yukleniyor ? ' disabled' : ''}></label>
-        <p class="sa-ipucu">${L('Havale/EFT dekontunun PDF\'ini ya da fotoğrafını yükleyin (en çok 10 MB).', 'Upload a PDF or photo of your bank transfer receipt (max 10 MB).')}</p>
+        <label class="sa-birak${d === 'dekont' ? ' alindi' : ''}${o.yukleniyor ? ' mesgul' : ''}" data-sabirak="${id}">
+          <input type="file" accept="${DEKONT_ACCEPT}" data-sadekont="${id}" hidden${o.yukleniyor ? ' disabled' : ''}>
+          <b>${o.yukleniyor ? L('Yükleniyor…', 'Uploading…') : d === 'dekont' ? '✓ ' + L('Dekontunuz alındı', 'Receipt received') : L('Dekontu buraya bırak', 'Drop your receipt here')}</b>
+          <small>${o.yukleniyor ? '' : d === 'dekont' ? L('Ödeme onaylanınca indirme açılacak · değiştirmek için dokun', 'The download opens once payment is confirmed · tap to replace') : L('ya da dokunup seç · PDF, JPG, PNG · en çok 10 MB', 'or tap to choose · PDF, JPG, PNG · max 10 MB')}</small>
+        </label>
       </div>` : '';
-    return `<div class="sa-kutu" data-sakutu>
-      <p class="sa-baslik">${L('Projelerinizdeki parçayı beğendiyseniz ve satın almak istiyorsanız lütfen tıklayınız.', 'If you like the track in your projects and would like to buy it, please click below.')}</p>
+    return `<section class="sa sa--${d || 'yeni'}" data-sakutu>
+      <div class="sa-bas">
+        <div class="sa-metin">
+          <p class="sa-eyebrow">${L('SATIN AL', 'BUY')}</p>
+        </div>
+        ${fiyat(tr, L)}
+      </div>
+      ${adimlar(d, L)}
       <div class="sa-dugmeler">
-        <button type="button" class="sa-istek${istendi ? ' onayli' : ''}" data-saistek="${id}" aria-pressed="${istendi}"${istendi ? ' disabled' : ''}>${istendi ? '✓ ' + L('SATIN ALMA TALEBİNİZ ALINDI', 'PURCHASE REQUEST RECEIVED') : L('SATIN ALMAK İSTİYORUM', 'I WANT TO BUY IT')}</button>
-        <button type="button" class="sa-odeme${o.acik ? ' acik' : ''}" data-saodeme="${id}" aria-expanded="${!!(istendi && o.acik)}" aria-controls="sa-panel-${id}"${istendi ? '' : ` disabled title="${L('Önce satın alma butonuna basın.', 'Press the buy button first.')}"`}>${L('ÖDEME', 'PAYMENT')} <b aria-hidden="true">${istendi && o.acik ? '▴' : '▾'}</b></button>
+        <button type="button" class="sa-istek${istendi ? ' onayli' : ''}" data-saistek="${id}" aria-pressed="${istendi}"${istendi ? ' disabled' : ''}>${istendi ? '✓ ' + L('Talebiniz alındı', 'Request received') : L('Satın almak istiyorum', 'I want to buy it')}</button>
+        <button type="button" class="sa-odeme${istendi && o.acik ? ' acik' : ''}" data-saodeme="${id}" aria-expanded="${!!(istendi && o.acik)}" aria-controls="sa-panel-${id}"${istendi ? '' : ` disabled title="${L('Önce satın alma butonuna basın.', 'Press the buy button first.')}"`}>${L('Ödeme', 'Payment')}<span aria-hidden="true">${istendi && o.acik ? '−' : '+'}</span></button>
       </div>
       ${panel}
-    </div>`;
+    </section>`;
   }
 
   // ---- Yönetici kutusu (parça odasında) ----
@@ -119,30 +142,36 @@
     const L = o.L || varsayilanL, tr = o.tr || {}, ayar = o.ayar || {};
     const d = durum(tr), id = kacis(tr.id);
     const etiket = {
-      istendi: L('MÜŞTERİ SATIN ALMAK İSTİYOR · dekont bekleniyor', 'CUSTOMER WANTS TO BUY · awaiting receipt'),
-      dekont: L('DEKONT YÜKLENDİ · ödemeyi kontrol et', 'RECEIPT UPLOADED · check the payment'),
-      odendi: L('✓ ÖDENDİ · indirme açık', '✓ PAID · download open')
-    }[d] || L('Henüz satın alma talebi yok', 'No purchase request yet');
+      istendi: L('Satın almak istiyor · dekont bekleniyor', 'Wants to buy · awaiting receipt'),
+      dekont: L('Dekont yüklendi · ödemeyi kontrol et', 'Receipt uploaded · check the payment'),
+      odendi: L('Ödendi · indirme açık', 'Paid · download open')
+    }[d] || L('Henüz talep yok', 'No request yet');
     const tutarDeger = tr.satin_alma_tutar != null ? String(Number(tr.satin_alma_tutar)).replace('.', ',') : '';
-    return `<div class="sa-kutu sa-yonetici" data-sakutu>
-      <div class="sa-ust"><p class="sa-eyebrow">${L('SATIŞ', 'SALE')}</p><span class="sa-rozet ${d || 'yok'}">${etiket}</span></div>
-      <div class="sa-satir">
-        <label class="sa-alan"><span>${L('Bu parçanın ücreti (TL)', 'Price of this track (TL)')}</span>
-          <input type="text" inputmode="decimal" data-satutar="${id}" value="${kacis(tutarDeger)}" placeholder="${L('ör. 3.000', 'e.g. 3,000')}"></label>
-        <button type="button" class="td-tool-btn" data-satutarkaydet="${id}">${L('TUTARI KAYDET', 'SAVE PRICE')}</button>
+    return `<section class="sa sa--yonetici sa--${d || 'yeni'}" data-sakutu>
+      <div class="sa-bas">
+        <div class="sa-metin">
+          <p class="sa-eyebrow">${L('SATIŞ', 'SALE')}</p>
+          <h3 class="sa-h sa-h--kucuk">${kacis(etiket)}</h3>
+        </div>
+        <label class="sa-fiyat sa-fiyat--yaz"><span>${L('TUTAR', 'PRICE')}</span>
+          <b><input type="text" class="sa-tutar-kutu" inputmode="decimal" data-satutar="${id}" value="${kacis(tutarDeger)}" placeholder="3.000" aria-label="${L('Bu parçanın ücreti (TL)', 'Price of this track (TL)')}"><em>TL</em></b></label>
       </div>
+      ${adimlar(d, L)}
       <div class="sa-dugmeler">
-        ${tr.dekont_path ? `<button type="button" class="td-tool-btn" data-sadekontgor="${kacis(tr.dekont_path)}">${L('DEKONTU GÖR ↗', 'VIEW RECEIPT ↗')}</button>` : ''}
-        ${d !== 'odendi' ? `<button type="button" class="td-tool-btn sa-onayla" data-saonayla="${id}">${L('ÖDEME ALINDI · İNDİRMEYİ AÇ', 'PAYMENT RECEIVED · OPEN DOWNLOAD')}</button>` : ''}
+        <button type="button" class="sa-ikincil" data-satutarkaydet="${id}">${L('Tutarı kaydet', 'Save price')}</button>
+        ${tr.dekont_path ? `<button type="button" class="sa-ikincil" data-sadekontgor="${kacis(tr.dekont_path)}">${L('Dekontu gör ↗', 'View receipt ↗')}</button>` : ''}
+        ${d !== 'odendi' ? `<button type="button" class="sa-istek sa-onayla" data-saonayla="${id}">${L('Ödeme alındı · indirmeyi aç', 'Payment received · open download')}</button>` : ''}
       </div>
       <details class="sa-ayar"${ibanTemiz(ayar.iban) ? '' : ' open'}>
-        <summary>${L('ÖDEME BİLGİLERİ · tüm parçalar için', 'PAYMENT DETAILS · for all tracks')}</summary>
-        <label class="sa-alan"><span>IBAN</span><input type="text" data-saiban value="${kacis(ibanGoster(ayar.iban))}" placeholder="TR00 0000 0000 0000 0000 0000 00" autocomplete="off"></label>
-        <label class="sa-alan"><span>${L('Alıcı adı soyadı', 'Recipient name')}</span><input type="text" data-saalici value="${kacis(ayar.alici || '')}" maxlength="120"></label>
-        <label class="sa-alan"><span>${L('Müşteriye not (isteğe bağlı)', 'Note to customer (optional)')}</span><input type="text" data-saaciklama value="${kacis(ayar.aciklama || '')}" maxlength="300" placeholder="${L('ör. Açıklamaya adınızı ve parça adını yazın.', 'e.g. Write your name and the track name in the reference.')}"></label>
-        <button type="button" class="td-tool-btn" data-saayarkaydet>${L('ÖDEME BİLGİLERİNİ KAYDET', 'SAVE PAYMENT DETAILS')}</button>
+        <summary>${L('Ödeme bilgileri', 'Payment details')} <span>${L('tüm parçalar için', 'for all tracks')}</span></summary>
+        <div class="sa-ayar-alanlar">
+          <label class="sa-alan sa-alan--genis"><span>IBAN</span><input type="text" data-saiban value="${kacis(ibanGoster(ayar.iban))}" placeholder="TR00 0000 0000 0000 0000 0000 00" autocomplete="off"></label>
+          <label class="sa-alan"><span>${L('Alıcı adı soyadı', 'Recipient name')}</span><input type="text" data-saalici value="${kacis(ayar.alici || '')}" maxlength="120"></label>
+          <label class="sa-alan"><span>${L('Müşteriye not', 'Note to customer')}</span><input type="text" data-saaciklama value="${kacis(ayar.aciklama || '')}" maxlength="300" placeholder="${L('ör. Açıklamaya adınızı yazın.', 'e.g. Write your name in the reference.')}"></label>
+        </div>
+        <button type="button" class="sa-ikincil" data-saayarkaydet>${L('Ödeme bilgilerini kaydet', 'Save payment details')}</button>
       </details>
-    </div>`;
+    </section>`;
   }
 
   const api = {

@@ -38,21 +38,22 @@ test('dekont: PDF/fotoğraf, 10 MB sınırı, müşterinin kendi klasörü', () 
 test('müşteri kutusu: metin, yeşil onay, ödeme paneli ve dekont alanı', () => {
   const tr = { id: 't1', label: 'Final', satin_alma_durum: null, satin_alma_tutar: null };
   const bos = SA.musteriKutusu({ tr, ayar: {} });
-  assert.match(bos, /Projelerinizdeki parçayı beğendiyseniz ve satın almak istiyorsanız lütfen tıklayınız\./);
-  assert.match(bos, /SATIN ALMAK İSTİYORUM/);
+  assert.doesNotMatch(bos, /Projelerinizdeki parçayı beğendiyseniz/);
+  assert.doesNotMatch(bos, /senin<\/em> olsun/);
+  assert.match(bos, /Satın almak istiyorum/);
   assert.doesNotMatch(bos, /class="sa-istek onayli"/);
   assert.match(bos, /data-saodeme="t1"[^>]*disabled/);
 
   const istendi = SA.musteriKutusu({ tr: { ...tr, satin_alma_durum: 'istendi', satin_alma_tutar: 3000 }, ayar: { iban: 'TR120006200000000000000001', alici: 'Derin' }, acik: true });
   assert.match(istendi, /class="sa-istek onayli"/);
-  assert.match(istendi, /3\.000 TL/);
+  assert.match(istendi, /3\.000<em>TL<\/em>/);
   assert.match(istendi, /TR12 0006 2000 0000 0000 0000 01/);
   assert.match(istendi, /data-sadekont="t1"/);
-  assert.match(istendi, /DEKONT YÜKLE/);
+  assert.match(istendi, /Dekontu buraya bırak/);
 
   const dekont = SA.musteriKutusu({ tr: { ...tr, satin_alma_durum: 'dekont' }, ayar: {}, acik: true });
   assert.match(dekont, /Dekontunuz alındı/);
-  assert.match(dekont, /Tutar kısa süre içinde/);
+  assert.match(dekont, /yakında/);
 });
 
 test('müşteri verisi kaçışlanır', () => {
@@ -65,7 +66,7 @@ test('yönetici kutusu: tutar, dekontu gör, ödeme alındı, IBAN ayarı', () =
   const h = SA.yoneticiKutusu({ tr: { id: 't1', satin_alma_durum: 'dekont', dekont_path: 'u1/dekont/t1-1.pdf', satin_alma_tutar: 3000 }, ayar: {} });
   assert.match(h, /data-satutar="t1" value="3000"/);
   assert.match(h, /data-sadekontgor="u1\/dekont\/t1-1\.pdf"/);
-  assert.match(h, /ÖDEME ALINDI · İNDİRMEYİ AÇ/);
+  assert.match(h, /Ödeme alındı · indirmeyi aç/);
   assert.match(h, /data-saiban/);
   const odendi = SA.yoneticiKutusu({ tr: { id: 't1', satin_alma_durum: 'odendi' }, ayar: {} });
   assert.doesNotMatch(odendi, /data-saonayla/);
