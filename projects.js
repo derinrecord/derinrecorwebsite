@@ -67,6 +67,47 @@
     return data;
   }
 
+  // Canlı kanal (14 Kasım): koparsa birkaç saniye sonra kendiliğinden yeniden kurulur.
+  let canliKanal=null,kanalTekrar=null;
+  function canliKanalKur(){
+    if(!client||!me)return;
+    clearTimeout(kanalTekrar);
+    if(canliKanal){ try{ client.removeChannel(canliKanal); }catch{} canliKanal=null; }
+    const kanal=client.channel('proj-'+me+'-'+Date.now());
+    canliKanal=kanal;
+    kanal
+      .on('postgres_changes',{event:'*',schema:'public',table:'music_projects'},()=>load())
+      .on('postgres_changes',{event:'*',schema:'public',table:'project_tracks'},()=>load())
+      .on('postgres_changes',{event:'*',schema:'public',table:'project_feedback'},()=>load())
+      // Ödeme bilgileri (IBAN / alıcı) değişince müşteri ekranı da anında güncellenir.
+      .on('postgres_changes',{event:'*',schema:'public',table:'odeme_ayarlari'},()=>load())
+      .subscribe(durum=>{
+        if(canliKanal!==kanal)return;
+        if(durum==='CHANNEL_ERROR'||durum==='TIMED_OUT'||durum==='CLOSED'){
+          clearTimeout(kanalTekrar);
+          kanalTekrar=setTimeout(()=>{ if(canliKanal===kanal){ canliKanalKur(); load(); } },4000);
+        }
+      });
+  }
+
+  // Yazarken ekran yenilenmesin (14 Kasım): müşteri ya da yönetici bir kutuya yazarken canlı
+  // değişiklik gelirse çizim, kutudan çıkınca yapılır; yazılan yazı ve imleç kaybolmaz.
+  const YAZI_DISI=['range','button','submit','checkbox','radio','file','color'];
+  function yaziyor(){
+    const a=document.activeElement;
+    if(!a||!list||!list.contains(a))return false;
+    return a.tagName==='TEXTAREA'||a.tagName==='SELECT'||a.isContentEditable||(a.tagName==='INPUT'&&!YAZI_DISI.includes(a.type));
+  }
+  let canliCizimBekliyor=false;
+  function canliCiz(){
+    if(!yaziyor()){ canliCizimBekliyor=false; render(); return; }
+    if(canliCizimBekliyor)return;
+    canliCizimBekliyor=true;
+    const kutu=document.activeElement;
+    // Kutudan çıkınca kısa bir bekleme: o sırada basılan düğmenin tıklaması kaybolmasın.
+    kutu.addEventListener('focusout',()=>setTimeout(()=>{ canliCizimBekliyor=false; canliCiz(); },600),{once:true});
+  }
+
   async function boot(){
     await window.DerinAuth.ready;
     const a=window.DerinAuth; client=a.client;
@@ -88,13 +129,12 @@
     // Kanalları yalnızca bir kez kur; giriş/çıkış sonrası boot() tekrar çağrılabiliyor.
     if(!subscribed){
       subscribed=true;
-      client.channel('proj-'+me)
-        .on('postgres_changes',{event:'*',schema:'public',table:'music_projects'},()=>load())
-        .on('postgres_changes',{event:'*',schema:'public',table:'project_tracks'},()=>load())
-        .on('postgres_changes',{event:'*',schema:'public',table:'project_feedback'},()=>load())
-        // Ödeme bilgileri (IBAN / alıcı) değişince müşteri ekranı da anında güncellenir.
-        .on('postgres_changes',{event:'*',schema:'public',table:'odeme_ayarlari'},()=>load())
-        .subscribe();
+      canliKanalKur();
+      // Canlı bağlantı (14 Kasım): telefon uykudan dönünce, sekme yeniden açılınca ya da
+      // internet geri gelince arada kaçan değişiklikler sayfa yenilenmeden çekilir.
+      document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible')load(); });
+      window.addEventListener('online',()=>{ canliKanalKur(); load(); });
+      window.addEventListener('pageshow',e=>{ if(e.persisted)load(); });
     }
     await load();
   }
@@ -145,7 +185,7 @@
         if(found)syncSavedPoints(found,foundProject);
         else openTrackId=null;
       }
-      render();
+      canliCiz();
       // Ödemelerim'den gelen bağlantı (?parca=<id>): o parça doğrudan açılır (14 Kasım).
       if(!dogrudanParcaBakildi){
         dogrudanParcaBakildi=true;

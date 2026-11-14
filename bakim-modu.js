@@ -76,6 +76,19 @@
     ciz();
   };
 
+  let aktifKanal = null, tekrar = null;
+  const kanalKur = () => {
+    clearTimeout(tekrar);
+    if (aktifKanal) { try { client.removeChannel(aktifKanal); } catch {} }
+    const k = client.channel('bakim-' + sayfa + '-' + Date.now());
+    aktifKanal = k;
+    k.on('postgres_changes', { event: '*', schema: 'public', table: 'sayfa_bakim' }, oku)
+      .subscribe(d => {
+        if (aktifKanal === k && (d === 'CHANNEL_ERROR' || d === 'TIMED_OUT' || d === 'CLOSED'))
+          tekrar = setTimeout(() => { if (aktifKanal === k) { kanalKur(); oku(); } }, 4000);
+      });
+  };
+
   const kur = async () => {
     const a = window.DerinAuth;
     if (!a) return;
@@ -86,9 +99,10 @@
     await oku();
     if (!kanal) {
       kanal = true;
-      client.channel('bakim-' + sayfa)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'sayfa_bakim' }, oku)
-        .subscribe();
+      kanalKur();
+      // Uykudan dönünce / internet gelince güncel durum yeniden okunur (sayfa yenilemeden).
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') oku(); });
+      window.addEventListener('online', () => { kanalKur(); oku(); });
     }
     window.addEventListener('derin:authchange', () => { yonetici = window.DerinAuth?.profile?.role === 'admin'; ciz(); });
     // Dil değişince yazılar yeniden çizilir.
