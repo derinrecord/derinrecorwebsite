@@ -331,6 +331,8 @@
     'Büyüt': 'Zoom',
     'PROFİ': 'MY PRO',
     'LİM.': 'FILE.',
+    'ÖDEME': 'MY PAY',
+    'LERİM.': 'MENTS.',
     'Profilim — Derin Record': 'My Profile — Derin Record',
     'PROFİL FOTOĞRAFI': 'PROFILE PHOTO',
     'FOTOĞRAF SEÇ': 'CHOOSE PHOTO',
