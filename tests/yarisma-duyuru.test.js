@@ -45,6 +45,7 @@ test('şerit ve haber kartı: kaçışlı yazı, yalnız https bağlantı', () =
   const h2 = YD.haberHtml(Object.assign({}, y, { canli_link: 'https://youtu.be/abc' }), SIMDI);
   assert.match(h2, /class="news-canli-dugme" href="https:\/\/youtu\.be\/abc" target="_blank" rel="noreferrer">CANLI YAYIN · TIKLA/);
   assert.match(s, /hy-lamba/);
+  assert.match(s, /<em class="hy-brans">AKROBATİK CİMNASTİK<\/em><b>/, 'branş şeritte başlığın üstünde');
 });
 
 test('ana sayfa ve Haberler: yer tutucular ve betik; elle yazılmış eski şerit/kart kalktı', () => {

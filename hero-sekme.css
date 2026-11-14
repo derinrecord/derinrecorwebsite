@@ -44,6 +44,7 @@
 .hy-lamba i{width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 10px #fff,0 0 18px rgba(255,255,255,.8);animation:hyIsik 1.4s ease-in-out infinite}
 .hy-metin{display:grid;gap:3px;min-width:0;padding:12px 16px;flex:1}
 .hy-metin b{font-size:15px;font-weight:900;letter-spacing:-.01em;line-height:1.2}
+.hy-brans{font-style:normal;font-size:11px;font-weight:900;letter-spacing:.14em;color:#cb2468}
 .hy-metin small{font-size:12px;color:rgba(244,241,233,.65)}
 .hy-izle{display:flex;align-items:center;padding:0 16px;color:#16131a;background:#e8d15a;font-size:11px;font-weight:900;letter-spacing:.12em;white-space:nowrap}
 @keyframes hyIsik{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.8)}}

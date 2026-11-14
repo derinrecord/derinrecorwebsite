@@ -35,12 +35,11 @@
     return 'CANLI YAYIN · ' + g + ' ' + AYLAR[a - 1].toLocaleUpperCase('tr-TR');
   }
 
-  // Aynı adlı yarışmalar karışmasın diye branş da yazılır: "12–15 Kasım · Ankara · Ritmik Cimnastik"
-  const altYazi = y => [tarihYazi(y.bas, y.bit), y.sehir, y.brans].filter(Boolean).join(' · ');
+  const altYazi = y => [tarihYazi(y.bas, y.bit), y.sehir].filter(Boolean).join(' · ');
 
   function seritHtml(y, simdi) {
     const adres = guvenliAdres(y.canli_link) || guvenliAdres(y.link);
-    return `<a class="hero-yarisma" href="${esc(adres)}" target="_blank" rel="noreferrer"><span class="hy-lamba"><i aria-hidden="true"></i><span>${esc(etiket(y, simdi))}</span></span><span class="hy-metin"><b>${esc(y.ad)}</b><small>${esc(altYazi(y))}</small></span><span class="hy-izle">İZLE ↗</span></a>`;
+    return `<a class="hero-yarisma" href="${esc(adres)}" target="_blank" rel="noreferrer"><span class="hy-lamba"><i aria-hidden="true"></i><span>${esc(etiket(y, simdi))}</span></span><span class="hy-metin">${y.brans ? `<em class="hy-brans">${esc(String(y.brans).toLocaleUpperCase('tr-TR'))}</em>` : ''}<b>${esc(y.ad)}</b><small>${esc(altYazi(y))}</small></span><span class="hy-izle">İZLE ↗</span></a>`;
   }
 
   function haberHtml(y, simdi) {
