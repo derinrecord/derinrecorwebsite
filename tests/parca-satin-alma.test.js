@@ -133,4 +133,5 @@ test('müşteride fiyat küçük, yeşil, sağda; TUTAR etiketi yok', () => {
   const h = SA.musteriKutusu({ tr: { id: 't1', satin_alma_durum: 'istendi', satin_alma_tutar: 2000 }, ayar: {} });
   assert.match(h, /class="sa-fiyat sa-fiyat--kucuk"><b>2\.000<em class="sa-lira">₺<\/em><\/b>/);
   assert.doesNotMatch(h, />TUTAR</);
+  assert.doesNotMatch(h, /sa-eyebrow">SATIN AL/);
 });

@@ -138,10 +138,7 @@
       </div>` : '';
     return `<section class="sa sa--${d || 'yeni'}" id="sa-odeme-${id}" data-sakutu>
       <button type="button" class="sa-kapat" data-sakapat aria-label="${L('Ödeme bölümünü kapat', 'Close payment section')}">${L('Kapat', 'Close')} <span aria-hidden="true">✕</span></button>
-      <div class="sa-bas">
-        <div class="sa-metin">
-          <p class="sa-eyebrow">${L('SATIN AL', 'BUY')}</p>
-        </div>
+      <div class="sa-bas sa-bas--musteri">
         ${fiyat(tr, L, true)}
       </div>
       ${adimlar(d, L)}
