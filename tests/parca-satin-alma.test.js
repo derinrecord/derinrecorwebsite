@@ -17,8 +17,8 @@ test('tutar ve IBAN biçimleri', () => {
   assert.equal(SA.tutarCoz('3500 TL'), 3500);
   assert.equal(SA.tutarCoz('abc'), null);
   assert.equal(SA.tutarCoz('0'), null);
-  assert.equal(SA.tutarGoster(3000), '3.000 ₺');
-  assert.equal(SA.tutarGoster(1500.5), '1.500,50 ₺');
+  assert.equal(SA.tutarGoster(3000), '3.000 TL');
+  assert.equal(SA.tutarGoster(1500.5), '1.500,50 TL');
   assert.equal(SA.tutarGoster(null), '');
   assert.equal(SA.ibanTemiz('tr12 0006 2000 0000 0000 0000 01'), 'TR120006200000000000000001');
   assert.equal(SA.ibanGoster('TR120006200000000000000001'), 'TR12 0006 2000 0000 0000 0000 01');
@@ -45,7 +45,7 @@ test('müşteri kutusu: metin, yeşil onay, ödeme paneli ve dekont alanı', () 
   assert.doesNotMatch(istendi, /Satın almak istiyorum|data-saodeme/);
   assert.match(istendi, /KDV dahil/);
   assert.doesNotMatch(istendi, /\+ KDV/);
-  assert.match(istendi, /3\.000<em class="sa-lira">₺<\/em>/);
+  assert.match(istendi, /3\.000<em class="sa-lira">TL<\/em>/);
   assert.match(istendi, /TR12 0006 2000 0000 0000 0000 01/);
   assert.match(istendi, /data-sadekont="t1"/);
   assert.match(istendi, /Dekontu buraya bırak/);
@@ -131,7 +131,7 @@ test('ödeme bölümü: SATIN AL aç/kapa, Kapat ✕; parçadan çıkınca kapal
 
 test('müşteride fiyat küçük, yeşil, sağda; TUTAR etiketi yok', () => {
   const h = SA.musteriKutusu({ tr: { id: 't1', satin_alma_durum: 'istendi', satin_alma_tutar: 2000 }, ayar: {} });
-  assert.match(h, /class="sa-fiyat sa-fiyat--kucuk"><b>2\.000<em class="sa-lira">₺<\/em><\/b>/);
+  assert.match(h, /class="sa-fiyat sa-fiyat--kucuk"><b>2\.000<em class="sa-lira">TL<\/em><\/b>/);
   assert.doesNotMatch(h, />TUTAR</);
   assert.doesNotMatch(h, /sa-eyebrow">SATIN AL/);
 });
