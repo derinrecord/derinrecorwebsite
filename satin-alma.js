@@ -95,8 +95,13 @@
     return `<ol class="sa-adim" aria-label="${L('Satın alma adımları', 'Purchase steps')}">${ad.map((a, i) =>
       `<li class="${i < sira ? 'done' : i === sira ? 'now' : ''}"><i aria-hidden="true">${String(i + 1).padStart(2, '0')}</i>${a}</li>`).join('')}</ol>`;
   }
-  function fiyat(tr, L) {
+  // Müşteride (14 Kasım): küçük, yeşil, sağda; "TUTAR" etiketi yok.
+  function fiyat(tr, L, kucuk) {
     const t = tutarGoster(tr.satin_alma_tutar);
+    if (kucuk) {
+      if (!t) return `<div class="sa-fiyat sa-fiyat--kucuk bos"><small>${L('tutar yakında', 'price soon')}</small></div>`;
+      return `<div class="sa-fiyat sa-fiyat--kucuk"><b>${kacis(t.replace(/ ₺$/, ''))}<em class="sa-lira">₺</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></div>`;
+    }
     if (!t) return `<div class="sa-fiyat bos"><span>${L('TUTAR', 'PRICE')}</span><b>—</b><small>${L('yakında', 'soon')}</small></div>`;
     const [sayi] = t.split(' ');
     return `<div class="sa-fiyat"><span>${L('TUTAR', 'PRICE')}</span><b>${kacis(sayi)}<em class="sa-lira">₺</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></div>`;
@@ -137,7 +142,7 @@
         <div class="sa-metin">
           <p class="sa-eyebrow">${L('SATIN AL', 'BUY')}</p>
         </div>
-        ${fiyat(tr, L)}
+        ${fiyat(tr, L, true)}
       </div>
       ${adimlar(d, L)}
       ${panel}

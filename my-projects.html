@@ -152,6 +152,12 @@
   .sa-fiyat.sa-degisti b{animation:saDegisti 1.6s ease}
   @keyframes saDegisti{0%,30%{color:var(--pj-yesil);text-shadow:0 0 22px rgba(95,207,143,.6)}100%{color:inherit;text-shadow:none}}
   @media(prefers-reduced-motion:reduce){.sa-fiyat.sa-degisti b{animation:none}}
+  .sa-fiyat.sa-fiyat--kucuk{display:flex;align-items:baseline;gap:10px;margin-right:84px}
+  .sa-fiyat.sa-fiyat--kucuk b{font-size:24px;color:var(--pj-yesil)}
+  .sa-fiyat.sa-fiyat--kucuk b em.sa-lira{color:var(--pj-yesil)}
+  .sa-fiyat.sa-fiyat--kucuk .sa-kdv{font-size:10px}
+  .sa:not(.sa--yonetici) .sa-bas{align-items:center}
+  @media(max-width:560px){.sa-fiyat.sa-fiyat--kucuk{margin-right:0}}
   .sa-kapat{position:absolute;top:12px;right:14px;z-index:2;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
     border:1px solid rgba(244,241,233,.22);background:rgba(0,0,0,.35);color:var(--pj-soluk);font:inherit;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
   .sa-kapat:hover{color:var(--pj-krem);border-color:rgba(244,241,233,.5)}
@@ -742,7 +748,7 @@
 <script src="ses-donustur.js?v=1"></script>
 <script src="not-islemleri.js?v=1"></script>
 <script src="proje-istek.js?v=2"></script>
-<script src="proje-bildirim.js?v=1"></script><script src="satin-alma.js?v=12"></script><script src="projects.js?v=20261114k"></script>
+<script src="proje-bildirim.js?v=1"></script><script src="satin-alma.js?v=13"></script><script src="projects.js?v=20261114k"></script>
 <script src="ogretici-turlar.js?v=3"></script><script src="ogretici.js?v=4" data-sayfa="projelerim"></script>
 <script src="dil.js?v=2026110101" defer></script>
 </body>
