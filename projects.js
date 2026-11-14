@@ -40,7 +40,7 @@
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
   let odemeAyar={}; // IBAN / alıcı / not (parca-satin-alma.sql · odeme_ayarlari)
-  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],arsivProjeleri=[],tracks={},feedback={},names={},coachList=[],busy=false,yeniden=false,dogrudanParcaBakildi=false,subscribed=false,arsivAcik=false,arsivdeAcik={};
+  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],arsivProjeleri=[],tracks={},feedback={},names={},coachList=[],busy=false,yeniden=false,dogrudanParcaBakildi=false,bekleyenOdemeParca=null,subscribed=false,arsivAcik=false,arsivdeAcik={};
   // Arşivdeki projeler de parça odasında açılır (29 Ekim); ana listeye karışmazlar.
   const tumProjeler=()=>projects.concat(arsivProjeleri);
   let openTrackId=null;
@@ -150,6 +150,8 @@
       if(!dogrudanParcaBakildi){
         dogrudanParcaBakildi=true;
         let istenen=null; try{ istenen=new URLSearchParams(window.location.search).get('parca'); }catch{}
+        // &odeme=1 (Ödemelerim → Ödemeye git): parça açılınca ödeme bölümü de görünür.
+        try{ if(new URLSearchParams(window.location.search).get('odeme')==='1')bekleyenOdemeParca=istenen; }catch{}
         if(istenen&&!openTrackId){
           for(const p of tumProjeler()){ const tr=(tracks[p.id]||[]).find(t=>t.id===istenen); if(tr){ openTrackDetail(tr,p); break; } }
         }
@@ -1151,6 +1153,9 @@
     if(!SA||!has||!('satin_alma_durum' in tr))return '';
     if(admin)return SA.yoneticiKutusu({tr,ayar:odemeAyar,L});
     if(indirmeAcik(tr))return '';
+    // SATIN AL'a bu ziyarette basılmadan fiyat / IBAN / dekont kutusu hiç görünmez (14 Kasım).
+    if(bekleyenOdemeParca&&bekleyenOdemeParca===tr.id){ detail.odemeGoster=true; bekleyenOdemeParca=null; }
+    if(!detail.odemeGoster)return '';
     return SA.musteriKutusu({tr,ayar:odemeAyar,acik:!!detail.odemeAcik,yukleniyor:!!detail.dekontYukleniyor,L});
   }
 
@@ -1491,7 +1496,8 @@
       // Açılır pencere engeline takılmamak için sekme tıklama anında açılır.
       let sekme=null; if(link){ sekme=window.open('','_blank'); if(sekme)sekme.opener=null; }
       const odemeyeGit=()=>{ if(link){ if(sekme)sekme.location.href=link; else window.location.href=link; } kutuyaGit(); };
-      if(SA.durum(tr)){ odemeyeGit(); return; }
+      detail.odemeGoster=true;
+      if(SA.durum(tr)){ renderDetail(tr,project); odemeyeGit(); return; }
       satinAl.disabled=true;
       try{
         await kaydet({satin_alma_durum:'istendi'},L('Bir sorun oluştu.','Something went wrong.'));

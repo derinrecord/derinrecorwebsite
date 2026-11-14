@@ -12,7 +12,7 @@ test('HESABIM menüsünde herkese ÖDEMELERİM', () => {
 
 test('sayfa: oturum, R2 ve satın alma yardımcıları yüklü', () => {
   const h = oku('odemelerim.html');
-  for (const b of ['config.js', 'auth.js?v=20261114b', 'r2-depo.js?v=2', 'satin-alma.js?v=9', 'odemelerim.js?v=1']) assert.ok(h.includes(`src="${b}"`), b);
+  for (const b of ['config.js', 'auth.js?v=20261114b', 'r2-depo.js?v=2', 'satin-alma.js?v=9', 'odemelerim.js?v=2']) assert.ok(h.includes(`src="${b}"`), b);
   assert.match(h, /<meta name="robots" content="noindex">/);
 });
 
@@ -31,4 +31,11 @@ test('Projelerim ?parca= bağlantısıyla parçayı doğrudan açar', () => {
   const j = oku('projects.js');
   assert.match(j, /get\('parca'\)/);
   assert.match(j, /openTrackDetail\(tr,p\); break;/);
+});
+
+test('SATIN AL basılmadan müşteriye fiyat/IBAN/dekont kutusu gösterilmez', () => {
+  const j = oku('projects.js');
+  assert.match(j, /if\(!detail\.odemeGoster\)return '';/);
+  assert.match(j, /detail\.odemeGoster=true;/);
+  assert.match(oku('odemelerim.js'), /\$\{parcaLink\}&odeme=1/);
 });

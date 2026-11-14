@@ -29,8 +29,8 @@
     ].filter(a => a[1]).map(a => `<li><span>${kacis(a[0])}</span><time>${kacis(tarih(a[1]))}</time></li>`).join('');
     let eylem = '';
     if (t.satin_alma_durum === 'odendi') eylem = `<a class="od-dugme ana" href="${parcaLink}">${L('İndir', 'Download')} →</a>`;
-    else if (t.satin_alma_durum === 'istendi') eylem = `<a class="od-dugme ana" href="${parcaLink}">${L('Ödemeye git', 'Go to payment')} →</a>`;
-    else eylem = `<a class="od-dugme" href="${parcaLink}">${L('Parçaya git', 'Open track')} →</a>`;
+    else if (t.satin_alma_durum === 'istendi') eylem = `<a class="od-dugme ana" href="${parcaLink}&odeme=1">${L('Ödemeye git', 'Go to payment')} →</a>`;
+    else eylem = `<a class="od-dugme" href="${parcaLink}&odeme=1">${L('Parçaya git', 'Open track')} →</a>`;
     return `<article class="od-kart od-${d.sinif}">
       <div class="od-ust">
         <div class="od-ad">
