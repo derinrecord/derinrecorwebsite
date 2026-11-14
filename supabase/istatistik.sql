@@ -32,10 +32,14 @@ as $$
   on conflict do nothing;
 $$;
 
+-- 14 Kasım: KVKK onayı (kayıtta kabul edilen sözleşme / aydınlatma sürümü ve tarihi) eklendi;
+-- dönüş biçimi değiştiği için önce eski işlev kaldırılır.
+drop function if exists public.istatistik_uyeler();
 create or replace function public.istatistik_uyeler()
 returns table (
   id uuid, full_name text, kulup text, sehir text, role text, status text,
-  created_at timestamptz, last_sign_in_at timestamptz
+  created_at timestamptz, last_sign_in_at timestamptz,
+  sozlesme_surum text, aydinlatma_surum text, kabul_at timestamptz
 )
 language plpgsql
 security definer
@@ -47,7 +51,9 @@ begin
   end if;
   return query
     select p.id, p.full_name, p.kulup, p.sehir, p.role::text, p.status,
-           coalesce(p.created_at, u.created_at), u.last_sign_in_at
+           coalesce(p.created_at, u.created_at), u.last_sign_in_at,
+           u.raw_user_meta_data->>'sozlesme_surum', u.raw_user_meta_data->>'aydinlatma_surum',
+           case when (u.raw_user_meta_data->>'kabul_at') ~ '^\d{4}-\d{2}-\d{2}T' then (u.raw_user_meta_data->>'kabul_at')::timestamptz end
     from public.profiles p
     join auth.users u on u.id = p.id
     order by u.last_sign_in_at desc nulls last;

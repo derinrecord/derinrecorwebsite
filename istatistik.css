@@ -38,7 +38,7 @@ body.ist{--sari:#e8d15a;--pembe:#fe4b6a;--camgobegi:#3fc1c9;--mor:#ab6ee7;--yesi
 .ist-bos strong{display:block;color:var(--yazi);font-size:18px;margin-bottom:6px}
 
 /* Küçük sayı kartları */
-.ist-dort{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px}
+.ist-dort{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:14px}
 .ist-kucuk{display:flex;flex-direction:column;min-height:168px}
 .ist-kucuk h3{margin:0;font-size:11px;font-weight:900;letter-spacing:.12em}
 .ist-kucuk b{display:block;font-size:48px;line-height:1;letter-spacing:-.05em;font-weight:900;margin:12px 0 6px}
@@ -69,6 +69,10 @@ body.ist{--sari:#e8d15a;--pembe:#fe4b6a;--camgobegi:#3fc1c9;--mor:#ab6ee7;--yesi
 .ist-av.taze::after{content:'';position:absolute;right:-3px;top:-3px;width:11px;height:11px;border-radius:50%;background:var(--yesil);border:2px solid #16131a}
 .ist-uye small{display:block;color:var(--soluk);font-size:12px;font-weight:400;margin-top:3px;overflow:hidden;text-overflow:ellipsis}
 .ist-uye em{font-style:normal;color:var(--soluk);font-size:13px;white-space:nowrap}
+.ist-kvkk{display:inline-block;margin-top:6px;font-size:10px;font-weight:900;letter-spacing:.06em;padding:3px 8px;border-radius:99px}
+.ist-kvkk.tamam{background:rgba(155,225,93,.18);color:#9be15d}
+.ist-kvkk.eski{background:rgba(232,209,90,.18);color:#e8d15a}
+.ist-kvkk.yok{background:rgba(255,138,138,.18);color:#ff8a8a}
 .ist-etiket{font-size:10px;font-weight:900;letter-spacing:.08em;padding:3px 8px;border-radius:99px;background:#ff8a8a;color:#111;margin-left:8px;vertical-align:2px}
 .ist-uyari{color:#ff8a8a}
 
@@ -81,6 +85,7 @@ body.ist-liste .ist-kucuk:nth-child(1){--r:#fe4b6a}
 body.ist-liste .ist-kucuk:nth-child(2){--r:#3fc1c9}
 body.ist-liste .ist-kucuk:nth-child(3){--r:#ab6ee7}
 body.ist-liste .ist-kucuk:nth-child(4){--r:#9be15d}
+body.ist-liste .ist-kucuk:nth-child(5){--r:#e8d15a}
 body.ist-liste .ist-kucuk{border-top:4px solid var(--r)}
 body.ist-liste .ist-kucuk h3{color:var(--soluk)}
 
@@ -89,6 +94,7 @@ body.ist-liste .ist-kucuk h3{color:var(--soluk)}
   .ist-secim{display:flex;width:100%}
   .ist-secim button{flex:1;padding:11px 6px;font-size:10px;letter-spacing:.05em;white-space:normal;line-height:1.2}
   .ist-dort{grid-template-columns:1fr 1fr;gap:10px}
+  .ist-dort .ist-kucuk:nth-child(5){grid-column:1/-1;min-height:0}
   .ist-kucuk{min-height:150px;padding:16px}.ist-kucuk b{font-size:38px}
   .ist-iki{grid-template-columns:1fr;gap:10px}
   .ist-kart{border-radius:20px;padding:18px}

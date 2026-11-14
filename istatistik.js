@@ -88,7 +88,19 @@
     return `<svg class="ist-grafik" viewBox="0 0 ${G} ${Y}" role="img">${parca}</svg>`;
   }
 
-  if (typeof module !== 'undefined') module.exports = { ozet, gunluk, haftalik, onceYazi, cubukGrafik, gunYazi, egilim, ikiyeBol, egriYol, bayrak };
+  // KVKK onayı: kayıtta kabul edilen Aydınlatma Metni sürümü (auth.js AYDINLATMA_SURUM ile aynı).
+  const GUNCEL_AYDINLATMA = '2026-10-24';
+  const KISA_AY = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+  function kvkkDurum(u) {
+    const s = u && u.aydinlatma_surum;
+    if (!s) return { sinif: 'yok', yazi: 'KVKK yok' };
+    if (s !== GUNCEL_AYDINLATMA) return { sinif: 'eski', yazi: 'KVKK eski sürüm' };
+    const g = u.kabul_at ? gunYazi(Date.parse(u.kabul_at)) : '';
+    return { sinif: 'tamam', yazi: 'KVKK ✓' + (g ? ' ' + (+g.slice(8, 10)) + ' ' + KISA_AY[+g.slice(5, 7) - 1] : '') };
+  }
+  const kvkkSay = uyeler => (uyeler || []).filter(u => kvkkDurum(u).sinif === 'tamam').length;
+
+  if (typeof module !== 'undefined') module.exports = { GUNCEL_AYDINLATMA, kvkkDurum, kvkkSay, ozet, gunluk, haftalik, onceYazi, cubukGrafik, gunYazi, egilim, ikiyeBol, egriYol, bayrak };
   if (typeof document === 'undefined') return;
 
   // ---- Sayfa ----
@@ -174,7 +186,8 @@
       z.bagli ? kart('BUGÜN', zDizi.length ? zDizi[zDizi.length - 1].deger : 0, '<p class="ist-not">ziyaretçi</p>', spark(zDizi.slice(-7).map(v => v.deger)))
         : kart('BUGÜN GİRDİ', o.bugun, '<p class="ist-not">üye</p>', spark(g7)),
       kart('TOPLAM ÜYE', o.toplam, `<p class="ist-not">${o.buAyYeni} yeni bu ay</p>`, spark(uyeCizgi)),
-      kart('SON 7 GÜNDE GİREN', o.gun7, '<p class="ist-not">üye</p>', spark(g7))
+      kart('SON 7 GÜNDE GİREN', o.gun7, '<p class="ist-not">üye</p>', spark(g7)),
+      kart('KVKK ONAYLI', kvkkSay(veri.uyeler) + ' / ' + veri.uyeler.length, '<p class="ist-not">güncel metni onaylayan üye</p>', '')
     ].join('');
   }
 
@@ -211,7 +224,8 @@
     $('ist-uyeler').innerHTML = veri.uyeler.map((u, i) => {
       const taze = u.last_sign_in_at && +simdi - Date.parse(u.last_sign_in_at) < GUN_MS;
       const alt = [ROL[u.role] || u.role, u.kulup, u.sehir].filter(Boolean).join(' · ');
-      return `<li><span class="ist-av${taze ? ' taze' : ''}" style="--r:${AV[i % AV.length]}" aria-hidden="true">${esc(String(u.full_name || '?').trim().charAt(0).toLocaleUpperCase('tr-TR'))}</span><div class="ist-ad">${esc(u.full_name || '—')}${u.status === 'suspended' ? '<span class="ist-etiket">dondurulmuş</span>' : ''}<small>${esc(alt)}</small></div><em title="${esc(u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('tr-TR', { timeZone: BOLGE }) : '')}">${esc(onceYazi(u.last_sign_in_at, simdi))}</em></li>`;
+      const k = kvkkDurum(u);
+      return `<li><span class="ist-av${taze ? ' taze' : ''}" style="--r:${AV[i % AV.length]}" aria-hidden="true">${esc(String(u.full_name || '?').trim().charAt(0).toLocaleUpperCase('tr-TR'))}</span><div class="ist-ad">${esc(u.full_name || '—')}${u.status === 'suspended' ? '<span class="ist-etiket">dondurulmuş</span>' : ''}<small>${esc(alt)}</small><span class="ist-kvkk ${k.sinif}" title="${esc(u.aydinlatma_surum ? 'Aydınlatma Metni sürümü: ' + u.aydinlatma_surum + (u.sozlesme_surum ? ' · Sözleşme: ' + u.sozlesme_surum : '') : 'Kayıt onayı yok')}">${esc(k.yazi)}</span></div><em title="${esc(u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('tr-TR', { timeZone: BOLGE }) : '')}">${esc(onceYazi(u.last_sign_in_at, simdi))}</em></li>`;
     }).join('') || '<li class="ist-yok">Henüz üye yok.</li>';
   }
 

@@ -121,3 +121,22 @@ test('sunucu: anahtar yoksa bağlı değil der; yönetici değilse reddeder; ana
   global.fetch = asil;
   if (eski === undefined) delete process.env.VERCEL_ISTATISTIK_ANAHTARI; else process.env.VERCEL_ISTATISTIK_ANAHTARI = eski;
 });
+
+test('kvkkDurum: güncel sürüm yeşil, eski sürüm sarı, onay yoksa kırmızı', () => {
+  assert.equal(IS.GUNCEL_AYDINLATMA, '2026-10-24');
+  assert.deepEqual(IS.kvkkDurum({ aydinlatma_surum: '2026-10-24', kabul_at: '2026-10-25T10:00:00Z' }), { sinif: 'tamam', yazi: 'KVKK ✓ 25 Eki' });
+  assert.deepEqual(IS.kvkkDurum({ aydinlatma_surum: '2026-10-04', kabul_at: '2026-10-05T10:00:00Z' }), { sinif: 'eski', yazi: 'KVKK eski sürüm' });
+  assert.deepEqual(IS.kvkkDurum({}), { sinif: 'yok', yazi: 'KVKK yok' });
+  assert.equal(IS.kvkkSay([{ aydinlatma_surum: '2026-10-24' }, { aydinlatma_surum: '2026-10-04' }, {}]), 1);
+  assert.equal(IS.GUNCEL_AYDINLATMA, /AYDINLATMA_SURUM = '([^']+)'/.exec(oku('auth.js'))[1], 'auth.js ile aynı sürüm');
+});
+
+test('KVKK: üye listesinde etiket, kutularda KVKK ONAYLI; SQL işlevi onay sürümünü yalnız yöneticiye verir', () => {
+  const j = oku('istatistik.js');
+  assert.match(j, /kart\('KVKK ONAYLI', /);
+  assert.match(j, /class="ist-kvkk \$\{k\.sinif\}"/);
+  const s = oku('supabase/istatistik.sql');
+  assert.match(s, /sozlesme_surum text, aydinlatma_surum text, kabul_at timestamptz/);
+  assert.match(s, /u\.raw_user_meta_data->>'aydinlatma_surum'/);
+  assert.match(s, /if not public\.is_admin\(\) then\s+raise exception/);
+});
