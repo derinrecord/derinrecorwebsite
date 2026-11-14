@@ -74,7 +74,7 @@ test('yönetici kutusu: tutar, dekontu gör, ödeme alındı, IBAN ayarı', () =
 test('projects.js: kutu yalnız indirme kapalıyken müşteriye; onay indirmeyi açar', () => {
   assert.match(j, /if\(indirmeAcik\(tr\)\)return '';/);
   // İndirme yerinde doğrudan SATIN AL (indirme kapalıyken, yalnız müşteriye)
-  assert.match(j, /\(!admin && has && !indirmeAcik\(tr\) && SA && \('satin_alma_durum' in tr\)\) \? `<button type="button" class="td-tool-btn td-satinal" data-tdsatinal>/);
+  assert.match(j, /\(!admin && has && !indirmeAcik\(tr\) && SA && \('satin_alma_durum' in tr\)\) \? `<button type="button" class="td-tool-btn td-satinal" data-tdsatinal /);
   assert.match(j, /update\(alanlar\)\.eq\('id',tr\.id\)/);
   assert.match(j, /kaydet\(\{satin_alma_durum:'odendi',indirme_izni:true\}/);
   assert.match(j, /window\.DerinR2\.yukle\('project-audio',yol,file/);
@@ -118,4 +118,13 @@ test('adım çizgisinde TALEP yok: ÖDEME → DEKONT → İNDİRME', () => {
   assert.doesNotMatch(h, /TALEP/);
   assert.match(h, /<li class="now"><i aria-hidden="true">01<\/i>ÖDEME<\/li>/);
   assert.match(h, /03<\/i>İNDİRME/);
+});
+
+test('ödeme bölümü: SATIN AL aç/kapa, Kapat ✕; parçadan çıkınca kapalı', () => {
+  const h = SA.musteriKutusu({ tr: { id: 't1', satin_alma_durum: 'istendi' }, ayar: {} });
+  assert.match(h, /data-sakapat/);
+  assert.match(j, /if\(detail\.odemeGoster\)\{ odemeKapat\(\); return; \}/);
+  assert.match(j, /aria-expanded="\$\{detail\.odemeGoster\?'true':'false'\}"/);
+  // parça kapanınca detail sıfırlanır → bölüm kapalı başlar
+  assert.match(j, /openTrackId=null; detail=\{\};/);
 });

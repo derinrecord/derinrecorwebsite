@@ -12,7 +12,7 @@ test('HESABIM menüsünde herkese ÖDEMELERİM', () => {
 
 test('sayfa: oturum, R2 ve satın alma yardımcıları yüklü', () => {
   const h = oku('odemelerim.html');
-  for (const b of ['config.js', 'auth.js?v=20261114b', 'r2-depo.js?v=2', 'satin-alma.js?v=11', 'odemelerim.js?v=2']) assert.ok(h.includes(`src="${b}"`), b);
+  for (const b of ['config.js', 'auth.js?v=20261114b', 'r2-depo.js?v=2', 'satin-alma.js?v=12', 'odemelerim.js?v=2']) assert.ok(h.includes(`src="${b}"`), b);
   assert.match(h, /<meta name="robots" content="noindex">/);
 });
 

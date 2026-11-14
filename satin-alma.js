@@ -131,7 +131,8 @@
           <small>${o.yukleniyor ? '' : d === 'dekont' ? L('Ödeme onaylanınca indirme açılacak · değiştirmek için dokun', 'The download opens once payment is confirmed · tap to replace') : L('ya da dokunup seç · PDF, JPG, PNG · en çok 10 MB', 'or tap to choose · PDF, JPG, PNG · max 10 MB')}</small>
         </label>
       </div>` : '';
-    return `<section class="sa sa--${d || 'yeni'}" data-sakutu>
+    return `<section class="sa sa--${d || 'yeni'}" id="sa-odeme-${id}" data-sakutu>
+      <button type="button" class="sa-kapat" data-sakapat aria-label="${L('Ödeme bölümünü kapat', 'Close payment section')}">${L('Kapat', 'Close')} <span aria-hidden="true">✕</span></button>
       <div class="sa-bas">
         <div class="sa-metin">
           <p class="sa-eyebrow">${L('SATIN AL', 'BUY')}</p>

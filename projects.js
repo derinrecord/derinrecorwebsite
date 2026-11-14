@@ -1189,7 +1189,7 @@
       <div class="td-tools">
         ${tr.source_url?`<a class="td-tool-link" href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">KAYNAĞI AÇ ↗</a>`:''}
         ${(!admin && indirmeAcik(tr) && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="wav">${sesUzantisi(tr.audio_path)==='wav'?L('⤓ WAV · ORİJİNAL','⤓ WAV · ORIGINAL'):'⤓ WAV'}</button><button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="mp3">⤓ MP3</button>` : ''}
-        ${(!admin && has && !indirmeAcik(tr) && SA && ('satin_alma_durum' in tr)) ? `<button type="button" class="td-tool-btn td-satinal" data-tdsatinal><span class="td-satinal-ikon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h2.5l2.2 11.2a1.5 1.5 0 0 0 1.5 1.2h9.1a1.5 1.5 0 0 0 1.5-1.1L21 7H5.6"/><circle cx="9" cy="19.6" r="1.4"/><circle cx="17" cy="19.6" r="1.4"/><path d="m10.4 10.6 2 2 3.6-3.6"/></svg></span><span class="td-satinal-yazi">${L('SATIN AL','BUY')}</span></button>` : ''}
+        ${(!admin && has && !indirmeAcik(tr) && SA && ('satin_alma_durum' in tr)) ? `<button type="button" class="td-tool-btn td-satinal" data-tdsatinal aria-expanded="${detail.odemeGoster?'true':'false'}" aria-controls="sa-odeme-${tr.id}"><span class="td-satinal-ikon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h2.5l2.2 11.2a1.5 1.5 0 0 0 1.5 1.2h9.1a1.5 1.5 0 0 0 1.5-1.1L21 7H5.6"/><circle cx="9" cy="19.6" r="1.4"/><circle cx="17" cy="19.6" r="1.4"/><path d="m10.4 10.6 2 2 3.6-3.6"/></svg></span><span class="td-satinal-yazi">${L('SATIN AL','BUY')}</span></button>` : ''}
         ${(admin && has)?`<button type="button" class="td-tool-btn td-dl-izin${indirmeAcik(tr)?' aktif':''}" data-tddlizin="${tr.id}" data-on="${indirmeAcik(tr)?1:0}" aria-pressed="${indirmeAcik(tr)}">${indirmeAcik(tr)?L('✓ İNDİRME AÇIK','✓ DOWNLOAD ON'):L('İNDİRMEYE İZİN VER','ALLOW DOWNLOAD')}</button>`:''}
         ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="${SES_ACCEPT}" data-newver="${tr.id}" hidden></label>`:''}
         ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
@@ -1490,7 +1490,13 @@
     const satinAl=root.querySelector('[data-tdsatinal]');
     const kutuyaGit=()=>{ const k=document.querySelector('.track-detail [data-sakutu]'); if(k)k.scrollIntoView({behavior:'smooth',block:'start'}); };
     // SATIN AL (14 Kasım): "talebiniz alındı" demeden doğrudan ödeme (IBAN + dekont) bölümünü açar.
+    // Ödeme bölümü: SATIN AL ile açılır/kapanır; Kapat ✕ ile kapanır. Parçadan
+    // Projelerim'e dönünce ya da sayfadan çıkınca kendiliğinden kapalı başlar (14 Kasım).
+    const odemeKapat=()=>{ detail.odemeGoster=false; renderDetail(tr,project); const b=document.querySelector('.track-detail [data-tdsatinal]'); if(b)b.focus(); };
+    const kapat=root.querySelector('[data-sakapat]');
+    if(kapat)kapat.onclick=odemeKapat;
     if(satinAl)satinAl.onclick=async()=>{
+      if(detail.odemeGoster){ odemeKapat(); return; }
       detail.odemeGoster=true;
       if(SA.durum(tr)){ renderDetail(tr,project); kutuyaGit(); return; }
       satinAl.disabled=true;
