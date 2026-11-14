@@ -73,6 +73,41 @@ body.ist{--sari:#e8d15a;--pembe:#fe4b6a;--camgobegi:#3fc1c9;--mor:#ab6ee7;--yesi
 .ist-kvkk.tamam{background:rgba(155,225,93,.18);color:#9be15d}
 .ist-kvkk.eski{background:rgba(232,209,90,.18);color:#e8d15a}
 .ist-kvkk.yok{background:rgba(255,138,138,.18);color:#ff8a8a}
+.ist-kvkk-ac{margin-top:auto;padding-top:12px;font-size:10px;font-weight:900;letter-spacing:.1em;color:var(--sari)}
+[data-kvkk-ac]{cursor:pointer;transition:transform .2s}
+[data-kvkk-ac]:hover{transform:translateY(-2px)}
+[data-kvkk-ac]:focus-visible{outline:2px solid var(--sari);outline-offset:3px}
+.ist-kart.ist-kvkk-panel{margin-top:14px;padding:0;scroll-margin-top:120px}
+.ist-kvkk-panel summary{list-style:none;display:flex;align-items:center;gap:12px;padding:18px 22px;cursor:pointer;border-radius:23px;background:var(--sari);color:#111}
+.ist-kvkk-panel summary::-webkit-details-marker{display:none}
+.ist-kvkk-panel summary h2{color:#111;flex:1}
+.ist-kvkk-panel summary em{font-style:normal;font-size:11px;font-weight:900;letter-spacing:.12em;opacity:.7}
+.ist-kvkk-panel summary:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.ist-ok{width:9px;height:9px;border-right:2px solid #111;border-bottom:2px solid #111;transform:rotate(45deg) translate(-2px,-2px);transition:transform .25s}
+.ist-kvkk-panel[open] summary{border-radius:23px 23px 0 0}
+.ist-kvkk-panel[open] .ist-ok{transform:rotate(-135deg) translate(-2px,-2px)}
+.ist-kvkk-icerik{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;padding:20px 22px 22px}
+.ist-kvkk-grup h3{display:flex;justify-content:space-between;align-items:center;margin:0}
+.ist-kvkk-grup h3 .ist-kvkk{margin:0;font-size:11px;padding:5px 10px}
+.ist-kvkk-grup h3 b{font-size:28px;font-weight:900;letter-spacing:-.04em}
+.ist-kvkk-grup.tamam h3 b{color:#9be15d}.ist-kvkk-grup.eski h3 b{color:#e8d15a}.ist-kvkk-grup.yok h3 b{color:#ff8a8a}
+.ist-kvkk-grup>.ist-not{margin:4px 0 10px;font-size:12px}
+.ist-kvkk-grup .ist-satirlar li{grid-template-columns:minmax(0,1fr) auto;padding:10px 0}
+.ist-kvkk-grup .ist-ad{font-size:14px}
+.ist-kvkk-grup .ist-ad small{display:block;color:var(--soluk);font-size:12px;font-weight:400;margin-top:3px;overflow:hidden;text-overflow:ellipsis}
+.ist-kvkk-grup em{font-style:normal;color:var(--soluk);font-size:12px;white-space:nowrap}
+.ist-metin-panel summary{background:#f1ece1}
+.ist-metin-icerik{padding:20px 22px 24px;max-height:70vh;overflow:auto}
+.ist-metin-tarih{margin:0 0 14px;font-size:12px;font-weight:900;letter-spacing:.08em;color:var(--sari)}
+.ist-metin{max-width:72ch;color:var(--yazi);font-size:14px;line-height:1.65}
+.ist-metin h2{margin:26px 0 8px;font-size:17px;letter-spacing:-.01em;color:var(--yazi)}
+.ist-metin h3{margin:18px 0 6px;font-size:14px;color:var(--sari)}
+.ist-metin ul{padding-left:20px}.ist-metin li{margin:4px 0}
+.ist-metin a{color:var(--sari)}
+.ist-metin table{border-collapse:collapse;width:100%;max-width:520px}
+.ist-metin th,.ist-metin td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--cizgi);font-size:13px;vertical-align:top}
+.ist-metin th{color:var(--soluk);font-weight:700;width:40%}
+.ist-metin-link{display:inline-block;margin-top:18px;color:var(--sari);font-size:12px;font-weight:900;letter-spacing:.08em}
 .ist-etiket{font-size:10px;font-weight:900;letter-spacing:.08em;padding:3px 8px;border-radius:99px;background:#ff8a8a;color:#111;margin-left:8px;vertical-align:2px}
 .ist-uyari{color:#ff8a8a}
 
@@ -95,6 +130,10 @@ body.ist-liste .ist-kucuk h3{color:var(--soluk)}
   .ist-secim button{flex:1;padding:11px 6px;font-size:10px;letter-spacing:.05em;white-space:normal;line-height:1.2}
   .ist-dort{grid-template-columns:1fr 1fr;gap:10px}
   .ist-dort .ist-kucuk:nth-child(5){grid-column:1/-1;min-height:0}
+  .ist-kvkk-panel summary{padding:15px 18px;border-radius:19px}
+  .ist-kvkk-panel[open] summary{border-radius:19px 19px 0 0}
+  .ist-kvkk-icerik{grid-template-columns:1fr;gap:20px;padding:16px 18px 18px}
+  .ist-metin-icerik{padding:16px 18px 20px}
   .ist-kucuk{min-height:150px;padding:16px}.ist-kucuk b{font-size:38px}
   .ist-iki{grid-template-columns:1fr;gap:10px}
   .ist-kart{border-radius:20px;padding:18px}
@@ -103,4 +142,4 @@ body.ist-liste .ist-kucuk h3{color:var(--soluk)}
   .ist-cihaz{grid-template-columns:110px 1fr}.ist-cihaz svg{width:110px;height:110px}
   .ist-grafik text{font-size:22px}
 }
-@media(prefers-reduced-motion:reduce){.ist-isaret,.ist-secim button{transition:none}}
+@media(prefers-reduced-motion:reduce){.ist-isaret,.ist-secim button,.ist-ok,[data-kvkk-ac]{transition:none}}

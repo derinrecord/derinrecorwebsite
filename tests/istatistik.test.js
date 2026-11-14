@@ -140,3 +140,34 @@ test('KVKK: üye listesinde etiket, kutularda KVKK ONAYLI; SQL işlevi onay sür
   assert.match(s, /u\.raw_user_meta_data->>'aydinlatma_surum'/);
   assert.match(s, /if not public\.is_admin\(\) then\s+raise exception/);
 });
+
+test('kvkkGruplar: onaylayan / eski sürüm / onay yok ayrı; onaylayanlar en yeni onay önce', () => {
+  const g = IS.kvkkGruplar([
+    { full_name: 'A', aydinlatma_surum: '2026-10-24', kabul_at: '2026-10-25T10:00:00Z' },
+    { full_name: 'B', aydinlatma_surum: '2026-10-04' },
+    { full_name: 'C' },
+    { full_name: 'D', aydinlatma_surum: '2026-10-24', kabul_at: '2026-11-02T10:00:00Z' }
+  ]);
+  assert.deepEqual(g.tamam.map(u => u.full_name), ['D', 'A']);
+  assert.deepEqual(g.eski.map(u => u.full_name), ['B']);
+  assert.deepEqual(g.yok.map(u => u.full_name), ['C']);
+  assert.deepEqual(IS.kvkkGruplar([]), { tamam: [], eski: [], yok: [] });
+});
+
+test('KVKK paneli: açılır kapanır pencere, KVKK ONAYLI kutusuna basınca açılır', () => {
+  const h = oku('istatistik.html');
+  assert.match(h, /<details class="ist-kart ist-kvkk-panel" id="ist-kvkk-panel">/);
+  const j = oku('istatistik.js');
+  assert.match(j, /data-kvkk-ac/);
+  assert.match(j, /\$\('ist-kvkk-panel'\)\.open = true/);
+});
+
+test('Aydınlatma Metni: açılır pencerede, sitedeki metin sayfasından okunur (açılınca yüklenir)', () => {
+  const h = oku('istatistik.html');
+  assert.match(h, /<details class="ist-kart ist-kvkk-panel ist-metin-panel" id="ist-metin-panel">/);
+  const j = oku('istatistik.js');
+  assert.match(j, /fetch\('aydinlatma-metni\.html'/);
+  assert.match(j, /\.hk-metin\.hk-tr/);
+  assert.match(j, /addEventListener\('toggle'/);
+  assert.match(oku('aydinlatma-metni.html'), /<div class="hk-metin hk-tr">/);
+});

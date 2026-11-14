@@ -100,7 +100,15 @@
   }
   const kvkkSay = uyeler => (uyeler || []).filter(u => kvkkDurum(u).sinif === 'tamam').length;
 
-  if (typeof module !== 'undefined') module.exports = { GUNCEL_AYDINLATMA, kvkkDurum, kvkkSay, ozet, gunluk, haftalik, onceYazi, cubukGrafik, gunYazi, egilim, ikiyeBol, egriYol, bayrak };
+  // Açılır KVKK penceresi için: onaylayan (en yeni onay önce) / eski sürüm / onay yok.
+  function kvkkGruplar(uyeler) {
+    const g = { tamam: [], eski: [], yok: [] };
+    (uyeler || []).forEach(u => g[kvkkDurum(u).sinif].push(u));
+    g.tamam.sort((a, b) => (Date.parse(b.kabul_at) || 0) - (Date.parse(a.kabul_at) || 0));
+    return g;
+  }
+
+  if (typeof module !== 'undefined') module.exports = { GUNCEL_AYDINLATMA, kvkkDurum, kvkkSay, kvkkGruplar, ozet, gunluk, haftalik, onceYazi, cubukGrafik, gunYazi, egilim, ikiyeBol, egriYol, bayrak };
   if (typeof document === 'undefined') return;
 
   // ---- Sayfa ----
@@ -179,7 +187,7 @@
     // Toplam üye: son 12 haftada birikerek
     const hafta = haftalik(veri.uyeler, 12, simdi), once12 = veri.uyeler.length - topla(hafta.map(h => h.deger));
     let birikim = once12; const uyeCizgi = hafta.map(h => (birikim += h.deger));
-    const kart = (baslik, sayi, alt, svg) => `<section class="ist-kart ist-kucuk"><h3>${esc(baslik)}</h3><b>${sayi}</b>${alt}${svg}</section>`;
+    const kart = (baslik, sayi, alt, svg, ek = '') => `<section class="ist-kart ist-kucuk"${ek}><h3>${esc(baslik)}</h3><b>${sayi}</b>${alt}${svg}</section>`;
     $('ist-dort').innerHTML = [
       z.bagli ? kart('SAYFA GÖRÜNTÜLEME', topla(sSon.map(v => v.deger)), egilimHtml(egilim(topla(sSon.map(v => v.deger)), topla(sOnce.map(v => v.deger)))), spark(sSon.map(v => v.deger)))
         : kart('SAYFA GÖRÜNTÜLEME', '—', '<p class="ist-not">bağlanmadı</p>', ''),
@@ -187,7 +195,7 @@
         : kart('BUGÜN GİRDİ', o.bugun, '<p class="ist-not">üye</p>', spark(g7)),
       kart('TOPLAM ÜYE', o.toplam, `<p class="ist-not">${o.buAyYeni} yeni bu ay</p>`, spark(uyeCizgi)),
       kart('SON 7 GÜNDE GİREN', o.gun7, '<p class="ist-not">üye</p>', spark(g7)),
-      kart('KVKK ONAYLI', kvkkSay(veri.uyeler) + ' / ' + veri.uyeler.length, '<p class="ist-not">güncel metni onaylayan üye</p>', '')
+      kart('KVKK ONAYLI', kvkkSay(veri.uyeler) + ' / ' + veri.uyeler.length, '<p class="ist-not">güncel metni onaylayan üye</p><span class="ist-kvkk-ac">LİSTEYİ AÇ ▾</span>', '', ' data-kvkk-ac role="button" tabindex="0" aria-controls="ist-kvkk-panel"')
     ].join('');
   }
 
@@ -229,6 +237,17 @@
     }).join('') || '<li class="ist-yok">Henüz üye yok.</li>';
   }
 
+  function kvkkPanelCiz() {
+    const g = kvkkGruplar(veri.uyeler);
+    $('ist-kvkk-sayi').textContent = g.tamam.length + ' / ' + veri.uyeler.length + ' ONAYLI';
+    const tarih = u => u.kabul_at ? new Date(u.kabul_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: BOLGE }) : '';
+    const satir = u => `<li><div class="ist-ad">${esc(u.full_name || '—')}<small>${esc([ROL[u.role] || u.role, u.kulup, u.sehir].filter(Boolean).join(' · '))}</small></div>${u.aydinlatma_surum ? `<em>${esc(tarih(u) || u.aydinlatma_surum + ' sürümü')}</em>` : ''}</li>`;
+    const grup = (sinif, baslik, aciklama, liste) => `<div class="ist-kvkk-grup ${sinif}"><h3><span class="ist-kvkk ${sinif}">${esc(baslik)}</span><b>${liste.length}</b></h3><p class="ist-not">${esc(aciklama)}</p><ul class="ist-satirlar">${liste.map(satir).join('') || '<li class="ist-yok">Kimse yok.</li>'}</ul></div>`;
+    $('ist-kvkk-icerik').innerHTML = grup('tamam', 'ONAYLADI', 'Güncel Aydınlatma Metni’ni kabul etti', g.tamam)
+      + grup('eski', 'ESKİ SÜRÜM', 'Eski metni kabul etti, yeniden onay gerekir', g.eski)
+      + grup('yok', 'ONAY YOK', 'Kayıtta onay bilgisi yok', g.yok);
+  }
+
   // Seçili düğmenin altına sarı vurgu kayar (giriş sekmelerindeki gibi).
   function isaretleriKoy() {
     document.querySelectorAll('.ist-secim').forEach(k => {
@@ -241,7 +260,7 @@
 
   async function ciz() {
     const simdi = new Date(), z = await ziyaretAl(secim.gun);
-    buyukCiz(z, simdi); dortCiz(z, simdi); listelerCiz(z); uyelerCiz(simdi);
+    buyukCiz(z, simdi); dortCiz(z, simdi); kvkkPanelCiz(); listelerCiz(z); uyelerCiz(simdi);
     document.querySelectorAll('[data-olcu]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.olcu === secim.olcu)));
     document.querySelectorAll('[data-gun]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.gun === secim.gun)));
     isaretleriKoy();
@@ -270,7 +289,26 @@
     await ciz();
   }
 
+  // Aydınlatma Metni: pencere ilk açıldığında sitedeki metin sayfasından okunur.
+  let metinYuklendi = false;
+  async function metinYukle() {
+    if (metinYuklendi) return; metinYuklendi = true;
+    const kutu = $('ist-metin-icerik');
+    try {
+      const r = await fetch('aydinlatma-metni.html', { cache: 'no-cache' });
+      const d = new DOMParser().parseFromString(await r.text(), 'text/html');
+      const govde = d.querySelector('.hk-metin.hk-tr'), tarih = d.querySelector('.hk-tarih');
+      if (!r.ok || !govde) throw new Error();
+      kutu.innerHTML = (tarih ? `<p class="ist-metin-tarih">${esc(tarih.textContent)}</p>` : '') + `<div class="ist-metin">${govde.innerHTML}</div><a class="ist-metin-link" href="aydinlatma-metni.html" target="_blank" rel="noopener">Sayfasında aç ↗</a>`;
+    } catch (e) { metinYuklendi = false; kutu.innerHTML = '<p class="ist-not ist-uyari">Metin yüklenemedi, sayfayı yenileyip tekrar dene.</p>'; }
+  }
+  $('ist-metin-panel').addEventListener('toggle', () => { if ($('ist-metin-panel').open) metinYukle(); });
+
+  // KVKK ONAYLI kutusuna basınca pencere açılır ve oraya kayar.
+  function kvkkAc() { $('ist-kvkk-panel').open = true; $('ist-kvkk-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-kvkk-ac]')) { e.preventDefault(); kvkkAc(); } });
   document.addEventListener('click', e => {
+    if (e.target.closest('[data-kvkk-ac]')) { kvkkAc(); return; }
     const b = e.target.closest('[data-olcu],[data-gun]');
     if (!b || !veri.client) return;
     if (b.dataset.olcu) secim.olcu = b.dataset.olcu; else secim.gun = +b.dataset.gun;
