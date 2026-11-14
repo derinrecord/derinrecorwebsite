@@ -93,3 +93,18 @@ test('SQL: tutar/ödendi yalnız yönetici; mevcut izin kurallarına dokunulmaz'
   politikalar.forEach(p => assert.match(p, /on public\.odeme_ayarlari/));
   assert.doesNotMatch(sql, /policy[^\n]*on public\.project_tracks/i);
 });
+
+test('kartla ödeme linki: her banka, yalnız https; yönetici yazar', () => {
+  assert.ok(SA.linkGecerliMi('https://pay.example-bank.com.tr/abc?x=1'));
+  assert.ok(!SA.linkGecerliMi('http://pay.example.com/x'));
+  assert.ok(!SA.linkGecerliMi('javascript:alert(1)'));
+  assert.ok(!SA.linkGecerliMi('https://bad link.com'));
+  const tr = { id: 't1', label: 'Final', satin_alma_durum: 'istendi', satin_alma_tutar: 5500 };
+  assert.doesNotMatch(SA.musteriKutusu({ tr, ayar: {} }), /Kartla öde/);
+  const k = SA.musteriKutusu({ tr: { ...tr, odeme_linki: 'https://odeme.banka.com.tr/l/1' }, ayar: {} });
+  assert.match(k, /href="https:\/\/odeme\.banka\.com\.tr\/l\/1" target="_blank" rel="noopener noreferrer"/);
+  assert.match(k, /ya da havale \/ EFT/);
+  assert.doesNotMatch(SA.musteriKutusu({ tr: { ...tr, odeme_linki: 'javascript:x' }, ayar: {} }), /Kartla öde/);
+  assert.match(SA.yoneticiKutusu({ tr, ayar: {} }), /data-salink="t1"/);
+  assert.match(sql, /new\.odeme_linki := old\.odeme_linki;/);
+});

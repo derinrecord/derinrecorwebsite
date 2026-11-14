@@ -1533,6 +1533,14 @@
       try{ await kaydet({satin_alma_tutar:n},L('Tutar kaydedilemedi.','The price could not be saved.')); bildir(n?L('Tutar kaydedildi: ','Price saved: ')+SA.tutarGoster(n):L('Tutar silindi.','Price removed.'),'ok'); await load(); }
       catch(e){ bildir(L('Tutar kaydedilemedi: ','The price could not be saved: ')+e.message,'hata'); tutarDug.disabled=false; }
     };
+    const linkDug=root.querySelector('[data-salinkkaydet]');
+    if(linkDug)linkDug.onclick=async()=>{
+      const kutu=root.querySelector('[data-salink]'); const ham=kutu?kutu.value.trim():'';
+      if(ham&&!SA.linkGecerliMi(ham)){ bildir(L('Link https:// ile başlamalı. Bankanın verdiği ödeme linkini olduğu gibi yapıştırın.','The link must start with https://. Paste the payment link exactly as the bank gave it.'),'hata'); return; }
+      linkDug.disabled=true;
+      try{ await kaydet({odeme_linki:ham||null},L('Link kaydedilemedi.','The link could not be saved.')); bildir(ham?L('Kartla ödeme linki kaydedildi.','Card payment link saved.'):L('Link kaldırıldı.','Link removed.'),'ok'); await load(); }
+      catch(e){ bildir(L('Link kaydedilemedi: ','The link could not be saved: ')+e.message,'hata'); linkDug.disabled=false; }
+    };
     const gor=root.querySelector('[data-sadekontgor]');
     if(gor)gor.onclick=async()=>{
       // Açılır pencere engeline takılmamak için sekme önce açılır, adres sonra verilir.

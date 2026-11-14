@@ -32,7 +32,7 @@
 --     drop column if exists satin_alma_durum, drop column if exists satin_alma_tutar,
 --     drop column if exists dekont_path, drop column if exists dekont_adi,
 --     drop column if exists satin_alma_istendi_at, drop column if exists dekont_at,
---     drop column if exists odendi_at;
+--     drop column if exists odendi_at, drop column if exists odeme_linki;
 -- =====================================================================
 begin;
 
@@ -44,6 +44,8 @@ alter table public.project_tracks add column if not exists dekont_adi text;
 alter table public.project_tracks add column if not exists satin_alma_istendi_at timestamptz;
 alter table public.project_tracks add column if not exists dekont_at timestamptz;
 alter table public.project_tracks add column if not exists odendi_at timestamptz;
+-- (14 Kasım) Kartla ödeme linki: herhangi bir bankanın ödeme linki; yalnız yönetici yazar.
+alter table public.project_tracks add column if not exists odeme_linki text;
 
 alter table public.project_tracks drop constraint if exists project_tracks_satin_alma_durum_check;
 alter table public.project_tracks add constraint project_tracks_satin_alma_durum_check
@@ -71,7 +73,7 @@ begin
   end if;
 
   if tg_op = 'INSERT' then
-    new.satin_alma_durum := null; new.satin_alma_tutar := null;
+    new.satin_alma_durum := null; new.satin_alma_tutar := null; new.odeme_linki := null;
     new.dekont_path := null; new.dekont_adi := null;
     new.satin_alma_istendi_at := null; new.dekont_at := null; new.odendi_at := null;
     return new;
@@ -79,6 +81,7 @@ begin
 
   -- Yönetici dışı güncelleme: tutar ve zamanlar hep eski değerinde kalır.
   new.satin_alma_tutar := old.satin_alma_tutar;
+  new.odeme_linki := old.odeme_linki;
   new.satin_alma_istendi_at := old.satin_alma_istendi_at;
   new.dekont_at := old.dekont_at;
   new.odendi_at := old.odendi_at;
