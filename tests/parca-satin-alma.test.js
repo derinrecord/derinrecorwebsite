@@ -108,3 +108,10 @@ test('kartla ödeme linki: her banka, yalnız https; yönetici yazar', () => {
   assert.match(SA.yoneticiKutusu({ tr, ayar: {} }), /data-salink="t1"/);
   assert.match(sql, /new\.odeme_linki := old\.odeme_linki;/);
 });
+
+test('canlı güncelleme: tutar/link/IBAN değişince müşteri ekranı yenilenir', () => {
+  assert.match(j, /table:'project_tracks'\},\(\)=>load\(\)\)/);
+  assert.match(j, /table:'odeme_ayarlari'\},\(\)=>load\(\)\)/);
+  assert.match(j, /if\(busy\)\{ yeniden=true; return; \}/);
+  assert.match(sql, /alter publication supabase_realtime add table public\.odeme_ayarlari/);
+});

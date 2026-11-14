@@ -40,7 +40,7 @@
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
   let odemeAyar={}; // IBAN / alıcı / not (parca-satin-alma.sql · odeme_ayarlari)
-  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],arsivProjeleri=[],tracks={},feedback={},names={},coachList=[],busy=false,subscribed=false,arsivAcik=false,arsivdeAcik={};
+  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],arsivProjeleri=[],tracks={},feedback={},names={},coachList=[],busy=false,yeniden=false,subscribed=false,arsivAcik=false,arsivdeAcik={};
   // Arşivdeki projeler de parça odasında açılır (29 Ekim); ana listeye karışmazlar.
   const tumProjeler=()=>projects.concat(arsivProjeleri);
   let openTrackId=null;
@@ -92,6 +92,8 @@
         .on('postgres_changes',{event:'*',schema:'public',table:'music_projects'},()=>load())
         .on('postgres_changes',{event:'*',schema:'public',table:'project_tracks'},()=>load())
         .on('postgres_changes',{event:'*',schema:'public',table:'project_feedback'},()=>load())
+        // Ödeme bilgileri (IBAN / alıcı) değişince müşteri ekranı da anında güncellenir.
+        .on('postgres_changes',{event:'*',schema:'public',table:'odeme_ayarlari'},()=>load())
         .subscribe();
     }
     await load();
@@ -101,7 +103,8 @@
     // Oturum yokken sorgu atlamak zorunlu: admin/coach bilgisi yokken filtre
     // 'coach_id=eq.null' olur ve PostgREST 400 döndürür.
     if(!client||!me)return;
-    if(busy)return; busy=true;
+    // Yükleme sürerken gelen canlı değişiklik kaybolmasın: bitince bir kez daha yükle (14 Kasım).
+    if(busy){ yeniden=true; return; } busy=true;
     try{
       const SUTUNLAR='id,coach_id,title,song,branch,status,note,download_allowed,created_at,updated_at,istek_baglanti,istek_ekleri';
       // Arşiv (26 Ekim): antrenör arşivdeki projeleri hiç çekmez; yönetici ayrı bölümde görür.
@@ -144,7 +147,7 @@
       }
       render();
     }catch(e){bildir(L('Projeler alınamadı: ','Projects could not be loaded: ')+e.message,'hata');}
-    finally{busy=false;}
+    finally{busy=false; if(yeniden){ yeniden=false; load(); }}
   }
 
   const bar=st=>{const at=STAGES.findIndex(s=>s.k===st);
@@ -1867,6 +1870,10 @@
       try{ await dosyaIndir(b.dataset.path,b.dataset.name,b.dataset.bicim||'wav'); } finally{ b.disabled=false; }
     });
     satinAlmaBagla(root,tr,project);
+    // Tutar canlı değişince kısa bir parlama ile gösterilir.
+    { const t=tr.satin_alma_tutar==null?'':String(tr.satin_alma_tutar);
+      if(detail.sonTutar!==undefined&&detail.sonTutar!==t&&!admin){ const f=root.querySelector('.sa-fiyat'); if(f){ f.classList.add('sa-degisti'); setTimeout(()=>f.classList.remove('sa-degisti'),1600); } }
+      detail.sonTutar=t; }
 
     root.querySelectorAll('[data-trackdel]').forEach(button=>button.onclick=async()=>{
       if(!confirm('Bu parça ve ses dosyası silinsin mi?'))return;

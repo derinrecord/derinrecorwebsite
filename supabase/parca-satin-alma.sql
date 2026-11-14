@@ -191,6 +191,13 @@ drop policy if exists "odeme_ayarlari: yonetici yazar" on public.odeme_ayarlari;
 create policy "odeme_ayarlari: yonetici yazar" on public.odeme_ayarlari
   for update to authenticated using (public.is_admin()) with check (public.is_admin());
 
+-- (14 Kasım) Ödeme bilgileri canlı: IBAN / alıcı değişince müşteri ekranı sayfa yenilemeden güncellenir.
+do $$ begin
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='odeme_ayarlari') then
+    alter publication supabase_realtime add table public.odeme_ayarlari;
+  end if;
+end $$;
+
 commit;
 
 -- Kontrol (isteğe bağlı):
