@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="tr" data-dil-otomatik data-baslik-en="My Payments — Derin Record">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Ödemelerim — Derin Record</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico?v=3" sizes="any"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=3">
+  <link rel="stylesheet" href="branch.css">
+  <link rel="stylesheet" href="glass.css?v=2" />
+  <link rel="stylesheet" href="auth.css?v=20261101a">
+  <style>
+    /* Ödemelerim (14 Kasım) — Projelerim'deki satın alma kutusuyla aynı dil */
+    :root { --od-yesil: #5fcf8f; --od-altin: #d8bb2c; --od-altin2: #e8d15a; --od-soluk: #a8a5a0; --od-serif: Georgia, "Times New Roman", serif; }
+    .od-main { max-width: 760px; margin: 0 auto; padding: 48px 20px 90px; }
+    .od-main h1 { margin: 0 0 10px; font-size: clamp(46px, 9vw, 84px); line-height: .82; letter-spacing: -.06em; font-weight: 900; }
+    .od-main h1 span { color: var(--pink); }
+    .od-baslik-not { margin: 0 0 30px; font-family: var(--od-serif); font-style: italic; color: var(--od-soluk); font-size: 15px; }
+    .od-ozet { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 26px; }
+    .od-ozet[hidden] { display: none; }
+    .od-ozet div { padding: 18px 20px; border-top: 2px solid var(--od-altin); background: linear-gradient(180deg, rgba(9,9,11,.82), rgba(9,9,11,.62));
+      -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border-radius: 0 0 6px 6px; }
+    .od-ozet div:first-child { border-top-color: var(--od-yesil); }
+    .od-ozet span { display: block; font-size: 10px; font-weight: 900; letter-spacing: .18em; color: var(--od-soluk); margin-bottom: 8px; }
+    .od-ozet b { font-size: clamp(24px, 5vw, 34px); font-weight: 300; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+    .od-kart { position: relative; margin-bottom: 14px; padding: 22px 24px; border-top: 2px solid var(--od-altin); border-radius: 0 0 6px 6px;
+      background: linear-gradient(180deg, rgba(9,9,11,.82), rgba(9,9,11,.62)); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+    .od-kart.od-odendi { border-top-color: var(--od-yesil); }
+    .od-kart.od-kontrol { border-top-color: #cb2468; }
+    .od-ust { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 24px; flex-wrap: wrap; }
+    .od-ad { min-width: 0; flex: 1 1 260px; }
+    .od-proje { margin: 0 0 6px; font-size: 10px; font-weight: 900; letter-spacing: .18em; color: var(--od-altin); text-transform: uppercase; }
+    .od-proje b { color: #f4f1e9; }
+    .od-kart h2 { margin: 0; font-size: clamp(20px, 3.4vw, 26px); font-weight: 900; letter-spacing: -.03em; line-height: 1.1; overflow-wrap: anywhere; }
+    .od-tutar { display: grid; justify-items: end; gap: 4px; }
+    .od-tutar b { display: flex; align-items: baseline; gap: 6px; font-size: clamp(28px, 5vw, 38px); font-weight: 300; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1; }
+    .od-tutar b em { font-style: normal; font-size: .62em; color: var(--od-altin2); }
+    .od-tutar b.bos { color: var(--od-soluk); }
+    .od-tutar small { font-size: 11px; font-weight: 800; letter-spacing: .16em; color: var(--od-altin2); }
+    .od-alt { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.08); }
+    .od-rozet { padding: 6px 12px; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase;
+      border: 1px solid rgba(232,209,90,.55); color: var(--od-altin2); }
+    .od-kontrol .od-rozet { border-color: rgba(203,36,104,.7); color: #ff9cc4; background: rgba(203,36,104,.12); }
+    .od-odendi .od-rozet { border-color: rgba(95,207,143,.6); color: var(--od-yesil); background: rgba(95,207,143,.1); }
+    .od-zaman { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; padding: 0; list-style: none; flex: 1 1 220px; }
+    .od-zaman li { font-size: 11px; color: var(--od-soluk); }
+    .od-zaman span { font-weight: 800; letter-spacing: .04em; margin-right: 6px; color: #d9d5cf; }
+    .od-zaman time { font-family: var(--od-serif); font-style: italic; }
+    .od-eylem { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+    .od-dugme { display: inline-flex; align-items: center; padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: transparent;
+      color: inherit; font: 800 11px/1 Arial, sans-serif; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; cursor: pointer; }
+    .od-dugme:hover { border-color: #f4f1e9; }
+    .od-dugme.ana { background: var(--od-yesil); border-color: var(--od-yesil); color: #0b2416; box-shadow: 0 3px 0 #2e8c58; }
+    .od-dugme.ana:hover { background: #6cd99b; }
+    .od-bos { padding: 30px 24px; border-top: 2px solid rgba(255,255,255,.15); background: rgba(9,9,11,.6); border-radius: 0 0 6px 6px;
+      font-family: var(--od-serif); font-style: italic; color: #c7c3be; font-size: 16px; line-height: 1.5; }
+    .od-msg { margin: 0 0 16px; font-size: 14px; }
+    .od-msg:empty { display: none; }
+    .od-msg.err { color: #ff8a8a; }
+    @media (max-width: 560px) {
+      .od-main { padding-top: 32px; }
+      .od-tutar { justify-items: start; }
+      .od-eylem { margin-left: 0; width: 100%; }
+      .od-eylem .od-dugme { flex: 1; justify-content: center; }
+    }
+  </style>
+  <link rel="stylesheet" href="mobil.css?v=5">
+  <link rel="stylesheet" href="dil.css?v=2026102401">
+<link rel="stylesheet" href="arka-plan.css?v=1">
+</head>
+<body>
+  <div class="arka" aria-hidden="true"><i class="p"></i><i class="s"></i><i class="m"></i><b class="t"></b><b class="t2"></b></div>
+  <header class="header">
+    <a class="home" href="index.html"><span>←</span> ANA SAYFA</a>
+    <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+  </header>
+  <main class="od-main">
+    <p class="eyebrow">HESAP</p>
+    <h1>ÖDEME<span>LERİM.</span></h1>
+    <p class="od-baslik-not" id="od-baslik-not">Satın aldığın parçalar ve ödeme durumları</p>
+    <div class="od-ozet" id="od-ozet" hidden>
+      <div><span>ÖDENEN</span><b id="od-odenen">0 ₺</b></div>
+      <div><span>BEKLEYEN</span><b id="od-bekleyen">0 ₺</b></div>
+    </div>
+    <p id="od-durum" class="od-msg">Ödemeler yükleniyor…</p>
+    <div id="od-liste"></div>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+  <script src="uygulama.js?v=1"></script><script src="auth.js?v=20261114b"></script>
+  <script src="r2-depo.js?v=2"></script>
+  <script src="satin-alma.js?v=9"></script>
+  <script src="odemelerim.js?v=1"></script>
+<script src="dil.js?v=2026110101" defer></script>
+</body>
+</html>

@@ -40,7 +40,7 @@
   const mmss=s=>(!s||!isFinite(s))?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 
   let odemeAyar={}; // IBAN / alıcı / not (parca-satin-alma.sql · odeme_ayarlari)
-  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],arsivProjeleri=[],tracks={},feedback={},names={},coachList=[],busy=false,yeniden=false,subscribed=false,arsivAcik=false,arsivdeAcik={};
+  let client=null,admin=false,me=null,benimAdim='',fotoUrl={},projects=[],arsivProjeleri=[],tracks={},feedback={},names={},coachList=[],busy=false,yeniden=false,dogrudanParcaBakildi=false,subscribed=false,arsivAcik=false,arsivdeAcik={};
   // Arşivdeki projeler de parça odasında açılır (29 Ekim); ana listeye karışmazlar.
   const tumProjeler=()=>projects.concat(arsivProjeleri);
   let openTrackId=null;
@@ -146,6 +146,14 @@
         else openTrackId=null;
       }
       render();
+      // Ödemelerim'den gelen bağlantı (?parca=<id>): o parça doğrudan açılır (14 Kasım).
+      if(!dogrudanParcaBakildi){
+        dogrudanParcaBakildi=true;
+        let istenen=null; try{ istenen=new URLSearchParams(window.location.search).get('parca'); }catch{}
+        if(istenen&&!openTrackId){
+          for(const p of tumProjeler()){ const tr=(tracks[p.id]||[]).find(t=>t.id===istenen); if(tr){ openTrackDetail(tr,p); break; } }
+        }
+      }
     }catch(e){bildir(L('Projeler alınamadı: ','Projects could not be loaded: ')+e.message,'hata');}
     finally{busy=false; if(yeniden){ yeniden=false; load(); }}
   }

@@ -9,7 +9,7 @@ const oku = d => fs.readFileSync(path.join(__dirname, '..', d), 'utf8');
 
 test('HESABIM panelinin ilk bağlantısı PROFİLİM ve yalnız bir kez', () => {
   const a = oku('auth.js');
-  assert.match(a, /\.account-menu-links'\)\.innerHTML = `<a href="profilim\.html" class="menu-profil">PROFİLİM<\/a>\$\{state\.profile/);
+  assert.match(a, /\.account-menu-links'\)\.innerHTML = `<a href="profilim\.html" class="menu-profil">PROFİLİM<\/a><a href="odemelerim\.html" class="menu-odemelerim">ÖDEMELERİM<\/a>\$\{state\.profile/);
   assert.equal((a.match(/href="profilim\.html"/g) || []).length, 1);
 });
 

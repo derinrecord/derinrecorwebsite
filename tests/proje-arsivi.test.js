@@ -43,6 +43,6 @@ test('arşivdeki proje açılır: tam kart, parça odası, ARŞİVDEN ÇIKAR', (
   assert.match(js, /const tumProjeler=\(\)=>projects\.concat\(arsivProjeleri\);/);
   assert.match(js, /if\(arsivdeAcik\[p\.id\]\) return `<li class="arsiv-acik">[\s\S]{0,200}\$\{card\(p\)\}<\/li>`;/);
   assert.match(js, /data-arsivgoster="\$\{p\.id\}">\$\{L\('AÇ','OPEN'\)\}/);
-  assert.equal((js.match(/for\(const p of tumProjeler\(\)\)/g) || []).length, 3, 'parça odası arşivdekini de bulmalı');
+  assert.equal((js.match(/for\(const p of tumProjeler\(\)\)/g) || []).length, 4, 'parça odası arşivdekini de bulmalı (+ Ödemelerim bağlantısı)');
   assert.match(js, /\$\{p\.arsivde\?`<button type="button" data-arsivcikar="\$\{p\.id\}">ARŞİVDEN ÇIKAR<\/button>`/);
 });
