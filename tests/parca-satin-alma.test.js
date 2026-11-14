@@ -112,3 +112,10 @@ test('SATIN AL: "talebiniz alındı" yazmaz, doğrudan ödemeye götürür', () 
   assert.doesNotMatch(j, /TALEBİNİZ ALINDI/);
   assert.doesNotMatch(j, /Satın alma talebiniz alındı/);
 });
+
+test('adım çizgisinde TALEP yok: ÖDEME → DEKONT → İNDİRME', () => {
+  const h = SA.musteriKutusu({ tr: { id: 't1', satin_alma_durum: 'istendi', satin_alma_tutar: 2000 }, ayar: {} });
+  assert.doesNotMatch(h, /TALEP/);
+  assert.match(h, /<li class="now"><i aria-hidden="true">01<\/i>ÖDEME<\/li>/);
+  assert.match(h, /03<\/i>İNDİRME/);
+});

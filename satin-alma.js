@@ -89,8 +89,9 @@
 
   // Dört adım çizgisi (Projelerim'deki ÜRETİM SÜRECİ çizgisinin dili).
   function adimlar(d, L) {
-    const sira = { null: 0, istendi: 1, dekont: 2, odendi: 4 }[d] || 0;
-    const ad = [L('TALEP', 'REQUEST'), L('ÖDEME', 'PAYMENT'), L('DEKONT', 'RECEIPT'), L('İNDİRME', 'DOWNLOAD')];
+    // Üç adım (14 Kasım: TALEP adımı kaldırıldı): ÖDEME → DEKONT → İNDİRME.
+    const sira = { istendi: 0, dekont: 1, odendi: 3 }[d] || 0;
+    const ad = [L('ÖDEME', 'PAYMENT'), L('DEKONT', 'RECEIPT'), L('İNDİRME', 'DOWNLOAD')];
     return `<ol class="sa-adim" aria-label="${L('Satın alma adımları', 'Purchase steps')}">${ad.map((a, i) =>
       `<li class="${i < sira ? 'done' : i === sira ? 'now' : ''}"><i aria-hidden="true">${String(i + 1).padStart(2, '0')}</i>${a}</li>`).join('')}</ol>`;
   }
