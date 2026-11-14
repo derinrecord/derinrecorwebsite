@@ -37,7 +37,7 @@
           <p class="od-proje">${kacis(proje ? proje.title : L('Proje', 'Project'))}${admin && musteri ? ` · <b>${kacis(musteri)}</b>` : ''}</p>
           <h2>${kacis(t.label || L('Parça', 'Track'))}</h2>
         </div>
-        <div class="od-tutar">${tutar ? `<b>${kacis(tutar.replace(/ TL$/, ''))}<em>TL</em></b><small>${L('KDV dahil', 'incl. VAT')}</small>` : `<b class="bos">—</b><small>${L('tutar bekleniyor', 'price pending')}</small>`}</div>
+        <div class="od-tutar">${tutar ? `<b>${kacis(tutar.replace(/ ₺$/, ''))}<em>₺</em></b><small>${L('KDV dahil', 'incl. VAT')}</small>` : `<b class="bos">—</b><small>${L('tutar bekleniyor', 'price pending')}</small>`}</div>
       </div>
       <div class="od-alt">
         <span class="od-rozet">${kacis(d.yazi())}</span>
@@ -69,8 +69,8 @@
       }
     }
     const top = d => parcalar.filter(t => d.includes(t.satin_alma_durum)).reduce((n, t) => n + (Number(t.satin_alma_tutar) || 0), 0);
-    $('od-odenen').textContent = SA.tutarGoster(top(['odendi'])) || '0 TL';
-    $('od-bekleyen').textContent = SA.tutarGoster(top(['istendi', 'dekont'])) || '0 TL';
+    $('od-odenen').textContent = SA.tutarGoster(top(['odendi'])) || '0 ₺';
+    $('od-bekleyen').textContent = SA.tutarGoster(top(['istendi', 'dekont'])) || '0 ₺';
     $('od-ozet').hidden = !parcalar.length;
     durum.textContent = ''; durum.className = 'od-msg';
     liste.innerHTML = parcalar.length

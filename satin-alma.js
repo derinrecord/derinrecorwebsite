@@ -58,7 +58,7 @@
     const v = Number(n);
     if (n == null || n === '' || !isFinite(v) || v <= 0) return '';
     const kurus = Math.round(v * 100) % 100 !== 0;
-    return v.toLocaleString('tr-TR', { minimumFractionDigits: kurus ? 2 : 0, maximumFractionDigits: 2 }) + ' TL';
+    return v.toLocaleString('tr-TR', { minimumFractionDigits: kurus ? 2 : 0, maximumFractionDigits: 2 }) + ' ₺';
   }
 
   // Kartla ödeme linki: herhangi bir bankanın / ödeme hizmetinin https linki (14 Kasım).
@@ -100,11 +100,11 @@
     const t = tutarGoster(tr.satin_alma_tutar);
     if (kucuk) {
       if (!t) return `<div class="sa-fiyat sa-fiyat--kucuk bos"><small>${L('tutar yakında', 'price soon')}</small></div>`;
-      return `<div class="sa-fiyat sa-fiyat--kucuk"><b>${kacis(t.replace(/ TL$/, ''))}<em class="sa-lira">TL</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></div>`;
+      return `<div class="sa-fiyat sa-fiyat--kucuk"><b>${kacis(t.replace(/ ₺$/, ''))}<em class="sa-lira">₺</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></div>`;
     }
     if (!t) return `<div class="sa-fiyat bos"><span>${L('TUTAR', 'PRICE')}</span><b>—</b><small>${L('yakında', 'soon')}</small></div>`;
     const [sayi] = t.split(' ');
-    return `<div class="sa-fiyat"><span>${L('TUTAR', 'PRICE')}</span><b>${kacis(sayi)}<em class="sa-lira">TL</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></div>`;
+    return `<div class="sa-fiyat"><span>${L('TUTAR', 'PRICE')}</span><b>${kacis(sayi)}<em class="sa-lira">₺</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></div>`;
   }
 
   // ---- Müşteri kutusu (indirme kapalıyken parça odasında) ----
@@ -155,7 +155,7 @@
       dekont: L('Dekont yüklendi · ödemeyi kontrol et', 'Receipt uploaded · check the payment'),
       odendi: L('Ödendi · indirme açık', 'Paid · download open')
     }[d] || L('Henüz talep yok', 'No request yet');
-    const tutarDeger = tr.satin_alma_tutar != null ? tutarGoster(tr.satin_alma_tutar).replace(/ TL$/, '') : '';
+    const tutarDeger = tr.satin_alma_tutar != null ? tutarGoster(tr.satin_alma_tutar).replace(/ ₺$/, '') : '';
     return `<section class="sa sa--yonetici sa--${d || 'yeni'}" data-sakutu>
       <div class="sa-bas">
         <div class="sa-metin">
@@ -163,7 +163,7 @@
           <h3 class="sa-h sa-h--kucuk">${kacis(etiket)}</h3>
         </div>
         <label class="sa-fiyat sa-fiyat--yaz"><span>${L('TUTAR', 'PRICE')}</span>
-          <b><input type="text" class="sa-tutar-kutu" inputmode="decimal" data-satutar="${id}" value="${kacis(tutarDeger)}" placeholder="5.500" aria-label="${L('Bu parçanın KDV dahil ücreti (TL)', 'Price of this track incl. VAT (TL)')}"><em class="sa-lira">TL</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></label>
+          <b><input type="text" class="sa-tutar-kutu" inputmode="decimal" data-satutar="${id}" value="${kacis(tutarDeger)}" placeholder="5.500" aria-label="${L('Bu parçanın KDV dahil ücreti (₺)', 'Price of this track incl. VAT (₺)')}"><em class="sa-lira">₺</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></label>
       </div>
       ${adimlar(d, L)}
       <div class="sa-dugmeler">
