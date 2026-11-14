@@ -10,7 +10,8 @@
   const stil = document.createElement('style');
   stil.textContent = `
     .bakim-perde{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(8,8,10,.94);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);text-align:center;color:#f4efe6}
-    .bakim-kutu{max-width:420px}
+    .bakim-kutu{max-width:520px;width:100%;max-height:100%;overflow:auto}
+    .bakim-gorsel{display:block;width:100%;max-width:min(520px,72vh);height:auto;margin:0 auto 16px;border-radius:14px}
     .bakim-ikon{font-size:44px;margin-bottom:14px}
     .bakim-kutu h2{letter-spacing:.04em;font-size:26px;margin:0 0 10px}
     .bakim-kutu p{opacity:.8;line-height:1.5;margin:0 0 20px}
@@ -36,9 +37,10 @@
       perde.setAttribute('role', 'alert');
       document.body.appendChild(perde);
     }
-    perde.innerHTML = `<div class="bakim-kutu"><div class="bakim-ikon">🛠️</div>
-      <h2>${L('Sitede bakım yapılıyor', 'Under maintenance')}</h2>
-      <p>${L('Projelerim bölümünde şu an çalışma yapıyoruz. Kısa süre sonra tekrar açılacak, anlayışınız için teşekkürler.', 'We are currently working on the My Projects section. It will be back shortly — thank you for your patience.')}</p>
+    // Bakım görseli (15 Kasım): yazı görselin içinde; İngilizce sitede altına kısa çeviri eklenir.
+    perde.innerHTML = `<div class="bakim-kutu">
+      <img class="bakim-gorsel" src="assets/bakim-gorseli.webp?v=1" width="1080" height="1080" alt="${L('Derin Record — Sitemizde bakım yapılıyor. Kısa süre içinde tekrar hizmetinizde olacağız.', 'Derin Record — Under maintenance. We will be back shortly.')}">
+      ${L('', '<p>We are doing a little maintenance in the studio. We\'ll be back shortly — thank you for your patience.</p>')}
       <a href="index.html">${L('← ANA SAYFA', '← HOME')}</a></div>`;
   };
 
