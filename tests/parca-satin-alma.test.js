@@ -115,3 +115,9 @@ test('canlı güncelleme: tutar/link/IBAN değişince müşteri ekranı yenileni
   assert.match(j, /if\(busy\)\{ yeniden=true; return; \}/);
   assert.match(sql, /alter publication supabase_realtime add table public\.odeme_ayarlari/);
 });
+
+test('SATIN AL: "talebiniz alındı" yazmaz, doğrudan ödemeye götürür', () => {
+  assert.doesNotMatch(j, /TALEBİNİZ ALINDI/);
+  assert.doesNotMatch(j, /Satın alma talebiniz alındı/);
+  assert.match(j, /sekme=window\.open\('','_blank'\)/);
+});

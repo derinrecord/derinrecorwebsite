@@ -1176,7 +1176,7 @@
       <div class="td-tools">
         ${tr.source_url?`<a class="td-tool-link" href="${safe(tr.source_url)}" target="_blank" rel="noreferrer">KAYNAĞI AÇ ↗</a>`:''}
         ${(!admin && indirmeAcik(tr) && has) ? `<button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="wav">${sesUzantisi(tr.audio_path)==='wav'?L('⤓ WAV · ORİJİNAL','⤓ WAV · ORIGINAL'):'⤓ WAV'}</button><button type="button" class="td-tool-btn" data-dl="${tr.id}" data-path="${safe(tr.audio_path)}" data-name="${safe(tr.label||'parca')}" data-bicim="mp3">⤓ MP3</button>` : ''}
-        ${(!admin && has && !indirmeAcik(tr) && SA && ('satin_alma_durum' in tr)) ? `<button type="button" class="td-tool-btn td-satinal" data-tdsatinal><span class="td-satinal-ikon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h2.5l2.2 11.2a1.5 1.5 0 0 0 1.5 1.2h9.1a1.5 1.5 0 0 0 1.5-1.1L21 7H5.6"/><circle cx="9" cy="19.6" r="1.4"/><circle cx="17" cy="19.6" r="1.4"/><path d="m10.4 10.6 2 2 3.6-3.6"/></svg></span><span class="td-satinal-yazi">${SA.durum(tr)?L('TALEBİNİZ ALINDI','REQUEST RECEIVED'):L('SATIN AL','BUY')}</span></button>` : ''}
+        ${(!admin && has && !indirmeAcik(tr) && SA && ('satin_alma_durum' in tr)) ? `<button type="button" class="td-tool-btn td-satinal" data-tdsatinal><span class="td-satinal-ikon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h2.5l2.2 11.2a1.5 1.5 0 0 0 1.5 1.2h9.1a1.5 1.5 0 0 0 1.5-1.1L21 7H5.6"/><circle cx="9" cy="19.6" r="1.4"/><circle cx="17" cy="19.6" r="1.4"/><path d="m10.4 10.6 2 2 3.6-3.6"/></svg></span><span class="td-satinal-yazi">${L('SATIN AL','BUY')}</span></button>` : ''}
         ${(admin && has)?`<button type="button" class="td-tool-btn td-dl-izin${indirmeAcik(tr)?' aktif':''}" data-tddlizin="${tr.id}" data-on="${indirmeAcik(tr)?1:0}" aria-pressed="${indirmeAcik(tr)}">${indirmeAcik(tr)?L('✓ İNDİRME AÇIK','✓ DOWNLOAD ON'):L('İNDİRMEYE İZİN VER','ALLOW DOWNLOAD')}</button>`:''}
         ${admin?`<label class="td-tool-upload">${has?'YENİ VARYASYON EKLE':'SES DOSYASI YÜKLE'}<input type="file" accept="${SES_ACCEPT}" data-newver="${tr.id}" hidden></label>`:''}
         ${(admin && has)?`<button type="button" class="td-tool-del" data-trackdel="${tr.id}" data-path="${safe(tr.audio_path)}">PARÇAYI SİL</button>`:''}
@@ -1474,28 +1474,21 @@
   function satinAlmaBagla(root,tr,project){
     if(!SA)return;
     const kaydet=(alanlar,hata)=>tekSatir(client.from('project_tracks').update(alanlar).eq('id',tr.id),hata);
-    const istek=root.querySelector('[data-saistek]');
-    if(istek)istek.onclick=async()=>{
-      istek.disabled=true;
-      try{
-        await kaydet({satin_alma_durum:'istendi'},L('Talep kaydedilemedi.','The request could not be saved.'));
-        detail.odemeAcik=true;
-        bildir(L('Satın alma talebiniz alındı. Şimdi ÖDEME bölümünden ödemeyi yapıp dekontu yükleyebilirsiniz.','Your purchase request was received. You can now pay in the PAYMENT section and upload the receipt.'),'ok');
-        await load();
-      }catch(e){ bildir(L('Talep kaydedilemedi: ','The request could not be saved: ')+e.message,'hata'); istek.disabled=false; }
-    };
-    // İndirme yerindeki SATIN AL (14 Kasım): talep yoksa talebi bırakır, varsa ödeme bölümünü açar.
     const satinAl=root.querySelector('[data-tdsatinal]');
     const kutuyaGit=()=>{ const k=document.querySelector('.track-detail [data-sakutu]'); if(k)k.scrollIntoView({behavior:'smooth',block:'start'}); };
+    // SATIN AL (14 Kasım): "talebiniz alındı" demeden doğrudan ödemeye götürür.
+    // Kartla ödeme linki varsa banka sayfası açılır; yoksa ödeme (IBAN) bölümüne kayılır.
     if(satinAl)satinAl.onclick=async()=>{
-      if(SA.durum(tr)){ kutuyaGit(); return; }
+      const link=SA.linkGecerliMi(tr.odeme_linki)?String(tr.odeme_linki).trim():'';
+      // Açılır pencere engeline takılmamak için sekme tıklama anında açılır.
+      let sekme=null; if(link){ sekme=window.open('','_blank'); if(sekme)sekme.opener=null; }
+      const odemeyeGit=()=>{ if(link){ if(sekme)sekme.location.href=link; else window.location.href=link; } kutuyaGit(); };
+      if(SA.durum(tr)){ odemeyeGit(); return; }
       satinAl.disabled=true;
       try{
-        await kaydet({satin_alma_durum:'istendi'},L('Talep kaydedilemedi.','The request could not be saved.'));
-        detail.odemeAcik=true;
-        bildir(L('Satın alma talebiniz alındı. Ödemeyi yapıp dekontu yükleyebilirsiniz.','Your purchase request was received. You can now pay and upload the receipt.'),'ok');
-        await load(); kutuyaGit();
-      }catch(e){ bildir(L('Talep kaydedilemedi: ','The request could not be saved: ')+e.message,'hata'); satinAl.disabled=false; }
+        await kaydet({satin_alma_durum:'istendi'},L('Bir sorun oluştu.','Something went wrong.'));
+        await load(); odemeyeGit();
+      }catch(e){ if(sekme)sekme.close(); bildir(L('Bir sorun oluştu: ','Something went wrong: ')+e.message,'hata'); satinAl.disabled=false; }
     };
     const odeme=root.querySelector('[data-saodeme]');
     if(odeme)odeme.onclick=()=>{ detail.odemeAcik=!detail.odemeAcik; renderDetail(tr,project); };
