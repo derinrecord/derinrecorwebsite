@@ -113,13 +113,7 @@
     if (!d) return '';
     const istendi = d === 'istendi' || d === 'dekont';
     const iban = ibanTemiz(ayar.iban);
-    const kartLink = linkGecerliMi(tr.odeme_linki) ? String(tr.odeme_linki).trim() : '';
     const panel = istendi ? `<div class="sa-bilet" id="sa-panel-${id}">
-        ${kartLink ? `<div class="sa-kart">
-          <a class="sa-kart-dugme" href="${kacis(kartLink)}" target="_blank" rel="noopener noreferrer">${L('Kartla öde', 'Pay by card')} <span aria-hidden="true">↗</span></a>
-          <small>${L('Kredi ya da banka kartı · tüm bankaların kartları · güvenli ödeme sayfası açılır', 'Credit or debit card · all banks · opens a secure payment page')}</small>
-        </div>
-        <p class="sa-ya-da"><span>${L('ya da havale / EFT', 'or bank transfer')}</span></p>` : ''}
         <div class="sa-iban-blok">
           <span class="sa-etiket">IBAN</span>
           ${iban ? `<p class="sa-iban">${kacis(ibanGoster(iban))}</p><button type="button" class="sa-kopyala" data-sakopyala="${kacis(iban)}">${L('Kopyala', 'Copy')}</button>`
@@ -172,11 +166,6 @@
         <button type="button" class="sa-ikincil" data-satutarkaydet="${id}">${L('Tutarı kaydet', 'Save price')}</button>
         ${tr.dekont_path ? `<button type="button" class="sa-ikincil" data-sadekontgor="${kacis(tr.dekont_path)}">${L('Dekontu gör ↗', 'View receipt ↗')}</button>` : ''}
         ${d !== 'odendi' ? `<button type="button" class="sa-istek sa-onayla" data-saonayla="${id}">${L('Ödeme alındı · indirmeyi aç', 'Payment received · open download')}</button>` : ''}
-      </div>
-      <div class="sa-satir sa-link-satir">
-        <label class="sa-alan sa-alan--genis"><span>${L('Kartla ödeme linki · herhangi bir banka', 'Card payment link · any bank')}</span>
-          <input type="url" data-salink="${id}" value="${kacis(tr.odeme_linki || '')}" placeholder="https://…" autocomplete="off" spellcheck="false"></label>
-        <button type="button" class="sa-ikincil" data-salinkkaydet="${id}">${L('Linki kaydet', 'Save link')}</button>
       </div>
       <details class="sa-ayar"${ibanTemiz(ayar.iban) ? '' : ' open'}>
         <summary>${L('Ödeme bilgileri', 'Payment details')} <span>${L('tüm parçalar için', 'for all tracks')}</span></summary>
