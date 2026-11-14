@@ -58,6 +58,8 @@ test('ana sayfa ve Haberler: yer tutucular ve betik; elle yazılmış eski şeri
   assert.ok(izgara.indexOf('data-yarisma-haber') < izgara.indexOf('<article'), 'Haberler\'in en üstünde');
   assert.match(n, /yarisma-duyuru\.js\?v=\d+/);
   assert.match(oku('yarisma-duyuru.js'), /\.eq\('yayinda', true\)\.gte\('bit', /);
+  assert.match(oku('yarisma-duyuru.js'), /liste\.slice\(0, ENCOK_SERIT\)\.map\(/, 'aynı anda birden fazla yarışma alt alta');
+  assert.match(oku('hero-sekme.css'), /\.hero-yarisma-kutu\{display:grid;gap:14px/);
 });
 
 test('YARIŞMALAR sayfası: yalnız yönetici; bağlantı denetimi; menüde yalnız yöneticiye', () => {

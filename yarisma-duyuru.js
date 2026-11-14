@@ -6,6 +6,7 @@
   'use strict';
   const BOLGE = 'Europe/Istanbul';
   const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  const ENCOK_SERIT = 3;
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const bugunYazi = simdi => new Date(simdi).toLocaleDateString('sv-SE', { timeZone: BOLGE });
 
@@ -34,7 +35,8 @@
     return 'CANLI YAYIN · ' + g + ' ' + AYLAR[a - 1].toLocaleUpperCase('tr-TR');
   }
 
-  const altYazi = y => [tarihYazi(y.bas, y.bit), y.sehir].filter(Boolean).join(' · ');
+  // Aynı adlı yarışmalar karışmasın diye branş da yazılır: "12–15 Kasım · Ankara · Ritmik Cimnastik"
+  const altYazi = y => [tarihYazi(y.bas, y.bit), y.sehir, y.brans].filter(Boolean).join(' · ');
 
   function seritHtml(y, simdi) {
     const adres = guvenliAdres(y.canli_link) || guvenliAdres(y.link);
@@ -64,7 +66,8 @@
       .eq('yayinda', true).gte('bit', bugunYazi(Date.now())).order('bas');
     if (error || !data) return;
     const liste = gorunenler(data, Date.now());
-    if (serit) { serit.innerHTML = liste.length ? seritHtml(liste[0], Date.now()) : ''; serit.hidden = !liste.length; }
+    // Aynı günlerde birden fazla yarışma yayındaysa şeritler alt alta (en çok 3; en erken başlayan üstte).
+    if (serit) { serit.innerHTML = liste.slice(0, ENCOK_SERIT).map(y => seritHtml(y, Date.now())).join(''); serit.hidden = !liste.length; }
     if (haber) haber.innerHTML = liste.map(y => haberHtml(y, Date.now())).join('');
   }
   basla();

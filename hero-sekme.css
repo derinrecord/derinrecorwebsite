@@ -59,4 +59,6 @@
 @media(max-width:760px){.hero-yarisma{width:100%;flex-wrap:wrap}.hy-lamba{padding:9px 14px;flex:1 0 100%;justify-content:flex-start}.hy-metin{padding:11px 14px}.hy-metin b{font-size:14px}.hy-izle{padding:0 14px}
   .hero-yarisma{display:grid;grid-template-columns:1fr auto}.hy-lamba{grid-column:1/-1;justify-self:start;margin:12px 12px 0;padding:8px 13px}.hy-izle{margin:10px}}
 
+.hero-yarisma-kutu{display:grid;gap:14px;margin-top:22px}
+.hero-yarisma-kutu .hero-yarisma{margin-top:0}
 .hero-yarisma-kutu[hidden]{display:none}
