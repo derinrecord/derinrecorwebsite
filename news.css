@@ -8,3 +8,6 @@
 .news-card a.news-canli-dugme:hover{background:#ff5c7a;color:#fff}
 .news-card a.news-ikincil{margin:14px 0 0;padding:0;background:none!important;color:#e8d15a!important;font-size:13px;text-decoration:underline;text-underline-offset:4px;box-shadow:none}
 @media(prefers-reduced-motion:reduce){.news-canli::before{animation:none}}
+
+/* Yayınlanan yarışmalar (yarisma-duyuru.js) ızgarada kart gibi yer alır */
+.news-yarisma{display:contents}

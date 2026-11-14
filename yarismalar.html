@@ -1,0 +1,52 @@
+<!doctype html><html lang="tr" data-dil-otomatik data-baslik-en="Competitions — Derin Record"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Yarışmalar — Derin Record</title><meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico?v=3" sizes="any"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=3">
+<link rel="stylesheet" href="branch.css"><link rel="stylesheet" href="auth.css?v=20261101a"><link rel="stylesheet" href="glass.css?v=2"><link rel="stylesheet" href="mobil.css?v=5"><link rel="stylesheet" href="dil.css?v=2026102401"><link rel="stylesheet" href="arka-plan.css?v=1">
+<style>
+.yr-sayfa{max-width:1000px;margin:0 auto;padding:38px 6vw 72px;color:#f4f1e9}
+.yr-sayfa .eyebrow{margin:0 0 12px;color:#e8d15a;font-size:12px;font-weight:900;letter-spacing:2px}
+.yr-sayfa h1{margin:0;font-size:clamp(46px,7vw,92px);line-height:.85;letter-spacing:-.06em;font-weight:900}
+.yr-sayfa h1 span{color:#e8d15a}
+.yr-aciklama{max-width:62ch;margin:16px 0 0;color:rgba(244,241,233,.7);font-size:15px;line-height:1.55}
+.yr-cubuk{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin:26px 0 18px}
+#yr-durum{margin:0;color:rgba(244,241,233,.62);font-size:13px}
+#yr-tara{border:0;border-radius:999px;padding:12px 18px;background:linear-gradient(145deg,#f3dc6a,#d4b834);color:#16131a;font:inherit;font-size:11px;font-weight:900;letter-spacing:.1em;cursor:pointer}
+#yr-tara:disabled{opacity:.6;cursor:wait}
+#yr-liste{display:grid;gap:14px}
+.yr-kart{border-radius:24px;padding:22px;border:1px solid rgba(255,255,255,.14);background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.02));box-shadow:0 18px 40px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.yr-kart.yayinda{border-color:rgba(255,59,92,.55);box-shadow:0 18px 40px rgba(0,0,0,.35),0 0 34px rgba(255,59,92,.18)}
+.yr-ust{display:flex;gap:8px;flex-wrap:wrap}
+.yr-ust span{font-size:10px;font-weight:900;letter-spacing:.12em;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.1)}
+.yr-kalan.yakin{background:#e8d15a;color:#16131a}
+.yr-yayinda{display:inline-flex;align-items:center;gap:6px;background:#e5163f!important;color:#fff}
+.yr-yayinda i{width:7px;height:7px;border-radius:50%;background:#fff;animation:yrIsik 1.4s ease-in-out infinite}
+.yr-tg{color:#9be15d}
+@keyframes yrIsik{50%{opacity:.25}}
+.yr-kart h2{margin:12px 0 6px;font-size:clamp(22px,3vw,30px);line-height:1.1;letter-spacing:-.03em;font-weight:900}
+.yr-bilgi{margin:0 0 16px;color:rgba(244,241,233,.65);font-size:14px}
+.yr-bilgi a{color:#e8d15a}
+.yr-form{display:grid;grid-template-columns:1.4fr 1fr;gap:10px 14px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1)}
+.yr-form label{display:grid;gap:6px;font-size:10px;font-weight:900;letter-spacing:.12em;min-width:0}
+.yr-form input{width:100%;box-sizing:border-box;font:inherit;font-size:15px;letter-spacing:0;padding:11px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.35);color:#f4f1e9}
+.yr-mesaj{grid-column:1/-1;margin:0;font-size:13px;min-height:0}
+.yr-mesaj.hata{color:#ff8a8a}
+.yr-dugmeler{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}
+.yr-dugmeler button{border:0;border-radius:999px;padding:12px 18px;font:inherit;font-size:11px;font-weight:900;letter-spacing:.1em;cursor:pointer}
+.yr-ana{background:#e5163f;color:#fff}
+.yr-kaldir{background:rgba(255,255,255,.1);color:#f4f1e9;border:1px solid rgba(255,255,255,.25)!important}
+.yr-dugmeler button:disabled{opacity:.6;cursor:wait}
+.yr-bos{color:rgba(244,241,233,.62)}
+@media(max-width:700px){.yr-sayfa{padding:24px 16px 56px}.yr-form{grid-template-columns:1fr}.yr-kart{padding:18px;border-radius:20px}}
+@media(prefers-reduced-motion:reduce){.yr-yayinda i{animation:none}}
+</style></head><body><div class="arka" aria-hidden="true"><i class="p"></i><i class="s"></i><i class="m"></i><b class="t"></b><b class="t2"></b></div><header class="header"><a class="home" href="index.html"><span>←</span> SİTEYE DÖN</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header>
+<main class="yr-sayfa" data-dil-yok>
+  <p class="eyebrow">YÖNETİCİ ALANI</p>
+  <h1>YARIŞMALAR<span>.</span></h1>
+  <p class="yr-aciklama">Federasyonun yarışma takvimi her sabah otomatik okunur; yarışmaya 2 gün kala Telegram'a haber gelir. Bir yarışmayı seçip canlı yayın bağlantısını yazınca ana sayfada ve Haberler'de görünür, yarışma bitince kendiliğinden kalkar.</p>
+  <div id="yr-app" hidden>
+    <div class="yr-cubuk"><p id="yr-durum">Yükleniyor…</p><button type="button" id="yr-tara">TAKVİMİ ŞİMDİ OKU</button></div>
+    <div id="yr-liste"></div>
+  </div>
+  <p id="yr-giris" hidden></p>
+</main>
+<script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="uygulama.js?v=1"></script><script src="auth.js?v=20261114a"></script><script src="yarismalar.js?v=1"></script><script src="dil.js?v=2026110101" defer></script>
+</body></html>

@@ -221,6 +221,7 @@
     'shell.kapat': 'Close',
     'shell.hesapSistemi': 'ACCOUNT SYSTEM',
     'shell.istatistik': 'STATISTICS',
+    'shell.yarismalar': 'COMPETITIONS',
     'shell.kullanicilar': 'USERS',
     'shell.bildirimler': 'NOTIFICATIONS',
     'shell.taleplerim': 'MY REQUESTS',
