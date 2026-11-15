@@ -12,14 +12,14 @@ test('HESABIM menüsünde herkese ÖDEMELERİM', () => {
 
 test('sayfa: oturum, R2 ve satın alma yardımcıları yüklü', () => {
   const h = oku('odemelerim.html');
-  for (const b of ['config.js', 'auth.js?v=20261114b', 'r2-depo.js?v=2', 'satin-alma.js?v=16', 'odemelerim.js?v=4']) assert.ok(h.includes(`src="${b}"`), b);
+  for (const b of ['config.js', 'auth.js?v=20261114b', 'r2-depo.js?v=2', 'satin-alma.js?v=16', 'odemelerim.js?v=5']) assert.ok(h.includes(`src="${b}"`), b);
   assert.match(h, /<meta name="robots" content="noindex">/);
 });
 
-test('yalnız satın alması olan parçalar; tutar KDV dahil; durumlar; canlı', () => {
+test('yalnız satın alması olan parçalar; tutar (şimdilik KDV ibaresi yok); durumlar; canlı', () => {
   const j = oku('odemelerim.js');
   assert.match(j, /\.not\('satin_alma_durum', 'is', null\)/);
-  assert.match(j, /KDV dahil/);
+  assert.doesNotMatch(j, /KDV dahil/);
   assert.match(j, /Ödeme bekleniyor/);
   assert.match(j, /Ödendi/);
   assert.match(j, /my-projects\.html\?parca=/);

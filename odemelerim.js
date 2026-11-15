@@ -37,7 +37,7 @@
           <p class="od-proje">${kacis(proje ? proje.title : L('Proje', 'Project'))}${admin && musteri ? ` · <b>${kacis(musteri)}</b>` : ''}</p>
           <h2>${kacis(t.label || L('Parça', 'Track'))}</h2>
         </div>
-        <div class="od-tutar">${tutar ? `<b>${kacis(tutar.replace(/ ₺$/, ''))}<em>₺</em></b><small>${L('KDV dahil', 'incl. VAT')}</small>` : `<b class="bos">—</b><small>${L('tutar bekleniyor', 'price pending')}</small>`}</div>
+        <div class="od-tutar">${tutar ? `<b>${kacis(tutar.replace(/ ₺$/, ''))}<em>₺</em></b>` : `<b class="bos">—</b><small>${L('tutar bekleniyor', 'price pending')}</small>`}</div>
       </div>
       <div class="od-alt">
         <span class="od-rozet">${kacis(d.yazi())}</span>
