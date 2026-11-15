@@ -58,3 +58,19 @@ Derin Record, cimnastik/aerobik performansları için özel müzik prodüksiyonu
 - `config.js` doldurulmadan (`DERIN_CONFIG` boşsa) `auth.js` "HESAP SİSTEMİ HAZIRLANIYOR" moduna düşer; giriş/kayıt formu görünmez. Yerelde test ederken önce Supabase bağlantısının kurulu olduğundan emin olun.
 - Admin paneline erişim tamamen `profiles.role = 'admin'` alanına bağlı; bu satır `derin-record.sql`'in sonundaki örnek `update` komutuyla elle set ediliyor — otomatik bir "ilk admin" akışı yok.
 - Chat özelliğini yeni bir cihazda test ederken, önceden `chat_public_keys` tablosunda kayıtlı bir kullanıcı için IndexedDB temizse "aktarım kodu" akışı devreye giriyor; bu normal, hata değil.
+
+## CRM modülü (2026-11-15)
+
+Mekân (kafe, restoran, salon…) radyo lisansı satışı için tek sahipli satış + abonelik takip CRM'i.
+Şartname: `docs/crm/` (paket: 01–09 + `sema/schema.sql`). **CRM'e dokunan her işten önce
+`docs/crm/03-IS-KURALLARI.md` okunur; kurallar tartışmaya açık değil, kendi başına "iyileştirme" yapılmaz.**
+
+- Yığın uyarlaması: paket .NET/MySQL/Next.js için yazıldı; burada Supabase (Postgres) + düz HTML/JS.
+  Şema/işlemler `supabase/crm.sql` (tablolar `crm_` önekli, additive). Sunucu mantığı Postgres
+  fonksiyonlarında (RPC) — tek transaction gereken işler (görüşme+görev, tamamla) tek fonksiyon.
+- Ekran: `crm.html` + `crm.js` + `crm-sozluk.js` (tüm sabit sözlükler ve Türkçe etiketler tek dosyada).
+- Tek saat: `crm_bugun()` / `crm_simdi()` (Europe/Istanbul). CRM SQL'inde ham `now()`/`current_date` yok.
+- Yetki: `crm_yetkili()` = admin **ve** `crm_sahip` listesinde. Yeni bir admin hesabı CRM'i kendiliğinden görmez.
+- Hata: fonksiyonlar sabit anahtar fırlatır (`TaskAlreadyClosed`, `WaitingRequiresTask`…); arayüz Türkçeye çevirir.
+- Telefon: `crm_telefon()` → `905xxxxxxxxx`; çözülemeyen numara atılmaz (`phone_raw` + `needs_review`).
+- Faz durumu: Faz 0–2 (çekirdek + ekranlar). Faz 3 ödeme takibi, Faz 4 hatırlatma henüz yok.

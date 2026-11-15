@@ -6,6 +6,7 @@
 # vermiyor; kaldırılmaları siteyi etkilemez.
 supabase/
 tests/
+docs/
 *.md
 
 # Tasarım provaları ve çıkarılan görselleri yayına girmesin.

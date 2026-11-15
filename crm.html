@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>CRM — Derin Record</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#09090b">
+  <link rel="icon" href="/favicon.ico?v=3" sizes="any"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=3">
+  <link rel="stylesheet" href="branch.css">
+  <link rel="stylesheet" href="glass.css?v=2" />
+  <link rel="stylesheet" href="auth.css?v=20261101a">
+  <style>
+    /* CRM (15 Kasım 2026) — mobil öncelikli; Ödemelerim'deki koyu cam + altın çizgi dili. */
+    :root { --c-yesil: #5fcf8f; --c-altin: #d8bb2c; --c-altin2: #e8d15a; --c-pembe: #cb2468; --c-soluk: #a8a5a0; --c-kirmizi: #ff6b5e;
+      --c-serif: Georgia, "Times New Roman", serif; --c-cam: linear-gradient(180deg, rgba(9,9,11,.84), rgba(9,9,11,.66)); --c-alt: env(safe-area-inset-bottom, 0px); }
+    body { padding-bottom: calc(86px + var(--c-alt)); }
+    body.crm-sheet-acik { overflow: hidden; }
+    .header { padding: 14px 5vw; }
+    .crm-main { max-width: 760px; margin: 0 auto; padding: 18px 16px 30px; }
+    .gizli { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .soluk { color: var(--c-soluk); }
+    .crm-durum { margin: 40px 0; font-family: var(--c-serif); font-style: italic; color: #c7c3be; font-size: 17px; }
+    .crm-durum a { color: var(--c-altin2); }
+    .crm-yukleniyor, .crm-bos { font-family: var(--c-serif); font-style: italic; color: var(--c-soluk); font-size: 15px; margin: 6px 0 0; list-style: none; }
+    .crm-bos.buyuk { font-size: 17px; line-height: 1.5; color: #c7c3be; }
+    .crm-hata { color: #ff9a9a; font-size: 14px; margin: 10px 0 0; }
+
+    /* Başlık */
+    .crm-bas { margin: 10px 0 18px; }
+    .crm-eyebrow { margin: 0 0 8px; color: var(--c-altin); font-size: 11px; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; }
+    .crm-bas h1, .crm-kart-ad { margin: 0; font-size: clamp(44px, 12vw, 76px); line-height: .84; letter-spacing: -.06em; font-weight: 900; }
+    .crm-bas h1 span { color: var(--c-pembe); }
+    .crm-kart-ad { font-size: clamp(32px, 9vw, 54px); line-height: .95; letter-spacing: -.04em; overflow-wrap: anywhere; }
+    .crm-alt { margin: 10px 0 0; font-family: var(--c-serif); font-style: italic; color: #c7c3be; font-size: 16px; }
+
+    /* Gruplar ve listeler */
+    .crm-grup, .crm-blok { margin: 0 0 22px; }
+    .crm-grup h2, .crm-blok h2 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; font-size: 13px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+    .crm-grup h2 em, .crm-blok h2 em { font-style: normal; color: var(--c-soluk); font-weight: 400; letter-spacing: 0; }
+    .crm-grup.gecikmis h2 { color: #ff9a8f; }
+    .crm-grup-bas, .crm-blok-bas { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .crm-grup-bas h2, .crm-blok-bas h2 { margin: 0; }
+    .crm-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    .crm-gorev, .crm-firma-satir { position: relative; padding: 14px 16px; border-top: 2px solid var(--c-altin); border-radius: 0 0 8px 8px; background: var(--c-cam);
+      -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+    .crm-gorev.gec { border-top-color: var(--c-kirmizi); }
+    .crm-gorev.must:not(.gec) { border-top-color: var(--c-pembe); }
+    .crm-gorev-ust { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--c-soluk); }
+    .crm-gorev-zaman b { color: #ff9a8f; font-weight: 800; }
+    .crm-must { padding: 3px 8px; border-radius: 999px; background: rgba(203,36,104,.18); border: 1px solid rgba(203,36,104,.7); color: #ff9cc4; font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+    .crm-erteleme { font-size: 11px; color: var(--c-altin2); }
+    .crm-gorev-firma { display: block; margin: 6px 0 2px; font-size: 19px; font-weight: 900; letter-spacing: -.02em; line-height: 1.15; }
+    .crm-gorev-kisi { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; color: #d9d5cf; min-height: 44px; }
+    .crm-gorev-not { margin: 2px 0 0; font-family: var(--c-serif); font-style: italic; font-size: 15px; line-height: 1.45; color: #e8e4dc; white-space: pre-line; }
+    .crm-gorev-etiket { margin: 4px 0 0; font-size: 12px; color: var(--c-soluk); }
+    .crm-gorev-eylem { display: flex; gap: 8px; margin-top: 12px; }
+    .crm-gorev-eylem .crm-btn { flex: 1; }
+
+    .crm-firma-satir { display: flex; gap: 10px; align-items: center; padding: 0; }
+    .crm-firma-satir > a { flex: 1; min-width: 0; display: grid; gap: 6px; padding: 14px 16px; }
+    .crm-fs-ust { display: flex; align-items: center; gap: 8px; }
+    .crm-fs-ust b { font-size: 17px; letter-spacing: -.01em; overflow-wrap: anywhere; }
+    .crm-fs-orta, .crm-fs-alt { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12px; color: var(--c-soluk); }
+    .crm-fs-alt .kirmizi { color: var(--c-kirmizi); font-weight: 700; }
+    .crm-fs-tel { padding-right: 10px; }
+    .crm-kontrol { color: var(--c-altin2); font-weight: 700; }
+
+    /* Çipler */
+    .crm-asama { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .04em; border: 1px solid rgba(255,255,255,.25); color: #e8e4dc; white-space: nowrap; }
+    .a-new { border-color: rgba(255,255,255,.3); }
+    .a-contacted, .a-followup { border-color: rgba(232,209,90,.6); color: var(--c-altin2); }
+    .a-demo, .a-profile, .a-offer { border-color: rgba(203,36,104,.7); color: #ff9cc4; background: rgba(203,36,104,.1); }
+    .a-onboarding, .a-member { border-color: rgba(95,207,143,.7); color: var(--c-yesil); background: rgba(95,207,143,.1); }
+    .a-waiting { border-color: rgba(140,170,255,.55); color: #b5c6ff; }
+    .a-passive, .a-lost { border-color: rgba(255,255,255,.15); color: var(--c-soluk); }
+    .crm-isi { font-size: 9px; letter-spacing: 1px; }
+    .i-1 { color: #8fb4ff; } .i-2 { color: var(--c-altin2); } .i-3 { color: #ff7a5c; }
+    .crm-etiket { display: inline-block; padding: 3px 9px; border-radius: 4px; font-size: 11px; background: rgba(255,255,255,.07); color: #d9d5cf; }
+    .crm-etiket.istek { background: rgba(232,209,90,.12); color: var(--c-altin2); }
+    .crm-cipler { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+    .crm-cipler.kaydir { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 10px; padding: 0 16px; }
+    .crm-cipler.kaydir::-webkit-scrollbar { display: none; }
+    .crm-cip { flex: none; min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); background: rgba(9,9,11,.5); color: #e8e4dc;
+      font: 700 13px/1.1 Arial, sans-serif; cursor: pointer; white-space: nowrap; }
+    .crm-cip.on { background: var(--c-altin2); border-color: var(--c-altin2); color: #17140a; }
+    .crm-cip.buyuk { min-height: 52px; padding: 12px 20px; font-size: 15px; }
+    .crm-cipler.kucuk .crm-cip { min-height: 38px; font-size: 12px; padding: 7px 12px; }
+
+    /* Düğmeler */
+    .crm-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 10px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,.28);
+      background: transparent; color: inherit; font: 800 12px/1 Arial, sans-serif; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; text-decoration: none; }
+    .crm-btn:hover { border-color: #f4f1e9; }
+    .crm-btn.ana { background: var(--c-yesil); border-color: var(--c-yesil); color: #0b2416; box-shadow: 0 3px 0 #2e8c58; }
+    .crm-btn.tehlike { color: #ff9a8f; border-color: rgba(255,107,94,.5); }
+    .crm-btn:disabled { opacity: .55; cursor: progress; }
+    .crm-btn.genis { width: 100%; margin-top: 12px; }
+    .crm-link { background: none; border: 0; padding: 6px 0; color: var(--c-altin2); font: 700 13px/1.2 Arial, sans-serif; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+    .crm-iletisim { display: inline-flex; gap: 8px; flex: none; }
+    .crm-ikon { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.04); }
+    .crm-ikon svg { width: 19px; height: 19px; fill: #f4f1e9; }
+    .crm-ikon.wa svg { fill: var(--c-yesil); }
+
+    /* Ufuk seçici */
+    .crm-ufuk { display: inline-flex; border: 1px solid rgba(255,255,255,.2); border-radius: 999px; overflow: hidden; }
+    .crm-ufuk button { min-height: 36px; padding: 6px 12px; border: 0; background: transparent; color: var(--c-soluk); font: 700 12px Arial, sans-serif; cursor: pointer; }
+    .crm-ufuk button.on { background: rgba(232,209,90,.16); color: var(--c-altin2); }
+
+    /* Firmalar */
+    .crm-ara input { width: 100%; min-height: 50px; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,.22); background: rgba(9,9,11,.7); color: #f4f1e9; font-size: 16px; }
+    .crm-filtre { margin-top: 12px; }
+    .crm-sirala { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; color: var(--c-soluk); margin-bottom: 4px; }
+    .crm-sirala select { margin-left: 6px; min-height: 36px; border-radius: 8px; background: rgba(9,9,11,.7); color: #f4f1e9; border: 1px solid rgba(255,255,255,.2); padding: 4px 8px; font-size: 14px; }
+    .crm-sayac { font-size: 12px; color: var(--c-soluk); margin: 8px 0 10px; }
+
+    /* Firma kartı */
+    .crm-geri { display: inline-flex; align-items: center; min-height: 44px; font-size: 12px; font-weight: 900; letter-spacing: .1em; color: var(--c-soluk); }
+    .crm-serit { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 4px 0 14px; padding: 12px 14px; border-radius: 8px;
+      background: rgba(232,209,90,.12); border: 1px solid rgba(232,209,90,.45); color: var(--c-altin2); font-size: 13px; }
+    .crm-kart-bas { margin: 4px 0 24px; }
+    .crm-kart-cipler { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+    .crm-asama-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0; border: 0; background: none; color: var(--c-soluk); cursor: pointer; font-size: 12px; }
+    .crm-asama-btn .crm-asama { font-size: 13px; padding: 7px 12px; }
+    .crm-rakip { margin: 14px 0 0; font-size: 14px; color: #d9d5cf; line-height: 1.45; }
+    .crm-rakip.yakin { color: #ffb3a8; }
+    .crm-rakip.yakin b { color: var(--c-kirmizi); }
+    .crm-kart-eylem { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+    .crm-kart-eylem .crm-btn.ana { flex: 1 1 100%; min-height: 54px; font-size: 13px; }
+    .crm-kart-eylem .crm-btn:not(.ana) { flex: 1; }
+    .crm-kisiler { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .crm-kisiler li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--c-cam); border: 1px solid rgba(255,255,255,.07); }
+    .crm-kisi-ad { flex: 1; min-width: 0; display: grid; gap: 3px; text-align: left; background: none; border: 0; color: inherit; padding: 4px 0; cursor: pointer; font-size: 15px; }
+    .crm-kisi-rol { font-size: 12px; color: var(--c-soluk); overflow-wrap: anywhere; }
+    .crm-yildiz { color: var(--c-altin2); }
+    .crm-birincil { font-size: 10px; font-weight: 900; letter-spacing: .1em; color: var(--c-yesil); text-transform: uppercase; }
+    .crm-tunel { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid rgba(255,255,255,.12); display: grid; gap: 16px; }
+    .crm-tunel-satir { position: relative; }
+    .crm-tunel-satir::before { content: ""; position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--c-altin); }
+    .o-no_answer::before, .o-wrong_number::before, .o-busy_callback::before { background: #77736e; }
+    .o-positive::before, .o-demo_done::before { background: var(--c-yesil); }
+    .o-not_interested::before { background: var(--c-kirmizi); }
+    .crm-tunel-ust { margin: 0; font-size: 12px; color: var(--c-soluk); }
+    .crm-tunel-sonuc { margin: 3px 0 0; font-weight: 800; font-size: 14px; }
+    .crm-tunel-not p { margin: 4px 0 0; font-family: var(--c-serif); font-size: 15px; line-height: 1.5; color: #e8e4dc; white-space: pre-line; overflow-wrap: anywhere; }
+    .crm-tunel-not.kisa:not(.acik) p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+    .crm-tunel-ek { margin: 4px 0 0; font-size: 12px; color: var(--c-altin2); }
+    .crm-alanlar { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin: 0; }
+    .crm-alanlar dt { font-size: 10px; font-weight: 900; letter-spacing: .14em; color: var(--c-soluk); text-transform: uppercase; }
+    .crm-alanlar dd { margin: 3px 0 0; font-size: 14px; overflow-wrap: anywhere; white-space: pre-line; }
+
+    /* Alt sekme çubuğu */
+    .crm-sekmeler { position: fixed; left: 0; right: 0; top: auto !important; bottom: 0; border-radius: 0; z-index: 40; display: grid; grid-template-columns: 1fr 1fr 84px 1fr; align-items: end;
+      padding: 6px 8px calc(6px + var(--c-alt)); background: rgba(9,9,11,.94); border-top: 1px solid rgba(255,255,255,.1); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+    .crm-sekmeler[hidden] { display: none; }
+    .crm-sekme { display: grid; justify-items: center; gap: 3px; min-height: 54px; padding: 8px 4px 6px; color: var(--c-soluk); font-size: 11px; font-weight: 900; letter-spacing: .08em; }
+    .crm-sekme svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
+    .crm-sekme.on { color: #f4f1e9; }
+    .crm-sekme.on svg { stroke: var(--c-altin2); }
+    .crm-arti { justify-self: center; width: 62px; height: 62px; margin-top: -26px; border-radius: 50%; border: 3px solid #09090b; background: var(--c-pembe); color: #fff;
+      font-size: 34px; font-weight: 300; line-height: 1; cursor: pointer; box-shadow: 0 6px 18px rgba(203,36,104,.45); }
+    @media (min-width: 761px) { .crm-sekmeler { left: 50%; right: auto; width: 520px; transform: translateX(-50%); border: 1px solid rgba(255,255,255,.1); border-bottom: 0; border-radius: 16px 16px 0 0; } }
+
+    /* Alt yan panel */
+    .crm-sheet { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0); transition: background .2s; display: flex; align-items: flex-end; justify-content: center; }
+    .crm-sheet[hidden] { display: none; }
+    .crm-sheet.acik { background: rgba(0,0,0,.6); }
+    .crm-sheet-ic { width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; overscroll-behavior: contain; padding: 6px 18px calc(18px + var(--c-alt));
+      background: #121115; border-top: 2px solid var(--c-altin); border-radius: 18px 18px 0 0; transform: translateY(100%); transition: transform .22s ease; }
+    .crm-sheet.acik .crm-sheet-ic { transform: none; }
+    .crm-sheet-tutamac { width: 44px; height: 4px; margin: 6px auto 8px; border-radius: 4px; background: rgba(255,255,255,.25); }
+    .crm-sheet-bas { display: flex; justify-content: space-between; align-items: center; position: sticky; top: -6px; z-index: 1; margin: 0 -18px 10px; padding: 6px 18px; background: #121115; }
+    .crm-sheet-bas h2 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -.03em; }
+    .crm-kapat { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); background: transparent; color: #f4f1e9; font-size: 16px; cursor: pointer; }
+    .crm-sheet-alt { display: flex; gap: 10px; margin-top: 16px; position: sticky; bottom: calc(-18px - var(--c-alt)); padding: 12px 0 calc(4px + var(--c-alt)); background: #121115; }
+    .crm-sheet-alt .crm-btn { flex: 1; min-height: 52px; }
+    .crm-alan, .crm-satir2 label { display: grid; gap: 6px; margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: .06em; color: #d9d5cf; }
+    .crm-alan small, .crm-satir2 small { font-weight: 400; color: var(--c-soluk); letter-spacing: 0; }
+    .crm-satir2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .crm-satir2.tik { margin-bottom: 10px; }
+    .crm-sheet input:not([type=checkbox]), .crm-sheet select, .crm-sheet textarea { width: 100%; min-height: 48px; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2);
+      background: #0b0b0d; color: #f4f1e9; font: 16px/1.4 Arial, sans-serif; }
+    .crm-sheet textarea { resize: vertical; min-height: 0; }
+    .crm-sheet [data-ozet] { min-height: 170px; font-family: var(--c-serif); font-size: 17px; }
+    .crm-tik { display: flex !important; align-items: center; gap: 10px; min-height: 44px; font-size: 14px !important; font-weight: 700; color: #e8e4dc; }
+    .crm-tik input { width: 22px; height: 22px; accent-color: var(--c-yesil); }
+    .crm-tikler { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; margin-bottom: 8px; }
+    .crm-etiket-bas, .crm-ara-bas { margin: 4px 0 8px; font-size: 12px; font-weight: 800; letter-spacing: .06em; color: #d9d5cf; }
+    .crm-ara-bas { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.1); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--c-altin); }
+    .crm-kucuk-not { margin: -4px 0 12px; font-size: 12px; color: var(--c-soluk); }
+    .crm-kucuk-not a { color: var(--c-altin2); }
+    .crm-zorunlu { margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; background: rgba(203,36,104,.14); color: #ffb3d1; font-size: 13px; }
+    .crm-mukerrer { margin: -2px 0 12px; padding: 10px 12px; border-radius: 8px; background: rgba(232,209,90,.12); border: 1px solid rgba(232,209,90,.4); color: #f1e3a0; font-size: 13px; line-height: 1.45; }
+    .crm-mukerrer a { color: var(--c-altin2); text-decoration: underline; }
+    .zorunlu { color: var(--c-pembe); }
+    .crm-adimlar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; list-style: none; margin: 0 0 14px; padding: 0; }
+    .crm-adimlar li { padding-top: 6px; border-top: 3px solid rgba(255,255,255,.14); font-size: 11px; font-weight: 900; letter-spacing: .12em; color: var(--c-soluk); text-transform: uppercase; }
+    .crm-adimlar li.on { border-top-color: var(--c-yesil); color: #f4f1e9; }
+    .crm-sonuclar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .crm-sonuc { min-height: 58px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.04); color: #f4f1e9;
+      font: 800 15px/1.2 Arial, sans-serif; text-align: left; cursor: pointer; }
+    .crm-sonuc:active { transform: scale(.98); }
+    .s-positive, .s-demo_done { border-color: rgba(95,207,143,.6); }
+    .s-not_interested, .s-wrong_number { border-color: rgba(255,107,94,.45); }
+    .crm-secilen { margin: 0 0 12px; font-size: 14px; color: var(--c-soluk); }
+    .crm-secilen b { color: #f4f1e9; }
+
+    .crm-toast { position: fixed; left: 50%; bottom: calc(96px + var(--c-alt)); z-index: 80; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+      max-width: calc(100vw - 32px); padding: 12px 18px; border-radius: 10px; background: #f4f1e9; color: #111; font-weight: 800; font-size: 14px; transition: opacity .2s, transform .2s; }
+    .crm-toast.goster { opacity: 1; transform: translate(-50%, 0); }
+    .crm-toast.hata { background: #ff6b5e; color: #fff; }
+    @media (max-width: 420px) { .crm-satir2 { grid-template-columns: 1fr; gap: 0; } .crm-tikler { grid-template-columns: 1fr; } .crm-alanlar { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { .crm-sheet-ic, .crm-toast { transition: none; } }
+  </style>
+  <link rel="stylesheet" href="mobil.css?v=5">
+  <link rel="stylesheet" href="arka-plan.css?v=1">
+</head>
+<body>
+  <div class="arka" aria-hidden="true"><i class="p"></i><i class="s"></i><i class="m"></i><b class="t"></b><b class="t2"></b></div>
+  <header class="header">
+    <a class="home" href="index.html"><span>←</span> ANA SAYFA</a>
+    <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
+  </header>
+  <main class="crm-main">
+    <p class="crm-durum" id="crm-durum">CRM açılıyor…</p>
+    <section id="v-bugun" hidden></section>
+    <section id="v-firmalar" hidden></section>
+    <section id="v-firma" hidden></section>
+    <section id="v-odeme" hidden></section>
+  </main>
+
+  <nav class="crm-sekmeler" id="crm-sekmeler" aria-label="CRM" hidden>
+    <a class="crm-sekme" href="#bugun" data-sekme="bugun"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>BUGÜN</a>
+    <a class="crm-sekme" href="#firmalar" data-sekme="firmalar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V8l8-5 8 5v13M9 21v-6h6v6"/></svg>FİRMALAR</a>
+    <button class="crm-arti" type="button" id="crm-ekle" aria-label="Yeni firma ekle">＋</button>
+    <a class="crm-sekme" href="#odeme" data-sekme="odeme"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h4"/></svg>ÖDEME</a>
+  </nav>
+
+  <div class="crm-sheet" id="crm-sheet" hidden><div class="crm-sheet-ic" id="crm-sheet-ic" role="dialog" aria-modal="true"></div></div>
+  <div class="crm-toast" id="crm-toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+  <script src="uygulama.js?v=1"></script><script src="auth.js?v=20261115a"></script>
+  <script src="crm-sozluk.js?v=1"></script>
+  <script src="crm.js?v=1"></script>
+</body>
+</html>
