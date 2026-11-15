@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" data-baslik-en="CRM — Derin Record">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -148,6 +148,30 @@
     .crm-alanlar dt { font-size: 10px; font-weight: 900; letter-spacing: .14em; color: var(--c-soluk); text-transform: uppercase; }
     .crm-alanlar dd { margin: 3px 0 0; font-size: 14px; overflow-wrap: anywhere; white-space: pre-line; }
 
+    /* Ödeme → Gelir */
+    .crm-ozet { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 24px; }
+    .crm-ozet > div { padding: 16px 16px 14px; border-top: 2px solid var(--c-altin); border-radius: 0 0 8px 8px; background: var(--c-cam); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+    .crm-ozet > div.ana { grid-column: 1 / -1; border-top-color: var(--c-yesil); }
+    .crm-ozet > div.bekle { border-top-color: rgba(255,255,255,.25); }
+    .crm-ozet span { display: block; font-size: 10px; font-weight: 900; letter-spacing: .16em; color: var(--c-soluk); margin-bottom: 8px; }
+    .crm-ozet b { display: flex; align-items: baseline; gap: 4px; font-size: clamp(24px, 7vw, 32px); font-weight: 300; font-variant-numeric: tabular-nums; line-height: 1; }
+    .crm-ozet .ana b { font-size: clamp(38px, 12vw, 54px); color: var(--c-yesil); }
+    .crm-ozet b em { font-style: normal; font-size: .62em; color: var(--c-altin2); }
+    .crm-ozet .bekle b { color: #c7c3be; }
+    .crm-ozet small { display: block; margin-top: 8px; font-size: 11px; color: var(--c-soluk); }
+    .crm-aylar { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 2px; }
+    .crm-aylar > li > button { width: 100%; display: grid; grid-template-columns: 74px 1fr auto; align-items: center; gap: 12px; min-height: 48px; padding: 6px 4px;
+      background: none; border: 0; border-bottom: 1px solid rgba(255,255,255,.07); color: #f4f1e9; font: 700 14px Arial, sans-serif; text-align: left; cursor: pointer; }
+    .crm-aylar > li.bos > button { color: var(--c-soluk); cursor: default; font-weight: 400; }
+    .crm-ay-cubuk { height: 8px; border-radius: 8px; background: rgba(255,255,255,.06); overflow: hidden; }
+    .crm-ay-cubuk i { display: block; height: 100%; border-radius: 8px; background: var(--c-yesil); }
+    .crm-ay-tutar { font-variant-numeric: tabular-nums; min-width: 82px; text-align: right; }
+    .crm-ay-satis { list-style: none; margin: 4px 0 10px; padding: 0 0 0 12px; border-left: 2px solid var(--c-yesil); display: grid; gap: 8px; }
+    .crm-ay-satis li { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: #d9d5cf; }
+    .crm-ay-satis li span:first-child { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+    .crm-ay-satis li span:last-child { text-align: right; font-weight: 800; white-space: nowrap; }
+    .crm-ay-satis small { display: block; font-weight: 400; color: var(--c-soluk); }
+
     /* Alt sekme çubuğu */
     .crm-sekmeler { position: fixed; left: 0; right: 0; top: auto !important; bottom: 0; border-radius: 0; z-index: 40; display: grid; grid-template-columns: 1fr 1fr 84px 1fr; align-items: end;
       padding: 6px 8px calc(6px + var(--c-alt)); background: rgba(9,9,11,.94); border-top: 1px solid rgba(255,255,255,.1); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
@@ -212,12 +236,13 @@
     @media (prefers-reduced-motion: reduce) { .crm-sheet-ic, .crm-toast { transition: none; } }
   </style>
   <link rel="stylesheet" href="mobil.css?v=5">
+  <link rel="stylesheet" href="dil.css?v=2026102401">
   <link rel="stylesheet" href="arka-plan.css?v=1">
 </head>
 <body>
   <div class="arka" aria-hidden="true"><i class="p"></i><i class="s"></i><i class="m"></i><b class="t"></b><b class="t2"></b></div>
   <header class="header">
-    <a class="home" href="index.html"><span>←</span> ANA SAYFA</a>
+    <a class="home" href="index.html" data-i18n="ortak.anaSayfa"><span>←</span> ANA SAYFA</a>
     <div class="wordmark">DERİN<br>RECORD<b>•</b></div>
   </header>
   <main class="crm-main">
@@ -242,6 +267,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
   <script src="uygulama.js?v=1"></script><script src="auth.js?v=20261115a"></script>
   <script src="crm-sozluk.js?v=1"></script>
-  <script src="crm.js?v=1"></script>
+  <script src="crm.js?v=2"></script>
+<script src="dil.js?v=2026110101" defer></script>
 </body>
 </html>

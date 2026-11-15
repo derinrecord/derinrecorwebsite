@@ -586,9 +586,52 @@ insert into public.crm_sahip(user_id)
 select id from public.profiles where role = 'admin' and full_name = 'Derin Record'
 on conflict do nothing;
 
+-- ---------- Gelir: aylık döküm (15 Kasım 2026) ----------
+-- Antrenörlere tek parça satışı (Projelerim → SATIN AL, supabase/parca-satin-alma.sql) aylık gelire
+-- düşer. Veri kopyalanmaz: project_tracks'tan okunur; ay = ödeme onayı (odendi_at) İstanbul saatiyle.
+-- Mekân abonelikleri (Faz 3) geldiğinde her aya 'abonelik' alanı eklenecek; 'toplam' ikisini toplar.
+create or replace function public.crm_gelir(p_yil int default null) returns jsonb
+language plpgsql stable as $$
+declare v_yil int := coalesce(p_yil, extract(year from public.crm_bugun())::int);
+begin
+  perform public.crm_yetki_kontrol();
+  return (
+    with satis as (
+      select t.id, t.label, coalesce(t.satin_alma_tutar, 0) as tutar, t.odendi_at,
+             extract(month from (t.odendi_at at time zone 'Europe/Istanbul'))::int as ay,
+             m.title as proje, p.full_name as antrenor
+        from public.project_tracks t
+        left join public.music_projects m on m.id = t.project_id
+        left join public.profiles p on p.id = m.coach_id
+       where t.satin_alma_durum = 'odendi' and t.odendi_at is not null
+         and extract(year from (t.odendi_at at time zone 'Europe/Istanbul'))::int = v_yil
+    ), aylar as (
+      select g.ay,
+             coalesce(sum(s.tutar), 0) as parca,
+             count(s.id)::int as parca_adet,
+             coalesce(jsonb_agg(jsonb_build_object('parca', s.label, 'proje', s.proje, 'antrenor', s.antrenor, 'tutar', s.tutar, 'odendi_at', s.odendi_at)
+                                order by s.odendi_at desc) filter (where s.id is not null), '[]'::jsonb) as satislar
+        from generate_series(1, 12) g(ay) left join satis s on s.ay = g.ay
+       group by g.ay
+    )
+    select jsonb_build_object(
+      'yil', v_yil,
+      'bugun', public.crm_bugun(),
+      'yillar', (select coalesce(jsonb_agg(distinct y order by y), '[]'::jsonb) from (
+                   select extract(year from (odendi_at at time zone 'Europe/Istanbul'))::int y from public.project_tracks where satin_alma_durum = 'odendi' and odendi_at is not null
+                   union select extract(year from public.crm_bugun())::int) q),
+      'aylar', (select jsonb_agg(jsonb_build_object('ay', ay, 'parca', parca, 'parca_adet', parca_adet, 'toplam', parca, 'satislar', satislar) order by ay) from aylar),
+      'yil_toplam', (select coalesce(sum(parca), 0) from aylar),
+      'bekleyen', (select jsonb_build_object('tutar', coalesce(sum(satin_alma_tutar), 0), 'adet', count(*)::int)
+                     from public.project_tracks where satin_alma_durum in ('istendi', 'dekont'))
+    ));
+end $$;
+revoke execute on function public.crm_gelir(int) from public, anon;
+grant execute on function public.crm_gelir(int) to authenticated;
+
 -- ---------- GERİ ALMA (gerekirse elle çalıştır) ----------
 -- drop table if exists public.crm_task, public.crm_activity, public.crm_contact, public.crm_account, public.crm_setting, public.crm_sahip cascade;
--- drop function if exists public.crm_ajanda(int,uuid), public.crm_firma(bigint), public.crm_firmalar(jsonb), public.crm_satir(public.crm_account),
+-- drop function if exists public.crm_gelir(int), public.crm_ajanda(int,uuid), public.crm_firma(bigint), public.crm_firmalar(jsonb), public.crm_satir(public.crm_account),
 --   public.crm_mukerrer(text,text,bigint), public.crm_firma_ekle(jsonb), public.crm_asama(bigint,text,text,jsonb), public.crm_gorev_iptal(bigint),
 --   public.crm_gorev_ertele(bigint,date,time,boolean,text), public.crm_gorev_ekle(bigint,jsonb), public.crm_gorev_tamamla(bigint,jsonb,jsonb),
 --   public.crm_aktivite_ekle(jsonb), public.crm_aktivite_yaz(bigint,jsonb), public.crm_gorev_yaz(bigint,jsonb), public.crm_yetki_kontrol(),

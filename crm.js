@@ -103,6 +103,7 @@
     if (g.ad === 'bugun') await ajandaCiz();
     else if (g.ad === 'firmalar') await firmalarCiz(true);
     else if (g.ad === 'firma') await firmaCiz(g.id);
+    else if (g.ad === 'odeme') await odemeCiz();
     if (g.ad !== 'firmalar') window.scrollTo(0, 0);
   }
   function yenile() { const g = gorunum(); if (g.ad === 'bugun') ajandaCiz(); else if (g.ad === 'firma') firmaCiz(g.id); else if (g.ad === 'firmalar') firmalarCiz(false, true); }
@@ -628,10 +629,43 @@
     });
   }
 
-  // ───────── ⑥ Ödeme (Faz 3) ─────────
-  function odemeCiz() {
-    $('v-odeme').innerHTML = `<div class="crm-bas"><p class="crm-eyebrow">ABONELİKLER</p><h1>ÖDEME<span>.</span></h1></div>
-      <p class="crm-bos buyuk">Mekân aboneliklerinin vade ve tahsilat takibi bir sonraki aşamada burada olacak. Şimdilik firmalar “Müşteri” aşamasına alınabilir; ödeme kayıtları o zaman eklenecek.</p>`;
+  // ───────── ⑥ Ödeme → Gelir ─────────
+  // Antrenörlere tek parça satışları (Projelerim → SATIN AL) onaylandığı aya düşer: crm_gelir().
+  // Mekân abonelikleri (Faz 3) geldiğinde her aya ayrı sütun olarak eklenecek.
+  const AY_AD = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  let gelirYil = null;
+  async function odemeCiz() {
+    const v = $('v-odeme');
+    if (!v.dataset.dolu) v.innerHTML = '<p class="crm-yukleniyor">Gelir yükleniyor…</p>';
+    let d;
+    try { d = await rpc('crm_gelir', { p_yil: gelirYil }); }
+    catch (e) { v.innerHTML = `<p class="crm-hata">${kacis(S.hataMetni(e))}</p>`; return; }
+    v.dataset.dolu = '1';
+    const [by, bm] = parca(d.bugun); const buYil = d.yil === by;
+    const enCok = Math.max(1, ...d.aylar.map(a => Number(a.toplam)));
+    const buAy = buYil ? d.aylar[bm - 1] : null;
+    const tl = n => Number(n || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+    const aylar = d.aylar.filter(a => !buYil || a.ay <= bm).reverse();
+    v.innerHTML = `<div class="crm-bas"><p class="crm-eyebrow">GELİR · ${d.yil}</p><h1>ÖDEME<span>.</span></h1></div>
+      ${d.yillar.length > 1 ? `<div class="crm-ufuk" role="group" aria-label="Yıl">${d.yillar.map(y => `<button type="button" data-yil="${y}" class="${y === d.yil ? 'on' : ''}" aria-pressed="${y === d.yil}">${y}</button>`).join('')}</div>` : ''}
+      <div class="crm-ozet">
+        ${buAy ? `<div class="ana"><span>${AY_AD[bm - 1].toLocaleUpperCase('tr')}</span><b>${tl(buAy.toplam)}<em>₺</em></b><small>${buAy.parca_adet} parça satışı</small></div>` : ''}
+        <div><span>${d.yil} TOPLAM</span><b>${tl(d.yil_toplam)}<em>₺</em></b></div>
+        <div class="bekle"><span>ONAY BEKLEYEN</span><b>${tl(d.bekleyen.tutar)}<em>₺</em></b><small>${d.bekleyen.adet} parça · henüz gelire sayılmadı</small></div>
+      </div>
+      <section class="crm-blok"><h2>Aylar</h2>
+        <ul class="crm-aylar">${aylar.map(a => `<li${a.parca_adet ? '' : ' class="bos"'}>
+          <button type="button" data-ay="${a.ay}"${a.parca_adet ? '' : ' disabled'} aria-expanded="false">
+            <span class="crm-ay-ad">${AY_AD[a.ay - 1]}</span>
+            <span class="crm-ay-cubuk" aria-hidden="true"><i style="width:${Math.round(Number(a.toplam) / enCok * 100)}%"></i></span>
+            <span class="crm-ay-tutar">${Number(a.toplam) ? tl(a.toplam) + ' ₺' : '—'}</span>
+          </button>
+          ${a.parca_adet ? `<ul class="crm-ay-satis" hidden>${a.satislar.map(x => `<li><span><b>${kacis(x.antrenor || 'Antrenör kaydedilmedi')}</b>${kacis([x.proje, x.parca].filter(Boolean).join(' · '))}</span><span>${tl(x.tutar)} ₺<small>${kacis(new Date(x.odendi_at).toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'short' }))}</small></span></li>`).join('')}</ul>` : ''}
+        </li>`).join('')}</ul>
+        <p class="crm-kucuk-not">Parça satışları, Projelerim’de ödemeyi onayladığın güne göre o aya yazılır. Mekân abonelikleri sonraki aşamada bu tabloya eklenecek.</p>
+      </section>`;
+    v.querySelectorAll('[data-yil]').forEach(b => b.onclick = () => { gelirYil = Number(b.dataset.yil); odemeCiz(); });
+    v.querySelectorAll('[data-ay]').forEach(b => b.onclick = () => { const l = b.nextElementSibling; if (!l) return; l.hidden = !l.hidden; b.setAttribute('aria-expanded', String(!l.hidden)); });
   }
 
   // ───────── Başlangıç ─────────
@@ -650,7 +684,6 @@
     $('crm-sheet').addEventListener('click', e => { if (e.target.id === 'crm-sheet') sheetKapat(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('crm-sheet').hidden) sheetKapat(); });
     $('crm-ekle').onclick = hizliEkle;
-    odemeCiz();
     window.addEventListener('hashchange', ciz);
     await ciz();
     // Derin link: crm.html?task=<id> görevi doğrudan "Tamamla" akışında açar; ?firma=<id> kartı açar.

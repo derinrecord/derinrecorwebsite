@@ -12,7 +12,7 @@ const kisit = (sutun) => { const m = sql.match(new RegExp(sutun + "[^\\n]*\\n?[^
 
 test('sayfa: oturum, sözlük ve ekran betikleri; arama motoruna kapalı; mobil katman', () => {
   const h = oku('crm.html');
-  for (const b of ['config.js', 'auth.js?v=20261115a', 'crm-sozluk.js?v=1', 'crm.js?v=1']) assert.ok(h.includes(`src="${b}"`), b);
+  for (const b of ['config.js', 'auth.js?v=20261115a', 'crm-sozluk.js?v=1', 'crm.js?v=2']) assert.ok(h.includes(`src="${b}"`), b);
   assert.ok(h.indexOf('crm-sozluk.js') < h.indexOf('crm.js?v'), 'sözlük önce yüklenmeli');
   assert.match(h, /<meta name="robots" content="noindex">/);
   assert.match(h, /href="mobil\.css\?v=5"/);
@@ -121,4 +121,15 @@ test('XSS: kullanıcı verisi kaçışla basılır; derin link görevi açar', (
 
 test('şartname yayına çıkmaz', () => {
   assert.match(oku('.vercelignore'), /^docs\/?$/m);
+});
+
+test('gelir: parça satışları onaylandığı aya düşer; veri kopyalanmaz; yalnız CRM sahibi', () => {
+  assert.match(sql, /create or replace function public\.crm_gelir\(p_yil int default null\)/);
+  assert.match(sql, /function public\.crm_gelir[^]*?crm_yetki_kontrol\(\)[^]*?from public\.project_tracks t[^]*?satin_alma_durum = 'odendi'/);
+  assert.match(sql, /odendi_at at time zone 'Europe\/Istanbul'/);
+  assert.match(sql, /satin_alma_durum in \('istendi', 'dekont'\)/, 'onay bekleyenler ayrı gösterilir');
+  assert.doesNotMatch(sql, /insert into public\.crm_\w+[^;]*project_tracks/, 'satışlar CRM tablosuna kopyalanmaz');
+  const js = oku('crm.js');
+  assert.match(js, /rpc\('crm_gelir', \{ p_yil: gelirYil \}\)/);
+  assert.match(js, /henüz gelire sayılmadı/);
 });
