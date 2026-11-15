@@ -100,11 +100,11 @@
     const t = tutarGoster(tr.satin_alma_tutar);
     if (kucuk) {
       if (!t) return `<div class="sa-fiyat sa-fiyat--kucuk bos"><small>${L('tutar yakında', 'price soon')}</small></div>`;
-      return `<div class="sa-fiyat sa-fiyat--kucuk"><b>${kacis(t.replace(/ ₺$/, ''))}<em class="sa-lira">₺</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></div>`;
+      return `<div class="sa-fiyat sa-fiyat--kucuk"><b>${kacis(t.replace(/ ₺$/, ''))}<em class="sa-lira">₺</em></b></div>`;
     }
     if (!t) return `<div class="sa-fiyat bos"><span>${L('TUTAR', 'PRICE')}</span><b>—</b><small>${L('yakında', 'soon')}</small></div>`;
     const [sayi] = t.split(' ');
-    return `<div class="sa-fiyat"><span>${L('TUTAR', 'PRICE')}</span><b>${kacis(sayi)}<em class="sa-lira">₺</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></div>`;
+    return `<div class="sa-fiyat"><span>${L('TUTAR', 'PRICE')}</span><b>${kacis(sayi)}<em class="sa-lira">₺</em></b></div>`;
   }
 
   // ---- Müşteri kutusu (indirme kapalıyken parça odasında) ----
@@ -163,7 +163,7 @@
           <h3 class="sa-h sa-h--kucuk">${kacis(etiket)}</h3>
         </div>
         <label class="sa-fiyat sa-fiyat--yaz"><span>${L('TUTAR', 'PRICE')}</span>
-          <b><input type="text" class="sa-tutar-kutu" inputmode="decimal" data-satutar="${id}" value="${kacis(tutarDeger)}" placeholder="5.500" aria-label="${L('Bu parçanın KDV dahil ücreti (₺)', 'Price of this track incl. VAT (₺)')}"><em class="sa-lira">₺</em></b><small class="sa-kdv">${L('KDV dahil', 'incl. VAT')}</small></label>
+          <b><input type="text" class="sa-tutar-kutu" inputmode="decimal" data-satutar="${id}" value="${kacis(tutarDeger)}" placeholder="5.500" aria-label="${L('Bu parçanın ücreti (₺)', 'Price of this track (₺)')}"><em class="sa-lira">₺</em></b></label>
       </div>
       ${adimlar(d, L)}
       <div class="sa-dugmeler">
