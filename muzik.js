@@ -32,18 +32,40 @@
   const durumYaz = (m, h) => { const el = $('#mk-durum'); if (el) { el.textContent = m || ''; el.classList.toggle('hata', !!h); } };
   const kapakAdres = p => p.kapak_path ? R2.adres('muzik-onizleme', p.kapak_path) : 'assets/logo.png';
 
-  function dalgaSvg(dalga, renk) {
-    const v = Array.isArray(dalga) && dalga.length ? dalga : Array.from({ length: 64 }, () => 18);
-    const n = v.length, w = 100 / n;
-    const cubuk = v.map((x, i) => {
-      const h = Math.max(4, Math.min(100, Number(x) || 0));
-      return `<rect x="${(i * w + w * 0.2).toFixed(2)}" y="${((100 - h) / 2).toFixed(2)}" width="${(w * 0.6).toFixed(2)}" height="${h.toFixed(2)}" rx="0.6"/>`;
-    }).join('');
-    return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" fill="${renk}">${cubuk}</svg>`;
+  // Gerçekçi dalga formu: kayıtlı ayrıntılı değerler (480) kutunun gerçek piksel
+  // genişliğine göre 2 px çubuk + 1 px boşluk olacak şekilde indirilir (her çubuk
+  // kapsadığı dilimlerin en yükseği). Sessiz yerler 1 px'lik noktalı çizgi olur.
+  const dalgaVeri = {};
+  function dalgaSvg(dalga, renk, W, H) {
+    const v = Array.isArray(dalga) && dalga.length ? dalga : [];
+    const M = Math.max(20, Math.floor(W / 3));
+    let r = '';
+    for (let i = 0; i < M; i++) {
+      let en = 1;
+      if (v.length) {
+        const a = Math.floor(i * v.length / M), b = Math.max(a + 1, Math.floor((i + 1) * v.length / M));
+        for (let j = a; j < b; j++) if (v[j] > en) en = v[j];
+      }
+      const h = Math.max(1, Math.round(en / 100 * H));
+      r += `<rect x="${i * 3}" y="${Math.round((H - h) / 2)}" width="2" height="${h}"/>`;
+    }
+    return `<svg viewBox="0 0 ${M * 3} ${H}" width="${M * 3}" height="${H}" aria-hidden="true" fill="${renk}" shape-rendering="crispEdges">${r}</svg>`;
   }
   function dalgaKutusu(anahtar, dalga, ad) {
-    return `<button type="button" class="mk-dalga" data-sar="${anahtar}" aria-label="${kacis(ad)}: dinlemeye buradan başla">${dalgaSvg(dalga, '#77747b')}<span class="mk-ilerleme" data-ilerleme="${anahtar}" style="position:absolute;inset:0">${dalgaSvg(dalga, '#f4f1e9')}</span></button>`;
+    dalgaVeri[anahtar] = dalga;
+    return `<button type="button" class="mk-dalga" data-sar="${anahtar}" aria-label="${kacis(ad)}: dinlemeye buradan başla"><span class="mk-taban"></span><span class="mk-ilerleme" data-ilerleme="${anahtar}"></span></button>`;
   }
+  function dalgalariCiz() {
+    document.querySelectorAll('.mk-dalga').forEach(k => {
+      const W = Math.floor(k.clientWidth), H = Math.floor(k.clientHeight) || 48;
+      if (!W) return;
+      const v = dalgaVeri[k.dataset.sar];
+      k.querySelector('.mk-taban').innerHTML = dalgaSvg(v, '#6f6c73', W, H);
+      k.querySelector('.mk-ilerleme').innerHTML = dalgaSvg(v, '#f4f1e9', W, H);
+    });
+  }
+  let boyutZaman;
+  window.addEventListener('resize', () => { clearTimeout(boyutZaman); boyutZaman = setTimeout(dalgalariCiz, 150); });
 
   // ---------- Süzme ----------
   function secenekler(alan) {
@@ -123,6 +145,8 @@
         ${d.acik[p.id] ? versiyonCiz(p) : ''}
       </div>`;
     }).join('');
+    dalgalariCiz();
+    ilerlemeGuncelle();
   }
 
   function lisanslarCiz() {
@@ -219,10 +243,11 @@
     ses.play().catch(() => { d.calan = null; listeCiz(); durumYaz('Önizleme çalınamadı.', true); });
     listeCiz();
   }
-  ses.addEventListener('timeupdate', () => {
+  function ilerlemeGuncelle() {
     const el = d.calan && document.querySelector(`[data-ilerleme="${d.calan}"]`);
     if (el && ses.duration) el.style.clipPath = `inset(0 ${100 - ses.currentTime / ses.duration * 100}% 0 0)`;
-  });
+  }
+  ses.addEventListener('timeupdate', ilerlemeGuncelle);
   ses.addEventListener('ended', () => { d.calan = null; listeCiz(); });
 
   // ---------- Satın alma ----------
