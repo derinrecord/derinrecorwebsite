@@ -20,7 +20,7 @@
   const istemci = () => window.DerinAuth && window.DerinAuth.client;
   const v = {
     sanatci: null, ozel: {}, parcalar: [], versiyonlar: [], beyanlar: {}, satislar: [], havuz: null,
-    sekme: 'sarkilar', duzenle: null, versiyonFormu: null, ay: ''
+    sekme: 'sarkilar', duzenle: null, versiyonFormu: null, ay: '', kirpik: {}, asil: {}
   };
   const yaz = (id, m, h) => { const el = $(id); if (el) { el.textContent = m || ''; el.classList.toggle('hata', !!h); } };
   const fiyatYaz = n => (SA && SA.tutarGoster(n)) || '—';
@@ -81,7 +81,8 @@
     const fotoAdres = s.foto_path ? R2.adres('muzik-onizleme', s.foto_path) : '';
     return `
       <div class="sn-foto-sec">${fotoAdres ? `<img src="${kacis(fotoAdres)}" alt="">` : '<span class="sn-yok"></span>'}
-        <label style="flex:1">Profil fotoğrafı (kare, en az 800 piksel)<input type="file" name="foto" accept="image/jpeg,image/png,image/webp"></label></div>
+        <label style="flex:1">Profil fotoğrafı — seçince yerini ve yakınlığını ayarlarsın<input type="file" name="foto" accept="image/jpeg,image/png,image/webp"></label>
+        <button type="button" class="se-dugme ikincil" data-ayarla="foto" hidden>Yeniden ayarla</button></div>
       <div class="se-yan-yana">
         <label>Sanatçı adı *<input name="ad" maxlength="80" required value="${kacis(s.ad || '')}" placeholder="Sahnede kullandığın ad"></label>
         <label>Şehir<input name="sehir" maxlength="60" value="${kacis(s.sehir || '')}" placeholder="Örn. İzmir"></label>
@@ -123,6 +124,7 @@
   }
 
   function ciz() {
+    v.kirpik = {}; v.asil = {};
     const kok = $('#sp-uygulama');
     const s = v.sanatci;
     if (!s) {
@@ -200,7 +202,9 @@
       <p class="se-aciklama" style="margin:0">Ana kayıt WAV olsun (en az 44,1 kHz / 24 bit). Kapak kare, en az 1500 × 1500 piksel. Önizleme MP3'ü otomatik hazırlanır.</p>
       <form class="se-form" id="sp-sarki" data-parca="${p ? p.id : ''}">
         <label>Ses dosyası${p ? ' (değiştirmeyeceksen boş bırak)' : ' *'}<input type="file" name="dosya" accept=".wav,.aif,.aiff,.flac,.mp3,audio/*"></label>
-        <label>Kapak görseli<input type="file" name="kapak" accept="image/jpeg,image/png,image/webp"></label>
+        <div class="sn-foto-sec sn-kapak-sec">${p && p.kapak_path ? `<img src="${kacis(R2.adres('muzik-onizleme', p.kapak_path))}" alt="" style="border-radius:8px">` : '<span class="sn-yok" style="border-radius:8px"></span>'}
+          <label style="flex:1">Kapak görseli — seçince kırpıp ayarlarsın<input type="file" name="kapak" accept="image/jpeg,image/png,image/webp"></label>
+          <button type="button" class="se-dugme ikincil" data-ayarla="kapak" hidden>Yeniden ayarla</button></div>
         <div class="se-yan-yana">
           <label>Şarkı adı *<input name="ad" maxlength="120" value="${kacis(p ? p.ad : '')}" placeholder="Boşsa dosya adı"></label>
           <label>Tür<input name="tur" maxlength="40" value="${kacis(p && p.tur || '')}" placeholder="Örn. Sinematik"></label>
@@ -294,7 +298,7 @@
     };
   }
   async function fotoKaydet(f, sanatciId) {
-    const dosya = f.foto.files[0];
+    const dosya = v.kirpik.foto || f.foto.files[0];
     if (!dosya) return;
     const yol = await MY.gorselYukle('sanatci/' + sanatciId, 'foto', dosya);
     const err = await tekSatir(istemci().from('sanatcilar').update({ foto_path: yol }).eq('id', sanatciId).select('id'));
@@ -346,7 +350,7 @@
     const f = ev.target, c = istemci();
     const gonder = ev.submitter ? ev.submitter.dataset.gonder === '1' : true;
     const parcaId = f.dataset.parca || null;
-    const ses = f.dosya.files[0], kapak = f.kapak.files[0];
+    const ses = f.dosya.files[0], kapak = v.kirpik.kapak || f.kapak.files[0];
     if (!parcaId && (!ses || !MY.SES.test(ses.name))) { yaz('#sp-sarki-durum', 'Şarkının ses dosyasını seç (WAV önerilir).', true); return; }
     if (ses && !MY.SES.test(ses.name)) { yaz('#sp-sarki-durum', 'Ses dosyası WAV, AIFF, FLAC ya da MP3 olmalı.', true); return; }
     const beyan = ek1Oku(f);
@@ -457,6 +461,23 @@
     await yukle();
   }
 
+  // Fotoğraf ve kapak yüklenmeden önce ayarlanır (gorsel-kirp.js): kare kırpılır.
+  async function gorselAyarla(form, ad, dosya) {
+    const K = window.DerinGorselKirp;
+    if (!K || !dosya) return;
+    const foto = ad === 'foto';
+    const blob = await K.ac(dosya, { yuvarlak: foto, boyut: foto ? 1200 : 1500, baslik: foto ? 'Profil fotoğrafını ayarla' : 'Kapağı ayarla' });
+    const kutu = form[ad].closest('.sn-foto-sec');
+    if (!blob) { if (!v.kirpik[ad]) form[ad].value = ''; return; }
+    v.asil[ad] = dosya;
+    v.kirpik[ad] = new File([blob], ad + '.jpg', { type: 'image/jpeg' });
+    const onizleme = document.createElement('img');
+    onizleme.src = URL.createObjectURL(blob); onizleme.alt = '';
+    if (!foto) onizleme.style.borderRadius = '8px';
+    kutu.firstElementChild.replaceWith(onizleme);
+    kutu.querySelector('[data-ayarla]').hidden = false;
+  }
+
   function bagla() {
     document.addEventListener('submit', ev => {
       const t = ev.target;
@@ -469,6 +490,10 @@
     document.addEventListener('change', async ev => {
       const t = ev.target;
       if (t.dataset.radyo) radyoIzni(t.dataset.radyo, t.checked);
+      else if ((t.name === 'foto' || t.name === 'kapak') && t.type === 'file' && t.files && t.files[0]) {
+        v.kirpik[t.name] = null;
+        gorselAyarla(t.form, t.name, t.files[0]);
+      }
       else if (t.name === 'ay' && t.closest('#sp-ay') && /^\d{4}-\d{2}$/.test(t.value)) { v.ay = t.value; await havuzYukle(); ciz(); }
       else if (t.name === 'birlik' && t.closest('#sp-sarki')) {
         const f = t.closest('form'); const kayitli = t.value === 'evet';
@@ -477,7 +502,8 @@
     });
     document.addEventListener('click', ev => {
       const b = ev.target.closest('button'); if (!b) return;
-      if (b.dataset.sekme) { v.sekme = b.dataset.sekme; ciz(); }
+      if (b.dataset.ayarla) gorselAyarla(b.form, b.dataset.ayarla, v.asil[b.dataset.ayarla]);
+      else if (b.dataset.sekme) { v.sekme = b.dataset.sekme; ciz(); }
       else if (b.dataset.duzenle) { v.duzenle = b.dataset.duzenle; ciz(); const f = $('#sp-sarki'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       else if (b.hasAttribute('data-vazgec')) { v.duzenle = null; ciz(); }
       else if (b.dataset.versiyonAc) { v.versiyonFormu = b.dataset.versiyonAc; ciz(); }
