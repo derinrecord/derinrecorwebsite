@@ -146,3 +146,15 @@ test('ses efekti deposu: yönetici yazar, ödeyen müşteri okur', () => {
   assert.equal(yetki('oku', 'efekt/a/b.wav', false, null, true).kod, 401);
   assert.equal(yetki('oku', 'efekt-onizleme/a/b.mp3', false, BEN, true).kod, 403); // önizleme imzasız, açık adresten
 });
+
+// Müzik lisansı (19 Kasım): muzik/ ve muzik-onizleme/ yalnız yöneticiye yazılır;
+// muzik/ dosyasını müşteri yalnız lisansı ödenmişse okur.
+test('müzik lisans deposu: yönetici yazar, lisansı ödenen okur', () => {
+  for (const key of ['muzik/a/b.wav', 'muzik-onizleme/a/b.mp3']) {
+    assert.equal(yetki('yukle', key, true, null), null, key);
+    assert.equal(yetki('yukle', key, false, BEN).kod, 403, key);
+  }
+  assert.equal(yetki('oku', 'muzik/a/b.wav', false, BEN, true), null);
+  assert.equal(yetki('oku', 'muzik/a/b.wav', false, BEN, false).kod, 403);
+  assert.equal(yetki('oku', 'muzik-onizleme/a/b.mp3', false, BEN, true).kod, 403);
+});

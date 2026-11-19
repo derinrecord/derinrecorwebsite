@@ -18,6 +18,7 @@
       <div class="ou-acilir">
         <button class="ou-tetik" type="button" aria-expanded="false" aria-controls="ou-muzik"><span data-i18n="nav.muzik">Müzik</span>${ok}</button>
         <div class="ou-panel" id="ou-muzik">
+          ${alt('muzik.html', 'nav.katalog', 'Müzik kataloğu', 'nav.katalogAlt', 'Dinle, lisansla, stemleri indir')}
           ${alt('index.html#hizmetler', 'nav.spor', 'Spor Müziği', 'nav.sporAlt', 'Aerobik, ritmik, artistik, akrobatik, aero dans, çocuk fitness')}
           ${alt('coffee.html', 'nav.mekan', 'Mekân Müziği', 'nav.mekanAlt', 'Kafe ve mağazalar için canlı radyo')}
           ${alt('index.html#demolar', 'nav.demolar', 'Demolar', 'nav.demolarAlt', 'Dinlemeye hazır örnek parçalar')}

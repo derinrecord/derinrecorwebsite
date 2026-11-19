@@ -28,7 +28,9 @@
     'dj-audio': 'dj/',
     'demo-audio': 'demo/', // branş sayfası demo şarkıları (herkese açık okunur)
     'efekt-audio': 'efekt/', // satılan ses efekti WAV'ları (gizli; ödeyen müşteri imzalı okur)
-    'efekt-onizleme': 'efekt-onizleme/' // ses efekti MP3 önizlemeleri (herkese açık)
+    'efekt-onizleme': 'efekt-onizleme/', // ses efekti MP3 önizlemeleri (herkese açık)
+    'muzik-audio': 'muzik/', // lisanslı şarkı WAV'ları ve stemler (gizli; lisansı ödenen okur)
+    'muzik-onizleme': 'muzik-onizleme/' // şarkı MP3 önizlemeleri ve kapaklar (herkese açık)
   };
 
   // Her yol parçası ayrı kodlanır; "/" ayıraç olarak kalmalı.

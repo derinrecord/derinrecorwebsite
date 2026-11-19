@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="tr" data-dil-otomatik data-baslik-en="Music Admin — Derin Record">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Müzik ve Lisans Yönetimi — Derin Record</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="favicon.ico" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="mobil.css?v=5" />
+  <link rel="stylesheet" href="auth.css?v=20261101a">
+  <link rel="stylesheet" href="dil.css?v=2026102401">
+  <link rel="stylesheet" href="ses-efektleri.css?v=2">
+<link rel="stylesheet" href="ortak-ust.css?v=3">
+</head>
+<body class="se-sayfa">
+  <header class="header"></header><script src="ortak-ust.js?v=3"></script>
+  <main class="se-yonetim" data-dil-yok>
+    <div>
+      <p style="margin:0 0 6px;color:#a8a5a0;font-size:13px;letter-spacing:1.2px">HESABIM / MÜZİK VE LİSANS</p>
+      <h1 style="margin:0;font-size:32px;letter-spacing:-1px">Müzik ve lisans</h1>
+      <p style="margin:6px 0 0;color:#a8a5a0">Şarkı ekle, alternatif versiyon ve stem yükle, lisans fiyatlarını yaz, lisans satışlarını onayla. Önizlemeler filigransız MP3 olarak otomatik hazırlanır. <a href="muzik.html" style="color:#d8bb2c">Kataloğu gör →</a></p>
+    </div>
+    <p class="se-durum" id="my-durum" role="status" aria-live="polite"></p>
+    <div class="se-kutu" id="my-kilit" hidden><p style="margin:0">Bu ekran yalnız yöneticiye açık.</p><button type="button" class="se-dugme" id="my-giris" style="align-self:flex-start">Giriş yap</button></div>
+
+    <div id="my-uygulama" hidden style="display:flex;flex-direction:column;gap:22px">
+      <div class="se-ikili">
+        <section class="se-kutu" aria-labelledby="my-ekle-baslik">
+          <h2 id="my-ekle-baslik" style="margin:0;font-size:20px">Yeni şarkı ekle</h2>
+          <form class="se-form" id="my-ekle">
+            <label>Ses dosyası (WAV önerilir)<input type="file" name="dosya" accept=".wav,.aif,.aiff,.flac,.mp3,audio/*"></label>
+            <label>Kapak görseli (isteğe bağlı, kare)<input type="file" name="kapak" accept="image/jpeg,image/png,image/webp"></label>
+            <div class="se-yan-yana">
+              <label>Şarkı adı<input name="ad" maxlength="120" placeholder="Boşsa dosya adı"></label>
+              <label>Sanatçı<input name="sanatci" maxlength="120" value="Derin Record"></label>
+            </div>
+            <div class="se-yan-yana">
+              <label>Tür<input name="tur" maxlength="40" list="my-tur-liste" placeholder="Örn. Sinematik"><datalist id="my-tur-liste"></datalist></label>
+              <label>BPM<input name="bpm" inputmode="numeric" placeholder="Örn. 120"></label>
+            </div>
+            <label>Ruh hâli<input name="ruh" placeholder="Umutlu, Enerjik, Duygusal"></label>
+            <label>Etiketler<input name="etiket" placeholder="piyano, çello, trailer"></label>
+            <label style="flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid #2a2930;border-radius:8px;font-weight:500">Eklenince hemen yayınla<input type="checkbox" name="yayinla" style="width:22px;height:22px;min-height:0;accent-color:#cb2468"></label>
+            <button type="submit" class="se-dugme">Şarkıyı ekle</button>
+            <p class="se-durum" id="my-ekle-durum" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+        <section class="se-kutu" aria-labelledby="my-tur-baslik">
+          <h2 id="my-tur-baslik" style="margin:0;font-size:20px">Lisans türleri ve fiyatlar</h2>
+          <p class="se-aciklama" style="margin:0">Tüm şarkılarda geçerli. Fiyatı boş olan tür müşteriye "Yakında" görünür ve satılamaz.</p>
+          <div id="my-turler"></div>
+          <p class="se-durum" id="my-tur-durum" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+
+      <section class="se-kutu" aria-labelledby="my-liste-baslik">
+        <h2 id="my-liste-baslik" style="margin:0;font-size:20px">Şarkılarım</h2>
+        <div class="se-kaydir"><table class="se-tablo">
+          <thead><tr><th>ŞARKI</th><th>VERSİYONLAR</th><th>DURUM</th><th></th></tr></thead>
+          <tbody id="my-parcalar"></tbody>
+        </table></div>
+      </section>
+
+      <section class="se-kutu" aria-labelledby="my-satis-baslik">
+        <h2 id="my-satis-baslik" style="margin:0;font-size:20px">Lisans satışları</h2>
+        <p class="se-aciklama" style="margin:0">Dekontu kontrol et; para hesabına geçtiyse "Ödeme alındı"ya bas. Müşteri ana kaydı ve bütün versiyon/stemleri indirebilir.</p>
+        <div class="se-kaydir"><table class="se-tablo">
+          <thead><tr><th>MÜŞTERİ</th><th>ŞARKI · LİSANS</th><th>TUTAR</th><th>DURUM</th><th></th></tr></thead>
+          <tbody id="my-satislar"></tbody>
+        </table></div>
+      </section>
+    </div>
+  </main>
+  <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="uygulama.js?v=1"></script><script src="auth.js?v=20261119b"></script>
+  <script src="r2-depo.js?v=5"></script><script src="satin-alma.js?v=17"></script><script src="ses-donustur.js?v=1"></script><script src="muzik-yonetim.js?v=1"></script>
+  <script src="dil.js?v=2026110101" defer></script>
+</body>
+</html>

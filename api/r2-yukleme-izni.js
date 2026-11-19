@@ -22,12 +22,17 @@ const SUPABASE_ANON = 'sb_publishable_FrRGXIb3-x8-Lzx1Ijg75w_teFbP2oa';
 // yalnız yönetici yükler/siler.
 // efekt/: satılan ses efekti WAV'ları (gizli; yalnız yönetici yükler, ödeyen
 // müşteri imzalı okur). efekt-onizleme/: herkese açık MP3 önizlemeler (19 Kasım).
-const IZINLI_ONEK = ['radyo/', 'kapak/', 'anons/', 'dj/', 'proje/', 'demo/', 'efekt/', 'efekt-onizleme/'];
+// muzik/: lisanslı şarkı WAV'ları + versiyon/stemler (gizli; lisansı ödenmiş müşteri
+// imzalı okur). muzik-onizleme/: herkese açık MP3 önizleme ve kapaklar (19 Kasım).
+const IZINLI_ONEK = ['radyo/', 'kapak/', 'anons/', 'dj/', 'proje/', 'demo/', 'efekt/', 'efekt-onizleme/', 'muzik/', 'muzik-onizleme/'];
+// Satılan dosya klasörleri → okumadan önce veritabanına sorulan izin fonksiyonu.
+const SATIS_KLASORU = { 'efekt/': 'efekt_indirebilir', 'muzik/': 'muzik_indirebilir' };
+const satisKlasoru = key => Object.keys(SATIS_KLASORU).find(o => key.startsWith(o)) || null;
 
 // İmzalı okuma ('oku') yalnız bu klasörlerde anlam taşır: radyo kovaları
 // muzik.derinrecord.com'dan imzasız okunuyor; gizli kovalar (proje/dj)
 // RLS'e benzer yetkilendirme ister.
-const OKU_ONEK = ['proje/', 'dj/', 'efekt/'];
+const OKU_ONEK = ['proje/', 'dj/', 'efekt/', 'muzik/'];
 
 const SURE = 300; // yükleme/silme adresinin geçerlilik süresi (saniye)
 const OKU_SURE = 600; // imzalı okuma (GET) adresinin geçerlilik süresi (saniye)
@@ -96,10 +101,10 @@ function imzaliAdres({ accessKeyId, secretAccessKey, bucket, key, host, yontem }
 function yetki(islem, key, yonetici, kimlik, efektIzni) {
   if (islem === 'oku' && !OKU_ONEK.some(o => key.startsWith(o))) return { kod: 403, hata: 'Bu klasör imzalı okumaya kapalı.' };
   if (yonetici) return null;
-  if (key.startsWith('efekt/') || key.startsWith('efekt-onizleme/')) {
-    if (islem !== 'oku' || !key.startsWith('efekt/')) return { kod: 403, hata: 'Ses efekti deposuna yalnızca yönetici yazabilir.' };
+  if (/^(efekt|muzik)(-onizleme)?\//.test(key)) {
+    if (islem !== 'oku' || !satisKlasoru(key)) return { kod: 403, hata: 'Satış deposuna yalnızca yönetici yazabilir.' };
     if (!kimlik) return { kod: 401, hata: 'Oturum doğrulanamadı.' };
-    return efektIzni === true ? null : { kod: 403, hata: 'Bu ses efektini indirmek için önce satın alma onaylanmalı.' };
+    return efektIzni === true ? null : { kod: 403, hata: 'Bu dosyayı indirmek için önce satın alma onaylanmalı.' };
   }
   if (key.startsWith('dj/')) return { kod: 403, hata: 'DJ deposu yalnızca yöneticilerce kullanılabilir.' };
   if (!key.startsWith('proje/')) return { kod: 403, hata: 'Bu işlem için yönetici olmanız gerekiyor.' };
@@ -168,9 +173,9 @@ module.exports = async (req, res) => {
   const kimlik = yonetici ? null : await kullaniciId(auth);
   // Ses efekti indirmesi: satın alma onaylandı mı? Karar veritabanında.
   let efektIzni = false;
-  if (!yonetici && kimlik && islem === 'oku' && key.startsWith('efekt/')) {
+  if (!yonetici && kimlik && islem === 'oku' && satisKlasoru(key)) {
     try {
-      const sor = await fetch(`${SUPABASE_URL}/rest/v1/rpc/efekt_indirebilir`, {
+      const sor = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${SATIS_KLASORU[satisKlasoru(key)]}`, {
         method: 'POST',
         headers: { apikey: SUPABASE_ANON, Authorization: auth, 'content-type': 'application/json' },
         body: JSON.stringify({ p_yol: key })
