@@ -28,11 +28,11 @@
   const rastgele = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   const liste = s => String(s || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 12);
 
-  // Süre + 480 dilimlik ayrıntılı dalga formu (0–100). Her dilimde RMS (ortalama
-  // ses gücü) doğrusal ölçekte alınır; şarkının gerçek yüklenip alçalması görünür.
-  // Sessiz kısımlar 1 olur ve sayfada noktalı ince çizgi olarak çizilir.
-  // Çizim (muzik.js) bu değerleri ekran genişliğine göre 2 px'lik çubuklara indirir.
-  const DALGA_N = 480;
+  // Süre + DAW (Ableton) tarzı ayrıntılı dalga formu: 800 dilimde gerçek tepe
+  // değerleri — her dilim için üst (en büyük pozitif) ve alt (en büyük negatif)
+  // tepe, 0–100 ölçeğinde, sırayla [üst0, alt0, üst1, alt1, …] (1600 sayı).
+  // Çizim (muzik.js) bunları ekran genişliğinde dolu bir şekil olarak çizer.
+  const DALGA_N = 800;
   async function cozumle(dosya) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return { sure: null, dalga: null };
@@ -42,21 +42,21 @@
       const kanallar = [];
       for (let k = 0; k < Math.min(2, b.numberOfChannels); k++) kanallar.push(b.getChannelData(k));
       const uzun = kanallar[0].length, adim = Math.max(1, Math.floor(uzun / DALGA_N));
-      const atla = Math.max(1, Math.floor(adim / 400)); // dilim başına ~400 örnek yeter
-      const guc = [];
+      const atla = Math.max(1, Math.floor(adim / 600));
+      const ust = [], alt = [];
+      let en = 1e-9;
       for (let i = 0; i < DALGA_N; i++) {
-        let top = 0, say = 0;
+        let mx = 0, mn = 0;
         const bas = i * adim, son = Math.min(uzun, bas + adim);
         for (let j = bas; j < son; j += atla) {
-          for (const ch of kanallar) { top += ch[j] * ch[j]; say++; }
+          for (const ch of kanallar) { const x = ch[j]; if (x > mx) mx = x; if (x < mn) mn = x; }
         }
-        guc.push(say ? Math.sqrt(top / say) : 0);
+        ust.push(mx); alt.push(-mn);
+        en = Math.max(en, mx, -mn);
       }
-      const en = Math.max(...guc) || 1;
-      return {
-        sure: Math.round(b.duration * 100) / 100,
-        dalga: guc.map(x => { const o = x / en; return o < 0.015 ? 1 : Math.round(4 + 96 * o); })
-      };
+      const dalga = [];
+      for (let i = 0; i < DALGA_N; i++) dalga.push(Math.round(ust[i] / en * 100), Math.round(alt[i] / en * 100));
+      return { sure: Math.round(b.duration * 100) / 100, dalga };
     } catch (e) { return { sure: null, dalga: null }; }
     finally { try { ctx.close(); } catch (e) {} }
   }

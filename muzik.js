@@ -32,24 +32,33 @@
   const durumYaz = (m, h) => { const el = $('#mk-durum'); if (el) { el.textContent = m || ''; el.classList.toggle('hata', !!h); } };
   const kapakAdres = p => p.kapak_path ? R2.adres('muzik-onizleme', p.kapak_path) : 'assets/logo.png';
 
-  // Gerçekçi dalga formu: kayıtlı ayrıntılı değerler (480) kutunun gerçek piksel
-  // genişliğine göre 2 px çubuk + 1 px boşluk olacak şekilde indirilir (her çubuk
-  // kapsadığı dilimlerin en yükseği). Sessiz yerler 1 px'lik noktalı çizgi olur.
+  // DAW tarzı dalga formu: kayıtlı tepe değerleri [üst, alt, üst, alt, …]
+  // kutunun piksel genişliğine indirilir ve dolu bir şekil olarak çizilir
+  // (Ableton'daki gibi üstü ve altı ayrı, ayrıntılı). Eski tek değerli kayıtlar
+  // (≤ 600 sayı) simetrik çizilir.
   const dalgaVeri = {};
   function dalgaSvg(dalga, renk, W, H) {
-    const v = Array.isArray(dalga) && dalga.length ? dalga : [];
-    const M = Math.max(20, Math.floor(W / 3));
-    let r = '';
-    for (let i = 0; i < M; i++) {
-      let en = 1;
-      if (v.length) {
-        const a = Math.floor(i * v.length / M), b = Math.max(a + 1, Math.floor((i + 1) * v.length / M));
-        for (let j = a; j < b; j++) if (v[j] > en) en = v[j];
+    const v = Array.isArray(dalga) ? dalga : [];
+    const cift = v.length > 600;
+    const n = cift ? v.length / 2 : v.length;
+    const orta = H / 2, ol = (H / 2 - 1) / 100;
+    const ust = [], alt = [];
+    for (let x = 0; x < W; x++) {
+      let u = 0, a = 0;
+      if (n) {
+        const bas = Math.floor(x * n / W), son = Math.max(bas + 1, Math.floor((x + 1) * n / W));
+        for (let i = bas; i < son && i < n; i++) {
+          const uu = cift ? v[2 * i] : v[i], aa = cift ? v[2 * i + 1] : v[i];
+          if (uu > u) u = uu; if (aa > a) a = aa;
+        }
       }
-      const h = Math.max(1, Math.round(en / 100 * H));
-      r += `<rect x="${i * 3}" y="${Math.round((H - h) / 2)}" width="2" height="${h}"/>`;
+      ust.push((orta - Math.max(0.6, u * ol)).toFixed(1));
+      alt.push((orta + Math.max(0.6, a * ol)).toFixed(1));
     }
-    return `<svg viewBox="0 0 ${M * 3} ${H}" width="${M * 3}" height="${H}" aria-hidden="true" fill="${renk}" shape-rendering="crispEdges">${r}</svg>`;
+    let yol = 'M0 ' + ust[0];
+    for (let x = 1; x < W; x++) yol += 'L' + x + ' ' + ust[x];
+    for (let x = W - 1; x >= 0; x--) yol += 'L' + x + ' ' + alt[x];
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><path d="${yol}Z" fill="${renk}"/></svg>`;
   }
   function dalgaKutusu(anahtar, dalga, ad) {
     dalgaVeri[anahtar] = dalga;
