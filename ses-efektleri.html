@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" data-dil-otomatik data-baslik-en="Sound Effects — Derin Record">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -7,20 +7,25 @@
   <link rel="icon" href="favicon.ico" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="mobil.css?v=5" />
+  <link rel="stylesheet" href="auth.css?v=20261101a">
+  <link rel="stylesheet" href="dil.css?v=2026102401">
   <style>
-    .yakinda{min-height:100vh;display:flex;flex-direction:column;justify-content:center;gap:22px;padding:120px 9vw;box-sizing:border-box;background:radial-gradient(circle at 78% 38%,#3a2436 0,#18151d 24%,transparent 53%),linear-gradient(120deg,#111217,#050506)}
+    .yakinda{min-height:calc(100vh - 76px);display:flex;flex-direction:column;justify-content:center;gap:22px;padding:60px 9vw;box-sizing:border-box;background:radial-gradient(circle at 78% 38%,#3a2436 0,#18151d 24%,transparent 53%),linear-gradient(120deg,#111217,#050506)}
     .yakinda h1{font-size:clamp(44px,7vw,96px);line-height:.9}
     .yakinda p.metin{max-width:520px;color:#d0ccc7;font-size:17px;line-height:1.5;margin:0}
     .yakinda .ust{position:absolute;top:28px;left:5vw}
   </style>
+<link rel="stylesheet" href="ortak-ust.css?v=1">
 </head>
 <body>
-  <a class="wordmark ust" style="position:absolute;top:28px;left:5vw;z-index:2" href="index.html" aria-label="Derin Record ana sayfa">DERİN<br /><span>RECORD</span><b>•</b></a>
+  <header class="header"></header><script src="ortak-ust.js?v=1"></script>
   <main class="yakinda">
     <p class="eyebrow">ÇOK YAKINDA</p>
     <h1>Ses Efektleri<em>.</em></h1>
     <p class="metin">Stüdyoda kaydedilmiş özgün ses efektleri çok yakında burada: dinle, seç, satın al.</p>
     <div class="hero-actions"><a class="button button-yellow" href="index.html">ANA SAYFAYA DÖN</a></div>
   </main>
+  <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="uygulama.js?v=1"></script><script src="auth.js?v=20261115a"></script>
+  <script src="dil.js?v=2026110101" defer></script>
 </body>
 </html>

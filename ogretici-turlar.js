@@ -50,9 +50,9 @@
       A('.player-list', 'Demo kasetleri', 'Demo tapes',
         'Bu branşın demoları alt alta sıralanır; istediğine dokunup dinle.',
         'This discipline\'s demos are listed one under another; tap any to listen.'),
-      A('.home', 'Demolara dön', 'Back to demos',
-        'Diğer branşların demolarını dinlemek için buradan ana sayfaya dön.',
-        'Go back to the home page to listen to other disciplines\' demos.')
+      A('header .ou-acilir', 'Müzik menüsü', 'Music menu',
+        'Diğer branşların demolarına üstteki Müzik menüsünden geçebilirsin.',
+        'Use the Music menu at the top to reach other disciplines\' demos.')
     ]
   };
 
