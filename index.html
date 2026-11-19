@@ -48,6 +48,7 @@
 <link rel="stylesheet" href="mekan-vitrini.css?v=4">
 <link rel="stylesheet" href="hero-sekme.css?v=7">
 <link rel="stylesheet" href="demo-raf.css?v=4">
+<link rel="stylesheet" href="ust-menu.css?v=1">
 </head>
   <body>
     <script src="intro.js?v=8"></script>
@@ -56,12 +57,27 @@
       <a class="wordmark" href="#anasayfa" aria-label="Derin Record ana sayfa" data-i18n-etiket="site.logoEtiket">DERİN<br /><span>RECORD</span><b>•</b></a>
       <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav" data-i18n="nav.menu">MENÜ <i></i></button>
       <nav id="nav">
+        <div class="um-acilir">
+          <button class="um-tetik" type="button" aria-expanded="false" aria-controls="um-muzik"><span data-i18n="nav.muzik">Müzik</span><svg class="um-ok" aria-hidden="true" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+          <div class="um-panel" id="um-muzik">
+            <a href="#hizmetler"><b data-i18n="nav.spor">Spor Müziği</b><small data-i18n="nav.sporAlt">Aerobik, ritmik, artistik, akrobatik, aero dans, çocuk fitness</small></a>
+            <a href="coffee.html"><b data-i18n="nav.mekan">Mekân Müziği</b><small data-i18n="nav.mekanAlt">Kafe ve mağazalar için canlı radyo</small></a>
+            <a href="#demolar"><b data-i18n="nav.demolar">Demolar</b><small data-i18n="nav.demolarAlt">Dinlemeye hazır örnek parçalar</small></a>
+            <a href="ses-tasarimi.html"><b data-i18n="nav.film">Film Müziği</b><small data-i18n="nav.filmAlt">Film ve video projeleri</small></a>
+            <a href="ses-tasarimi.html"><b data-i18n="nav.ses">Ses Tasarımı</b><small data-i18n="nav.sesAlt">Sahneye özel efekt ve atmosfer</small></a>
+          </div>
+        </div>
+        <div class="um-acilir">
+          <button class="um-tetik" type="button" aria-expanded="false" aria-controls="um-efekt"><span data-i18n="nav.efekt">Ses Efektleri</span><svg class="um-ok" aria-hidden="true" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+          <div class="um-panel" id="um-efekt">
+            <a href="ses-efektleri.html"><b data-i18n="nav.efektTum">Tüm efektler</b><small data-i18n="nav.efektTumAlt">Dinle, seç, satın al</small></a>
+            <a href="ses-efektleri.html#yeni"><b data-i18n="nav.efektYeni">Yeni eklenenler</b><small data-i18n="nav.efektYeniAlt">Stüdyodan en son efektler</small></a>
+          </div>
+        </div>
+        <a href="sanatcilar.html" data-i18n="nav.sanatcilar">Sanatçılar</a>
+        <a href="news.html" data-i18n="nav.haberler">Haberler</a>
         <a href="#kurumsal" data-i18n="nav.kurumsal">Kurumsal</a>
         <a href="#hakkinda" data-i18n="nav.hakkinda">Hakkında</a>
-        <a href="#hizmetler" data-i18n="nav.hizmetler">Hizmetler</a>
-        <a href="#demolar" data-i18n="nav.demolar">Demolar</a>
-        <a href="ses-tasarimi.html" data-i18n="nav.ses">Ses Tasarımı</a>
-        <a href="news.html" data-i18n="nav.haberler">Haberler</a>
         <a class="nav-cta" href="#iletisim" data-i18n="nav.iletisim">İletişim</a>
       </nav>
     </header>
@@ -240,6 +256,7 @@
     <script src="ses-dalga.js?v=1"></script>
     <script src="demo-raf.js?v=5"></script>
     <script src="hero-sekme.js?v=4"></script>
+    <script src="ust-menu.js?v=1"></script>
     <script src="yarisma-duyuru.js?v=3"></script>
     <script src="script.js"></script>
     <script src="pwa.js"></script>

@@ -1,0 +1,72 @@
+/* Üst menü: Müzik ▾ ve Ses Efektleri ▾ açılır menüleri (Menü A, sade liste).
+   Ana sayfanın hero bölümüne dokunmaz; yalnızca başlıktaki menüyü düzenler. */
+.site-header nav .um-acilir{position:relative;display:inline-flex}
+.site-header nav .um-tetik{
+  display:inline-flex;align-items:center;gap:7px;padding:13px 18px;border:0;border-radius:18px;
+  background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.22);
+  -webkit-backdrop-filter:blur(12px) saturate(1.6);backdrop-filter:blur(12px) saturate(1.6);
+  color:#f4f1e9;font:800 10.5px/1 Arial,Helvetica,sans-serif;letter-spacing:.63px;text-transform:uppercase;cursor:pointer;white-space:nowrap
+}
+.site-header nav .um-tetik:hover,.site-header nav .um-acilir.acik .um-tetik{color:var(--yellow,#d8bb2c)}
+.site-header nav .um-ok{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;transition:transform .2s}
+.site-header nav .um-acilir.acik .um-ok{transform:rotate(180deg)}
+.site-header nav .um-panel{
+  display:none;position:absolute;top:calc(100% + 10px);left:0;z-index:40;width:340px;padding:8px;box-sizing:border-box;
+  flex-direction:column;gap:2px;background:#18171c;border:1px solid #2a2930;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.55)
+}
+.site-header nav .um-acilir.acik .um-panel{display:flex}
+.site-header nav .um-panel a{
+  display:flex !important;flex-direction:column !important;align-items:flex-start !important;gap:3px;
+  padding:12px 14px !important;border-radius:8px !important;background:transparent !important;box-shadow:none !important;
+  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+  text-transform:none !important;letter-spacing:0 !important;line-height:1.35 !important;white-space:normal !important;margin:0 !important;order:0 !important
+}
+.site-header nav .um-panel a:hover,.site-header nav .um-panel a:focus-visible{background:#222128 !important}
+.site-header nav .um-panel b{font:600 15px/1.3 Inter,Arial,Helvetica,sans-serif;color:#f4f1e9}
+.site-header nav .um-panel small{font:400 13px/1.4 Inter,Arial,Helvetica,sans-serif;color:#a8a5a0}
+@media(min-width:1000px){
+  .site-header nav > *{order:0 !important;margin-left:0 !important}
+  .site-header nav::after{display:none !important}
+}
+/* Telefon / yan menü: açılır kısımlar akordeon gibi alt alta açılır */
+@media(max-width:999px){
+  .site-header nav .um-acilir{display:flex;flex-direction:column;width:100%}
+  .site-header nav .um-tetik{justify-content:space-between;width:100%;padding:14px 16px;border-radius:15px;font-size:15px}
+  .site-header nav .um-panel{position:static;width:100%;margin-top:6px;box-shadow:none}
+}
+
+/* ---------- Tam genişlik, modern başlık (bilgisayar) ----------
+   Eski yüzen cam kart yerine ekranın en üstünü baştan sona kaplayan ince şerit.
+   Hero bölümü değişmez; şerit onun üstünde durur. */
+@media(min-width:1000px){
+  html body .site-header{
+    position:fixed !important;top:0 !important;left:0 !important;right:0 !important;transform:none !important;
+    width:100% !important;max-width:none !important;height:76px !important;box-sizing:border-box !important;
+    margin:0 !important;padding:0 32px !important;border:0 !important;border-radius:0 !important;
+    border-bottom:1px solid rgba(255,255,255,.08) !important;
+    display:flex !important;flex-wrap:nowrap !important;align-items:center !important;gap:28px !important;
+    background:rgba(11,11,13,.72) !important;box-shadow:none !important;
+    -webkit-backdrop-filter:blur(18px) saturate(1.4) !important;backdrop-filter:blur(18px) saturate(1.4) !important;
+    overflow:visible !important;z-index:50 !important
+  }
+  html body .site-header::before,html body .site-header::after{display:none !important}
+  html body .site-header .dil-sarma{order:1 !important;flex-direction:row !important;align-items:center !important;align-self:center !important;gap:16px !important}
+  html body .site-header .wordmark{font-size:19px !important}
+  html body .site-header .wordmark b{font-size:24px !important}
+  html body .site-header .dil-dugme{position:static !important;top:auto !important;left:auto !important;min-height:30px !important}
+  html body .site-header nav{
+    order:2 !important;flex:1 1 auto !important;flex-wrap:nowrap !important;justify-content:flex-start !important;
+    align-items:center !important;gap:2px !important;margin:0 !important;padding:0 !important
+  }
+  html body .site-header nav > a,html body .site-header nav .um-tetik{
+    padding:10px 14px !important;border-radius:8px !important;background:transparent !important;box-shadow:none !important;
+    -webkit-backdrop-filter:none !important;backdrop-filter:none !important;border:0 !important;
+    color:#e9e5dd !important;font:800 12px/1 Arial,Helvetica,sans-serif !important;letter-spacing:.8px !important
+  }
+  html body .site-header nav > a:hover,html body .site-header nav .um-tetik:hover,
+  html body .site-header nav .um-acilir.acik .um-tetik{background:rgba(255,255,255,.07) !important;color:#ffffff !important}
+  html body .site-header nav > a.nav-cta{margin-left:auto !important;color:var(--yellow,#d8bb2c) !important}
+  html body .site-header nav .um-panel{top:calc(100% + 18px)}
+  html body .site-header .account-actions{order:3 !important;margin:0 !important;align-self:center !important}
+  html body .site-header .account-actions a,html body .site-header .account-actions button{padding:12px 18px !important;border-radius:999px !important;font-size:11px !important}
+}
