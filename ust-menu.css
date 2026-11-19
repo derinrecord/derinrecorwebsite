@@ -15,6 +15,8 @@
   flex-direction:column;gap:2px;background:#18171c;border:1px solid #2a2930;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.55)
 }
 .site-header nav .um-acilir.acik .um-panel{display:flex}
+/* Görünmez köprü: fare yazıdan alt sekmeye inerken aradaki boşlukta menü kapanmasın */
+.site-header nav .um-panel::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:24px}
 .site-header nav .um-panel a{
   display:flex !important;flex-direction:column !important;align-items:flex-start !important;gap:3px;
   padding:12px 14px !important;border-radius:8px !important;background:transparent !important;box-shadow:none !important;

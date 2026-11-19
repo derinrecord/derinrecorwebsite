@@ -16,8 +16,18 @@
       const acik = !kutu.classList.contains('acik');
       hepsiniKapat(kutu); ayarla(kutu, acik);
     });
-    kutu.addEventListener('mouseenter', () => { if (masaustu()) { hepsiniKapat(kutu); ayarla(kutu, true); } });
-    kutu.addEventListener('mouseleave', () => { if (masaustu()) ayarla(kutu, false); });
+    // Fare çıkınca hemen değil, kısa bir gecikmeyle kapanır; geri gelirse açık kalır.
+    let kapanmaZamani = null;
+    const beklemeyiIptal = () => { if (kapanmaZamani) { clearTimeout(kapanmaZamani); kapanmaZamani = null; } };
+    kutu.addEventListener('mouseenter', () => {
+      if (!masaustu()) return;
+      beklemeyiIptal(); hepsiniKapat(kutu); ayarla(kutu, true);
+    });
+    kutu.addEventListener('mouseleave', () => {
+      if (!masaustu()) return;
+      beklemeyiIptal();
+      kapanmaZamani = setTimeout(() => { kapanmaZamani = null; ayarla(kutu, false); }, 300);
+    });
   });
   document.addEventListener('click', (e) => { if (!e.target.closest('.um-acilir')) hepsiniKapat(); });
   document.addEventListener('keydown', (e) => {
