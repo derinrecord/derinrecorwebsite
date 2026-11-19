@@ -44,7 +44,7 @@ header.ortak-ust .account-actions a,header.ortak-ust .account-actions button{pad
 header.ortak-ust .ou-ac{display:none}
 
 /* Telefon ve dar ekran: logo + MENÜ düğmesi; menü şeridin altında açılır */
-@media(max-width:999px){
+@media(max-width:1199px){
   html body header.header.ortak-ust{padding:0 16px !important;min-height:64px !important;gap:12px !important;flex-wrap:wrap !important}
   header.ortak-ust .account-actions{order:2 !important;margin-left:auto !important;display:flex !important}
   header.ortak-ust .account-actions [data-login]{display:inline-flex !important}
@@ -62,3 +62,14 @@ header.ortak-ust .ou-ac{display:none}
   header.ortak-ust .ou-panel,header.ortak-ust .ou-acilir.acik .ou-panel{position:static;width:100%;margin-top:4px;box-shadow:none}
   header.ortak-ust .ou-panel::before{display:none}
 }
+/* Orta genişlik (1200–1399): sığması için aralıklar daralır */
+@media(min-width:1200px) and (max-width:1399px){
+  html body header.header.ortak-ust{gap:18px !important;padding:0 20px !important}
+  header.ortak-ust nav > a,header.ortak-ust .ou-tetik{padding:10px 10px}
+}
+/* Hiçbir genişlikte yatay kaydırma oluşmasın */
+html body header.header.ortak-ust{max-width:100vw !important}
+header.ortak-ust nav{min-width:0}
+header.ortak-ust .account-actions{flex:none}
+header.ortak-ust .account-actions [hidden]{display:none !important}
+header.ortak-ust .account-actions a:not([hidden]),header.ortak-ust .account-actions button:not([hidden]){white-space:nowrap !important;display:inline-flex !important;align-items:center !important;gap:8px}

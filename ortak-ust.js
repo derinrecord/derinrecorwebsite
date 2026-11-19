@@ -53,7 +53,7 @@
   });
 
   const kutular = [...baslik.querySelectorAll('.ou-acilir')];
-  const masaustu = () => window.matchMedia('(min-width:1000px) and (hover:hover)').matches;
+  const masaustu = () => window.matchMedia('(min-width:1200px) and (hover:hover)').matches;
   const ayarla = (kutu, acik) => {
     kutu.classList.toggle('acik', acik);
     kutu.querySelector('.ou-tetik').setAttribute('aria-expanded', String(acik));
