@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="tr" data-dil-otomatik data-baslik-en="Sound Effects Admin — Derin Record">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Ses Efektleri Yönetimi — Derin Record</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="favicon.ico" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="mobil.css?v=5" />
+  <link rel="stylesheet" href="auth.css?v=20261101a">
+  <link rel="stylesheet" href="dil.css?v=2026102401">
+  <link rel="stylesheet" href="ses-efektleri.css?v=1">
+<link rel="stylesheet" href="ortak-ust.css?v=3">
+</head>
+<body class="se-sayfa">
+  <header class="header"></header><script src="ortak-ust.js?v=2"></script>
+  <main class="se-yonetim" data-dil-yok>
+    <div>
+      <p style="margin:0 0 6px;color:#a8a5a0;font-size:13px;letter-spacing:1.2px">HESABIM / SES EFEKTLERİ</p>
+      <h1 style="margin:0;font-size:32px;letter-spacing:-1px">Ses efektleri</h1>
+      <p style="margin:6px 0 0;color:#a8a5a0">Efekt ekle, fiyatla, paketle ve satışları onayla. Önizlemeler filigransız MP3 olarak otomatik hazırlanır; müşteri satın alınca orijinal dosyayı indirir. <a href="ses-efektleri.html" style="color:#d8bb2c">Mağazayı gör →</a></p>
+    </div>
+    <p class="se-durum" id="sy-durum" role="status" aria-live="polite"></p>
+    <div class="se-kutu" id="sy-kilit" hidden><p style="margin:0">Bu ekran yalnız yöneticiye açık.</p><button type="button" class="se-dugme" id="sy-giris" style="align-self:flex-start">Giriş yap</button></div>
+
+    <div id="sy-uygulama" hidden style="display:flex;flex-direction:column;gap:22px">
+      <div class="se-ikili">
+        <section class="se-kutu" aria-labelledby="sy-ekle-baslik">
+          <h2 id="sy-ekle-baslik" style="margin:0;font-size:20px">Yeni efekt ekle</h2>
+          <form class="se-form" id="sy-form">
+            <label class="se-birak" id="sy-birak">
+              <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 19V6M8.5 11.5L14 6l5.5 5.5M6 22h16" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <b>Ses dosyasını sürükle ya da seç</b>
+              <small style="color:#a8a5a0">WAV önerilir · birden fazla dosya seçebilirsin (her dosya ayrı efekt olur)</small>
+              <input type="file" id="sy-dosya" accept=".wav,.aif,.aiff,.flac,.mp3,audio/*" multiple>
+            </label>
+            <p class="se-durum" id="sy-secilen"></p>
+            <label>Efekt adı <small style="font-weight:400;color:#a8a5a0">(tek dosyada; çoklu yüklemede dosya adı kullanılır)</small>
+              <input type="text" id="sy-ad" maxlength="120" placeholder="Örn. Kaset geri sarma"></label>
+            <div class="se-yan-yana">
+              <label>Kategori<input type="text" id="sy-kategori" maxlength="40" list="sy-kategoriler" placeholder="Örn. Geçiş"><datalist id="sy-kategoriler"></datalist></label>
+              <label>Paket (isteğe bağlı)<select id="sy-paket"></select></label>
+            </div>
+            <label>Etiketler<input type="text" id="sy-etiket" placeholder="kaset, analog, geçiş"></label>
+            <label>Fiyat (₺, KDV dahil)<input type="text" id="sy-fiyat" inputmode="decimal" placeholder="Örn. 150"></label>
+            <label style="flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid #2a2930;border-radius:8px;font-weight:500">Eklenince hemen yayınla<input type="checkbox" id="sy-yayinla" style="width:22px;height:22px;min-height:0;accent-color:#cb2468"></label>
+            <button type="submit" class="se-dugme" id="sy-ekle-dugme">Ekle</button>
+            <p class="se-durum" id="sy-ekle-durum" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section class="se-kutu genis" aria-labelledby="sy-liste-baslik">
+          <h2 id="sy-liste-baslik" style="margin:0;font-size:20px">Efektlerim</h2>
+          <div class="se-kaydir"><table class="se-tablo">
+            <thead><tr><th>EFEKT</th><th>FİYAT</th><th>PAKET</th><th>DURUM</th><th></th></tr></thead>
+            <tbody id="sy-efektler"></tbody>
+          </table></div>
+        </section>
+      </div>
+
+      <section class="se-kutu" aria-labelledby="sy-satis-baslik">
+        <h2 id="sy-satis-baslik" style="margin:0;font-size:20px">Satışlar</h2>
+        <p class="se-aciklama" style="margin:0">Dekontu kontrol et; para hesabına geçtiyse "Ödeme alındı"ya bas, müşterinin WAV indirmesi açılır. IBAN ve alıcı adı Projelerim'deki ödeme ayarlarından gelir.</p>
+        <div class="se-kaydir"><table class="se-tablo">
+          <thead><tr><th>MÜŞTERİ</th><th>ÜRÜN</th><th>TUTAR</th><th>DURUM</th><th></th></tr></thead>
+          <tbody id="sy-satislar"></tbody>
+        </table></div>
+      </section>
+
+      <div class="se-ikili">
+        <section class="se-kutu" aria-labelledby="sp-baslik">
+          <h2 id="sp-baslik" style="margin:0;font-size:20px">Yeni paket</h2>
+          <form class="se-form" id="sp-form">
+            <label>Paket adı<input type="text" id="sp-ad" maxlength="120" placeholder="Örn. Analog geçişler"></label>
+            <label>Açıklama<input type="text" id="sp-aciklama" maxlength="600"></label>
+            <label>Paket fiyatı (₺, KDV dahil)<input type="text" id="sp-fiyat" inputmode="decimal"></label>
+            <button type="submit" class="se-dugme sari">Paket ekle</button>
+            <p class="se-durum" id="sp-durum" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+        <section class="se-kutu genis" aria-labelledby="sp-liste-baslik">
+          <h2 id="sp-liste-baslik" style="margin:0;font-size:20px">Paketler</h2>
+          <div class="se-kaydir"><table class="se-tablo">
+            <thead><tr><th>PAKET</th><th>FİYAT</th><th>DURUM</th><th></th></tr></thead>
+            <tbody id="sy-paketler"></tbody>
+          </table></div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="uygulama.js?v=1"></script><script src="auth.js?v=20261119a"></script>
+  <script src="r2-depo.js?v=4"></script><script src="satin-alma.js?v=17"></script><script src="ses-donustur.js?v=1"></script><script src="ses-efektleri-yonetim.js?v=1"></script>
+  <script src="dil.js?v=2026110101" defer></script>
+</body>
+</html>

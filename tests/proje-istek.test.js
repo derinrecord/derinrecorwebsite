@@ -131,3 +131,18 @@ test('A tasarımı: branş çipleri, sürükle-bırak dosya alanı, dosya listes
   const h = oku('my-projects.html');
   assert.match(h, /\.istek-birak input\[type=file\]\{[^}]*(position:absolute|display:none)/);
 });
+
+// Ses efekti satışı (19 Kasım): efekt/ ve efekt-onizleme/ yalnız yöneticiye yazılır;
+// efekt/ WAV'ını müşteri yalnız ödemesi onaylıysa (efektIzni) okur.
+test('ses efekti deposu: yönetici yazar, ödeyen müşteri okur', () => {
+  for (const key of ['efekt/a/b.wav', 'efekt-onizleme/a/b.mp3']) {
+    assert.equal(yetki('yukle', key, true, null), null, key);
+    assert.equal(yetki('yukle', key, false, BEN).kod, 403, key);
+    assert.equal(yetki('sil', key, false, BEN).kod, 403, key);
+  }
+  assert.equal(yetki('oku', 'efekt/a/b.wav', true, null), null);
+  assert.equal(yetki('oku', 'efekt/a/b.wav', false, BEN, true), null);
+  assert.equal(yetki('oku', 'efekt/a/b.wav', false, BEN, false).kod, 403);
+  assert.equal(yetki('oku', 'efekt/a/b.wav', false, null, true).kod, 401);
+  assert.equal(yetki('oku', 'efekt-onizleme/a/b.mp3', false, BEN, true).kod, 403); // önizleme imzasız, açık adresten
+});

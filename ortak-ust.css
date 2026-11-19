@@ -46,7 +46,8 @@ header.ortak-ust .ou-ac{display:none}
 /* Telefon ve dar ekran: logo + MENÜ düğmesi; menü şeridin altında açılır */
 @media(max-width:1199px){
   html body header.header.ortak-ust{padding:0 16px !important;min-height:64px !important;gap:12px !important;flex-wrap:wrap !important}
-  header.ortak-ust .account-actions{order:2 !important;margin-left:auto !important;display:flex !important}
+  header.ortak-ust .account-actions{order:2 !important;margin-left:0 !important;display:flex !important}
+  header.ortak-ust > .wordmark,header.ortak-ust .dil-sarma{margin-right:auto !important}
   header.ortak-ust .account-actions [data-login]{display:inline-flex !important}
   header.ortak-ust .account-actions a,header.ortak-ust .account-actions button{padding:10px 14px !important}
   header.ortak-ust .ou-ac{order:3;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 4px;border:0;background:none;color:#f4f1e9;font:900 11px Arial,Helvetica,sans-serif;letter-spacing:.8px;cursor:pointer}
