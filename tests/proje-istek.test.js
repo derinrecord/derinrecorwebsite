@@ -158,3 +158,18 @@ test('müzik lisans deposu: yönetici yazar, lisansı ödenen okur', () => {
   assert.equal(yetki('oku', 'muzik/a/b.wav', false, BEN, false).kod, 403);
   assert.equal(yetki('oku', 'muzik-onizleme/a/b.mp3', false, BEN, true).kod, 403);
 });
+
+// Sanatçı platformu (20 Kasım): sanatçı muzik/<şarkı>/ ve muzik-onizleme/<şarkı>/
+// klasörüne yalnız veritabanı izin verirse (sanatci_yazabilir) yazar; efekt
+// deposuna ve klasör köküne hiç yazamaz; izin okuma hakkı vermez.
+test('sanatçı yüklemesi: yalnız veritabanı izniyle, yalnız şarkı klasörüne', () => {
+  for (const key of ['muzik/p1/x.wav', 'muzik-onizleme/p1/x.mp3', 'muzik-onizleme/sanatci/s1/foto.jpg']) {
+    assert.equal(yetki('yukle', key, false, BEN, false, true), null, key);
+    assert.equal(yetki('sil', key, false, BEN, false, true), null, key);
+    assert.equal(yetki('yukle', key, false, BEN, false, false).kod, 403, key);
+    assert.equal(yetki('yukle', key, false, null, false, true).kod, 401, key);
+  }
+  assert.equal(yetki('yukle', 'muzik/x.wav', false, BEN, false, true).kod, 403);
+  assert.equal(yetki('yukle', 'efekt/p1/x.wav', false, BEN, false, true).kod, 403);
+  assert.equal(yetki('oku', 'muzik/p1/x.wav', false, BEN, false, true).kod, 403);
+});

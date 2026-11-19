@@ -18,6 +18,8 @@
   const OK = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
   const SEPET = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.3 10.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.1L21 8H6.2" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/><circle cx="17" cy="19.5" r="1.4" fill="currentColor"/></svg>';
   const YENI_GUN = 30;
+  // Sanatçı profil sayfası, sanatçının kimliğini bir söz (Promise) olarak bırakır.
+  const SANATCI_SAYFASI = !!window.DerinMuzikSanatci;
 
   const d = {
     parcalar: [], versiyonlar: [], turler: [], satislar: [], indirmeler: [], odeme: {},
@@ -106,7 +108,8 @@
         `<button type="button" data-filtre="${alan}" data-deger="" aria-pressed="${!d.filtre[alan]}">Tümü</button>` +
         l.map(x => `<button type="button" data-filtre="${alan}" data-deger="${kacis(x.ad)}" aria-pressed="${d.filtre[alan] === x.ad}">${kacis(x.ad)} <small>${x.sayi}</small></button>`).join('') + '</div>';
     };
-    $('#mk-filtreler').innerHTML = grup('tur', 'Tür') + grup('ruh', 'Ruh hâli') + grup('sanatci', 'Sanatçı');
+    const kap = $('#mk-filtreler'); if (!kap) return;
+    kap.innerHTML = grup('tur', 'Tür') + grup('ruh', 'Ruh hâli') + (SANATCI_SAYFASI ? '' : grup('sanatci', 'Sanatçı'));
   }
 
   const satisi = id => d.satislar.find(s => s.parca_id === id) || null;
@@ -132,7 +135,7 @@
 
   function listeCiz() {
     const l = suzulmus();
-    if (!d.parcalar.length) { $('#mk-liste').innerHTML = '<p class="se-bos">Şarkılar çok yakında burada. Dinleyip lisanslayabileceksin.</p>'; return; }
+    if (!d.parcalar.length) { $('#mk-liste').innerHTML = SANATCI_SAYFASI ? '<p class="se-bos">Bu sanatçının şarkıları çok yakında burada.</p>' : '<p class="se-bos">Şarkılar çok yakında burada. Dinleyip lisanslayabileceksin.</p>'; return; }
     if (!l.length) { $('#mk-liste').innerHTML = '<p class="se-bos">Bu aramaya uyan şarkı yok.</p>'; return; }
     const simdi = Date.now();
     $('#mk-liste').innerHTML = l.map(p => {
@@ -145,7 +148,7 @@
       return `<div class="mk-satir">
         <button type="button" class="mk-kapak" data-cal="${anahtar}" aria-pressed="${calan}" aria-label="${kacis(p.ad)} ${calan ? 'durdur' : 'çal'}" ${p.onizleme_path ? '' : 'disabled'}>
           <img src="${kacis(kapakAdres(p))}" alt="" loading="lazy"><span>${calan ? DUR : PLAY}</span></button>
-        <div class="se-ad"><b>${kacis(p.ad)}${yeni ? '<span class="mk-yeni">Yeni</span>' : ''}</b><small>${kacis(p.sanatci)}</small></div>
+        <div class="se-ad"><b>${kacis(p.ad)}${yeni ? '<span class="mk-yeni">Yeni</span>' : ''}</b><small>${p.sanatcilar && p.sanatcilar.slug && !SANATCI_SAYFASI ? `<a class="mk-sanatci" href="sanatcilar.html?s=${encodeURIComponent(p.sanatcilar.slug)}">${kacis(p.sanatci)}</a>` : kacis(p.sanatci)}</small></div>
         ${surumVar ? `<button type="button" class="mk-ac" data-ac="${p.id}" aria-expanded="${!!d.acik[p.id]}" aria-label="${kacis(p.ad)}: versiyonlar ve stemler">${OK}</button>` : '<span></span>'}
         ${dalgaKutusu(anahtar, p.dalga, p.ad)}
         <span class="se-sure">${p.sure_sn ? sureYaz(p.sure_sn) : ''}</span>
@@ -160,6 +163,7 @@
 
   function lisanslarCiz() {
     const kap = $('#lisanslarim');
+    if (!kap) return;
     const a = window.DerinAuth;
     if (!a || !a.user || !d.satislar.length) { kap.hidden = true; return; }
     kap.hidden = false;
@@ -214,8 +218,12 @@
     const a = window.DerinAuth;
     const c = a && a.client;
     if (!c) { durumYaz('Bağlantı kurulamadı.', true); return; }
+    // Sanatçı profil sayfası (sanatcilar.html?s=…) yalnız o sanatçının şarkılarını ister.
+    const sid = SANATCI_SAYFASI ? await window.DerinMuzikSanatci : null;
+    let sorgu = c.from('muzik_parcalari').select('id,ad,sanatci,sanatci_id,sanatcilar(slug),tur,ruh_hali,etiketler,bpm,sure_sn,dalga,kapak_path,onizleme_path,sira,created_at').eq('durum', 'yayinda');
+    if (SANATCI_SAYFASI) sorgu = sorgu.eq('sanatci_id', sid || '00000000-0000-0000-0000-000000000000');
     const [pr, ve, tu] = await Promise.all([
-      c.from('muzik_parcalari').select('id,ad,sanatci,tur,ruh_hali,etiketler,bpm,sure_sn,dalga,kapak_path,onizleme_path,sira,created_at').eq('durum', 'yayinda'),
+      sorgu,
       c.from('muzik_versiyonlari').select('id,parca_id,tur,ad,sure_sn,dalga,onizleme_path,sira').order('sira'),
       c.from('muzik_lisans_turleri').select('id,ad,aciklama,fiyat,sira').order('sira')
     ]);
@@ -332,8 +340,9 @@
       const f = ev.target.closest('[data-dekont]');
       if (f && f.files && f.files[0]) dekontYukle(f.dataset.dekont, f.files[0]);
     });
-    $('#mk-ara').addEventListener('input', ev => { d.arama = ev.target.value; listeCiz(); });
-    $('#mk-sirala').addEventListener('change', ev => { d.sirala = ev.target.value; listeCiz(); });
+    const ara = $('#mk-ara'), sirala = $('#mk-sirala');
+    if (ara) ara.addEventListener('input', ev => { d.arama = ev.target.value; listeCiz(); });
+    if (sirala) sirala.addEventListener('change', ev => { d.sirala = ev.target.value; listeCiz(); });
   }
 
   async function baslat() {

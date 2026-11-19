@@ -12,7 +12,7 @@ const kisit = (sutun) => { const m = sql.match(new RegExp(sutun + "[^\\n]*\\n?[^
 
 test('sayfa: oturum, sözlük ve ekran betikleri; arama motoruna kapalı; mobil katman', () => {
   const h = oku('crm.html');
-  for (const b of ['config.js', 'auth.js?v=20261119b', 'crm-sozluk.js?v=1', 'crm.js?v=2']) assert.ok(h.includes(`src="${b}"`), b);
+  for (const b of ['config.js', 'auth.js?v=20261120a', 'crm-sozluk.js?v=1', 'crm.js?v=2']) assert.ok(h.includes(`src="${b}"`), b);
   assert.ok(h.indexOf('crm-sozluk.js') < h.indexOf('crm.js?v'), 'sözlük önce yüklenmeli');
   assert.match(h, /<meta name="robots" content="noindex">/);
   assert.match(h, /href="mobil\.css\?v=5"/);

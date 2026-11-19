@@ -33,6 +33,8 @@ const satisKlasoru = key => Object.keys(SATIS_KLASORU).find(o => key.startsWith(
 // muzik.derinrecord.com'dan imzasız okunuyor; gizli kovalar (proje/dj)
 // RLS'e benzer yetkilendirme ister.
 const OKU_ONEK = ['proje/', 'dj/', 'efekt/', 'muzik/'];
+// Sanatçının yazabileceği klasörler (kararı veritabanı verir: sanatci_yazabilir).
+const SANATCI_ONEK = /^muzik(-onizleme)?\/[^/]+\/./;
 
 const SURE = 300; // yükleme/silme adresinin geçerlilik süresi (saniye)
 const OKU_SURE = 600; // imzalı okuma (GET) adresinin geçerlilik süresi (saniye)
@@ -98,10 +100,17 @@ function imzaliAdres({ accessKeyId, secretAccessKey, bucket, key, host, yontem }
 // - ses efektleri: efekt/ ve efekt-onizleme/ klasörlerine yalnız yönetici yazar;
 //   efekt/ WAV'ını yönetici dışında yalnız ödemesi onaylanmış müşteri okur
 //   (efektIzni = veritabanındaki efekt_indirebilir() yanıtı).
-function yetki(islem, key, yonetici, kimlik, efektIzni) {
+// - sanatçı (20 Kasım): muzik/<şarkı>/ ve muzik-onizleme/<şarkı>/ klasörüne YALNIZ
+//   kendi, yayında olmayan şarkısı için yükler/siler; muzik-onizleme/sanatci/<kendi
+//   kimliği>/ klasörüne profil fotoğrafı (sanatciIzni = sanatci_yazabilir() yanıtı).
+function yetki(islem, key, yonetici, kimlik, efektIzni, sanatciIzni) {
   if (islem === 'oku' && !OKU_ONEK.some(o => key.startsWith(o))) return { kod: 403, hata: 'Bu klasör imzalı okumaya kapalı.' };
   if (yonetici) return null;
   if (/^(efekt|muzik)(-onizleme)?\//.test(key)) {
+    if (islem !== 'oku' && SANATCI_ONEK.test(key)) {
+      if (!kimlik) return { kod: 401, hata: 'Oturum doğrulanamadı.' };
+      return sanatciIzni === true ? null : { kod: 403, hata: 'Bu şarkı klasörü size ait değil ya da şarkı yayında.' };
+    }
     if (islem !== 'oku' || !satisKlasoru(key)) return { kod: 403, hata: 'Satış deposuna yalnızca yönetici yazabilir.' };
     if (!kimlik) return { kod: 401, hata: 'Oturum doğrulanamadı.' };
     return efektIzni === true ? null : { kod: 403, hata: 'Bu dosyayı indirmek için önce satın alma onaylanmalı.' };
@@ -185,7 +194,21 @@ module.exports = async (req, res) => {
       efektIzni = false;
     }
   }
-  const karar = yetki(islem, key, yonetici, kimlik, efektIzni);
+  // Sanatçı yüklemesi: bu şarkı/profil klasörü onun mu? Karar veritabanında.
+  let sanatciIzni = false;
+  if (!yonetici && kimlik && islem !== 'oku' && SANATCI_ONEK.test(key)) {
+    try {
+      const sor = await fetch(`${SUPABASE_URL}/rest/v1/rpc/sanatci_yazabilir`, {
+        method: 'POST',
+        headers: { apikey: SUPABASE_ANON, Authorization: auth, 'content-type': 'application/json' },
+        body: JSON.stringify({ p_yol: key })
+      });
+      sanatciIzni = sor.ok && (await sor.json()) === true;
+    } catch (e) {
+      sanatciIzni = false;
+    }
+  }
+  const karar = yetki(islem, key, yonetici, kimlik, efektIzni, sanatciIzni);
   if (karar) {
     res.status(karar.kod).json({ hata: karar.hata });
     return;

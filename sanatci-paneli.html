@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="tr" data-dil-otomatik data-baslik-en="Artist Panel — Derin Record">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sanatçı Paneli — Derin Record</title>
+  <meta name="description" content="Derin Record'a sanatçı olarak başvur, şarkılarını yükle, satışlarını ve radyo payını takip et." data-en="Apply to Derin Record as an artist, upload your tracks and follow your sales and radio share.">
+  <link rel="icon" href="favicon.ico" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="mobil.css?v=5" />
+  <link rel="stylesheet" href="auth.css?v=20261101a">
+  <link rel="stylesheet" href="dil.css?v=2026102401">
+  <link rel="stylesheet" href="ses-efektleri.css?v=2">
+  <link rel="stylesheet" href="sanatci.css?v=1">
+<link rel="stylesheet" href="ortak-ust.css?v=3">
+</head>
+<body class="se-sayfa">
+  <header class="header"></header><script src="ortak-ust.js?v=3"></script>
+  <main class="sn-sayfa" style="max-width:1040px">
+    <div class="sn-ust">
+      <div>
+        <h1>Sanatçı paneli</h1>
+        <p>Şarkılarını Derin Record kataloğuna yükle. Derin her şarkıyı dinleyip onaylar; satışlarını ve radyo payını buradan takip edersin.</p>
+      </div>
+    </div>
+    <p class="se-durum" id="sp-durum" role="status" aria-live="polite"></p>
+
+    <section class="se-kutu" id="sp-tanitim" hidden>
+      <h2 class="se-bolum" style="margin:0">Nasıl çalışır?</h2>
+      <ul class="sn-madde">
+        <li>Şarkıların senin kalır; Derin Record'a yalnızca satış izni verirsin, başka yerlerde de satabilirsin.</li>
+        <li>Her lisans satışından net gelirin %25'ini alırsın.</li>
+        <li>İzin verdiğin şarkılar mekân radyosunda da çalar; radyo gelirinin %25'lik havuzundan çalınma oranında pay alırsın.</li>
+        <li>Derin Record her şarkıyı dinleyip onaylar; istediğin zaman yayından kaldırabilirsin.</li>
+        <li>Sample, yapay zekâ ve telif birliği üyeliğini dürüstçe bildirmen gerekir.</li>
+      </ul>
+      <p style="margin:0;color:var(--se-soluk)">Başvurmak için önce giriş yap ya da ücretsiz hesap aç.</p>
+      <button type="button" class="se-dugme" id="sp-giris" style="align-self:flex-start">Giriş yap / Kayıt ol</button>
+    </section>
+
+    <div id="sp-uygulama"></div>
+  </main>
+  <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="uygulama.js?v=1"></script><script src="auth.js?v=20261120a"></script>
+  <script src="r2-depo.js?v=5"></script><script src="satin-alma.js?v=17"></script><script src="ses-donustur.js?v=1"></script><script src="muzik-yukle.js?v=1"></script><script src="sanatci-paneli.js?v=1"></script>
+  <script src="dil.js?v=2026110101" defer></script>
+</body>
+</html>

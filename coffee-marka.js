@@ -112,7 +112,13 @@ function sonraki(yon) {
   return duzen[(p + yon + duzen.length) % duzen.length];
 }
 
+// Sanatçı payı için çalınma sayacı (20 Kasım): her yüklenen parça 30 saniye
+// çalınınca bir kez sayılır (supabase/sanatcilar.sql → radio_calma_kaydet).
+const CALMA_SAYIM_SN = 30;
+let sayildi = false;
+
 function kaynakYukle(t, baslangic) {
+  sayildi = false;
   audio.volume = Math.min(1, Math.max(0, baslangic));
   audio.src = ses(t.storage_path);
   audio.play().catch(() => {
@@ -163,6 +169,10 @@ audio.addEventListener('timeupdate', () => {
     byId('mk-dur').textContent = fmt(d);
     if (!surukluyor) byId('mk-seek').value = Math.round((audio.currentTime / d) * 1000);
     const cizgi = byId('mk-dock-bar'); if (cizgi) cizgi.style.width = (audio.currentTime / d * 100).toFixed(2) + '%';
+  }
+  if (!sayildi && !audio.paused && audio.currentTime >= CALMA_SAYIM_SN && kuyruk[sira]) {
+    sayildi = true;
+    if (G.calmaSay) G.calmaSay(baglam, kuyruk[sira].id);
   }
   if (gecisVar || audio.paused || !kuyruk.length) return;
   if (!isFinite(d) || d < EN_KISA) return;

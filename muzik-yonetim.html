@@ -54,6 +54,15 @@
         </section>
       </div>
 
+      <section class="se-kutu" aria-labelledby="my-sanatci-baslik">
+        <h2 id="my-sanatci-baslik" style="margin:0;font-size:20px">Sanatçı başvuruları</h2>
+        <p class="se-aciklama" style="margin:0">Başvuruyu incele. Onaylanan sanatçı Sanatçılar sayfasında görünür ve şarkı yükleyebilir; şarkıları sen onaylamadan yayına çıkmaz.</p>
+        <div class="se-kaydir"><table class="se-tablo">
+          <thead><tr><th>SANATÇI</th><th>İLETİŞİM</th><th>DURUM</th><th></th></tr></thead>
+          <tbody id="my-sanatcilar"></tbody>
+        </table></div>
+      </section>
+
       <section class="se-kutu" aria-labelledby="my-liste-baslik">
         <h2 id="my-liste-baslik" style="margin:0;font-size:20px">Şarkılarım</h2>
         <div class="se-kaydir"><table class="se-tablo">
@@ -70,10 +79,27 @@
           <tbody id="my-satislar"></tbody>
         </table></div>
       </section>
+
+      <section class="se-kutu" aria-labelledby="my-pay-baslik">
+        <h2 id="my-pay-baslik" style="margin:0;font-size:20px">Sanatçı payları</h2>
+        <p class="se-aciklama" style="margin:0">Lisans: o ay ödemesi onaylanan satışların %25'i. Radyo: o ayın radyo Net Gelir'inin %25'i, sanatçının radyodaki bütün çalınmalar içindeki payı oranında. Rakamlar KDV ve masraf düşülmeden önceki tutardan hesaplanır; ödemeden önce kontrol et.</p>
+        <form class="se-form" id="my-pay-form">
+          <div class="se-yan-yana">
+            <label>Ay<input type="month" name="ay"></label>
+            <label>Bu ayın radyo Net Gelir'i (₺)<input name="gelir" inputmode="decimal" placeholder="Örn. 5000"></label>
+          </div>
+          <button type="submit" class="se-dugme ikincil" style="align-self:flex-start">Geliri kaydet</button>
+        </form>
+        <div class="se-kaydir"><table class="se-tablo">
+          <thead><tr><th>SANATÇI</th><th>LİSANS SATIŞI</th><th>LİSANS PAYI</th><th>RADYO ÇALINMA</th><th>RADYO PAYI</th><th>TOPLAM</th></tr></thead>
+          <tbody id="my-paylar"></tbody>
+        </table></div>
+        <p class="se-durum" id="my-pay-durum" role="status" aria-live="polite"></p>
+      </section>
     </div>
   </main>
-  <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="uygulama.js?v=1"></script><script src="auth.js?v=20261119b"></script>
-  <script src="r2-depo.js?v=5"></script><script src="satin-alma.js?v=17"></script><script src="ses-donustur.js?v=1"></script><script src="muzik-yonetim.js?v=3"></script>
+  <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script><script src="uygulama.js?v=1"></script><script src="auth.js?v=20261120a"></script>
+  <script src="r2-depo.js?v=5"></script><script src="satin-alma.js?v=17"></script><script src="ses-donustur.js?v=1"></script><script src="muzik-yukle.js?v=1"></script><script src="muzik-yonetim.js?v=4"></script>
   <script src="dil.js?v=2026110101" defer></script>
 </body>
 </html>

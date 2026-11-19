@@ -123,6 +123,17 @@ function calaniBildir({ client, anahtar }, parca) {
   } catch { /* bildirim yayını etkilemez */ }
 }
 
+// Çalınma sayacı (supabase/sanatcilar.sql): parça 30 sn çalınınca bir kez.
+// Sanatçının radyo payı bu kayıtlardan hesaplanır. Hata yayını etkilemez.
+function calmaSay({ client, anahtar }, trackId) {
+  if (!client || !anahtar || !trackId) return;
+  try {
+    Promise.resolve(client.rpc('radio_calma_kaydet', {
+      p_player_key: anahtar, p_track_id: trackId, p_device_id: cihazKimligi()
+    })).catch(() => {});
+  } catch { /* sayım yayını etkilemez */ }
+}
+
 // Ses kontrolü (supabase/radio-ses-kontrolu.sql): ekrandaki ses seviyesi ve
 // parçanın ilerleyip ilerlemediği panele gider. Fonksiyon kurulmadıysa sessizce geçer.
 function sesBildir({ client, anahtar }, { seviye, ilerliyor }) {
@@ -150,5 +161,5 @@ function nabizBaslat({ client, anahtar, calarMi = () => false, aralik = 60000 })
   return () => clearInterval(zaman);
 }
 
-window.DerinSubeGuvenlik = { anahtarOku, cihazKimligi, kayitliKod, baglan, nabizBaslat, olay, calaniBildir, sesBildir, MESAJ };
+window.DerinSubeGuvenlik = { anahtarOku, cihazKimligi, kayitliKod, baglan, nabizBaslat, olay, calaniBildir, calmaSay, sesBildir, MESAJ };
 })();
