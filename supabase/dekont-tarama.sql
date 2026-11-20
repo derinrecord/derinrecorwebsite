@@ -235,7 +235,7 @@ begin
     raise exception 'yetkisiz';
   end if;
   select * into t from public.project_tracks where id = p_track;
-  if not found or t.satin_alma_durum <> 'dekont' or t.dekont_tarama <> 'bekliyor' then
+  if not found or t.satin_alma_durum is distinct from 'dekont' or t.dekont_tarama is distinct from 'bekliyor' then
     return null;
   end if;
   select * into o from public.odeme_ayarlari where id = 1;
@@ -265,7 +265,7 @@ begin
   end if;
   select * into t from public.project_tracks where id = p_track for update;
   -- Bu arada yeni dekont yüklendiyse (yol değiştiyse) eski sonuç yazılmaz.
-  if not found or t.satin_alma_durum <> 'dekont' or t.dekont_tarama <> 'bekliyor'
+  if not found or t.satin_alma_durum is distinct from 'dekont' or t.dekont_tarama is distinct from 'bekliyor'
      or t.dekont_path is distinct from p_path then
     return 'atlandi';
   end if;
