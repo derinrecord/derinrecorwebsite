@@ -1,0 +1,133 @@
+<!doctype html><html lang="tr" data-dil-otomatik data-baslik-en="Song Hunter — Derin Record"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Şarkı Avcısı — Derin Record</title><link rel="icon" href="/favicon.ico?v=3" sizes="any"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=3"><meta name="robots" content="noindex"><link rel="stylesheet" href="auth.css?v=20261101a"><link rel="stylesheet" href="mobil.css?v=5"><style>
+  /* Şarkı Avcısı (20 Kasım 2026) — MP3 Dönüştürücü ile aynı koyu yönetici dili. */
+  :root{--yellow:#e6c840;--pink:#cb2468;--green:#5fcf8f;--red:#ff8a7a;--ink:#0d0b10;--panel:#161219;--line:rgba(255,255,255,.12);--muted:rgba(255,255,255,.62)}
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{font:400 16px/1.55 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;color:#fff;background:
+    radial-gradient(700px 400px at 12% -8%,rgba(255,45,150,.16),transparent 60%),
+    radial-gradient(700px 420px at 96% 0%,rgba(0,209,255,.12),transparent 55%),
+    var(--ink);padding:clamp(18px,4vw,48px)}
+  .sa-kap{max-width:920px;margin:0 auto}
+  .sa-ust{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:clamp(28px,6vw,56px)}
+  .sa-marka{display:flex;align-items:baseline;gap:.45rem;font:900 15px/1 Arial,sans-serif;letter-spacing:.14em;color:#fff;text-decoration:none}
+  .sa-marka b{color:var(--yellow)}
+  .sa-rozet{border:1px solid var(--line);border-radius:999px;padding:.4rem .8rem;font:800 10.5px/1 Arial,sans-serif;letter-spacing:.12em;color:var(--muted)}
+  .sa-baslik{margin:0 0 .7rem;font:900 clamp(30px,6vw,52px)/1.02 Arial,sans-serif;letter-spacing:-.02em}
+  .sa-baslik span{color:var(--yellow)}
+  .sa-alt{margin:0 0 clamp(22px,4vw,32px);max-width:40rem;color:var(--muted)}
+  .sa-durum{color:var(--muted);font-size:.95rem}
+  .sa-birak{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;min-height:170px;padding:24px;border:1.5px dashed rgba(230,200,64,.5);border-radius:18px;background:rgba(230,200,64,.05);text-align:center;cursor:pointer;transition:background .18s,border-color .18s}
+  .sa-birak:hover,.sa-birak.uzerinde{background:rgba(230,200,64,.11);border-color:var(--yellow)}
+  .sa-birak strong{font:900 14px/1.2 Arial,sans-serif;letter-spacing:.12em;color:var(--yellow)}
+  .sa-birak small{color:var(--muted)}
+  .sa-birak input{position:absolute;width:1px;height:1px;opacity:0}
+  .sa-secenek{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  .sa-secenek label{flex:1 1 200px;display:grid;gap:4px;font:800 10.5px/1 Arial,sans-serif;letter-spacing:.12em;color:var(--muted)}
+  .sa-secenek input{min-height:48px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.05);color:#fff;font:400 1rem/1 inherit;letter-spacing:0}
+  .sa-secenek input:focus{outline:none;border-color:var(--yellow)}
+  .sa-ilerleme{min-height:1.4rem;margin:.8rem 0 0;color:var(--muted);font-size:.92rem}
+  .sa-ilerleme.hata{color:var(--red)}
+  .sa-kutu{margin-top:22px;padding:18px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}
+  .sa-kutu h2{margin:0 0 12px;font:900 12px/1 Arial,sans-serif;letter-spacing:.16em;color:var(--yellow)}
+  .sa-kutu h2 em{font-style:normal;color:var(--muted);font-weight:400;letter-spacing:0}
+  .sa-kimlik{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+  .sa-olcu{padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+  .sa-olcu span{display:block;font:800 10px/1 Arial,sans-serif;letter-spacing:.12em;color:var(--muted);margin-bottom:6px}
+  .sa-olcu b{font:900 22px/1.1 Arial,sans-serif}
+  .sa-olcu small{display:block;margin-top:4px;color:var(--muted);font-size:.78rem;line-height:1.35}
+  .sa-enerji{width:100%;height:120px;margin-top:16px;display:block;border-radius:12px;background:rgba(0,0,0,.35)}
+  .sa-anlar{margin:12px 0 0;padding-left:1.1rem;color:#e8e4dc;font-size:.93rem;line-height:1.6}
+  .sa-not{margin:10px 0 0;color:var(--muted);font-size:.82rem}
+  .sa-dugme{min-height:54px;padding:0 26px;border:0;border-radius:14px;background:linear-gradient(145deg,#f3dd63,#c9a828);color:#171205;font:900 13px/1 Arial,sans-serif;letter-spacing:.12em;cursor:pointer;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+  .sa-dugme:disabled{opacity:.55;cursor:wait}
+  .sa-dugme.ikincil{background:transparent;color:#fff;border:1px solid var(--line);box-shadow:none}
+  .sa-eylem{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .sa-liste{list-style:none;margin:0;padding:0;display:grid;gap:10px;counter-reset:sa}
+  .sa-ref{position:relative;display:grid;gap:6px;padding:14px 16px 14px 52px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line);counter-increment:sa}
+  .sa-ref::before{content:counter(sa);position:absolute;left:14px;top:14px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:rgba(230,200,64,.16);color:var(--yellow);font:900 12px/1 Arial,sans-serif}
+  .sa-ref-ad{font-weight:800;font-size:1.02rem;line-height:1.3}
+  .sa-ref-ad small{font-weight:400;color:var(--muted)}
+  .sa-ref-bilgi{display:flex;flex-wrap:wrap;gap:6px;font-size:.78rem}
+  .sa-cip{padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:#e8e4dc}
+  .sa-cip.ayni,.sa-cip.komsu{border-color:rgba(95,207,143,.6);color:var(--green)}
+  .sa-cip.uyumsuz{border-color:rgba(255,138,122,.55);color:var(--red)}
+  .sa-ref-neden{margin:0;color:#c7c3be;font-size:.88rem}
+  .sa-ref-eylem{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .sa-ref-eylem a,.sa-ref-eylem button{padding:7px 12px;border-radius:10px;border:1px solid var(--line);background:transparent;color:#fff;font:700 11px/1 Arial,sans-serif;letter-spacing:.06em;text-decoration:none;cursor:pointer}
+  .sa-ref-eylem button[data-durum="kullandim"]{border-color:rgba(95,207,143,.6);color:var(--green)}
+  .sa-ref-eylem button[data-durum="istemiyorum"]{color:var(--muted)}
+  .sa-takip{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.9rem}
+  .sa-takip li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.03)}
+  .sa-takip button{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:.8rem}
+  .sa-bos{color:var(--muted);font-style:italic;margin:0}
+  .sa-altbilgi{margin-top:clamp(30px,6vw,56px);padding-top:18px;border-top:1px solid var(--line);color:rgba(255,255,255,.42);font-size:.78rem;line-height:1.6;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .sa-altbilgi a{color:rgba(255,255,255,.7)}
+  @media(max-width:560px){.sa-marka{font-size:12px;letter-spacing:.1em;white-space:nowrap}.sa-rozet{display:none}.sa-dugme{flex:1 1 100%}.sa-ref{padding-left:16px;padding-top:46px}}
+</style>
+<link rel="stylesheet" href="dil.css?v=2026102401">
+</head>
+<body>
+<div class="sa-kap">
+  <header class="sa-ust">
+    <a class="sa-marka" href="index.html">DERİN RECORD <b>•</b> ŞARKI AVCISI</a>
+    <span class="sa-rozet">YÖNETİCİ ALANI</span>
+  </header>
+
+  <main>
+    <h1 class="sa-baslik">Şarkıyı dinlet, <span>10 referans</span> bulsun</h1>
+    <p class="sa-alt">Şarkıyı bırak: tempo, ton ve enerji haritası ölçülür, sonra aynı tempo ve uyumlu tondaki şarkılar remix için listelenir. Dosya bu tarayıcıdan çıkmaz.</p>
+
+    <p class="sa-durum" id="sa-durum">Yetki kontrol ediliyor…</p>
+
+    <section id="sa-uygulama" hidden>
+      <label class="sa-birak" id="sa-birak">
+        <input id="sa-dosya" type="file" accept="audio/*,video/mp4,.mp3,.wav,.m4a,.aif,.aiff,.flac,.ogg">
+        <strong>ŞARKIYI BURAYA BIRAK</strong>
+        <small>ya da tıklayıp seç · MP3, WAV, M4A, AIFF</small>
+      </label>
+      <div class="sa-secenek">
+        <label>HEDEF TEMPO (BPM)<input id="sa-hedef" type="number" min="60" max="200" step="1" value="150" inputmode="numeric"></label>
+        <label>TÜR (İSTEĞE BAĞLI)<input id="sa-tur" type="text" placeholder="örn. pop, dance, latin" autocomplete="off"></label>
+      </div>
+      <p class="sa-ilerleme" id="sa-ilerleme" role="status" aria-live="polite"></p>
+
+      <section class="sa-kutu" id="sa-sonuc" hidden>
+        <h2>ŞARKININ KİMLİĞİ <em id="sa-dosya-adi"></em></h2>
+        <div class="sa-kimlik" id="sa-kimlik"></div>
+        <canvas class="sa-enerji" id="sa-enerji" width="880" height="120" aria-label="Enerji haritası"></canvas>
+        <ul class="sa-anlar" id="sa-anlar"></ul>
+        <p class="sa-not">Ölçümdür, kulak değildir: ton ve tempo tahminidir. Yanlışsa kutulara doğrusunu yazıp tekrar ara.</p>
+        <div class="sa-secenek">
+          <label>TEMPO (DÜZELT)<input id="sa-bpm" type="number" min="60" max="200" step="0.1" inputmode="decimal"></label>
+          <label>TON (CAMELOT)<input id="sa-ton" type="text" placeholder="örn. 8A" autocomplete="off"></label>
+        </div>
+        <div class="sa-eylem"><button class="sa-dugme" type="button" id="sa-bul">10 REFERANS BUL</button></div>
+      </section>
+
+      <section class="sa-kutu" id="sa-referans" hidden>
+        <h2>REFERANSLAR <em id="sa-referans-alt"></em></h2>
+        <ol class="sa-liste" id="sa-liste"></ol>
+        <div class="sa-eylem"><button class="sa-dugme ikincil" type="button" id="sa-daha">10 YENİ ÖNERİ</button></div>
+      </section>
+
+      <section class="sa-kutu" id="sa-takip-kutu">
+        <h2>KULLANDIKLARIM <em>bunlar bir daha önerilmez</em></h2>
+        <ul class="sa-takip" id="sa-takip"><li class="sa-bos">Henüz işaretlenen şarkı yok.</li></ul>
+      </section>
+    </section>
+  </main>
+
+  <footer class="sa-altbilgi">
+    <a href="admin.html">← yönetim</a>
+    <span>Tempo ve ton verileri <a href="https://getsongbpm.com" target="_blank" rel="noopener">GetSongBPM</a> tarafından sağlanır.</span>
+  </footer>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
+<script src="uygulama.js?v=1"></script><script src="auth.js?v=20261120b"></script>
+<script src="sarki-avcisi-cekirdek.js?v=1"></script>
+<script src="sarki-avcisi.js?v=1"></script>
+<script src="dil.js?v=2026110101" defer></script>
+</body>
+</html>

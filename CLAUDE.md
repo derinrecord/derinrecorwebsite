@@ -84,3 +84,12 @@ Mekân (kafe, restoran, salon…) radyo lisansı satışı için tek sahipli sat
 - **Sanatçı platformu** (`supabase/sanatcilar.sql`, uygulandı): sanatcilar (+ gizli sanatci_ozel), şarkıda sanatci_id + durum taslak/inceleme/yayinda/reddedildi, Ek-1 `muzik_parca_beyan`. Yayına alma yalnız yönetici. Gelir: lisans %25, radyo aylık Net Gelir %25 havuzu çalınma oranıyla (`radio_calmalar`, `radyo_aylik_gelir`, `radyo_havuz_ozeti`). Parça 30 sn çalınınca sayılır (`coffee-marka.js` → `sube-guvenlik.js calmaSay`). Radyo izni kapanınca şarkı radyodan otomatik silinir. Sözleşme taslağı Claude Docs'ta ("Sanatçı Lisans Sözleşmesi").
 - **Testler:** `node --test tests/*.test.js` (917). Yeni sayfa → `data-dil-otomatik` + dil.js EN çevirileri; tek satır update/delete `.select('id')`; auth.js sürümü `20261120b`.
 - **Sırada:** lisans fiyatları (öneri 750/2.500/6.000/15.000 TL, Derin karar vermedi), Google ile giriş (3. aşama).
+
+## Şarkı Avcısı (2026-11-20)
+
+Yalnız yönetici (Derin) için remix referans aracı: şarkıyı "dinler" (ölçer), 10 referans önerir.
+- Ekran: `sarki-avcisi.html` + `sarki-avcisi.js`; ölçüm ve seçim mantığı `sarki-avcisi-cekirdek.js` (tarayıcı + Node, `window.DerinSarkiAvcisi`). Menü: HESABIM → ŞARKI AVCISI (yalnız admin), admin.js panelinde de bağlantı var.
+- Analiz tarayıcıda (Web Audio): tempo (±1 BPM, yarım tempo), ton (Camelot, tahmin), 8'lik enerji blokları, drop/nefes/zirve. Ses dosyası hiçbir sunucuya yüklenmez.
+- Referanslar: `api/sarki-referans.js` (Vercel) → yönetici doğrulaması (auth/v1/user + rpc is_admin) → GetSongBPM `/tempo/` (ölçülen tempo ±3, yarım tempo ±1, 24 saat bellek önbelleği) → `referansSec` (tempo + ton uyumu + tür puanı, sanatçı başına en çok 2, kullanılanlar hariç). Ortam değişkeni: `GETSONGBPM_API_KEY`. Ücretsiz kullanım şartı: sayfa altbilgisindeki getsongbpm.com bağlantısı kaldırılmaz.
+- Takip: `supabase/sarki-avcisi.sql` → `sarki_avcisi_takip` (yeni tablo, RLS: is_admin() ve kendi satırı). Tablo kurulmadıysa liste localStorage'da tutulur.
+- Test: `tests/sarki-avcisi.test.js`.
