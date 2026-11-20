@@ -135,3 +135,13 @@ test('müşteride fiyat küçük, yeşil, sağda; TUTAR etiketi yok', () => {
   assert.doesNotMatch(h, />TUTAR</);
   assert.doesNotMatch(h, /sa-eyebrow">SATIN AL/);
 });
+
+// (20 Kasım) Derin: "antrenör dekont yüklediğinde sistem otomatik indirme açılsın."
+test('ilk dekont yüklenince indirme sunucuda otomatik açılır, Telegram bunu yazar', () => {
+  const s = require('fs').readFileSync(require('path').join(__dirname, '..', 'supabase', 'parca-satin-alma.sql'), 'utf8');
+  assert.match(s, /if old\.satin_alma_durum = 'istendi' then\s+new\.indirme_izni := true;/);
+  assert.match(s, /İndirme otomatik açıldı/);
+  const sa = require('fs').readFileSync(require('path').join(__dirname, '..', 'satin-alma.js'), 'utf8');
+  assert.match(sa, /İndirme açıldı · değiştirmek için dokun/);
+  assert.match(sa, /tr\.indirme_izni \? L\('Ödeme alındı · onayla'/);
+});
