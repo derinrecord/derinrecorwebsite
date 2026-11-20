@@ -165,7 +165,7 @@ begin
     || 'Parça: ' || coalesce(new.label, '—')
     || coalesce(E'\nTutar: ' || rtrim(rtrim(new.satin_alma_tutar::text, '0'), '.') || ' ₺', '') || E'\n'
     || case when new.satin_alma_durum = 'dekont' and new.indirme_izni
-         then E'\n⤓ İndirme otomatik açıldı. Para gelmediyse parçada indirmeyi kapat.' else '' end || E'\n'
+         then E'⤓ İndirme otomatik açıldı. Para gelmediyse parçada indirmeyi kapat.\n' else '' end
     || 'derinrecord.com/my-projects.html' || E'\n'
     || to_char(now() at time zone 'Europe/Istanbul', 'DD.MM.YYYY HH24:MI'));
   return new;
