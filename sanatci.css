@@ -63,3 +63,20 @@
 .sn-radyo{display:inline-flex;gap:6px;align-items:center;margin-top:6px;font-size:13px;color:var(--se-soluk);white-space:nowrap}
 .sn-radyo input{width:18px;height:18px;min-height:0;accent-color:var(--se-pembe)}
 #sp-uygulama{display:flex;flex-direction:column;gap:18px}#sp-sekme{display:flex;flex-direction:column;gap:18px}
+/* Yana kaydırmalı şerit (öne çıkan sanatçılar) + ızgara başlıkları */
+.sn-bolum-ust{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.sn-bolum-ust h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.4px}
+.sn-serit-bolum{display:flex;flex-direction:column;gap:16px}
+.sn-oklar{display:flex;gap:8px}
+.sn-ok{width:44px;height:44px;border-radius:50%;border:1px solid #34333a;background:transparent;color:var(--se-metin);font-size:24px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.sn-ok:hover:not(:disabled){border-color:#5a5960}
+.sn-ok:disabled{opacity:.3;cursor:default}
+.sn-serit{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,260px);gap:22px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0;padding-bottom:10px;scrollbar-width:thin;scrollbar-color:#34333a transparent;outline:none}
+.sn-serit:focus-visible{outline:2px solid var(--se-sari);outline-offset:4px}
+.sn-serit .sn-kart{scroll-snap-align:start}
+.sn-serit::-webkit-scrollbar{height:6px}
+.sn-serit::-webkit-scrollbar-thumb{background:#34333a;border-radius:3px}
+@media (max-width:760px){
+  .sn-serit{grid-auto-columns:62%;gap:14px}
+  .sn-oklar{display:none}
+}

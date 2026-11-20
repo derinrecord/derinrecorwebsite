@@ -39,11 +39,27 @@
     const kap = $('#sn-izgara');
     if (!d.sanatcilar.length) { kap.innerHTML = '<p class="se-bos">İlk sanatçılar çok yakında burada.</p>'; return; }
     if (!l.length) { kap.innerHTML = '<p class="se-bos">Bu aramaya uyan sanatçı yok.</p>'; return; }
-    kap.innerHTML = l.map(s => `<a class="sn-kart" href="sanatcilar.html?s=${encodeURIComponent(s.slug)}">
-        <div class="sn-foto">${foto(s) ? `<img src="${kacis(foto(s))}" alt="" loading="lazy">` : `<span class="sn-bas" aria-hidden="true">${kacis(s.ad.slice(0, 1).toLocaleUpperCase('tr'))}</span>`}</div>
-        <b>${kacis(s.ad)}</b>
-        <small>${kacis((s.turler || []).slice(0, 3).join(', ') || (d.sayilar[s.id] ? d.sayilar[s.id] + ' şarkı' : ''))}</small>
-      </a>`).join('');
+    kap.innerHTML = l.map(kart).join('');
+  }
+
+  // Üstteki yana kaydırmalı şerit: en çok şarkısı olan, sonra en yeni sanatçılar (en fazla 12).
+  const kart = s => `<a class="sn-kart" href="sanatcilar.html?s=${encodeURIComponent(s.slug)}">
+      <div class="sn-foto">${foto(s) ? `<img src="${kacis(foto(s))}" alt="" loading="lazy">` : `<span class="sn-bas" aria-hidden="true">${kacis(s.ad.slice(0, 1).toLocaleUpperCase('tr'))}</span>`}</div>
+      <b>${kacis(s.ad)}</b>
+      <small>${kacis((s.turler || []).slice(0, 3).join(', ') || (d.sayilar[s.id] ? d.sayilar[s.id] + ' şarkı' : ''))}</small>
+    </a>`;
+  function seritCiz() {
+    const l = d.sanatcilar.slice().sort((a, b) => ((d.sayilar[b.id] || 0) - (d.sayilar[a.id] || 0))
+      || String(b.onaylandi_at).localeCompare(String(a.onaylandi_at))).slice(0, 12);
+    $('#sn-serit-bolum').hidden = l.length < 2;
+    $('#sn-serit').innerHTML = l.map(kart).join('');
+    oklariGuncelle();
+  }
+  function oklariGuncelle() {
+    const s = $('#sn-serit'); if (!s) return;
+    const [geri, ileri] = document.querySelectorAll('.sn-ok');
+    geri.disabled = s.scrollLeft <= 2;
+    ileri.disabled = s.scrollLeft + s.clientWidth >= s.scrollWidth - 2;
   }
 
   function turleriCiz() {
@@ -62,6 +78,7 @@
     d.sanatcilar = sn.data || [];
     d.sayilar = {}; (pr.data || []).forEach(x => { d.sayilar[x.sanatci_id] = (d.sayilar[x.sanatci_id] || 0) + 1; });
     turleriCiz();
+    seritCiz();
     izgaraCiz();
   }
 
@@ -105,6 +122,15 @@
     $('#sn-ara').addEventListener('input', ev => { d.arama = ev.target.value; izgaraCiz(); });
     $('#sn-tur').addEventListener('change', ev => { d.tur = ev.target.value; izgaraCiz(); });
     $('#sn-sirala').addEventListener('change', ev => { d.sirala = ev.target.value; izgaraCiz(); });
+    const serit = $('#sn-serit');
+    serit.addEventListener('scroll', oklariGuncelle, { passive: true });
+    window.addEventListener('resize', oklariGuncelle);
+    document.querySelectorAll('.sn-ok').forEach(b => b.addEventListener('click', () => {
+      serit.scrollBy({ left: Number(b.dataset.kaydir) * serit.clientWidth * 0.85, behavior: 'smooth' });
+    }));
+    serit.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); serit.scrollBy({ left: (e.key === 'ArrowRight' ? 1 : -1) * 240, behavior: 'smooth' }); }
+    });
   }
 
   function baslat() {
