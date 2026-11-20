@@ -136,12 +136,23 @@ test('müşteride fiyat küçük, yeşil, sağda; TUTAR etiketi yok', () => {
   assert.doesNotMatch(h, /sa-eyebrow">SATIN AL/);
 });
 
-// (20 Kasım) Derin: "antrenör dekont yüklediğinde sistem otomatik indirme açılsın."
-test('ilk dekont yüklenince indirme sunucuda otomatik açılır, Telegram bunu yazar', () => {
-  const s = require('fs').readFileSync(require('path').join(__dirname, '..', 'supabase', 'parca-satin-alma.sql'), 'utf8');
-  assert.match(s, /if old\.satin_alma_durum = 'istendi' then\s+new\.indirme_izni := true;/);
-  assert.match(s, /İndirme otomatik açıldı/);
-  const sa = require('fs').readFileSync(require('path').join(__dirname, '..', 'satin-alma.js'), 'utf8');
-  assert.match(sa, /İndirme açıldı · değiştirmek için dokun/);
+// (20 Kasım) Dekont tarama: indirme yüklemede değil, tarama doğrulayınca açılır.
+const fs2 = require('fs'), path2 = require('path');
+const oku2 = f => fs2.readFileSync(path2.join(__dirname, '..', f), 'utf8');
+test('dekont tarama: yüklemede indirme açılmaz, tarama sonucu açar (parça başına bir kez)', () => {
+  const s = oku2('supabase/dekont-tarama.sql');
+  assert.match(s, /new\.dekont_tarama := 'bekliyor';/);
+  assert.doesNotMatch(s.slice(s.indexOf('function public.parca_satin_alma_koru'), s.indexOf('-- ---------- 5.')), /new\.indirme_izni := true/);
+  assert.match(s, /v_ac := p_gecti and not t\.indirme_izni and t\.dekont_otomatik_acildi_at is null;/);
+  assert.match(s, /t\.dekont_path is distinct from p_path/);
+  assert.match(s, /DEKONT DOĞRULANAMADI/);
+  assert.match(s, /dekont-tarama-zaman-asimi/);
+  assert.match(s, /revoke all on public\.dekont_tarama_ayar from anon, authenticated;/);
+});
+test('dekont tarama: müşteri ve yönetici metinleri', () => {
+  const sa = oku2('satin-alma.js');
+  assert.match(sa, /Dekontunuz kontrol ediliyor…/);
+  assert.match(sa, /Dekont doğrulanamadı · kontrol et/);
   assert.match(sa, /tr\.indirme_izni \? L\('Ödeme alındı · onayla'/);
+  assert.match(oku2('projects.js'), /Doğrulanınca indirme kendiliğinden açılır/);
 });

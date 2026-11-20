@@ -1,0 +1,10 @@
+{
+  "name": "derinrecorwebsite",
+  "private": true,
+  "description": "Yalnız Vercel sunucu fonksiyonlarının bağımlılıkları (dekont tarama). Site build gerektirmez.",
+  "dependencies": {
+    "@tesseract.js-data/tur": "1.0.0",
+    "tesseract.js": "7.0.0",
+    "unpdf": "1.9.1"
+  }
+}

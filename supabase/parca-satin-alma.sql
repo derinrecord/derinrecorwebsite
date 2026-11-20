@@ -14,7 +14,6 @@
 --      * Müşteri yalnız: boş → 'istendi', 'istendi'/'dekont' → 'dekont'
 --        (kendi proje/<kimlik>/dekont/ klasöründeki bir dosyayla).
 --      * Zamanlar sunucuda yazılır.
---      * (20 Kasım) İlk dekont yüklenince indirme otomatik açılır.
 --   3) Müşteri talep bırakınca ya da dekont yükleyince Derin'e Telegram
 --      mesajı (mevcut radio_bildirim_ayari ile; kapalıysa hiçbir şey gitmez).
 --   4) odeme_ayarlari: IBAN, alıcı adı, müşteriye not (tek satır).
@@ -23,6 +22,8 @@
 --      MEVCUT hiçbir izin kuralına dokunulmaz.
 --
 -- Supabase → SQL Editor'de bir kez çalıştırın. Tekrar çalıştırmak güvenlidir.
+-- DİKKAT (20 Kasım): Bu dosyayı yeniden çalıştırırsanız ardından
+-- supabase/dekont-tarama.sql'i de çalıştırın; dekont tarama fonksiyonları onun içinde.
 -- Geri alma:
 --   drop trigger if exists parca_satin_alma_bildir_tetik on public.project_tracks;
 --   drop trigger if exists parca_satin_alma_koru on public.project_tracks;
@@ -102,12 +103,6 @@ begin
         and position('..' in new.dekont_path) = 0 then
     new.dekont_adi := left(new.dekont_adi, 200);
     new.dekont_at := now();
-    -- (20 Kasım) Derin: "antrenör dekont yüklediğinde indirme otomatik açılsın."
-    -- Yalnız İLK dekontta açılır: Derin para gelmedi diye kapatırsa, yeni
-    -- dekont yüklemek indirmeyi yeniden açmaz.
-    if old.satin_alma_durum = 'istendi' then
-      new.indirme_izni := true;
-    end if;
   else
     -- İzinsiz geçiş (ör. kendini "ödendi" yapmak): hiçbir satın alma alanı değişmez.
     new.satin_alma_durum := old.satin_alma_durum;
@@ -164,8 +159,6 @@ begin
     || coalesce(nullif(btrim(v_ad), ''), 'Müşteri') || coalesce(' · ' || v_proje, '') || E'\n'
     || 'Parça: ' || coalesce(new.label, '—')
     || coalesce(E'\nTutar: ' || rtrim(rtrim(new.satin_alma_tutar::text, '0'), '.') || ' ₺', '') || E'\n'
-    || case when new.satin_alma_durum = 'dekont' and new.indirme_izni
-         then E'⤓ İndirme otomatik açıldı. Para gelmediyse parçada indirmeyi kapat.\n' else '' end
     || 'derinrecord.com/my-projects.html' || E'\n'
     || to_char(now() at time zone 'Europe/Istanbul', 'DD.MM.YYYY HH24:MI'));
   return new;

@@ -132,8 +132,8 @@
         ${ayar.aciklama ? `<p class="sa-not">${kacis(ayar.aciklama)}</p>` : ''}
         <label class="sa-birak${d === 'dekont' ? ' alindi' : ''}${o.yukleniyor ? ' mesgul' : ''}" data-sabirak="${id}">
           <input type="file" accept="${DEKONT_ACCEPT}" data-sadekont="${id}" hidden${o.yukleniyor ? ' disabled' : ''}>
-          <b>${o.yukleniyor ? L('Yükleniyor…', 'Uploading…') : d === 'dekont' ? '✓ ' + L('Dekontunuz alındı', 'Receipt received') : L('Dekontu buraya bırak', 'Drop your receipt here')}</b>
-          <small>${o.yukleniyor ? '' : d === 'dekont' ? L('İndirme açıldı · değiştirmek için dokun', 'Download opened · tap to replace') : L('ya da dokunup seç · PDF, JPG, PNG · en çok 10 MB', 'or tap to choose · PDF, JPG, PNG · max 10 MB')}</small>
+          <b>${o.yukleniyor ? L('Yükleniyor…', 'Uploading…') : d === 'dekont' ? (tr.dekont_tarama === 'bekliyor' ? L('Dekontunuz kontrol ediliyor…', 'Checking your receipt…') : '✓ ' + L('Dekontunuz alındı', 'Receipt received')) : L('Dekontu buraya bırak', 'Drop your receipt here')}</b>
+          <small>${o.yukleniyor ? '' : d === 'dekont' ? (tr.dekont_tarama === 'bekliyor' ? L('Birkaç saniye sürer, sayfayı kapatabilirsiniz', 'Takes a few seconds, you can close the page') : L('Ödeme onaylanınca indirme açılacak · değiştirmek için dokun', 'The download opens once payment is confirmed · tap to replace')) : L('ya da dokunup seç · PDF, JPG, PNG · en çok 10 MB', 'or tap to choose · PDF, JPG, PNG · max 10 MB')}</small>
         </label>
       </div>` : '';
     return `<section class="sa sa--${d || 'yeni'}" id="sa-odeme-${id}" data-sakutu>
@@ -152,7 +152,10 @@
     const d = durum(tr), id = kacis(tr.id);
     const etiket = {
       istendi: L('Satın almak istiyor · dekont bekleniyor', 'Wants to buy · awaiting receipt'),
-      dekont: L('Dekont yüklendi · indirme açıldı · ödemeyi kontrol et', 'Receipt uploaded · download opened · check the payment'),
+      dekont: tr.dekont_tarama === 'bekliyor' ? L('Dekont yüklendi · taranıyor…', 'Receipt uploaded · scanning…')
+        : tr.dekont_tarama === 'dogrulandi' ? (tr.indirme_izni ? L('Dekont doğrulandı · indirme açıldı · parayı kontrol et', 'Receipt verified · download opened · check the payment') : L('Dekont doğrulandı · indirme kapalı · ödemeyi kontrol et', 'Receipt verified · download closed · check the payment'))
+        : tr.dekont_tarama === 'dogrulanamadi' ? L('Dekont doğrulanamadı · kontrol et', 'Receipt could not be verified · check it')
+        : L('Dekont yüklendi · ödemeyi kontrol et', 'Receipt uploaded · check the payment'),
       odendi: L('Ödendi · indirme açık', 'Paid · download open')
     }[d] || L('Henüz talep yok', 'No request yet');
     const tutarDeger = tr.satin_alma_tutar != null ? tutarGoster(tr.satin_alma_tutar).replace(/ ₺$/, '') : '';
@@ -166,6 +169,7 @@
           <b><input type="text" class="sa-tutar-kutu" inputmode="decimal" data-satutar="${id}" value="${kacis(tutarDeger)}" placeholder="5.500" aria-label="${L('Bu parçanın ücreti (₺)', 'Price of this track (₺)')}"><em class="sa-lira">₺</em></b></label>
       </div>
       ${adimlar(d, L)}
+      ${d === 'dekont' && tr.dekont_tarama === 'dogrulanamadi' && tr.dekont_tarama_not ? `<p class="sa-not sa-tarama-not">${L('Bulunamayan', 'Not found')}: ${kacis(tr.dekont_tarama_not)}</p>` : ''}
       <div class="sa-dugmeler">
         <button type="button" class="sa-ikincil" data-satutarkaydet="${id}">${L('Tutarı kaydet', 'Save price')}</button>
         ${tr.dekont_path ? `<button type="button" class="sa-ikincil" data-sadekontgor="${kacis(tr.dekont_path)}">${L('Dekontu gör ↗', 'View receipt ↗')}</button>` : ''}

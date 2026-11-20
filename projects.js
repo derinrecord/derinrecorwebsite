@@ -1560,7 +1560,7 @@
         const up=await window.DerinR2.yukle('project-audio',yol,file,file.type||undefined);
         if(up&&up.error)throw up.error;
         await kaydet({satin_alma_durum:'dekont',dekont_path:yol,dekont_adi:file.name},L('Dekont kaydedilemedi.','The receipt could not be saved.'));
-        bildir(L('Dekontunuz alındı, indirme açıldı. Parçayı indirebilirsiniz.','Your receipt was received and the download is open. You can download the track.'),'ok');
+        bildir(L('Dekontunuz alındı, kontrol ediliyor. Doğrulanınca indirme kendiliğinden açılır.','Your receipt was received and is being checked. The download opens automatically once it is verified.'),'ok');
       }catch(e){ bildir(L('Dekont yüklenemedi: ','The receipt could not be uploaded: ')+(e.message||e),'hata'); }
       finally{ detail.dekontYukleniyor=false; await load(); }
     };
