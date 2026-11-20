@@ -42,19 +42,26 @@ async function yoneticiMi(yetki) {
   }
 }
 
-async function tempoSorgula(anahtar, bpm) {
-  const kayit = onbellek.get(bpm);
+// Tek GetSongBPM sorgusu (önbellekli). yol: "tempo/?bpm=150" ya da "key/?key_of=9&mode=0".
+async function sorgula(anahtar, yol) {
+  const kayit = onbellek.get(yol);
   if (kayit && Date.now() - kayit.zaman < SURE_MS) return kayit.adaylar;
-  const adres = `${SERVIS}/tempo/?api_key=${encodeURIComponent(anahtar)}&bpm=${bpm}`;
+  const adres = `${SERVIS}/${yol}&api_key=${encodeURIComponent(anahtar)}`;
   const yanit = await fetch(adres, { headers: { accept: 'application/json' } });
   if (!yanit.ok) throw new Error('GetSongBPM ' + yanit.status);
   const adaylar = S.getsongbpmCoz(await yanit.json().catch(() => null));
   if (onbellek.size > 400) onbellek.clear();
-  onbellek.set(bpm, { zaman: Date.now(), adaylar });
+  onbellek.set(yol, { zaman: Date.now(), adaylar });
   return adaylar;
 }
 
-// Sorgulanacak tempolar: ölçülen tempo ±3 ve yarım tempo ±1 (en çok 10 istek).
+// /tempo/ yanıtında ton yoktur; uyumlu tonların /key/ listeleri aynı şarkı kimliğiyle eşlenir.
+function tonSorgulari(camelot) {
+  return S.uyumluTonlar(camelot).map(S.camelotParametre).filter(Boolean)
+    .map(p => `key/?key_of=${p.key_of}&mode=${p.mode}&limit=500`);
+}
+
+// Sorgulanacak tempolar: ölçülen tempo ±3 ve yarım tempo ±1 (en çok 10 istek; + 4 ton isteği).
 function tempolar(bpm) {
   const t = new Set();
   const b = Math.round(bpm);
@@ -95,8 +102,13 @@ module.exports = async (req, res) => {
   const adet = Math.min(20, Math.max(1, Number(govde.adet) || 10));
 
   try {
-    const sonuclar = await Promise.allSettled(tempolar(bpm).map(t => tempoSorgula(anahtar, t)));
-    const adaylar = sonuclar.filter(s => s.status === 'fulfilled').flatMap(s => s.value);
+    const [tempoSonuc, tonSonuc] = await Promise.all([
+      Promise.allSettled(tempolar(bpm).map(t => sorgula(anahtar, `tempo/?bpm=${t}`))),
+      Promise.allSettled(tonSorgulari(hedef.camelot).map(y => sorgula(anahtar, y)))
+    ]);
+    const sonuclar = tempoSonuc;
+    const tonlu = tonSonuc.filter(s => s.status === 'fulfilled').flatMap(s => s.value);
+    const adaylar = S.tonlariEsle(sonuclar.filter(s => s.status === 'fulfilled').flatMap(s => s.value), tonlu);
     if (!adaylar.length && sonuclar.every(s => s.status === 'rejected')) throw new Error('servis');
     const secilen = S.referansSec(adaylar, hedef, haric, adet);
     res.status(200).json({ referanslar: secilen, adaySayisi: adaylar.length });

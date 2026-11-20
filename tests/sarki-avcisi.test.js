@@ -57,6 +57,18 @@ test('ton yazımları Camelot koduna çevrilir', () => {
   assert.equal(S.openKeyCamelot('2m'), '9A');
 });
 
+test('/tempo/ adaylarına ton, /key/ listelerinden şarkı kimliğiyle eklenir', () => {
+  assert.deepEqual(S.camelotParametre('8A'), { key_of: 9, mode: 0 }, '8A = A minor');
+  assert.deepEqual(S.camelotParametre('8B'), { key_of: 0, mode: 1 }, '8B = C major');
+  assert.equal(S.camelotParametre('xx'), null);
+  const tempo = S.getsongbpmCoz({ tempo: [{ song_id: 's1', song_title: 'Bir', tempo: 150, artist: { name: 'A' } }, { song_id: 's2', song_title: 'İki', tempo: 151, artist: { name: 'B' } }] });
+  const ton = S.getsongbpmCoz({ key: [{ song_id: 's1', song_title: 'Bir', music_key: { raw: '9', key_of: 'A', mode: 'minor' }, artist: { name: 'A' } }] });
+  assert.equal(ton[0].camelot, '8A');
+  const esli = S.tonlariEsle(tempo, ton);
+  assert.equal(esli[0].camelot, '8A');
+  assert.equal(esli[1].camelot, null, 'eşleşmeyen şarkının tonu bilinmiyor kalır');
+});
+
 test('ton uyumu: aynı, komşu (±1 ve A/B), uyumsuz, bilinmiyor', () => {
   assert.equal(S.tonUyumu('8A', '8A'), 'ayni');
   assert.equal(S.tonUyumu('8A', '8B'), 'komsu');

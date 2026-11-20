@@ -177,6 +177,21 @@
     return `${((+m[1] + 6) % 12) + 1}${m[2].toLowerCase() === 'd' ? 'B' : 'A'}`;
   }
 
+  // Camelot → GetSongBPM /key/ parametreleri: key_of (0 = C … 11 = B), mode (1 major, 0 minor).
+  function camelotParametre(k) {
+    const K = String(k || '').toUpperCase();
+    for (const [kok, kod] of Object.entries(CAMELOT_MAJ)) if (kod === K) return { key_of: PC.indexOf(kok), mode: 1 };
+    for (const [kok, kod] of Object.entries(CAMELOT_MIN)) if (kod === K) return { key_of: PC.indexOf(kok), mode: 0 };
+    return null;
+  }
+
+  // Tempo listesindeki adaylara, ton listelerinden (aynı şarkı kimliğiyle) ton ekler.
+  function tonlariEsle(adaylar, tonAdaylari) {
+    const harita = new Map();
+    for (const t of tonAdaylari || []) if (t.camelot) harita.set(t.id, t.camelot);
+    return (adaylar || []).map(a => (a.camelot || !harita.has(a.id) ? a : { ...a, camelot: harita.get(a.id) }));
+  }
+
   const camelotCoz = k => { const m = /^(\d{1,2})([AB])$/i.exec(String(k || '').trim()); return m ? { n: +m[1], L: m[2].toUpperCase() } : null; };
   const sar = n => ((n - 1 + 12) % 12) + 1;
 
@@ -238,7 +253,9 @@
       const sanatci = String((o.artist && o.artist.name) || o.artist_name || '').trim();
       if (!baslik || !sanatci) return null;
       const bpm = Number(o.tempo || o.bpm) || null;
-      const camelot = tonCamelot(o.key_of) || openKeyCamelot(o.open_key) || tonCamelot(o.camelot) || null;
+      const mk = o.music_key && typeof o.music_key === 'object' ? o.music_key : null;
+      const camelot = tonCamelot(o.key_of) || openKeyCamelot(o.open_key) || tonCamelot(o.camelot)
+        || (mk ? tonCamelot(String(mk.key_of || '') + (/minor/i.test(mk.mode || '') ? 'm' : '')) : null) || null;
       const turler = Array.isArray(o.artist && o.artist.genres) ? o.artist.genres.map(String) : [];
       const yil = Number((o.album && o.album.year) || o.year) || null;
       return {
@@ -315,7 +332,7 @@
 
   const api = {
     tempoBul, tonBul, enerjiBloklari, onemliAnlar, enerjiOzeti, zaman,
-    tonCamelot, openKeyCamelot, uyumluTonlar, tonUyumu,
+    tonCamelot, openKeyCamelot, camelotParametre, tonlariEsle, uyumluTonlar, tonUyumu,
     sarkiAnahtari, germe, germeEnYakin, tempoFarki, getsongbpmCoz, puanla, referansSec, dinlemeLinkleri
   };
 
