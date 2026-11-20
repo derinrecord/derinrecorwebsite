@@ -20,6 +20,8 @@
   const YENI_GUN = 30;
   // Sanatçı profil sayfası, sanatçının kimliğini bir söz (Promise) olarak bırakır.
   const SANATCI_SAYFASI = !!window.DerinMuzikSanatci;
+  // Sanatçılar bölümü şimdilik gizli (2026-11-20): katalogda sanatçı adı bağlantı olmaz.
+  const SANATCILAR_ACIK = false;
 
   const d = {
     parcalar: [], versiyonlar: [], turler: [], satislar: [], indirmeler: [], odeme: {},
@@ -148,7 +150,7 @@
       return `<div class="mk-satir">
         <button type="button" class="mk-kapak" data-cal="${anahtar}" aria-pressed="${calan}" aria-label="${kacis(p.ad)} ${calan ? 'durdur' : 'çal'}" ${p.onizleme_path ? '' : 'disabled'}>
           <img src="${kacis(kapakAdres(p))}" alt="" loading="lazy"><span>${calan ? DUR : PLAY}</span></button>
-        <div class="se-ad"><b>${kacis(p.ad)}${yeni ? '<span class="mk-yeni">Yeni</span>' : ''}</b><small>${p.sanatcilar && p.sanatcilar.slug && !SANATCI_SAYFASI ? `<a class="mk-sanatci" href="sanatcilar.html?s=${encodeURIComponent(p.sanatcilar.slug)}">${kacis(p.sanatci)}</a>` : kacis(p.sanatci)}</small></div>
+        <div class="se-ad"><b>${kacis(p.ad)}${yeni ? '<span class="mk-yeni">Yeni</span>' : ''}</b><small>${SANATCILAR_ACIK && p.sanatcilar && p.sanatcilar.slug && !SANATCI_SAYFASI ? `<a class="mk-sanatci" href="sanatcilar.html?s=${encodeURIComponent(p.sanatcilar.slug)}">${kacis(p.sanatci)}</a>` : kacis(p.sanatci)}</small></div>
         ${surumVar ? `<button type="button" class="mk-ac" data-ac="${p.id}" aria-expanded="${!!d.acik[p.id]}" aria-label="${kacis(p.ad)}: versiyonlar ve stemler">${OK}</button>` : '<span></span>'}
         ${dalgaKutusu(anahtar, p.dalga, p.ad)}
         <span class="se-sure">${p.sure_sn ? sureYaz(p.sure_sn) : ''}</span>

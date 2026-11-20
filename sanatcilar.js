@@ -114,7 +114,7 @@
   // Şarkı listesi, lisans paneli ve "Lisanslarım": katalogla aynı kod.
   function yukleMuzik() {
     const el = document.createElement('script');
-    el.src = 'muzik.js?v=4';
+    el.src = 'muzik.js?v=5';
     document.body.appendChild(el);
   }
 

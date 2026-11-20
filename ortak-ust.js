@@ -3,6 +3,10 @@
    yüklenir; böylece eski başlık hiç görünmeden yenisi çizilir.
    auth.js hesap düğmelerini, dil.js EN düğmesini bu başlığa kendisi ekler. */
 (() => {
+  // 2026-11-20 (Derin'in isteği): Ses Efektleri mağazası, Ses Tasarımı menü
+  // maddesi ve Sanatçılar şimdilik gizli. Sayfalar ve veriler silinmedi; açmak
+  // için false yap (index.html'deki aynı bloklar da yorumdan çıkarılır).
+  const GIZLI_BOLUMLER = true;
   const baslik = document.querySelector('header.header');
   if (!baslik || baslik.classList.contains('ortak-ust')) return;
 
@@ -23,17 +27,17 @@
           ${alt('coffee.html', 'nav.mekan', 'Mekân Müziği', 'nav.mekanAlt', 'Kafe ve mağazalar için canlı radyo')}
           ${alt('index.html#demolar', 'nav.demolar', 'Demolar', 'nav.demolarAlt', 'Dinlemeye hazır örnek parçalar')}
           ${alt('ses-tasarimi.html', 'nav.film', 'Film Müziği', 'nav.filmAlt', 'Film ve video projeleri')}
-          ${alt('ses-tasarimi.html', 'nav.ses', 'Ses Tasarımı', 'nav.sesAlt', 'Sahneye özel efekt ve atmosfer')}
+          ${GIZLI_BOLUMLER ? '' : alt('ses-tasarimi.html', 'nav.ses', 'Ses Tasarımı', 'nav.sesAlt', 'Sahneye özel efekt ve atmosfer')}
         </div>
       </div>
-      <div class="ou-acilir">
+      ${GIZLI_BOLUMLER ? '' : `<div class="ou-acilir">
         <button class="ou-tetik" type="button" aria-expanded="false" aria-controls="ou-efekt"><span data-i18n="nav.efekt">Ses Efektleri</span>${ok}</button>
         <div class="ou-panel" id="ou-efekt">
           ${alt('ses-efektleri.html', 'nav.efektTum', 'Tüm efektler', 'nav.efektTumAlt', 'Dinle, seç, satın al')}
           ${alt('ses-efektleri.html#yeni', 'nav.efektYeni', 'Yeni eklenenler', 'nav.efektYeniAlt', 'Stüdyodan en son efektler')}
         </div>
       </div>
-      <a href="sanatcilar.html" data-i18n="nav.sanatcilar">Sanatçılar</a>
+      <a href="sanatcilar.html" data-i18n="nav.sanatcilar">Sanatçılar</a>`}
       <a href="news.html" data-i18n="nav.haberler">Haberler</a>
       <a href="index.html#kurumsal" data-i18n="nav.kurumsal">Kurumsal</a>
       <a href="index.html#hakkinda" data-i18n="nav.hakkinda">Hakkında</a>
