@@ -3,7 +3,7 @@
 //   Fotoğraf (JPG/PNG/WEBP) → ücretsiz yazı tanıma (tesseract.js, Türkçe + İngilizce).
 //   HEIC ve yazısız (taranmış) PDF okunamaz → boş yazı döner, dekont
 //   "doğrulanamadı" sayılır ve Derin elle bakar.
-// Dil verisi npm paketlerinden gelir (@tesseract.js-data/tur, /eng); internete gidilmez.
+// Dil verisi npm paketinden gelir (@tesseract.js-data/tur); internete gidilmez.
 
 const path = require('path');
 
@@ -16,8 +16,8 @@ async function pdfYazisi(buf) {
 
 async function resimYazisi(buf) {
   const { createWorker } = require('tesseract.js');
-  const dilYolu = paket => path.join(path.dirname(require.resolve(paket + '/package.json')), '4.0.0_best_int');
-  // İki dil verisi ayrı klasörlerde: tur ile tanı, sonra gerekirse eng ile bir daha dene.
+  // Doğrudan klasör yolu (Vercel'de vercel.json includeFiles ile pakete eklenir).
+  const dilYolu = paket => path.join(__dirname, '..', 'node_modules', ...paket.split('/'), '4.0.0_best_int');
   const oku = async (dil, paket) => {
     const worker = await createWorker(dil, 1, {
       langPath: dilYolu(paket),
