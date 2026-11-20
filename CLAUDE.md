@@ -74,3 +74,13 @@ Mekân (kafe, restoran, salon…) radyo lisansı satışı için tek sahipli sat
 - Hata: fonksiyonlar sabit anahtar fırlatır (`TaskAlreadyClosed`, `WaitingRequiresTask`…); arayüz Türkçeye çevirir.
 - Telefon: `crm_telefon()` → `905xxxxxxxxx`; çözülemeyen numara atılmaz (`phone_raw` + `needs_review`).
 - Faz durumu: Faz 0–2 (çekirdek + ekranlar). Faz 3 ödeme takibi, Faz 4 hatırlatma henüz yok.
+
+## Müzik kataloğu, ses efektleri ve sanatçı platformu (2026-11-19/20)
+
+- **Müzik kataloğu:** `muzik.html/js/css` (şarkı satırı, DAW dalga formu, sağ lisans paneli, Lisanslarım) + yönetim `muzik-yonetim.html/js` + ortak yükleme `muzik-yukle.js`. Şema `supabase/muzik-lisans.sql`. Lisans türleri: kisisel/dijital/genisletilmis/tum_medya; fiyat null = "Yakında" (Derin henüz fiyat girmedi). Ödeme: istendi → dekont → yönetici 'odendi' → imzalı indirme.
+- **R2:** `api/r2-yukleme-izni.js` + `r2-depo.js`. muzik/ ve efekt/ gizli (satış klasörü, RPC `*_indirebilir`), muzik-onizleme/ ve efekt-onizleme/ açık (muzik.derinrecord.com).
+- **Ortak üst menü:** `ortak-ust.js/css` (alt sayfalar), ana sayfada `ust-menu`. `GIZLI_BOLUMLER = true`.
+- **GİZLİ (2026-11-20, silinmedi):** Ses Efektleri mağazası (`ses-efektleri.*`, `supabase/ses-efektleri.sql`), "Ses Tasarımı" menü maddesi, Sanatçılar (`sanatcilar.*`, `sanatci-paneli.*`, `gorsel-kirp.js`, `sanatci.css`). Sayfalar `index.html`'e yönlenir, `?onizle=1` ile açılır (test: `tests/gizli-bolumler.test.js`). Film Müziği (`ses-tasarimi.html`) AÇIK.
+- **Sanatçı platformu** (`supabase/sanatcilar.sql`, uygulandı): sanatcilar (+ gizli sanatci_ozel), şarkıda sanatci_id + durum taslak/inceleme/yayinda/reddedildi, Ek-1 `muzik_parca_beyan`. Yayına alma yalnız yönetici. Gelir: lisans %25, radyo aylık Net Gelir %25 havuzu çalınma oranıyla (`radio_calmalar`, `radyo_aylik_gelir`, `radyo_havuz_ozeti`). Parça 30 sn çalınınca sayılır (`coffee-marka.js` → `sube-guvenlik.js calmaSay`). Radyo izni kapanınca şarkı radyodan otomatik silinir. Sözleşme taslağı Claude Docs'ta ("Sanatçı Lisans Sözleşmesi").
+- **Testler:** `node --test tests/*.test.js` (917). Yeni sayfa → `data-dil-otomatik` + dil.js EN çevirileri; tek satır update/delete `.select('id')`; auth.js sürümü `20261120b`.
+- **Sırada:** lisans fiyatları (öneri 750/2.500/6.000/15.000 TL, Derin karar vermedi), Google ile giriş (3. aşama).
