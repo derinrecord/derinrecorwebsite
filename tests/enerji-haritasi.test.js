@@ -97,3 +97,12 @@ test('stil ve betik dosyaları sürüm etiketiyle yüklenir', () => {
   assert.match(html, /energy-map\.css\?v=\d+/);
   assert.match(html, /energy-map\.js\?v=\d+/);
 });
+
+// 21 Kasım 2026: spektrum açılıp kapanabilir; sayfa her açılışta spektrum AÇIK karşılar.
+test('spektrum düğmesi var ve sayfa spektrum açık açılır', () => {
+  assert.match(html, /id="spek-dugme"[^>]*aria-pressed="true"/);
+  assert.match(html, /id="spek-durum">açık</);
+  assert.match(js, /let spekAcik = true;/);
+  assert.match(js, /if \(spekAcik\) spektrumKatmani/);
+  assert.doesNotMatch(js, /localStorage[^\n]*spek/);
+});

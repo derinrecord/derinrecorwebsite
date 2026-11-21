@@ -181,6 +181,18 @@
 .a-tempo { background: var(--yellow); }
 .a-spektrum { background: linear-gradient(90deg, #5b2a8c, var(--pink), var(--yellow)); }
 .em-ipucu-yazi { margin-left: auto; color: var(--em-sonuk); }
+/* Spektrum aç/kapa (21 Kasım): sayfa açılınca açık gelir */
+.em-spek-dugme { display: inline-flex; align-items: center; gap: 8px; margin: -5px 0; padding: 5px 10px 5px 12px; border: 1px solid rgba(214, 51, 118, .55); border-radius: 999px; background: rgba(214, 51, 118, .12); color: var(--em-yazi, #f4f1e9); font: inherit; cursor: pointer; transition: background .2s, border-color .2s, opacity .2s; }
+.em-spek-dugme i { margin-right: 0; }
+.em-spek-dugme em { font-style: normal; font-weight: 700; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--yellow); min-width: 3.2em; }
+.em-anahtarcik { position: relative; display: inline-block; width: 30px; height: 17px; border-radius: 999px; background: var(--pink); transition: background .2s; }
+.em-anahtarcik i { position: absolute; top: 2px; left: 15px; width: 13px !important; height: 13px !important; margin: 0 !important; border-radius: 50%; background: #fff; vertical-align: 0 !important; transition: left .2s; }
+.em-spek-dugme.kapali { background: transparent; border-color: rgba(244, 241, 233, .22); color: var(--em-soluk); }
+.em-spek-dugme.kapali .em-anahtarcik { background: #3a3540; }
+.em-spek-dugme.kapali .em-anahtarcik i { left: 2px; }
+.em-spek-dugme.kapali em { color: var(--em-soluk); }
+.em-spek-dugme:hover { border-color: var(--pink); }
+.em-spek-dugme:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
 
 .ekran-okuyucu { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 

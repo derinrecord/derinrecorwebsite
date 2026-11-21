@@ -39,6 +39,8 @@
 
   let R = null;           // son analiz
   let spekResim = null;   // spektrum, ekran dışı tuval
+  // Spektrum her açılışta AÇIK gelir (Derin'in isteği, 21 Kasım); düğmeyle kapanır, hatırlanmaz.
+  let spekAcik = true;
   let hover = -1;         // 0..1, fare konumu
   let yerlesim = { x0: 0, x1: 1, y0: 0, y1: 1 };
   let url = '';
@@ -180,10 +182,12 @@
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#0b0a0e'; ctx.fillRect(0, 0, w, h);
     if (!R) return;
-    const e1 = Math.round(h * .46), t1 = e1 + 80, s1 = h - 24;
+    const s1 = h - 24;
+    const e1 = spekAcik ? Math.round(h * .46) : Math.round(s1 * .74);
+    const t1 = spekAcik ? e1 + 80 : s1;
     enerjiKatmani(w, 0, e1);
     tempoKatmani(w, e1 + 2, t1);
-    spektrumKatmani(w, t1 + 2, s1);
+    if (spekAcik) spektrumKatmani(w, t1 + 2, s1);
     zamanEkseni(w, h - 12);
     yerlesim = { x0: 0, x1: w, y0: 0, y1: s1 };
     const t = audio.currentTime || 0;
@@ -468,6 +472,16 @@
     hover = f; okumaYaz(f); draw();
   });
   canvas.addEventListener('blur', () => { hover = -1; okumaYaz(-1); draw(); });
+
+  const spekDugme = document.getElementById('spek-dugme');
+  const spekDurum = document.getElementById('spek-durum');
+  function spekGoster() {
+    spekDugme.setAttribute('aria-pressed', spekAcik ? 'true' : 'false');
+    spekDugme.classList.toggle('kapali', !spekAcik);
+    spekDurum.textContent = C(spekAcik ? 'açık' : 'kapalı');
+  }
+  spekDugme.addEventListener('click', () => { spekAcik = !spekAcik; spekGoster(); draw(); });
+  spekGoster();
 
   const gozcu = new ResizeObserver(() => draw());
   gozcu.observe(grafik);
