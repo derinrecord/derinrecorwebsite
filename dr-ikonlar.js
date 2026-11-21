@@ -14,7 +14,7 @@
 (() => {
   if (window.DerinIkon) return;
   const YOL = 'assets/ikonlar/';
-  const SURUM = '?v=2';
+  const SURUM = '?v=3';
   const TUR = {
     wav: 'wav', wave: 'wav', mp3: 'mp3', flac: 'flac', aif: 'aiff', aiff: 'aiff', aifc: 'aiff',
     m4a: 'm4a', aac: 'm4a', ogg: 'ogg', oga: 'ogg', opus: 'ogg',

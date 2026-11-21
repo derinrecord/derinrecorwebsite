@@ -96,6 +96,6 @@ Yalnız yönetici (Derin) için remix referans aracı: şarkıyı "dinler" (öl�
 
 ## Ikonlar (2026-11-21)
 
-Derin'in seçtiği karışık set, `assets/ikonlar/` (16 SVG): dosya türleri `dosya-*.svg` "makara bant" belgesi (WAV sarı, MP3 yeşil, FLAC yeşil, AIFF mor, M4A turkuaz, OGG kırmızı, video/MP4 pembe, görsel, dekont); `dosya-ekle.svg` yuvarlak köşeli kare; `buton-*.svg` pembe yuvarlak (indir, yükle, oynat, klasör, bilgi, sürükle-bırak).
+Derin'in seçtiği karışık set, `assets/ikonlar/` (16 SVG): dosya türleri `dosya-*.svg` "makara bant" belgesi (WAV sarı, MP3 yeşil, FLAC turuncu, AIFF mor, M4A turkuaz, OGG kırmızı, video/MP4 pembe, görsel, dekont); `dosya-ekle.svg` yuvarlak köşeli kare; `buton-*.svg` pembe yuvarlak (indir, yükle, oynat, klasör, bilgi, sürükle-bırak).
 - `dr-ikonlar.js` her sayfaya `uygulama.js` sonundaki yükleyiciyle gelir; sayfa koduna dokunmaz: görünen `input[type=file]` yerinde kalır, gizlenir, yanına "Dosya ekle" butonu + seçilen dosyanın adı/ikonu çizilir; gizli girişi saran etikete ikon eklenir; `[data-dl][data-bicim]` ve `[data-indir][data-ad]` indirme düğmeleri format ikonunu alır. `.istek-birak` kutusu olduğu gibi kalır. Başka yerde: `window.DerinIkon.dosya('ad.wav')` ya da `data-dosya-ikon="ad.wav"`.
 - İkon değişince `dr-ikonlar.js` içindeki `SURUM` artırılır (test: `tests/dr-ikonlar.test.js`).

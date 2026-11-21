@@ -21,3 +21,7 @@ test('renkler: MP3 yeşil, video (MP4) pembe', () => {
   assert.match(fs.readFileSync(path.join(kok, 'assets/ikonlar/dosya-mp3.svg'), 'utf8'), /#9be15d/);
   assert.match(fs.readFileSync(path.join(kok, 'assets/ikonlar/dosya-video.svg'), 'utf8'), /#cb2468/);
 });
+
+test('FLAC turuncu (MP3 yeşilinden ayrı)', () => {
+  assert.match(fs.readFileSync(path.join(kok, 'assets/ikonlar/dosya-flac.svg'), 'utf8'), /#ff9f43/);
+});
