@@ -19,7 +19,8 @@ const CEVIRME = [
   /^DERİN(?: RECORD)?$/i, /^MP3$/i, /^WAV$/i, /^Supabase$/i, /^WhatsApp$/i,
   /^\d/, /^[-—–·•↗←→✓×+%/:. ]+$/, /^(THE WITCHER|HORON KAFKAS|WP ACRO|MOKKA)$/i
 ];
-const HUKUKI = new Set(['gizlilik-politikasi.html', 'cerez-politikasi.html', 'kullanici-sozlesmesi.html', 'aydinlatma-metni.html']);
+const HUKUKI = new Set(['gizlilik-politikasi.html', 'cerez-politikasi.html', 'kullanici-sozlesmesi.html', 'aydinlatma-metni.html',
+  'mesafeli-satis-sozlesmesi.html', 'iade-ve-iptal.html', 'iletisim.html']);
 const cevrilmez = metin => CEVIRME.some(kural => kural.test(metin));
 
 function htmlMetinleri(html) {
