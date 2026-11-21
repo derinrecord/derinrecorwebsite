@@ -93,3 +93,9 @@ Yalnız yönetici (Derin) için remix referans aracı: şarkıyı "dinler" (öl�
 - Referanslar: `api/sarki-referans.js` (Vercel) → yönetici doğrulaması (auth/v1/user + rpc is_admin) → GetSongBPM `/tempo/` (ölçülen tempo ±3, yarım tempo ±1, 24 saat bellek önbelleği) → `referansSec` (tempo + ton uyumu + tür puanı, sanatçı başına en çok 2, kullanılanlar hariç). Ortam değişkeni: `GETSONGBPM_API_KEY`. Ücretsiz kullanım şartı: sayfa altbilgisindeki getsongbpm.com bağlantısı kaldırılmaz.
 - Takip: `supabase/sarki-avcisi.sql` → `sarki_avcisi_takip` (yeni tablo, RLS: is_admin() ve kendi satırı). Tablo kurulmadıysa liste localStorage'da tutulur.
 - Test: `tests/sarki-avcisi.test.js`.
+
+## Ikonlar (2026-11-21)
+
+Derin'in seçtiği karışık set, `assets/ikonlar/` (16 SVG): dosya türleri `dosya-*.svg` "makara bant" belgesi (WAV sarı, MP3 yeşil, FLAC yeşil, AIFF mor, M4A turkuaz, OGG kırmızı, video/MP4 pembe, görsel, dekont); `dosya-ekle.svg` yuvarlak köşeli kare; `buton-*.svg` pembe yuvarlak (indir, yükle, oynat, klasör, bilgi, sürükle-bırak).
+- `dr-ikonlar.js` her sayfaya `uygulama.js` sonundaki yükleyiciyle gelir; sayfa koduna dokunmaz: görünen `input[type=file]` yerinde kalır, gizlenir, yanına "Dosya ekle" butonu + seçilen dosyanın adı/ikonu çizilir; gizli girişi saran etikete ikon eklenir; `[data-dl][data-bicim]` ve `[data-indir][data-ad]` indirme düğmeleri format ikonunu alır. `.istek-birak` kutusu olduğu gibi kalır. Başka yerde: `window.DerinIkon.dosya('ad.wav')` ya da `data-dosya-ikon="ad.wav"`.
+- İkon değişince `dr-ikonlar.js` içindeki `SURUM` artırılır (test: `tests/dr-ikonlar.test.js`).

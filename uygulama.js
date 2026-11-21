@@ -21,3 +21,14 @@
     if (durum.platform) document.documentElement.classList.add('uygulama-' + durum.platform);
   }
 })();
+
+// Derin Record ikonları (21 Kasım 2026): dosya ekle / dosya türü / indir ikonları her sayfaya
+// buradan yüklenir (ayrıntı dr-ikonlar.js içinde).
+(function () {
+  if (typeof document === 'undefined' || document.getElementById('dr-ikonlar-js')) return;
+  var s = document.createElement('script');
+  s.id = 'dr-ikonlar-js';
+  s.src = 'dr-ikonlar.js?v=1';
+  s.defer = true;
+  (document.head || document.documentElement).appendChild(s);
+})();
