@@ -1,5 +1,5 @@
 (() => {
-  // Enerji Haritası (21 Kasım 2026, tasarım B "Katmanlı").
+  // Enerji Grafiği (21 Kasım 2026, tasarım B "Katmanlı").
   // Analiz energy-map-cekirdek.js'te (tarayıcı + Node); burada çizim, liste ve oynatıcı.
   // Antrenör kendi Projelerim parçalarını tek tıkla açar; dışarıdan dosya da seçebilir.
   const C = metin => (window.DerinDil && window.DerinDil.cevir ? window.DerinDil.cevir(metin) : metin);

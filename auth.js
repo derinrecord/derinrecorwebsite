@@ -111,7 +111,7 @@
     button.textContent = '';
     button.append(foto, document.createTextNode(dilMetni('hesap.hesabim', 'HESABIM')));
     button.classList.add('hb-fotolu');
-    menu.querySelector('.account-menu-links').innerHTML = `<a href="profilim.html" class="menu-profil">PROFİLİM</a><a href="odemelerim.html" class="menu-odemelerim">ÖDEMELERİM</a>${state.profile?.role === 'admin' ? '<a href="crm.html" class="menu-crm">CRM</a><a href="muzik-yonetim.html">MÜZİK VE LİSANS</a><a href="istatistik.html">İSTATİSTİKLER</a><a href="yarismalar.html">YARIŞMALAR</a><a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a><a href="sarki-avcisi.html">ŞARKI AVCISI</a><a href="mp3-donusturucu.html">MP3 DÖNÜŞTÜRÜCÜ</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ & TEMPO</a><a href="license.html">MÜZİK BEYANI</a>`;
+    menu.querySelector('.account-menu-links').innerHTML = `<a href="profilim.html" class="menu-profil">PROFİLİM</a><a href="odemelerim.html" class="menu-odemelerim">ÖDEMELERİM</a>${state.profile?.role === 'admin' ? '<a href="crm.html" class="menu-crm">CRM</a><a href="muzik-yonetim.html">MÜZİK VE LİSANS</a><a href="istatistik.html">İSTATİSTİKLER</a><a href="yarismalar.html">YARIŞMALAR</a><a href="kullanicilar.html">KULLANICILAR</a><a href="bildirimler.html">BİLDİRİMLER<span class="bildirim-sayac" data-bildirim-sayac hidden></span></a><a href="taleplerim.html">TALEPLERİM</a><a href="radyo-yonetim.html">RADYO YÖNETİMİ</a><a href="ajanlar.html">AJANLAR</a><a href="harmonic-mixer.html">HARMONİK SET</a><a href="music-request.html">MÜZİK ARAŞTIR</a><a href="sarki-avcisi.html">ŞARKI AVCISI</a><a href="mp3-donusturucu.html">MP3 DÖNÜŞTÜRÜCÜ</a>' : '<a href="music-request.html">MÜZİK ARAŞTIR</a>'}<a href="my-projects.html">PROJELERİM</a><a href="energy-map.html">ENERJİ GRAFİĞİ</a><a href="license.html">MÜZİK BEYANI</a>`;
     menuLinkleriniCevir(menu);
     menuyuUygulamayaGoreSuz(menu);
     menu.querySelector('.account-menu-name').textContent = state.profile?.full_name || state.user.email || dilMetni('hesap.hesabim', 'HESABIM');
@@ -297,7 +297,7 @@ function closeMenu(menu) { let done = false; const finish = () => { if (done) re
     'music-request.html': ['shell.arastir', 'MÜZİK ARAŞTIR'],
     'mp3-donusturucu.html': ['shell.mp3', 'MP3 DÖNÜŞTÜRÜCÜ'],
     'my-projects.html': ['shell.projelerim', 'PROJELERİM'],
-    'energy-map.html': ['shell.enerji', 'ENERJİ & TEMPO'],
+    'energy-map.html': ['shell.enerji', 'ENERJİ GRAFİĞİ'],
     'license.html': ['shell.licence', 'MÜZİK BEYANI']
   };
   function menuLinkleriniCevir(menu) {

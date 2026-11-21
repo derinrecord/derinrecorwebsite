@@ -34,7 +34,7 @@ Derin Record, cimnastik/aerobik performansları için özel müzik prodüksiyonu
   - `chat-encryption.sql`, `chat-key-backup.sql`, `sohbet.sql`, `demo-catalog.sql`: ek şema parçaları.
   - `kurulum.md`: kurulum adım adım talimatları.
 - `fig-kaynaklari.md` — geri bildirim panelindeki FIG (Uluslararası Cimnastik Federasyonu) hareket seçicisinin kaynak/kapsam dokümantasyonu; resmi FIG Code of Points referansları içerir.
-- `energy-map.js/html/css` — Enerji Haritası (2026-11-21, tasarım B "Katmanlı"): enerji (LUFS benzeri, K-ağırlıklı) · tempo eğrisi · spektrum. Analiz `energy-map-cekirdek.js` (tarayıcı + Node, `window.DerinEnerji`; harmonik tarak tempo — 156'yı 104/78'e kaydırmaz) ve `energy-map-isci.js` (Web Worker). Solda "Çalışmalarım": antrenörün Projelerim parçaları (RLS) tek tıkla imzalı R2 adresinden açılır; "Dosya seç" de durur. 20 Ekim'deki "spektrum yok" kararı Derin'in isteğiyle kaldırıldı (test: `tests/enerji-haritasi.test.js`).
+- `energy-map.js/html/css` — Enerji Grafiği (2026-11-21, eski adı Enerji Haritası, tasarım B "Katmanlı"): enerji (LUFS benzeri, K-ağırlıklı) · tempo eğrisi · spektrum. Analiz `energy-map-cekirdek.js` (tarayıcı + Node, `window.DerinEnerji`; harmonik tarak tempo — 156'yı 104/78'e kaydırmaz) ve `energy-map-isci.js` (Web Worker). Solda "Çalışmalarım": antrenörün Projelerim parçaları (RLS) tek tıkla imzalı R2 adresinden açılır; "Dosya seç" de durur. 20 Ekim'deki "spektrum yok" kararı Derin'in isteğiyle kaldırıldı (test: `tests/enerji-haritasi.test.js`).
 - `music-request.*`, `projects.*`, `my-projects.html`, `news.*`, `license.*`, `feedback.*` — antrenör portalının diğer akışları.
 
 ## Kod Kuralları (tespit edilen)
@@ -82,7 +82,7 @@ Mekân (kafe, restoran, salon…) radyo lisansı satışı için tek sahipli sat
 - **Ortak üst menü:** `ortak-ust.js/css` (alt sayfalar), ana sayfada `ust-menu`. `GIZLI_BOLUMLER = true`.
 - **GİZLİ (2026-11-20, silinmedi):** Ses Efektleri mağazası (`ses-efektleri.*`, `supabase/ses-efektleri.sql`), "Ses Tasarımı" menü maddesi, Sanatçılar (`sanatcilar.*`, `sanatci-paneli.*`, `gorsel-kirp.js`, `sanatci.css`). Sayfalar `index.html`'e yönlenir, `?onizle=1` ile açılır (test: `tests/gizli-bolumler.test.js`). Film Müziği (`ses-tasarimi.html`) AÇIK.
 - **Sanatçı platformu** (`supabase/sanatcilar.sql`, uygulandı): sanatcilar (+ gizli sanatci_ozel), şarkıda sanatci_id + durum taslak/inceleme/yayinda/reddedildi, Ek-1 `muzik_parca_beyan`. Yayına alma yalnız yönetici. Gelir: lisans %25, radyo aylık Net Gelir %25 havuzu çalınma oranıyla (`radio_calmalar`, `radyo_aylik_gelir`, `radyo_havuz_ozeti`). Parça 30 sn çalınınca sayılır (`coffee-marka.js` → `sube-guvenlik.js calmaSay`). Radyo izni kapanınca şarkı radyodan otomatik silinir. Sözleşme taslağı Claude Docs'ta ("Sanatçı Lisans Sözleşmesi").
-- **Testler:** `node --test tests/*.test.js` (917). Yeni sayfa → `data-dil-otomatik` + dil.js EN çevirileri; tek satır update/delete `.select('id')`; auth.js sürümü `20261120b`.
+- **Testler:** `node --test tests/*.test.js` (917). Yeni sayfa → `data-dil-otomatik` + dil.js EN çevirileri; tek satır update/delete `.select('id')`; auth.js sürümü `20261121a`.
 - **Sırada:** lisans fiyatları (öneri 750/2.500/6.000/15.000 TL, Derin karar vermedi), Google ile giriş (3. aşama).
 
 ## Şarkı Avcısı (2026-11-20)

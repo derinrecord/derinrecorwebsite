@@ -1,4 +1,4 @@
-// Enerji Haritası analizi ayrı iş parçacığında çalışır: uzun parçada sayfa donmasın.
+// Enerji Grafiği analizi ayrı iş parçacığında çalışır: uzun parçada sayfa donmasın.
 /* global importScripts, DerinEnerji */
 importScripts('energy-map-cekirdek.js?v=1');
 self.onmessage = e => {

@@ -1,4 +1,4 @@
-/* Derin Record — Enerji Haritası analiz çekirdeği
+/* Derin Record — Enerji Grafiği analiz çekirdeği
  * Tarayıcıda ve Node'da çalışır. Girdi: mono Float32Array + örnekleme hızı.
  * Çıktı: tempo (BPM + güven), tempo eğrisi, algılanan yükseklik (enerji) eğrisi,
  * en yoğun bölüm ve log-frekans spektrogramı.
