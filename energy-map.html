@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Enerji Haritası — Derin Record</title>
 <link rel="icon" href="/favicon.ico?v=3" sizes="any"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=3">
-<meta name="description" content="Bir performans müziğinin enerji eğrisini gör: ortalama enerji, tempo ve en yoğun bölüm." data-en="See the energy curve of a performance track: average energy, tempo and the most intense section.">
+<meta name="description" content="Bir performans müziğinin tempo, enerji ve spektrumunu gör: tempo eğrisi, LUFS yüksekliği ve en yoğun bölüm." data-en="See the tempo, energy and spectrum of a performance track: tempo curve, LUFS loudness and the most intense section.">
 <link rel="stylesheet" href="branch.css">
 <link rel="stylesheet" href="auth.css?v=20261101a">
-<link rel="stylesheet" href="energy-map.css?v=17">
+<link rel="stylesheet" href="energy-map.css?v=18">
 <link rel="stylesheet" href="mobil.css?v=5">
 <link rel="stylesheet" href="glass.css?v=2" />
 <link rel="stylesheet" href="dil.css?v=2026102401">
@@ -18,84 +18,71 @@
 <body>
 <div class="arka" aria-hidden="true"><i class="p"></i><i class="s"></i><i class="m"></i><b class="t"></b><b class="t2"></b></div>
 <header class="header"><a class="home" href="index.html">← ANA SAYFA</a><div class="wordmark">DERİN<br>RECORD<b>•</b></div></header><script src="ortak-ust.js?v=4"></script>
-<main class="analiz">
-  <div class="analiz-bas">
-    <div class="analiz-tanitim">
-      <p class="ust-etiket" data-i18n="em.analiz">[ analiz ]</p>
-      <div class="baslik-satir">
-        <h1 data-i18n="em.baslik">Parçanın enerji eğrisi</h1>
-        <button type="button" class="bilgi-dugme" id="bilgi-dugme" aria-expanded="false" aria-controls="analiz-bilgi" aria-label="Nasıl çalıştığını göster" data-i18n-etiket="em.bilgiEtiket"><span aria-hidden="true">i</span></button>
-      </div>
-      <p class="analiz-aciklama" id="analiz-bilgi" data-i18n="em.bilgi" hidden>Ses dosyanı yükle. Grafik, parçanın nerede yükselip nerede düştüğünü gösterir; ölçümler panelin üstünde okunur.</p>
-    </div>
-    <div class="dosya">
-      <label class="dosya-sec"><span data-i18n="em.dosyaSec">Ses dosyası seç</span>
-        <input id="audio-file" type="file" accept="audio/*">
-      </label>
+<main class="em">
+  <div class="em-ust">
+    <div>
+      <h1>Enerji Haritası</h1>
+      <p class="em-alt">Tempo, enerji ve spektrum tek ekranda.</p>
     </div>
   </div>
 
-  <section class="konsol" id="bant" aria-labelledby="bant-baslik">
-    <div class="konsol-serit" aria-hidden="true"></div>
+  <div class="em-izgara">
+    <aside class="em-yan" aria-labelledby="calisma-baslik">
+      <h2 id="calisma-baslik">Çalışmalarım</h2>
+      <p class="em-not" id="calisma-not">Tek tıkla açılır, dosya yüklemek gerekmez.</p>
+      <div class="em-liste" id="calisma-liste" role="list"></div>
+      <div class="em-veya"><span>ya da</span></div>
+      <label class="em-dosya" for="audio-file">Dosya seç <small>mp3 · wav · m4a</small></label>
+      <input id="audio-file" type="file" accept="audio/*" hidden>
+    </aside>
 
-    <header class="konsol-ust">
-      <div class="konsol-ad">
-        <p class="konsol-etiket" data-i18n="em.harita">enerji haritası</p>
+    <section class="em-panel" id="bant" aria-labelledby="bant-baslik">
+      <header class="em-bas">
         <h2 id="bant-baslik">Analiz bekleniyor</h2>
-        <p class="dosya-kunye" id="dosya-adi" hidden></p>
-        <p class="bant-durum" id="energy-status" role="status"></p>
-      </div>
-      <ul class="olcumler" aria-label="Ölçümler" data-i18n-etiket="em.olcumler">
-        <li><span data-i18n="em.ortalama">ortalama</span><b id="avg">—</b></li>
-        <li><span data-i18n="em.tempo">tempo</span><b><span id="bpm">—</span><em class="birim" id="bpm-birim" hidden>BPM</em></b></li>
-        <li><span data-i18n="em.tepe">tepe</span><b id="tepe">—</b></li>
+        <p class="em-kunye" id="dosya-adi"></p>
+      </header>
+      <ul class="em-olcum" aria-label="Ölçümler">
+        <li><span>Tempo <i class="em-guven" id="guven" hidden></i></span><b><span id="bpm">—</span><em id="bpm-birim" hidden>BPM</em></b><small id="bpm-not"></small></li>
+        <li><span>Yükseklik</span><b><span id="lufs">—</span><em id="lufs-birim" hidden>LUFS</em></b><small id="lufs-not"></small></li>
+        <li><span>Ortalama enerji</span><b id="avg">—</b><small id="avg-not"></small></li>
+        <li class="em-tikla"><button type="button" id="tepe-dugme" disabled><span>En yoğun bölüm</span><b id="tepe">—</b><small>tıkla, oradan çalsın</small></button></li>
       </ul>
-    </header>
 
-    <div class="konsol-satir">
-      <ul class="anahtar">
-        <li><i class="isaret isaret-egri" aria-hidden="true"></i><span data-i18n="em.enerji">enerji</span></li>
-        <li><i class="isaret isaret-ort" aria-hidden="true"></i><span data-i18n="em.ortalama">ortalama</span></li>
-        <li><i class="isaret isaret-tepe" aria-hidden="true"></i><span data-i18n="em.enYogun">en yoğun</span></li>
-      </ul>
-      <div class="bantlar">
-        <div class="bantlar-cizgi" id="bantlar-cizgi" aria-hidden="true">
-          <i data-band="dusuk"></i><i data-band="orta"></i><i data-band="yuksek"></i>
+      <div class="em-grafik" id="grafik">
+        <canvas id="energy-chart" role="img" tabindex="0" aria-label="Parçanın enerji, tempo ve spektrum grafiği"></canvas>
+        <div class="em-ipucu" id="ipucu" aria-hidden="true"></div>
+        <div class="em-bos" id="bant-bos">
+          <p>Soldan bir çalışma seç ya da ses dosyasını buraya bırak</p>
+          <small>mp3, m4a, wav</small>
         </div>
-        <p class="bantlar-yazi">
-          <span data-band-yazi="dusuk" data-i18n="em.dusuk">düşük —</span>
-          <span data-band-yazi="orta" data-i18n="em.orta">orta —</span>
-          <span data-band-yazi="yuksek" data-i18n="em.yuksek">yüksek —</span>
-        </p>
+        <div class="em-yukleniyor" id="yukleniyor" hidden><span id="yukleniyor-yazi">Analiz ediliyor…</span><i aria-hidden="true"></i></div>
+        <p class="ekran-okuyucu" id="enerji-okuma" aria-live="polite"></p>
       </div>
-    </div>
 
-    <div class="bant-grafik">
-      <canvas id="energy-chart" role="img" tabindex="0" aria-label="Parçanın enerji dağılım grafiği"></canvas>
-      <span class="oynat-imlec" id="oynat-imlec" aria-hidden="true"></span>
-      <div class="bant-bos" id="bant-bos">
-        <p data-i18n="em.birak">Ses dosyasını buraya bırak</p>
-        <small data-i18n="em.birakAlt">ya da yukarıdan seç — mp3, m4a, wav</small>
+      <div class="em-oynatici">
+        <button type="button" class="em-oynat" id="oynat" aria-label="Parçayı oynat" disabled>▶</button>
+        <input class="em-konum" id="konum" type="range" min="0" max="1000" step="1" value="0" aria-label="Parçadaki konum" disabled>
+        <p class="em-zaman"><span id="gecen">0:00</span> / <span id="sure">0:00</span></p>
       </div>
-      <p class="ekran-okuyucu" id="enerji-okuma" aria-live="polite"></p>
-    </div>
-
-    <div class="bant-alt">
-      <div class="oynatici">
-        <button type="button" class="oynat" id="oynat" aria-label="Parçayı oynat" disabled>▶</button>
-        <input class="konum" id="konum" type="range" min="0" max="1000" step="1" value="0" aria-label="Parçadaki konum" data-i18n-etiket="em.konum" disabled>
-        <p class="zaman"><span id="gecen">0:00</span> / <span id="sure">0:00</span></p>
-      </div>
-      <p class="oynatici-not" data-i18n="em.ipucu">grafiğe tıkla · ok tuşlarıyla gez</p>
-    </div>
-  </section>
+      <p class="em-durum" id="energy-status" role="status"></p>
+      <ul class="em-anahtar">
+        <li><i class="a-enerji" aria-hidden="true"></i>enerji</li>
+        <li><i class="a-tempo" aria-hidden="true"></i>tempo</li>
+        <li><i class="a-spektrum" aria-hidden="true"></i>spektrum</li>
+        <li class="em-ipucu-yazi">grafiğe tıkla · ok tuşlarıyla gez</li>
+      </ul>
+    </section>
+  </div>
 
   <audio id="audio" preload="metadata" hidden></audio>
 </main>
 <script src="config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1"></script>
 <script src="uygulama.js?v=1"></script><script src="auth.js?v=20261120b"></script>
-<script src="energy-map.js?v=23"></script>
+<script src="audio-file-types.js?v=4"></script>
+<script src="r2-depo.js?v=2"></script>
+<script src="energy-map-cekirdek.js?v=1"></script>
+<script src="energy-map.js?v=24"></script>
 <script src="dil.js?v=2026110101" defer></script>
 </body>
 </html>

@@ -34,7 +34,7 @@ Derin Record, cimnastik/aerobik performansları için özel müzik prodüksiyonu
   - `chat-encryption.sql`, `chat-key-backup.sql`, `sohbet.sql`, `demo-catalog.sql`: ek şema parçaları.
   - `kurulum.md`: kurulum adım adım talimatları.
 - `fig-kaynaklari.md` — geri bildirim panelindeki FIG (Uluslararası Cimnastik Federasyonu) hareket seçicisinin kaynak/kapsam dokümantasyonu; resmi FIG Code of Points referansları içerir.
-- `energy-map.js/html/css` — tempo/enerji haritası özelliği.
+- `energy-map.js/html/css` — Enerji Haritası (2026-11-21, tasarım B "Katmanlı"): enerji (LUFS benzeri, K-ağırlıklı) · tempo eğrisi · spektrum. Analiz `energy-map-cekirdek.js` (tarayıcı + Node, `window.DerinEnerji`; harmonik tarak tempo — 156'yı 104/78'e kaydırmaz) ve `energy-map-isci.js` (Web Worker). Solda "Çalışmalarım": antrenörün Projelerim parçaları (RLS) tek tıkla imzalı R2 adresinden açılır; "Dosya seç" de durur. 20 Ekim'deki "spektrum yok" kararı Derin'in isteğiyle kaldırıldı (test: `tests/enerji-haritasi.test.js`).
 - `music-request.*`, `projects.*`, `my-projects.html`, `news.*`, `license.*`, `feedback.*` — antrenör portalının diğer akışları.
 
 ## Kod Kuralları (tespit edilen)

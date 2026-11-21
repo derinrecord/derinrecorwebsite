@@ -1,9 +1,9 @@
-// Enerji haritası sayfasının kalıcı sözleşmesi.
+// Enerji Haritası sayfasının kalıcı sözleşmesi.
 //
-// 2026-10-20'de sayfa yeniden tasarlandı: salon önizlemesi (akustik profiller,
-// yankı, EQ) ve canlı spektrum tamamen kaldırıldı. Sayfa artık tek bir iş
-// yapıyor: yüklenen parçanın enerji dağılım grafiğini göstermek. Bu test
-// kaldırılan parçaların geri gelmesini ve grafiğin erişilebilir kalmasını korur.
+// 21 Kasım 2026: Derin tasarım B'yi ("Katmanlı") seçti. Sayfa artık üç katman çizer:
+// enerji (dolgulu eğri, LUFS benzeri algılanan yükseklik), tempo eğrisi ve spektrum.
+// 20 Ekim'deki "spektrum yok" kararı Derin'in isteğiyle kaldırıldı. Antrenör
+// Projelerim parçalarını tek tıkla açar; dışarıdan dosya seçmek de mümkündür.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -15,79 +15,85 @@ const oku = y => fs.readFileSync(path.join(KOK, y), 'utf8');
 const html = oku('energy-map.html');
 const css = oku('energy-map.css');
 const js = oku('energy-map.js');
+const Cekirdek = require('../energy-map-cekirdek.js');
 
-test('salon önizlemesi ve canlı spektrum geri gelmez', () => {
-  [['energy-map.html', html], ['energy-map.css', css], ['energy-map.js', js]].forEach(([ad, icerik]) => {
-    assert.ok(!/arena/i.test(icerik), ad + ' → salon önizlemesi izi olmamalı');
-    assert.ok(!/spektrum/i.test(icerik), ad + ' → spektrum izi olmamalı');
-  });
-  // Ses zinciri (yankı + filtre) ve canlı spektrum tamamen çıkarıldı.
-  ['getByteFrequencyData', 'createConvolver', 'createBiquadFilter'].forEach(ad =>
-    assert.ok(!js.includes(ad), 'energy-map.js → ' + ad + ' kullanılmamalı'));
+// Sentetik vuruş: verilen BPM'de kısa, sönümlü "kick" + her vuruşta hi-hat gürültüsü.
+function vurusSesi(bpm, saniye, sr = 22050) {
+  const n = Math.round(saniye * sr), v = new Float32Array(n);
+  const aralik = (60 / bpm) * sr;
+  let tohum = 7;
+  const rast = () => ((tohum = (tohum * 16807) % 2147483647) / 2147483647) * 2 - 1;
+  for (let b = 0; b * aralik < n; b++) {
+    const bas = Math.round(b * aralik);
+    for (let i = 0; i < sr * 0.12 && bas + i < n; i++) {
+      const t = i / sr;
+      v[bas + i] += Math.sin(2 * Math.PI * (60 + 90 * Math.exp(-t * 30)) * t) * Math.exp(-t * 18) * 0.8;
+      if (i < sr * 0.02) v[bas + i] += rast() * Math.exp(-t * 200) * 0.3;
+    }
+  }
+  return v;
+}
+
+test('tempo yarıya ya da üçte ikiye kaymaz', () => {
+  for (const bpm of [100, 128, 156, 168]) {
+    const r = Cekirdek.analizEt(vurusSesi(bpm, 20), 22050, { dilim: 80, sutun: 60, bant: 24 });
+    assert.ok(Math.abs(r.tempo - bpm) <= 1.5, `${bpm} BPM beklenirken ${r.tempo} bulundu`);
+    assert.ok(r.tempoEgri.length > 5, 'tempo eğrisi olmalı');
+  }
 });
 
-test('sayfa tek grafik çizer, sesi gizli tutar', () => {
+test('çekirdek enerji, yükseklik ve spektrum üretir', () => {
+  const r = Cekirdek.analizEt(vurusSesi(140, 12), 22050, { dilim: 50, sutun: 40, bant: 24 });
+  assert.equal(r.egri.length, 50);
+  assert.ok(r.egri.every(v => v >= 0 && v <= 1), 'enerji 0..1 arası');
+  assert.ok(r.tumlesikLufs < 0 && r.tumlesikLufs > -40, 'LUFS makul aralıkta');
+  assert.equal(r.spektrum.length, 40 * 24);
+  assert.ok(r.tepeBas >= 0 && r.tepeBas + r.tepeGenislik <= 50);
+});
+
+test('sayfa B tasarımını çizer: enerji, tempo, spektrum', () => {
   assert.equal((html.match(/<canvas/g) || []).length, 1, 'tek canvas olmalı');
-  assert.match(html, /<canvas id="energy-chart"[^>]*role="img"/, 'canvas role="img" taşımalı');
-  assert.match(html, /id="audio"[^>]*hidden/, 'ses öğesi gizli olmalı; oynatıcı sayfanın kendi');
-  assert.ok(!/<audio[^>]*controls/.test(html), 'tarayıcının kendi oynatıcısı gösterilmemeli');
-  assert.match(js, /decodeAudioData/, 'ses dosyası Web Audio ile çözülmeli');
-  assert.match(js, /DILIM = 160/, 'grafik 160 dilime bölünmeli');
-  // Grafik sütun dizisi değil, genel enerji akışını özetleyen ince bir hat.
+  assert.match(html, /<canvas id="energy-chart"[^>]*role="img"/);
+  assert.match(js, /function enerjiKatmani/);
+  assert.match(js, /function tempoKatmani/);
+  assert.match(js, /function spektrumKatmani/);
   assert.match(js, /quadraticCurveTo/, 'eğri düzgün yaylarla çizilmeli');
-  assert.match(js, /shadowBlur/, 'hat neon hale ile çizilmeli');
-  assert.ok(!js.includes('closePath'), 'alan kapatılıp boyanmamalı');
-  assert.match(html, /isaret-egri/, 'gösterge işareti hat olmalı');
-  assert.match(css, /\.isaret-egri\s*\{/, 'hat işareti stilli olmalı');
+  assert.match(js, /shadowBlur/, 'enerji hattı parlak çizilmeli');
+  assert.match(html, /energy-map-cekirdek\.js\?v=\d+/, 'analiz çekirdeği yüklenmeli');
+  assert.ok(fs.existsSync(path.join(KOK, 'energy-map-isci.js')), 'analiz ayrı iş parçacığında çalışmalı');
+});
+
+test('antrenör çalışmalarını tek tıkla açar, dosya seçmek de mümkün', () => {
+  assert.match(html, /id="calisma-liste"/);
+  assert.match(js, /from\('music_projects'\)/, 'projeler RLS ile okunmalı');
+  assert.match(js, /from\('project_tracks'\)/, 'parçalar RLS ile okunmalı');
+  assert.match(js, /korumaliAdres\('project-audio'/, 'ses imzalı adresle alınmalı');
+  assert.match(js, /parcalariCoz/, 'parçalı yüklenmiş dosyalar birleştirilmeli');
+  assert.match(html, /id="audio-file"[^>]*type="file"/, 'dosya seç kalmalı');
+  ['dragenter', 'dragover', 'drop'].forEach(o => assert.ok(js.includes(o), o + ' dinlenmeli'));
+  assert.match(js, /escapeHtml\(i\.ad\)/, 'parça adı DOM\'a kaçışlı basılmalı');
 });
 
 test('grafik klavye ve ekran okuyucu ile okunabilir', () => {
-  assert.match(html, /id="energy-chart"[^>]*tabindex="0"/, 'canvas odaklanabilmeli');
-  assert.match(html, /id="enerji-okuma"[^>]*aria-live="polite"/, 'canlı okuma bölgesi olmalı');
-  assert.match(css, /\.ekran-okuyucu\s*\{/, 'canlı okuma bölgesi görsel olarak gizlenmeli');
-  assert.match(js, /ArrowRight/, 'ok tuşlarıyla gezinilebilmeli');
-  assert.match(js, /aria-label/, 'grafik özeti erişilebilir etikete yazılmalı');
-  assert.match(js, /pointerdown/, 'grafiğe tıklayınca parça o noktadan çalmalı');
+  assert.match(html, /id="energy-chart"[^>]*tabindex="0"/);
+  assert.match(html, /id="enerji-okuma"[^>]*aria-live="polite"/);
+  assert.match(css, /\.ekran-okuyucu\s*\{/);
+  assert.match(js, /ArrowRight/);
+  assert.match(js, /aria-label/);
+  assert.match(js, /pointerdown/);
 });
 
-test('sürükle-bırak ve özel oynatıcı bağlı', () => {
-  ['dragenter', 'dragover', 'drop'].forEach(olay =>
-    assert.ok(js.includes(olay), 'energy-map.js → ' + olay + ' dinlenmeli'));
-  assert.match(html, /id="oynat"/, 'oynat düğmesi olmalı');
-  assert.match(html, /id="konum"[^>]*type="range"/, 'konum kaydırıcısı olmalı');
-});
-
-test('oynatma imleci kare kare akar, duraklayınca durur', () => {
-  // timeupdate saniyede ~4 kez geldiği için imleç sıçrıyordu; artık yalnız
-  // oynatma sırasında dönen tek bir döngü imleci ve dolguyu ilerletir.
-  assert.match(js, /requestAnimationFrame\(kareCiz\)/, 'imleç döngüsü olmalı');
-  assert.match(js, /cancelAnimationFrame/, 'duraklayınca döngü iptal edilmeli');
-  assert.match(js, /if \(audio\.paused\)/, 'döngü çalmıyorken kendini durdurmalı');
-  assert.match(html, /id="oynat-imlec"/, 'imleç kendi katmanında olmalı');
-  assert.match(css, /\.oynat-imlec\s*\{/, 'imleç stili tanımlı olmalı');
-  assert.match(css, /will-change: transform/, 'imleç transform ile kaydırılmalı');
-});
-
-test('tanıtım açıklaması (i) düğmesiyle açılıp kapanır', () => {
-  // Bilgi yazısı sürekli görünmek yerine (i) düğmesinin arkasında durur.
-  assert.match(
-    html,
-    /id="bilgi-dugme"[^>]*aria-expanded="false"[^>]*aria-controls="analiz-bilgi"/,
-    '(i) düğmesi kapalı başlamalı ve açıklamayı işaret etmeli'
-  );
-  assert.match(html, /id="analiz-bilgi"[^>]*hidden/, 'açıklama başta gizli olmalı');
-  assert.match(js, /aria-expanded/, 'düğme durumu güncellenmeli');
-  assert.match(js, /bilgiMetni\.hidden = !acik/, 'açıklama gizlenip gösterilmeli');
-  assert.match(js, /Escape/, 'Escape ile kapanabilmeli');
-  // Simge, marka oynatıcısındaki pembe bilgi işaretiyle (.mk-info) aynı dilde.
-  const blok = css.match(/\.bilgi-dugme\s*\{([\s\S]*?)\}/);
-  assert.ok(blok, '(i) düğmesi stili tanımlı olmalı');
-  assert.match(blok[1], /background:\s*var\(--pink\)/, 'simge pembe olmalı');
-  assert.match(blok[1], /color:\s*var\(--cream\)/, 'i harfi krem olmalı');
-  assert.match(blok[1], /font-style:\s*normal/, 'marka işareti eğik olmamalı');
+test('özel oynatıcı: gizli ses, kare döngüsü, konum kaydırıcısı', () => {
+  assert.match(html, /id="audio"[^>]*hidden/);
+  assert.ok(!/<audio[^>]*controls/.test(html));
+  assert.match(html, /id="oynat"/);
+  assert.match(html, /id="konum"[^>]*type="range"/);
+  assert.match(js, /requestAnimationFrame\(kareCiz\)/);
+  assert.match(js, /cancelAnimationFrame/);
+  assert.match(js, /if \(audio\.paused\)/);
 });
 
 test('stil ve betik dosyaları sürüm etiketiyle yüklenir', () => {
-  assert.match(html, /energy-map\.css\?v=\d+/, 'CSS önbellek sürümü olmalı');
-  assert.match(html, /energy-map\.js\?v=\d+/, 'JS önbellek sürümü olmalı');
+  assert.match(html, /energy-map\.css\?v=\d+/);
+  assert.match(html, /energy-map\.js\?v=\d+/);
 });
