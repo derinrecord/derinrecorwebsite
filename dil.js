@@ -587,7 +587,11 @@
     'METNİ.': 'NOTICE.',
     'Yürürlük tarihi: 4 Ekim 2026 · Sürüm: 2026-10-04': 'Effective: 4 October 2026 · Version: 2026-10-04',
     'Yürürlük tarihi: 17 Ekim 2026 · Sürüm: 2026-10-17': 'Effective: 17 October 2026 · Version: 2026-10-17',
+    'Yürürlük tarihi: 21 Kasım 2026 · Sürüm: 2026-11-21': 'Effective: 21 November 2026 · Version: 2026-11-21',
     'Çerez Politikası': 'Cookie Policy',
+    'Mesafeli Satış Sözleşmesi': 'Distance Sales Agreement',
+    'Teslimat, İade ve İptal': 'Delivery, Refunds & Cancellation',
+    'Hakkımızda & İletişim': 'About & Contact',
     'Ana sayfa': 'Home',
 
     /* ---- enerji haritası (energy-map.js dinamik metinleri) ---- */
