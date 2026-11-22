@@ -21,10 +21,16 @@
     tabloVar: true
   };
 
+  // Durum yazısı: şarkı analiz edildiyse REFERANS BUL düğmesinin hemen altında da görünür
+  // (üstteki satır ekranın dışında kalıyordu; "basınca bir şey olmuyor" sanılıyordu).
   const ilerleme = (metin, hata) => {
-    const p = byId('sa-ilerleme');
-    p.textContent = metin || '';
-    p.classList.toggle('hata', !!hata);
+    const yerler = [byId('sa-ilerleme')];
+    if (!byId('sa-sonuc').hidden) yerler.push(byId('sa-bul-durum'));
+    byId('sa-bul-durum').textContent = '';
+    yerler.forEach(p => {
+      p.textContent = metin || '';
+      p.classList.toggle('hata', !!hata);
+    });
   };
 
   // ───────── Takip listesi (Supabase; tablo kurulmadıysa bu tarayıcıda) ─────────

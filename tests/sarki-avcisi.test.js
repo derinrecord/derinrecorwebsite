@@ -170,3 +170,10 @@ test('betik sırası: auth → çekirdek → sayfa', () => {
   const a = html.indexOf('auth.js?v='), c = html.indexOf('sarki-avcisi-cekirdek.js?v='), s = html.indexOf('sarki-avcisi.js?v=');
   assert.ok(a > -1 && c > a && s > c);
 });
+
+test('referans durumu düğmenin hemen altında da yazılır', () => {
+  const html = oku('sarki-avcisi.html');
+  const bul = html.indexOf('id="sa-bul"'), durum = html.indexOf('id="sa-bul-durum"'), ref = html.indexOf('id="sa-referans"');
+  assert.ok(bul > -1 && durum > bul && durum < ref);
+  assert.match(oku('sarki-avcisi.js'), /byId\('sa-bul-durum'\)/);
+});
