@@ -181,7 +181,8 @@
     const bpm = Number(byId('sa-bpm').value);
     if (!(bpm >= 60 && bpm <= 200)) { ilerleme('Tempo 60–200 BPM arasında olmalı.', true); return; }
     const camelot = S.tonCamelot(byId('sa-ton').value) || null;
-    const turler = byId('sa-tur').value.split(',').map(t => t.trim()).filter(Boolean);
+    const tarz = byId('sa-tur').value.trim().slice(0, 80);
+    const turler = [];
     if (!yeni) durum.oturumda.clear();
     const haric = [...durum.takip.map(t => t.anahtar), ...durum.oturumda];
     const dugmeler = [byId('sa-bul'), byId('sa-daha')];
@@ -193,7 +194,7 @@
       const yanit = await fetch('/api/sarki-referans', {
         method: 'POST',
         headers: { 'content-type': 'application/json', Authorization: 'Bearer ' + belirtec },
-        body: JSON.stringify({ bpm, camelot, turler, haric, adet: 10 })
+        body: JSON.stringify({ bpm, camelot, turler, tarz, haric, adet: 10 })
       });
       const govde = await yanit.json().catch(() => ({}));
       if (!yanit.ok) {
@@ -212,8 +213,10 @@
       }
       durum.gosterilen = liste;
       durum.gosterilen.forEach(r => durum.oturumda.add(r.anahtar));
-      ilerleme(durum.gosterilen.length ? '' : 'Bu tempo ve tonda yeni şarkı bulunamadı. Tonu boş bırakıp ya da tempoyu yarım tempo yazıp tekrar dene.');
-      referansCiz(govde.adaySayisi);
+      ilerleme(durum.gosterilen.length ? '' : (govde.tarz
+        ? `"${govde.tarz}" tarzında uygun şarkı bulunamadı. Tarzı farklı yazmayı dene (İngilizce de olur: "afro funk", "latin pop").`
+        : 'Bu tempo ve tonda yeni şarkı bulunamadı. Tonu boş bırakıp ya da tempoyu yarım tempo yazıp tekrar dene.'));
+      referansCiz(govde.adaySayisi, govde.tarz);
     } catch (e) {
       ilerleme('Bağlantı kurulamadı. İnterneti kontrol edip tekrar dene.', true);
     } finally {
@@ -254,9 +257,9 @@
     return S.referansSec(temiz, hedef, haric, 10);
   }
 
-  function referansCiz(adaySayisi) {
+  function referansCiz(adaySayisi, tarz) {
     const hedef = Number(byId('sa-hedef').value) || 150;
-    byId('sa-referans-alt').textContent = adaySayisi ? `${adaySayisi} aday içinden` : '';
+    byId('sa-referans-alt').textContent = [tarz ? `"${tarz}" tarzında` : '', adaySayisi ? `${adaySayisi} aday içinden` : ''].filter(Boolean).join(' · ');
     byId('sa-liste').innerHTML = durum.gosterilen.map((r, i) => {
       const l = S.dinlemeLinkleri(r.baslik, r.sanatci);
       const gy = S.germeEnYakin(r.bpm, hedef);
@@ -269,7 +272,7 @@
           <span class="sa-cip ${kacis(r.tonUyumu || '')}">${r.camelot ? kacis(r.camelot) : 'ton ?'}</span>
           ${g != null ? `<span class="sa-cip">${hedef} BPM'e ${g === 0 ? 'germesiz' : (g > 0 ? '+' : '') + g.toLocaleString('tr-TR') + '%'}${katYazi}</span>` : ''}
         </div>
-        <p class="sa-ref-neden">${kacis(r.neden)}</p>
+        <p class="sa-ref-neden">${kacis(r.neden)}${r.liste ? ` · <em>"${kacis(r.liste)}" listesinden</em>` : ''}</p>
         <div class="sa-ref-eylem">
           ${/^https:\/\/www\.deezer\.com\//.test(r.kaynak || '') ? `<a href="${kacis(r.kaynak)}" target="_blank" rel="noopener">Deezer ↗</a>` : ''}
           <a href="${kacis(l.spotify)}" target="_blank" rel="noopener">Spotify ↗</a>

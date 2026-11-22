@@ -33,6 +33,9 @@
     }
   ],
   "functions": {
+    "api/sarki-referans.js": {
+      "maxDuration": 30
+    },
     "api/dekont-tara.js": {
       "maxDuration": 60,
       "includeFiles": "node_modules/{tesseract.js,tesseract.js-core,@tesseract.js-data/tur/4.0.0_best_int}/**"

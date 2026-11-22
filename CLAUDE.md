@@ -93,6 +93,7 @@ Yalnız yönetici (Derin) için remix referans aracı: şarkıyı "dinler" (öl�
 - Referanslar: `api/sarki-referans.js` (Vercel) → yönetici doğrulaması (auth/v1/user + rpc is_admin) → `referansSec` (tempo + ton uyumu + tür puanı, sanatçı başına en çok 2, kullanılanlar hariç).
   - **Varsayılan kaynak Deezer (2026-11-22, anahtarsız):** `/search?q=bpm_min:"x" bpm_max:"y"` (tempo ±3 üç sayfa + yarım tempo ±1), en popüler 40 adayın albüm türü/yılı (`/album/{id}`), 20 aday döner. Tarayıcı her adayın 30 sn önizlemesini `api/sarki-onizleme.js` (yalnız admin, yalnız *.dzcdn.net) üzerinden alır, tonu/tempoyu ölçer, en iyi 10'u seçer.
   - GetSongBPM yalnız `GETSONGBPM_API_KEY` tanımlıysa kullanılır (`/tempo/` + tonlar `/key/` ile eşlenir). Kayıt formu 2026-11'de boş yanıt döndü, anahtar gelmedi. Altbilgideki getsongbpm.com bağlantısı başvuru şartıdır, kaldırılmaz.
+- **Tarza özel arama (2026-11-22):** analizden sonra "SONRAKİ ŞARKININ TARZI" kutusu (`#sa-tur`). Yazılırsa sunucu `/search/playlist?q=<tarz>` → en iyi 4 listenin şarkıları (iç içe) → ilk 36'nın BPM'i `/track/{id}` (6'şar, 700 ms ara; `vercel.json` maxDuration 30) → tempoya 10 BPM'den uzaklar elenir, BPM'i bilinmeyen kalır (önizlemeden ölçülür). Deezer şarkı aramasında serbest metin ve `artist:` alanı BPM filtresiyle çalışmıyor (denendi). Boşsa tempo bazlı popüler arama.
 - Takip: `supabase/sarki-avcisi.sql` → `sarki_avcisi_takip` (yeni tablo, RLS: is_admin() ve kendi satırı). Tablo kurulmadıysa liste localStorage'da tutulur.
 - Test: `tests/sarki-avcisi.test.js`.
 

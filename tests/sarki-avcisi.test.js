@@ -134,7 +134,7 @@ test('ses dosyası sunucuya gitmez; sunucuya yalnız sayılar gider', () => {
   const js = oku('sarki-avcisi.js');
   assert.match(js, /decodeAudioData/, 'analiz tarayıcıda');
   const istek = js.slice(js.indexOf("fetch('/api/sarki-referans'"));
-  assert.match(istek, /JSON\.stringify\(\{ bpm, camelot, turler, haric, adet: 10 \}\)/);
+  assert.match(istek, /JSON\.stringify\(\{ bpm, camelot, turler, tarz, haric, adet: 10 \}\)/);
   assert.ok(!/FormData|r2-depo|storage\.from/.test(js), 'dosya yükleme yok');
 });
 
@@ -209,4 +209,20 @@ test('anahtar yoksa Deezer kullanılır; önizleme aktarıcısı yalnız yöneti
   const js = oku('sarki-avcisi.js');
   assert.match(js, /\/api\/sarki-onizleme\?id=/);
   assert.match(js, /onizlemeleriDinle/);
+});
+
+test('tarz kutusu analizden sonra, REFERANS BUL\'un hemen üstünde; tarz sunucuya gider', () => {
+  const html = oku('sarki-avcisi.html');
+  const sonuc = html.indexOf('id="sa-sonuc"'), tarz = html.indexOf('id="sa-tur"'), bul = html.indexOf('id="sa-bul"');
+  assert.ok(sonuc > -1 && tarz > sonuc && bul > tarz, 'tarz kutusu analiz kutusunda, düğmeden önce');
+  assert.match(html, /SONRAKİ ŞARKININ TARZI/);
+  assert.match(oku('sarki-avcisi.js'), /JSON\.stringify\(\{ bpm, camelot, turler, tarz, haric, adet: 10 \}\)/);
+});
+
+test('tarz yazılınca sunucu çalma listelerinden arar ve tempoya göre eler', () => {
+  const api = oku('api/sarki-referans.js');
+  assert.match(api, /\/search\/playlist\?q=\$\{encodeURIComponent\(tarz\)\}/);
+  assert.match(api, /if \(tarz\) \{[\s\S]*tarzAdaylari/);
+  assert.match(api, /tempoFarki\(a\.bpm, bpm\) <= 10/);
+  assert.equal(JSON.parse(oku('vercel.json')).functions['api/sarki-referans.js'].maxDuration, 30);
 });

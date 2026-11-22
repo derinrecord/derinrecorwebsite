@@ -103,6 +103,52 @@ async function albumTurleri(albumId) {
   return bilgi;
 }
 
+const bekle = ms => new Promise(r => setTimeout(r, ms));
+
+async function deezerJson(yol) {
+  const kayit = onbellek.get(yol);
+  if (kayit && Date.now() - kayit.zaman < SURE_MS) return kayit.adaylar;
+  const j = await fetch(DEEZER + yol, { headers: { accept: 'application/json' } }).then(r => r.json());
+  if (j && j.error) throw new Error('Deezer ' + (j.error.message || 'hata'));
+  if (onbellek.size > 400) onbellek.clear();
+  onbellek.set(yol, { zaman: Date.now(), adaylar: j });
+  return j;
+}
+
+// Tarza özel arama (2026-11-22): Deezer'ın şarkı aramasında serbest metin BPM filtresiyle
+// birlikte yok sayılıyor; bu yüzden tarz yazısıyla ÇALMA LİSTESİ aranır, en iyi 4 listenin
+// şarkıları toplanır, ilk 36'sının BPM'i /track/{id} ile okunur (Deezer sınırı: 5 sn'de 50
+// istek → 6'şar, aralarda 700 ms). BPM'i bilinmeyenler elenmez; tarayıcı önizlemeden ölçer.
+async function tarzAdaylari(tarz, bpm, haric) {
+  const pl = await deezerJson(`/search/playlist?q=${encodeURIComponent(tarz)}&limit=8`);
+  const listeler = (pl && Array.isArray(pl.data) ? pl.data : []).filter(p => Number(p.nb_tracks) >= 8).slice(0, 4);
+  if (!listeler.length) return { adaylar: [], listeler: [] };
+  const parcalar = await Promise.allSettled(listeler.map(p => deezerJson(`/playlist/${p.id}/tracks?limit=100`)));
+  // Listeleri sırayla değil iç içe dizer: her listeden sırayla birer şarkı (tek listeye boğulmaz).
+  const diziler = parcalar.map((x, i) => (x.status === 'fulfilled' ? S.deezerCoz(x.value).map(a => ({ ...a, liste: String(listeler[i].title || '').slice(0, 80) })) : []));
+  const cikar = new Set(haric), gorulen = new Set(), sirali = [];
+  for (let i = 0; i < 100; i++) for (const d of diziler) {
+    const a = d[i]; if (!a) continue;
+    const k = S.sarkiAnahtari(a.baslik, a.sanatci);
+    if (gorulen.has(k) || cikar.has(k)) continue;
+    gorulen.add(k); sirali.push(a);
+  }
+  const ilk = sirali.slice(0, 36);
+  for (let i = 0; i < ilk.length; i += 6) {
+    if (i) await bekle(700);
+    await Promise.all(ilk.slice(i, i + 6).map(async a => {
+      const t = await deezerJson(`/track/${a.deezerId}`).catch(() => null);
+      if (!t) return;
+      if (Number(t.bpm) > 0) a.bpm = Math.round(Number(t.bpm) * 10) / 10;
+      const yil = Number(String(t.release_date || '').slice(0, 4));
+      if (yil) a.yil = yil;
+    }));
+  }
+  // Tempoya (yarım/çift dahil) 10 BPM'den uzak olanlar elenir; bilinmeyenler kalır.
+  const adaylar = ilk.filter(a => !a.bpm || S.tempoFarki(a.bpm, bpm) <= 10).map(a => ({ ...a, turler: [tarz] }));
+  return { adaylar, listeler: listeler.map(p => String(p.title || '')) };
+}
+
 // Tempo ±3 (3 sayfa) ve yarım tempo ±1 (1 sayfa). Tür istenmişse en popüler 40 adayın
 // albüm türüne bakılır (Deezer sınırı: 5 sn'de 50 istek; 6'şar paralel).
 async function deezerAdaylari(bpm, turler, haric) {
@@ -156,6 +202,18 @@ const isle = async (req, res) => {
   };
   const haric = Array.isArray(govde.haric) ? govde.haric.map(String).slice(0, 2000) : [];
   const adet = Math.min(20, Math.max(1, Number(govde.adet) || 10));
+
+  const tarz = String((govde && govde.tarz) || '').trim().slice(0, 80);
+  if (tarz) {
+    try {
+      const { adaylar, listeler } = await tarzAdaylari(tarz, bpm, haric);
+      const secilen = S.referansSec(adaylar, { ...hedef, camelot: null, turler: [] }, haric, Math.max(adet, 20));
+      res.status(200).json({ referanslar: secilen, adaySayisi: adaylar.length, kaynak: 'deezer', tarz, listeler });
+    } catch (e) {
+      res.status(502).json({ hata: 'servis-ulasilamadi' });
+    }
+    return;
+  }
 
   if (!anahtar) {
     try {
