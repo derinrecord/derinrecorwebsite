@@ -438,6 +438,7 @@
     'bunlar bir daha önerilmez': 'these will not be suggested again',
     'KULLANDIM': 'USED IT',
     'İSTEMİYORUM': 'NOT FOR ME',
+    'Şarkı verileri': 'Track data',
     'Şarkıyı dinlet,': 'Let it hear the song,',
     '10 referans': 'find 10',
     'bulsun': 'references',

@@ -266,6 +266,35 @@
     }).filter(Boolean);
   }
 
+  // Deezer /search yanıtı → adaylar. Arama sonucunda BPM, ton ve yıl yoktur: BPM pencereden
+  // gelir (yaklaşık), ton ve kesin BPM önizleme dinlenince (sarki-onizleme) eklenir.
+  function deezerCoz(govde) {
+    const dizi = govde && Array.isArray(govde.data) ? govde.data : [];
+    return dizi.map(o => {
+      if (!o || o.type !== 'track' || o.readable === false) return null;
+      const baslik = String(o.title_short || o.title || '').trim();
+      const sanatci = String((o.artist && o.artist.name) || '').trim();
+      const id = Number(o.id);
+      if (!baslik || !sanatci || !id) return null;
+      return {
+        id: 'dz' + id, deezerId: id, baslik, sanatci,
+        bpm: null, camelot: null, turler: [], yil: null,
+        albumId: Number(o.album && o.album.id) || null,
+        kaynak: String(o.link || `https://www.deezer.com/track/${id}`),
+        sira: Number(o.rank) || 0
+      };
+    }).filter(Boolean);
+  }
+
+  // Türkçe tür yazımlarını Deezer tür adlarıyla eşleştirmek için.
+  const TUR_ESLE = { dans: 'dance', elektronik: 'electro', latin: 'latin', 'hip hop': 'rap', rap: 'rap', klasik: 'classical', caz: 'jazz', turk: 'turk', turkce: 'turk' };
+  function turEslesir(istenen, var_) {
+    const ist = (istenen || []).map(t => { const x = sade(t); return TUR_ESLE[x] || x; }).filter(Boolean);
+    if (!ist.length) return true;
+    const v = (var_ || []).map(sade);
+    return ist.some(t => v.some(g => g.includes(t) || t.includes(g)));
+  }
+
   function puanla(aday, hedef) {
     let puan = 0;
     const fark = tempoFarki(aday.bpm, hedef.bpm);
@@ -333,7 +362,7 @@
   const api = {
     tempoBul, tonBul, enerjiBloklari, onemliAnlar, enerjiOzeti, zaman,
     tonCamelot, openKeyCamelot, camelotParametre, tonlariEsle, uyumluTonlar, tonUyumu,
-    sarkiAnahtari, germe, germeEnYakin, tempoFarki, getsongbpmCoz, puanla, referansSec, dinlemeLinkleri
+    sarkiAnahtari, germe, germeEnYakin, tempoFarki, getsongbpmCoz, deezerCoz, turEslesir, puanla, referansSec, dinlemeLinkleri
   };
 
   if (typeof window !== 'undefined') window.DerinSarkiAvcisi = api;

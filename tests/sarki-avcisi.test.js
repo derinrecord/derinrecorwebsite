@@ -177,3 +177,36 @@ test('referans durumu düğmenin hemen altında da yazılır', () => {
   assert.ok(bul > -1 && durum > bul && durum < ref);
   assert.match(oku('sarki-avcisi.js'), /byId\('sa-bul-durum'\)/);
 });
+
+test('Deezer arama yanıtı adaylara çevrilir (ton ve kesin BPM sonra dinlenerek eklenir)', () => {
+  const a = S.deezerCoz({ data: [
+    { type: 'track', id: 2263033, readable: true, title: 'Sultans Of Swing', title_short: 'Sultans Of Swing', link: 'https://www.deezer.com/track/2263033', rank: 958351, artist: { name: 'Dire Straits' }, album: { id: 1 } },
+    { type: 'track', id: 5, readable: false, title: 'Kapalı', artist: { name: 'X' } },
+    { type: 'artist', id: 6, name: 'Y' }
+  ] });
+  assert.equal(a.length, 1);
+  assert.equal(a[0].deezerId, 2263033);
+  assert.equal(a[0].camelot, null);
+  assert.equal(a[0].kaynak, 'https://www.deezer.com/track/2263033');
+  assert.deepEqual(S.deezerCoz(null), []);
+});
+
+test('tür eşleşmesi Türkçe yazımları da tanır', () => {
+  assert.ok(S.turEslesir(['dans'], ['Dance', 'Pop']));
+  assert.ok(S.turEslesir(['elektronik'], ['Electro']));
+  assert.ok(!S.turEslesir(['rock'], ['Pop']));
+  assert.ok(S.turEslesir([], ['Pop']), 'tür yazılmadıysa her şey uyar');
+});
+
+test('anahtar yoksa Deezer kullanılır; önizleme aktarıcısı yalnız yöneticiye ve yalnız Deezer CDN\'ine', () => {
+  const api = oku('api/sarki-referans.js');
+  assert.match(api, /if \(!anahtar\) \{[\s\S]*deezerAdaylari/);
+  assert.match(api, /kaynak: 'deezer'/);
+  const on = oku('api/sarki-onizleme.js');
+  assert.match(on, /yoneticiMi\(req\.headers && req\.headers\.authorization\)/);
+  assert.match(on, /\^\\d\{1,15\}\$/, 'id yalnız rakam');
+  assert.match(on, /dzcdn\\\.net/, 'yalnız Deezer CDN adresi');
+  const js = oku('sarki-avcisi.js');
+  assert.match(js, /\/api\/sarki-onizleme\?id=/);
+  assert.match(js, /onizlemeleriDinle/);
+});

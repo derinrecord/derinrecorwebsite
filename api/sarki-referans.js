@@ -7,9 +7,10 @@
 //
 // Gövde: { bpm: 150, camelot: "8A", turler: ["pop"], haric: ["sanatci|baslik", …], adet: 10 }
 //
-// Ortam değişkeni (Vercel → Settings → Environment Variables):
-//   GETSONGBPM_API_KEY  — https://getsongbpm.com/api adresinden ücretsiz alınır.
-// Ücretsiz kullanım şartı: sayfada getsongbpm.com'a görünür bir bağlantı (sarki-avcisi.html altbilgisi).
+// Kaynak: GETSONGBPM_API_KEY ortam değişkeni varsa GetSongBPM (tempo + ton); yoksa Deezer
+// (anahtarsız, ücretsiz: BPM aralığıyla arama). Deezer adaylarının tonu tarayıcıda, 30 sn
+// önizleme dinlenerek ölçülür (api/sarki-onizleme.js). GetSongBPM formu 2026-11 itibarıyla
+// anahtar göndermediği için varsayılan yol Deezer'dır.
 
 const S = require('../sarki-avcisi-cekirdek.js');
 
@@ -71,7 +72,66 @@ function tempolar(bpm) {
   return [...t].filter(x => x >= 40 && x <= 220);
 }
 
-module.exports = async (req, res) => {
+// ───────── Deezer (anahtarsız) ─────────
+const DEEZER = 'https://api.deezer.com';
+
+async function deezerAra(enAz, enCok, index) {
+  const yol = `deezer:${enAz}-${enCok}:${index}`;
+  const kayit = onbellek.get(yol);
+  if (kayit && Date.now() - kayit.zaman < SURE_MS) return kayit.adaylar;
+  const q = encodeURIComponent(`bpm_min:"${enAz}" bpm_max:"${enCok}"`);
+  const yanit = await fetch(`${DEEZER}/search?q=${q}&limit=100&index=${index}`, { headers: { accept: 'application/json' } });
+  if (!yanit.ok) throw new Error('Deezer ' + yanit.status);
+  const govde = await yanit.json().catch(() => null);
+  if (govde && govde.error) throw new Error('Deezer ' + (govde.error.message || 'hata'));
+  const adaylar = S.deezerCoz(govde).map(a => ({ ...a, bpm: Math.round((enAz + enCok) / 2) }));
+  if (onbellek.size > 400) onbellek.clear();
+  onbellek.set(yol, { zaman: Date.now(), adaylar });
+  return adaylar;
+}
+
+async function albumTurleri(albumId) {
+  const yol = `album:${albumId}`;
+  const kayit = onbellek.get(yol);
+  if (kayit) return kayit.adaylar;
+  const j = await fetch(`${DEEZER}/album/${albumId}`).then(r => r.json()).catch(() => null);
+  const bilgi = {
+    turler: (j && j.genres && Array.isArray(j.genres.data) ? j.genres.data.map(g => String(g.name)) : []),
+    yil: j && j.release_date ? Number(String(j.release_date).slice(0, 4)) || null : null
+  };
+  onbellek.set(yol, { zaman: Date.now(), adaylar: bilgi });
+  return bilgi;
+}
+
+// Tempo ±3 (3 sayfa) ve yarım tempo ±1 (1 sayfa). Tür istenmişse en popüler 40 adayın
+// albüm türüne bakılır (Deezer sınırı: 5 sn'de 50 istek; 6'şar paralel).
+async function deezerAdaylari(bpm, turler, haric) {
+  const b = Math.round(bpm), y = Math.round(bpm / 2);
+  const isler = [0, 100, 200].map(i => deezerAra(b - 3, b + 3, i)).concat([deezerAra(y - 1, y + 1, 0)]);
+  const sonuc = await Promise.allSettled(isler);
+  if (sonuc.every(x => x.status === 'rejected')) throw new Error('deezer');
+  const cikar = new Set(haric);
+  const gorulen = new Set();
+  let adaylar = sonuc.filter(x => x.status === 'fulfilled').flatMap(x => x.value)
+    .filter(a => { const k = S.sarkiAnahtari(a.baslik, a.sanatci); if (gorulen.has(k) || cikar.has(k)) return false; gorulen.add(k); return true; })
+    .sort((a, c) => c.sira - a.sira);
+  const ilk = adaylar.slice(0, 40);
+  for (let i = 0; i < ilk.length; i += 6) {
+    await Promise.all(ilk.slice(i, i + 6).map(async a => {
+      if (!a.albumId) return;
+      const bilgi = await albumTurleri(a.albumId);
+      a.turler = bilgi.turler; a.yil = bilgi.yil;
+    }));
+  }
+  adaylar = ilk;
+  if (turler && turler.length) {
+    const uyan = adaylar.filter(a => S.turEslesir(turler, a.turler));
+    if (uyan.length >= 5) adaylar = uyan;
+  }
+  return adaylar;
+}
+
+const isle = async (req, res) => {
   res.setHeader('cache-control', 'no-store');
   if (req.method !== 'POST') { res.status(405).json({ hata: 'yalniz-post' }); return; }
 
@@ -81,10 +141,6 @@ module.exports = async (req, res) => {
   }
 
   const anahtar = process.env.GETSONGBPM_API_KEY;
-  if (!anahtar) {
-    res.status(503).json({ hata: 'anahtar-yok' });
-    return;
-  }
 
   let govde = req.body;
   if (typeof govde === 'string') { try { govde = JSON.parse(govde); } catch (e) { govde = null; } }
@@ -101,6 +157,18 @@ module.exports = async (req, res) => {
   const haric = Array.isArray(govde.haric) ? govde.haric.map(String).slice(0, 2000) : [];
   const adet = Math.min(20, Math.max(1, Number(govde.adet) || 10));
 
+  if (!anahtar) {
+    try {
+      const adaylar = await deezerAdaylari(bpm, hedef.turler, haric);
+      // Ton henüz bilinmiyor: tarayıcı önizlemeleri dinleyip son 10'u seçecek, bu yüzden daha geniş liste döner.
+      const secilen = S.referansSec(adaylar, { ...hedef, camelot: null }, haric, Math.max(adet, 20));
+      res.status(200).json({ referanslar: secilen, adaySayisi: adaylar.length, kaynak: 'deezer' });
+    } catch (e) {
+      res.status(502).json({ hata: 'servis-ulasilamadi' });
+    }
+    return;
+  }
+
   try {
     const [tempoSonuc, tonSonuc] = await Promise.all([
       Promise.allSettled(tempolar(bpm).map(t => sorgula(anahtar, `tempo/?bpm=${t}`))),
@@ -111,9 +179,12 @@ module.exports = async (req, res) => {
     const adaylar = S.tonlariEsle(sonuclar.filter(s => s.status === 'fulfilled').flatMap(s => s.value), tonlu);
     if (!adaylar.length && sonuclar.every(s => s.status === 'rejected')) throw new Error('servis');
     const secilen = S.referansSec(adaylar, hedef, haric, adet);
-    res.status(200).json({ referanslar: secilen, adaySayisi: adaylar.length });
+    res.status(200).json({ referanslar: secilen, adaySayisi: adaylar.length, kaynak: 'getsongbpm' });
   } catch (e) {
     res.status(502).json({ hata: 'servis-ulasilamadi' });
     return;
   }
 };
+
+module.exports = isle;
+module.exports.yoneticiMi = yoneticiMi;

@@ -206,7 +206,11 @@
         ilerleme(mesaj, true);
         return;
       }
-      durum.gosterilen = govde.referanslar || [];
+      let liste = govde.referanslar || [];
+      if (govde.kaynak === 'deezer' && liste.length) {
+        liste = await onizlemeleriDinle(liste, belirtec, { bpm, camelot, turler }, haric);
+      }
+      durum.gosterilen = liste;
       durum.gosterilen.forEach(r => durum.oturumda.add(r.anahtar));
       ilerleme(durum.gosterilen.length ? '' : 'Bu tempo ve tonda yeni şarkı bulunamadı. Tonu boş bırakıp ya da tempoyu yarım tempo yazıp tekrar dene.');
       referansCiz(govde.adaySayisi);
@@ -215,6 +219,39 @@
     } finally {
       dugmeler.forEach(d => { d.disabled = false; });
     }
+  }
+
+  // Deezer adayları: her birinin 30 sn önizlemesi sunucudan alınır, tarayıcıda çözülüp
+  // tonu ve tempoyu ölçülür; ardından ton uyumuyla yeniden puanlanır ve en iyi 10 seçilir.
+  async function onizlemeleriDinle(adaylar, belirtec, hedef, haric) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ac = new AC();
+    let biten = 0;
+    const tek = async a => {
+      try {
+        const y = await fetch('/api/sarki-onizleme?id=' + encodeURIComponent(a.deezerId), { headers: { Authorization: 'Bearer ' + belirtec } });
+        if (y.ok) {
+          const dzBpm = Number(y.headers.get('x-deezer-bpm')) || null;
+          const yil = Number(y.headers.get('x-deezer-yil')) || null;
+          const ses = await ac.decodeAudioData(await y.arrayBuffer());
+          const n = ses.length, ch = new Float32Array(n);
+          for (let c = 0; c < ses.numberOfChannels; c++) { const v = ses.getChannelData(c); for (let i = 0; i < n; i++) ch[i] += v[i] / ses.numberOfChannels; }
+          const ton = S.tonBul(ch, ses.sampleRate);
+          const olculen = S.tempoBul(ch, ses.sampleRate).bpm;
+          a.camelot = ton.camelot;
+          a.bpm = dzBpm || olculen || a.bpm;
+          if (yil) a.yil = yil;
+          a.dinlendi = true;
+        }
+      } catch (e) { /* önizleme yoksa aday tonsuz kalır */ }
+      biten++;
+      ilerleme(`Referanslar dinleniyor… ${biten}/${adaylar.length}`);
+    };
+    ilerleme(`Referanslar dinleniyor… 0/${adaylar.length}`);
+    for (let i = 0; i < adaylar.length; i += 3) await Promise.all(adaylar.slice(i, i + 3).map(tek));
+    ac.close();
+    const temiz = adaylar.map(({ anahtar, puan, tonUyumu, tempoFarki, neden, ...a }) => a);
+    return S.referansSec(temiz, hedef, haric, 10);
   }
 
   function referansCiz(adaySayisi) {
@@ -234,6 +271,7 @@
         </div>
         <p class="sa-ref-neden">${kacis(r.neden)}</p>
         <div class="sa-ref-eylem">
+          ${/^https:\/\/www\.deezer\.com\//.test(r.kaynak || '') ? `<a href="${kacis(r.kaynak)}" target="_blank" rel="noopener">Deezer ↗</a>` : ''}
           <a href="${kacis(l.spotify)}" target="_blank" rel="noopener">Spotify ↗</a>
           <a href="${kacis(l.youtube)}" target="_blank" rel="noopener">YouTube ↗</a>
           <button type="button" data-durum="kullandim">KULLANDIM</button>

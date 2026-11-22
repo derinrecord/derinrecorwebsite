@@ -90,7 +90,9 @@ Mekân (kafe, restoran, salon…) radyo lisansı satışı için tek sahipli sat
 Yalnız yönetici (Derin) için remix referans aracı: şarkıyı "dinler" (ölçer), 10 referans önerir.
 - Ekran: `sarki-avcisi.html` + `sarki-avcisi.js`; ölçüm ve seçim mantığı `sarki-avcisi-cekirdek.js` (tarayıcı + Node, `window.DerinSarkiAvcisi`). Menü: HESABIM → ŞARKI AVCISI (yalnız admin), admin.js panelinde de bağlantı var.
 - Analiz tarayıcıda (Web Audio): tempo (±1 BPM, yarım tempo), ton (Camelot, tahmin), 8'lik enerji blokları, drop/nefes/zirve. Ses dosyası hiçbir sunucuya yüklenmez.
-- Referanslar: `api/sarki-referans.js` (Vercel) → yönetici doğrulaması (auth/v1/user + rpc is_admin) → GetSongBPM `/tempo/` (ölçülen tempo ±3, yarım tempo ±1, 24 saat bellek önbelleği) → `referansSec` (tempo + ton uyumu + tür puanı, sanatçı başına en çok 2, kullanılanlar hariç). Ortam değişkeni: `GETSONGBPM_API_KEY`. Ücretsiz kullanım şartı: sayfa altbilgisindeki getsongbpm.com bağlantısı kaldırılmaz.
+- Referanslar: `api/sarki-referans.js` (Vercel) → yönetici doğrulaması (auth/v1/user + rpc is_admin) → `referansSec` (tempo + ton uyumu + tür puanı, sanatçı başına en çok 2, kullanılanlar hariç).
+  - **Varsayılan kaynak Deezer (2026-11-22, anahtarsız):** `/search?q=bpm_min:"x" bpm_max:"y"` (tempo ±3 üç sayfa + yarım tempo ±1), en popüler 40 adayın albüm türü/yılı (`/album/{id}`), 20 aday döner. Tarayıcı her adayın 30 sn önizlemesini `api/sarki-onizleme.js` (yalnız admin, yalnız *.dzcdn.net) üzerinden alır, tonu/tempoyu ölçer, en iyi 10'u seçer.
+  - GetSongBPM yalnız `GETSONGBPM_API_KEY` tanımlıysa kullanılır (`/tempo/` + tonlar `/key/` ile eşlenir). Kayıt formu 2026-11'de boş yanıt döndü, anahtar gelmedi. Altbilgideki getsongbpm.com bağlantısı başvuru şartıdır, kaldırılmaz.
 - Takip: `supabase/sarki-avcisi.sql` → `sarki_avcisi_takip` (yeni tablo, RLS: is_admin() ve kendi satırı). Tablo kurulmadıysa liste localStorage'da tutulur.
 - Test: `tests/sarki-avcisi.test.js`.
 
