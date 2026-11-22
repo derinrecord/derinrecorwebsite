@@ -254,7 +254,10 @@
     for (let i = 0; i < adaylar.length; i += 3) await Promise.all(adaylar.slice(i, i + 3).map(tek));
     ac.close();
     const temiz = adaylar.map(({ anahtar, puan, tonUyumu, tempoFarki, neden, ...a }) => a);
-    return S.referansSec(temiz, hedef, haric, 10);
+    // Dinledikten sonra temposu 10 BPM'den (yarım/çift dahil) uzak çıkanlar elenir; yalnız
+    // ton tuttu diye 86 ya da 172 BPM'lik şarkı 115'lik şarkıya önerilmez. Hiç kalmazsa eleme yapılmaz.
+    const yakin = temiz.filter(a => a.bpm && S.tempoFarki(a.bpm, hedef.bpm) <= 10);
+    return S.referansSec(yakin.length >= 3 ? yakin : temiz, hedef, haric, 10);
   }
 
   function referansCiz(adaySayisi, tarz) {

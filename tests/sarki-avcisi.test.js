@@ -226,3 +226,7 @@ test('tarz yazılınca sunucu çalma listelerinden arar ve tempoya göre eler', 
   assert.match(api, /tempoFarki\(a\.bpm, bpm\) <= 10/);
   assert.equal(JSON.parse(oku('vercel.json')).functions['api/sarki-referans.js'].maxDuration, 30);
 });
+
+test('önizleme dinlendikten sonra temposu uzak çıkan aday elenir', () => {
+  assert.match(oku('sarki-avcisi.js'), /S\.tempoFarki\(a\.bpm, hedef\.bpm\) <= 10/);
+});
