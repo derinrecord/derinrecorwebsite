@@ -992,12 +992,18 @@
   // dakika boyunca yeşil "DÜZELDİ" şeridinde görünür, sonra şerit kendiliğinden
   // kapanır. Hafıza ui.duzelme'de tutulur (panel verir); yoksa hiçbir şey çizilmez.
   const DUZELDI_MS = 15 * 1000;
+  // Yeşil şeritte sorunun adı değil, ne olduğu yazar (Derin: "düzeldinin altında
+  // yayın durdu yazmasın, yayın başladı yazsın").
+  const DUZELDI_ADI = {
+    yuklenemedi: 'parçalar yeniden açılıyor', takildi: 'parça yeniden akıyor',
+    'ses-kapali': 'ses yeniden açıldı', sustu: 'şube yeniden bağlandı'
+  };
   function acikUyarilar(D, now) {
     const acik = {};
-    (D.players || []).filter(ihlalVar).forEach(p => { acik['p:' + p.id] = { id: p.id, metin: p.label + ' · paylaşım girişimi' }; });
+    (D.players || []).filter(ihlalVar).forEach(p => { acik['p:' + p.id] = { id: p.id, metin: p.label + ' · paylaşım girişimi çözüldü' }; });
     (D.players || []).filter(p => p.alarm_tur && p.alarm_tur !== 'sustu' && ALARM_ADI[p.alarm_tur])
-      .forEach(p => { acik['a:' + p.id] = { id: p.id, metin: p.label + ' · ' + ALARM_ADI[p.alarm_tur] }; });
-    sessizSubeler(D, now).forEach(s => { acik['k:' + s.p.id] = { id: s.p.id, metin: s.p.label + ' · yayın durdu' }; });
+      .forEach(p => { acik['a:' + p.id] = { id: p.id, metin: p.label + ' · ' + (DUZELDI_ADI[p.alarm_tur] || 'yayın normale döndü') }; });
+    sessizSubeler(D, now).forEach(s => { acik['k:' + s.p.id] = { id: s.p.id, metin: s.p.label + ' · yayın yeniden başladı' }; });
     return acik;
   }
   function duzelenSeridi(D, ui) {

@@ -17,7 +17,7 @@ test('düzelen yayın alarmı yeşil şeride döner ve 15 saniye sonra kapanır'
   const duzeldi = { brands: [], players: [{ id: 'a1', label: 'Selçuk', alarm_tur: null }] };
   const yesil = V.uyariSeridi(duzeldi, ui);
   assert.ok(!yesil.includes('YAYIN ALARMI'), 'kırmızı şerit kalktı');
-  assert.ok(yesil.includes('uyari-serit duzeldi') && yesil.includes('DÜZELDİ') && yesil.includes('Selçuk · ses kapalı'));
+  assert.ok(yesil.includes('uyari-serit duzeldi') && yesil.includes('DÜZELDİ') && yesil.includes('Selçuk · ses yeniden açıldı') && !yesil.includes('ses kapalı'));
 
   simdi += 16 * 1000;
   assert.equal(V.uyariSeridi(duzeldi, ui), '', '15 saniye sonra şerit kapanır');
