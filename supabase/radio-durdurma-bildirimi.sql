@@ -15,3 +15,8 @@ alter table public.brand_players
 -- durduruldu (mesaide), yeniden çalıyor (x sn/dk kapalı kaldı), ses kapalı/takıldı/açılamıyor, düzeldi.
 -- 'radio-durdurma-denetle' görevi kaldırıldı. radio_alarm_gonder artık yalnız "sustu"yu yollar
 -- (radio_sessiz_denetle: 2 dk sinyal yoksa). Fonksiyon gövdeleri veritabanındadır.
+
+-- 25 Kasım 2026 (öğleden sonra) — UYGULANDI (migration: radio_canli_hareketler).
+-- radio_now_report: liste değişince 'liste-degisti' (eski → yeni), parça değişince 'sarki-degisti'
+-- olayı yazar. radio_ses_bildir: ses 5 puan+ değişince ya da kapanıp açılınca 'ses-degisti' (%eski → %yeni).
+-- Bunlar yalnız panelde görünür, Telegram'a gitmez (Derin'in kararı).

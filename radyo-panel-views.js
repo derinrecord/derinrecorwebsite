@@ -134,6 +134,10 @@
     const det = String(ev.detail || '').trim();
     if (kind === 'acildi') return { ad: 'Oynatıcı açıldı', ek: det, taraf: 'kafe', sorun: false };
     if (kind === 'liste_degisti') return { ad: 'Çalma listesi seçildi', ek: det, taraf: 'kafe', sorun: false };
+    // Canlı hareketler (25 Kasım 2026): şubede liste, şarkı ve ses değişimi.
+    if (kind === 'liste-degisti') return { ad: 'Çalma listesi değişti', ek: det, taraf: null, sorun: false };
+    if (kind === 'sarki-degisti') return { ad: 'Şarkı değişti', ek: det, taraf: null, sorun: false };
+    if (kind === 'ses-degisti') return { ad: 'Ses seviyesi değişti', ek: det, taraf: 'kafe', sorun: false };
     if (kind === 'kod') {
       const yanlis = !/doğru/.test(det);
       return { ad: yanlis ? 'Sunum kodu yanlış girildi' : 'Sunum kodu girildi', ek: det, taraf: 'kafe', sorun: yanlis };
@@ -1239,7 +1243,7 @@
     }
     const taze = now - new Date(p.last_seen_at).getTime() < DALGA_TAZE_MS;
     const boy = ses === 'akiyor' ? Math.max(25, Math.min(100, Number(p.ses_seviyesi) || 0)) : 100;
-    const kisik = ses === 'akiyor' && boy < 40 ? ` <span class="sub ses-dalga-not">ses kısık · %${esc(p.ses_seviyesi)}</span>` : '';
+    const kisik = ses === 'akiyor' ? ` <span class="sub ses-dalga-not">${boy < 40 ? 'ses kısık' : 'ses'} · %${esc(p.ses_seviyesi)}</span>` : '';
     return `<span class="chip live chip-dalga"><span class="ses-dalga ${taze ? 'canli' : 'durgun'}" style="--ses-boy:${boy / 100}" aria-hidden="true">${cubuklar}</span>ÇALIYOR</span>${kisik}`;
   }
 
@@ -1294,7 +1298,7 @@
     }
     const boy = ses === 'akiyor' ? Math.max(25, Math.min(100, Number(p.ses_seviyesi) || 0)) : 100;
     const etiket = ses === 'akiyor' ? 'Şubede ses akıyor · seviye ' + boy : 'Şubeden çalıyor bilgisi geliyor';
-    const seviyeNotu = ses === 'akiyor' && boy < 40 ? `<span class="sub ses-dalga-not">ses kısık · %${esc(p.ses_seviyesi)}</span>` : '';
+    const seviyeNotu = ses === 'akiyor' ? `<span class="sub ses-dalga-not">${boy < 40 ? 'ses kısık' : 'ses'} · %${esc(p.ses_seviyesi)}</span>` : '';
     return `<span class="ses-dalga canli" style="--ses-boy:${boy / 100}" role="img" aria-label="${esc(etiket)}">${cubuklar}</span>${seviyeNotu}`;
   }
 
@@ -1504,7 +1508,7 @@
     const listeAdi = liste ? liste.ad : (p.now_playlist_name || (k && k.ad) || '');
     const altYazi = d.yazi
       + ((d.tur === 'calar' || d.tur === 'takildi' || d.tur === 'durdu') && listeAdi && listeAdi !== parca ? ' · ' + listeAdi : '')
-      + (d.tur === 'calar' && sesDurumu(p, now) === 'akiyor' && Number(p.ses_seviyesi) < 40 ? ' · ses kısık %' + p.ses_seviyesi : '');
+      + (d.tur === 'calar' && sesDurumu(p, now) === 'akiyor' ? (Number(p.ses_seviyesi) < 40 ? ' · ses kısık %' : ' · ses %') + p.ses_seviyesi : '');
     const dalga = `<span class="sd-dalga sd-${d.tur}${d.tur === 'calar' && now - new Date(p.last_seen_at).getTime() < DALGA_TAZE_MS ? ' oynar' : ''}"`
       + (d.tur === 'calar' && sesDurumu(p, now) === 'akiyor' ? ` style="--ses-boy:${Math.max(25, Math.min(100, Number(p.ses_seviyesi) || 0)) / 100}"` : '')
       + ` aria-hidden="true"><i></i><i></i><i></i><i></i></span>`;

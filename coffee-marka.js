@@ -548,6 +548,7 @@ function bagla() {
     const deger = Number(e.target.value);
     if (audio.muted) { if (!deger) return; seviye = deger / 100; sustur(false); }
     seviye = deger / 100; iptalFade(); audio.volume = seviye;
+    sesDegisti(); // ses seviyesi panele anında gitsin (25 Kasım 2026)
   };
   byId('mk-sustur').onclick = () => sustur(!audio.muted);
   byId('mk-seek').addEventListener('input', () => { surukluyor = true; });
@@ -823,7 +824,7 @@ function sesDegisti() {
     const caliyor = !audio.paused && !!audio.src;
     G.sesBildir(baglam, { seviye: audio.muted ? 0 : seviye * 100, ilerliyor: caliyor ? true : null });
     sesSorunuDenetle(caliyor, caliyor ? true : null);
-  }, 1500);
+  }, 400);
 }
 
 // ---------- Canlı yayın (panel › Yayın başlat) ----------

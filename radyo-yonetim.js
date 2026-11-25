@@ -1008,9 +1008,21 @@
       // Bağlantı geçmişi (supabase/radio-baglanti-gecmisi.sql). Tablo henüz
       // kurulmadıysa sorgu hata döner, data null gelir: ekran boş kalır ama
       // panelin geri kalanı çalışmaya devam eder.
-      client.from('radio_player_events')
-        .select('id,player_key,player_id,brand_id,device_id,kind,detail,at')
-        .order('at', { ascending: false }).limit(600),
+      // Şarkı/ses/liste hareketleri sık gelir: önemli olayları sınırın dışına
+      // itmesinler diye ayrı okunur ve sonra birleştirilir (25 Kasım 2026).
+      Promise.all([
+        client.from('radio_player_events')
+          .select('id,player_key,player_id,brand_id,device_id,kind,detail,at')
+          .not('kind', 'in', '(sarki-degisti,ses-degisti,liste-degisti)')
+          .order('at', { ascending: false }).limit(600),
+        client.from('radio_player_events')
+          .select('id,player_key,player_id,brand_id,device_id,kind,detail,at')
+          .in('kind', ['sarki-degisti', 'ses-degisti', 'liste-degisti'])
+          .order('at', { ascending: false }).limit(200)
+      ]).then(([a, b]) => a.error ? a : {
+        data: (a.data || []).concat(b.data || []).sort((x, y) => String(y.at).localeCompare(String(x.at))),
+        error: null
+      }),
       client.from('subscriptions').select('*'),
       client.from('plans').select('*').order('sort_order'),
       // Plan takvimi (supabase/plan-takvimi.sql). Tablo kurulmadıysa sorgu
