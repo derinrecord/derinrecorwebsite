@@ -983,7 +983,54 @@
   }
 
   function uyariSeridi(D, ui) {
-    return paylasimSeridi(D, ui) + alarmSeridi(D, ui) + kesintiSeridi(D, ui);
+    return paylasimSeridi(D, ui) + alarmSeridi(D, ui) + kesintiSeridi(D, ui) + duzelenSeridi(D, ui);
+  }
+
+  // Düzelen uyarılar (25 Kasım, Derin: "sorun düzelince uyarılar yeşile dönüp
+  // kapansın"). Kırmızı şeritte görünen bir şube sorunu kalkınca o şube bir
+  // dakika boyunca yeşil "DÜZELDİ" şeridinde görünür, sonra şerit kendiliğinden
+  // kapanır. Hafıza ui.duzelme'de tutulur (panel verir); yoksa hiçbir şey çizilmez.
+  const DUZELDI_MS = 60 * 1000;
+  function acikUyarilar(D, now) {
+    const acik = {};
+    (D.players || []).filter(ihlalVar).forEach(p => { acik['p:' + p.id] = { id: p.id, metin: p.label + ' · paylaşım girişimi' }; });
+    (D.players || []).filter(p => p.alarm_tur && p.alarm_tur !== 'sustu' && ALARM_ADI[p.alarm_tur])
+      .forEach(p => { acik['a:' + p.id] = { id: p.id, metin: p.label + ' · ' + ALARM_ADI[p.alarm_tur] }; });
+    sessizSubeler(D, now).forEach(s => { acik['k:' + s.p.id] = { id: s.p.id, metin: s.p.label + ' · yayın durdu' }; });
+    return acik;
+  }
+  function duzelenSeridi(D, ui) {
+    const t = ui && ui.duzelme;
+    if (!t) return '';
+    const now = ui.now();
+    t.biten = t.biten || [];
+    // Veri henüz gelmediyse (şube listesi boş) karşılaştırma yapılmaz: her şey
+    // "düzeldi" sanılmasın.
+    if ((D.players || []).length) {
+      const acik = acikUyarilar(D, now);
+      if (t.acik) {
+        Object.keys(t.acik).forEach(k => {
+          const hala = (D.players || []).some(p => p.id === t.acik[k].id);
+          if (!acik[k] && hala && !t.biten.some(x => x.anahtar === k)) {
+            t.biten.push({ anahtar: k, id: t.acik[k].id, metin: t.acik[k].metin, at: now });
+          }
+        });
+      }
+      // Sorun yeniden başladıysa yeşil satır silinir, kırmızı şerit geri gelir.
+      t.biten = t.biten.filter(x => !acik[x.anahtar]);
+      t.acik = acik;
+    }
+    t.biten = t.biten.filter(x => now - x.at < DUZELDI_MS);
+    if (!t.biten.length) return '';
+    const ilk = t.biten[t.biten.length - 1];
+    const baslik = t.biten.length === 1 ? ilk.metin : t.biten.length + ' şubede sorun düzeldi · son: ' + ilk.metin;
+    return `<div class="uyari-serit duzeldi">
+      <span class="chip live">DÜZELDİ</span>
+      <div class="uyari-govde">
+        <b>${esc(baslik)}</b>
+        <span class="sub">Sorun giderildi · bu şerit birazdan kendiliğinden kapanır</span>
+      </div>
+    </div>`;
   }
 
   // Sessiz şube şeridi: hangi şube, ne zamandır ve kimin tarafında.
@@ -3273,6 +3320,7 @@
     sessizSayi: sessizSayi,
     sureCumle: sureCumle,
     uyariSeridi: uyariSeridi,
+    duzelenSeridi: duzelenSeridi,
     kesintiSeridi: kesintiSeridi,
     // Şube kodu / paylaşım girişimi (supabase/radio-sube-kodu.sql): kod üretimi,
     // alarm şeridi, konum çözümü, davet metni ve "hangi şube dağıttı" eşleşmesi.

@@ -92,6 +92,8 @@
     desteklenenler: () => (Ses ? Ses.desteklenenler() : 'mp3, wav'),
     parcaNotu: () => '45 MB üzeri dosyalar kayıpsız parçalara bölünerek yüklenir',
     now: () => Date.now(),
+    // Düzelen uyarıların hafızası (radyo-panel-views.js → duzelenSeridi).
+    duzelme: { acik: null, biten: [] },
     // Satış ekranı: "bugün" yerel (İstanbul) takvim günü; süzgeç seçimi.
     bugunIso: () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
     satisAsama: 'tumu',
@@ -714,7 +716,12 @@
     const html = V.kurulumSeridi(D) + V.uyariSeridi(D, ui);
     kutu.innerHTML = html;
     kutu.hidden = !html;
+    // Yeşil "DÜZELDİ" şeridi bir dakika sonra kendiliğinden kapansın diye,
+    // görünürken şerit birkaç saniyede bir yeniden çizilir.
+    clearTimeout(duzeldiZaman);
+    if (ui.duzelme.biten && ui.duzelme.biten.length) duzeldiZaman = setTimeout(seritYaz, 5000);
   }
+  let duzeldiZaman = null;
 
   // --- Şube alarmı bildirimi -----------------------------------------------
   // Şerit ve menü rozeti yalnız panel önündeyken işe yarar; yönetici başka bir
