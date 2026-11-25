@@ -53,3 +53,11 @@ test('panel her sayfada beklemeden tazelenir, yazı/sürükleme sırasında çiz
   assert.match(panel, /siraliyor/);
   assert.match(panel, /yenile\(true\)\.catch\(\(\) => \{\}\), 250\)/);
 });
+
+test('yükleme, açık pencere ya da seçili dosya varken panel kendiliğinden çizilmez', () => {
+  const panel = fs.readFileSync(require.resolve('../radyo-yonetim.js'), 'utf8');
+  assert.match(panel, /if \(yuklemeSuruyor\) return false;/);
+  assert.match(panel, /modal-wrap'\)\.classList\.contains\('open'\)\) return false;/);
+  assert.match(panel, /input\[type=file\]/);
+  assert.match(panel, /yuklemeSuruyor = true;\n\s+try \{ return await parcalariYukleIc\(folderId\); \} finally \{ yuklemeSuruyor = false; \}/);
+});

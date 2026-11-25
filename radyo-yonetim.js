@@ -1231,7 +1231,16 @@
 
   // sessiz: yalnızca Canlı durum ekranı kendini tazeler; form girdileriniz
   // (klasör adı, yeni marka vb.) yeniden çizimle silinmez.
+  // Yükleme sürerken sayfa yeniden çizilirse ilerleme yazısı ve dosya seçimi
+  // kaybolur, yükleme durmuş gibi görünür (25 Kasım: 12 şarkı yüklenirken
+  // 4'ünde kesildi sanıldı). Yükleme, açık pencere ya da seçilmiş dosya varken
+  // sayfa çizilmez; yalnız şerit ve menü tazelenir.
+  let yuklemeSuruyor = false;
   function cizmekGuvenli() {
+    if (yuklemeSuruyor) return false;
+    if (el('modal-wrap') && el('modal-wrap').classList.contains('open')) return false;
+    if (Array.from(document.querySelectorAll('input[type=file]')).some(i => i.files && i.files.length)) return false;
+    if (recorder && recorder.state === 'recording') return false;
     const a = document.activeElement;
     if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return false;
     if (document.body.classList.contains('siraliyor') || document.querySelector('.tasiyor, dialog[open]')) return false;
@@ -1499,6 +1508,10 @@
 
   // ---------- Parça yükleme (parçalı, kayıpsız) ----------
   async function parcalariYukle(folderId) {
+    yuklemeSuruyor = true;
+    try { return await parcalariYukleIc(folderId); } finally { yuklemeSuruyor = false; }
+  }
+  async function parcalariYukleIc(folderId) {
     const giris = el('track-file');
     const dosyalar = Array.from((giris && giris.files) || []);
     const mesaj = el('track-msg'), bar = el('up-bar');
