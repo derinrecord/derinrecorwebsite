@@ -713,7 +713,7 @@
   function seritYaz() {
     const kutu = el('uyari');
     if (!kutu) return;
-    const html = V.kurulumSeridi(D) + V.uyariSeridi(D, ui);
+    const html = yuklemeSeridi() + V.kurulumSeridi(D) + V.uyariSeridi(D, ui);
     kutu.innerHTML = html;
     kutu.hidden = !html;
     // Yeşil "DÜZELDİ" şeridi bir dakika sonra kendiliğinden kapansın diye,
@@ -1507,14 +1507,45 @@
   const marka = id => D.brands.find(b => b.id === id);
 
   // ---------- Parça yükleme (parçalı, kayıpsız) ----------
+  // Süren yükleme (25 Kasım: Derin "yükleme sürüyorsa göstersin, yoksa aynı
+  // şarkıları tekrar yüklerim" dedi). Her sayfada üstte sabit şerit çizilir,
+  // ikinci bir yükleme başlatılmaz, sayfa kapatılırken tarayıcı sorar.
+  let yukleme = null;
+  function yuklemeSeridi() {
+    if (!yukleme) return '';
+    return `<div class="uyari-serit yukleniyor">
+      <span class="chip gold">YÜKLENİYOR</span>
+      <div class="uyari-govde">
+        <b>${esc(yukleme.klasor)} · ${esc(yukleme.sira)}/${esc(yukleme.toplam)} · %${esc(yukleme.yuzde)}</b>
+        <span class="sub">${yukleme.ad ? 'Şu an: ' + esc(yukleme.ad) + ' · ' : ''}Yükleme sürüyor, bu sayfayı kapatma ve yenileme. Bitince burada yazar.</span>
+      </div>
+      <div class="progress" style="flex:1 1 100%"><i style="transform:scaleX(${yukleme.yuzde / 100})"></i></div>
+    </div>`;
+  }
+  function yuklemeIlerle(degisen) {
+    Object.assign(yukleme, degisen);
+    const metin = `Yükleniyor… ${yukleme.sira}/${yukleme.toplam} · %${yukleme.yuzde}${yukleme.parca ? ' · parça ' + yukleme.parca : ''}`;
+    // Sayfa yeniden çizilmiş olabilir: öğeler her seferinde yeniden bulunur.
+    const mesaj = el('track-msg'), bar = el('up-bar');
+    if (mesaj) mesaj.textContent = metin;
+    if (bar) { bar.hidden = false; bar.firstElementChild.style.transform = 'scaleX(' + (yukleme.yuzde / 100) + ')'; }
+    seritYaz();
+  }
+  window.addEventListener('beforeunload', e => {
+    if (!yukleme) return;
+    e.preventDefault();
+    e.returnValue = 'Yükleme sürüyor; sayfadan çıkarsan kalan şarkılar yüklenmez.';
+    return e.returnValue;
+  });
+
   async function parcalariYukle(folderId) {
+    if (yukleme) return hata(`Yükleme zaten sürüyor (${yukleme.klasor} · ${yukleme.sira}/${yukleme.toplam}). Bitmesini bekle; aynı şarkılar ikinci kez yüklenmesin.`);
     yuklemeSuruyor = true;
-    try { return await parcalariYukleIc(folderId); } finally { yuklemeSuruyor = false; }
+    try { return await parcalariYukleIc(folderId); } finally { yuklemeSuruyor = false; yukleme = null; seritYaz(); }
   }
   async function parcalariYukleIc(folderId) {
     const giris = el('track-file');
     const dosyalar = Array.from((giris && giris.files) || []);
-    const mesaj = el('track-msg'), bar = el('up-bar');
     if (!dosyalar.length) return hata('Önce dosya seçin.');
     if (!Ses) return hata('Ses yükleme yardımcıları yüklenemedi (audio-file-types.js).');
 
@@ -1550,14 +1581,16 @@
 
     const baslangic = Date.now();
     let biten = 0, atlanan = 0, degisen = 0, ilkHata = '';
+    const klasorAdi = (D.folders.find(f => f.id === folderId) || {}).name || 'Klasör';
+    yukleme = { klasor: klasorAdi, toplam: dosyalar.length, sira: 0, yuzde: 0, ad: '', parca: '' };
+    let siraNo = 0;
     const mevcut = D.tracks.filter(t => t.folder_id === folderId).length;
 
     for (const dosya of dosyalar) {
       if (!Ses.gecerli(dosya)) { atlanan++; ilkHata = ilkHata || `“${dosya.name}” desteklenmeyen bir uzantıda.`; continue; }
-      const yuzde = Math.round((biten / dosyalar.length) * 100);
-      mesaj.textContent = `Yükleniyor… ${biten + 1}/${dosyalar.length} · %${yuzde}`;
-      bar.hidden = false;
-      bar.firstElementChild.style.transform = 'scaleX(' + (yuzde / 100) + ')';
+      siraNo++;
+      const yuzde = Math.round(((siraNo - 1) / dosyalar.length) * 100);
+      yuklemeIlerle({ sira: siraNo, yuzde: yuzde, ad: V.clean(dosya.name).replace(/\.[^.]+$/, ''), parca: '' });
 
       const taban = V.clean(dosya.name).replace(/\.[^.]+$/, '');
       const temelYol = `${folderId}/${Date.now()}-${slugify(taban) || 'parca'}`;
@@ -1565,7 +1598,7 @@
         yukle: (yol, dilim, tip) => window.DerinR2.yukle('radio-audio', yol, dilim, tip),
         sil: yollar => window.DerinR2.sil('radio-audio', yollar)
       }, temelYol, dosya, (i, n) => {
-        if (n > 1) mesaj.textContent = `Yükleniyor… ${biten + 1}/${dosyalar.length} · parça ${i}/${n}`;
+        if (n > 1) yuklemeIlerle({ parca: i + '/' + n });
       });
 
       if (sonuc.error) {
@@ -1604,9 +1637,10 @@
     }
 
     const saniye = Math.round((Date.now() - baslangic) / 1000);
-    bar.firstElementChild.style.transform = 'scaleX(1)';
-    setTimeout(() => { bar.hidden = true; }, 600);
-    giris.value = '';
+    yukleme = null;
+    const sonBar = el('up-bar');
+    if (sonBar) { sonBar.firstElementChild.style.transform = 'scaleX(1)'; setTimeout(() => { sonBar.hidden = true; }, 600); }
+    if (el('track-file')) el('track-file').value = '';
     const kutu = el('track-drop');
     if (kutu) kutu.classList.remove('secili');
     await yenile(false);

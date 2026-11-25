@@ -59,5 +59,15 @@ test('yükleme, açık pencere ya da seçili dosya varken panel kendiliğinden �
   assert.match(panel, /if \(yuklemeSuruyor\) return false;/);
   assert.match(panel, /modal-wrap'\)\.classList\.contains\('open'\)\) return false;/);
   assert.match(panel, /input\[type=file\]/);
-  assert.match(panel, /yuklemeSuruyor = true;\n\s+try \{ return await parcalariYukleIc\(folderId\); \} finally \{ yuklemeSuruyor = false; \}/);
+  assert.match(panel, /yuklemeSuruyor = true;\n\s+try \{ return await parcalariYukleIc\(folderId\); \} finally \{ yuklemeSuruyor = false; yukleme = null; seritYaz\(\); \}/);
+});
+
+test('yükleme sürerken her sayfada YÜKLENİYOR şeridi; ikinci yükleme başlamaz; çıkarken sorar', () => {
+  const panel = fs.readFileSync(require.resolve('../radyo-yonetim.js'), 'utf8');
+  assert.match(panel, /uyari-serit yukleniyor/);
+  assert.match(panel, /const html = yuklemeSeridi\(\) \+ V\.kurulumSeridi\(D\)/);
+  assert.match(panel, /if \(yukleme\) return hata\(`Yükleme zaten sürüyor/);
+  assert.match(panel, /addEventListener\('beforeunload'/);
+  assert.match(panel, /const mesaj = el\('track-msg'\), bar = el\('up-bar'\);\n\s+if \(mesaj\)/, 'ilerleme öğeleri her seferinde yeniden bulunur');
+  assert.match(fs.readFileSync(require.resolve('../radyo-panel.css'), 'utf8'), /\.uyari-serit\.yukleniyor\{/);
 });
