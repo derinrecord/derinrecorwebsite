@@ -20,3 +20,7 @@ alter table public.brand_players
 -- radio_now_report: liste değişince 'liste-degisti' (eski → yeni), parça değişince 'sarki-degisti'
 -- olayı yazar. radio_ses_bildir: ses 5 puan+ değişince ya da kapanıp açılınca 'ses-degisti' (%eski → %yeni).
 -- Bunlar yalnız panelde görünür, Telegram'a gitmez (Derin'in kararı).
+
+-- 25 Kasım 2026 — UYGULANDI (migration: radio_hareket_temizlik).
+-- radio_hareket_temizle(): sarki-degisti / liste-degisti / ses-degisti olayları 15 günden eskiyse siler.
+-- pg_cron 'radio-hareket-temizle' her gece 00:30 UTC (03:30 İstanbul). Önemli olaylar silinmez.
