@@ -1219,9 +1219,20 @@
 
   // sessiz: yalnızca Canlı durum ekranı kendini tazeler; form girdileriniz
   // (klasör adı, yeni marka vb.) yeniden çizimle silinmez.
+  function cizmekGuvenli() {
+    const a = document.activeElement;
+    if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return false;
+    if (document.body.classList.contains('siraliyor') || document.querySelector('.tasiyor, dialog[open]')) return false;
+    if (state.planYeni || state.planDuzenle) return false;
+    return true;
+  }
+
   async function yenile(sessiz) {
     await veriYukle();
-    if (sessiz && state.nav !== 'canli') { el('rail').innerHTML = V.nav(state, sayimlar(), kullanici); seritYaz(); return; }
+    // 25 Kasım 2026: her sayfa yenilemeden güncellenir. Yalnız Derin bir alana
+    // yazıyorsa ya da sürüklüyorsa sayfa çizilmez (yazdığı silinmesin); şerit ve
+    // menü yine anında tazelenir.
+    if (sessiz && !cizmekGuvenli()) { el('rail').innerHTML = V.nav(state, sayimlar(), kullanici); seritYaz(); return; }
     ciz();
     if (state.openBrand && !D.brands.some(b => b.id === state.openBrand)) git('#/markalar');
     if (state.openFolder && !D.folders.some(f => f.id === state.openFolder)) git('#/klasorler');
@@ -1248,7 +1259,7 @@
     canliKanal = client.channel('radyo-panel-subeler')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'brand_players' }, () => {
         clearTimeout(yenileZaman);
-        yenileZaman = setTimeout(() => yenile(true).catch(() => {}), 800);
+        yenileZaman = setTimeout(() => yenile(true).catch(() => {}), 250);
       })
       .subscribe();
     // Cihaz nabzı 60 saniyede bir düşüyor: "bağlı/çalıyor" göstergesi için

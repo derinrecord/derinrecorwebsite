@@ -557,7 +557,8 @@
   // misin” diyen birinin olmasını beklemeyiz. Uyarı yalnızca elimizde kayıt
   // varken ve şube mesaisi açıkken çıkar; kayıt yokken susar, çünkü susan bir
   // cihazın bilmediğimiz hâlini “yayın durdu” diye bağırmak yanlış olurdu.
-  const UYARI_ESIK_MS = 10 * 60000;
+  // 25 Kasım 2026: Derin beklemesiz istedi; mesaide duran yayın hemen görünür.
+  const UYARI_ESIK_MS = 0;
 
   // Mesai açık mı? Saat tanımlanmadıysa yayın her zaman beklenir.
   function mesaideMi(p, t) {
@@ -589,7 +590,7 @@
   // sabah “12 saat sessiz” diye bağırmaz, sabah açılışından bu yana geçen süre
   // kadar sessiz görünür.
   function sessizSubeler(D, now, esikMs) {
-    const esik = esikMs || UYARI_ESIK_MS;
+    const esik = esikMs == null ? UYARI_ESIK_MS : esikMs;
     const simdi = now == null ? Date.now() : now;
     return (D.players || []).map(p => {
       const d = suanDurum(D, p, simdi);
@@ -990,7 +991,7 @@
   // kapansın"). Kırmızı şeritte görünen bir şube sorunu kalkınca o şube bir
   // dakika boyunca yeşil "DÜZELDİ" şeridinde görünür, sonra şerit kendiliğinden
   // kapanır. Hafıza ui.duzelme'de tutulur (panel verir); yoksa hiçbir şey çizilmez.
-  const DUZELDI_MS = 60 * 1000;
+  const DUZELDI_MS = 15 * 1000;
   function acikUyarilar(D, now) {
     const acik = {};
     (D.players || []).filter(ihlalVar).forEach(p => { acik['p:' + p.id] = { id: p.id, metin: p.label + ' · paylaşım girişimi' }; });
@@ -1028,7 +1029,7 @@
       <span class="chip live">DÜZELDİ</span>
       <div class="uyari-govde">
         <b>${esc(baslik)}</b>
-        <span class="sub">Sorun giderildi · bu şerit birazdan kendiliğinden kapanır</span>
+        <span class="sub">Sorun giderildi · bu şerit birkaç saniye içinde kapanır</span>
       </div>
     </div>`;
   }

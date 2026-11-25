@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const V = require('../radyo-panel-views.js');
 
 // 25 Kasım 2026: sorun düzelince kırmızı uyarı yeşil "DÜZELDİ" olur, 1 dk sonra kapanır.
-test('düzelen yayın alarmı yeşil şeride döner ve bir dakika sonra kapanır', () => {
+test('düzelen yayın alarmı yeşil şeride döner ve 15 saniye sonra kapanır', () => {
   let simdi = Date.parse('2026-11-25T07:00:00Z');
   const ui = { now: () => simdi, duzelme: { acik: null, biten: [] } };
   const once = sn => new Date(simdi - sn * 1000).toISOString();
@@ -19,8 +19,8 @@ test('düzelen yayın alarmı yeşil şeride döner ve bir dakika sonra kapanır
   assert.ok(!yesil.includes('YAYIN ALARMI'), 'kırmızı şerit kalktı');
   assert.ok(yesil.includes('uyari-serit duzeldi') && yesil.includes('DÜZELDİ') && yesil.includes('Selçuk · ses kapalı'));
 
-  simdi += 61 * 1000;
-  assert.equal(V.uyariSeridi(duzeldi, ui), '', 'bir dakika sonra şerit kapanır');
+  simdi += 16 * 1000;
+  assert.equal(V.uyariSeridi(duzeldi, ui), '', '15 saniye sonra şerit kapanır');
 });
 
 test('ilk açılışta, veri gelmeden ve silinen şubede yanlış "düzeldi" çizilmez', () => {
@@ -44,4 +44,12 @@ test('sorun yeniden başlarsa yeşil satır silinir; hafızasız ui eskisi gibi 
   const panel = fs.readFileSync(require.resolve('../radyo-yonetim.js'), 'utf8');
   assert.match(panel, /duzelme: \{ acik: null, biten: \[\] \}/);
   assert.match(panel, /setTimeout\(seritYaz, 5000\)/);
+});
+
+test('panel her sayfada beklemeden tazelenir, yazı/sürükleme sırasında çizmez', () => {
+  const panel = fs.readFileSync(require.resolve('../radyo-yonetim.js'), 'utf8');
+  assert.match(panel, /if \(sessiz && !cizmekGuvenli\(\)\)/);
+  assert.match(panel, /INPUT\|TEXTAREA\|SELECT/);
+  assert.match(panel, /siraliyor/);
+  assert.match(panel, /yenile\(true\)\.catch\(\(\) => \{\}\), 250\)/);
 });

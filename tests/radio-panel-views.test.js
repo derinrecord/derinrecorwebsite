@@ -1156,14 +1156,15 @@ test('mesai içinde susan şube uyarı üretir', () => {
   assert.equal(V.sureMetni(35 * 3600000), '1 gün 11 sa');
 });
 
-test('kısa suskunluk, mesai dışı ve kayıtsız şube uyarı üretmez', () => {
+test('duran yayın hemen uyarı; mesai dışı ve kayıtsız şube uyarı üretmez', () => {
   // Yeni duran yayın: oynatıcı kendi kendine yeniden bağlanıyor olabilir.
   const yeni = { ...D, olaylar: [
     { id: 'n1', player_id: 'p1', brand_id: 'b1', kind: 'caliyor', at: istAn(0, 14, 45) },
     { id: 'n2', player_id: 'p1', brand_id: 'b1', kind: 'durakladi', detail: 'cihaz', at: istAn(0, 14, 55) }
   ] };
-  assert.equal(V.sessizSubeler(yeni, SABIT).length, 0, 'dakikalık suskunluk uyarı değildir');
-  assert.equal(V.uyariSeridi(yeni, uiSabit), '');
+  // 25 Kasım 2026: Derin beklemesiz istedi; mesaide duran yayın hemen uyarıdır.
+  assert.equal(V.sessizSubeler(yeni, SABIT).length, 1, 'duran yayın hemen görünür');
+  assert.ok(V.uyariSeridi(yeni, uiSabit).includes('YAYIN DURDU'));
 
   // Kapanıştan sonra susan yayın haber değildir: şerit boş kalır.
   const gece = SABIT + 8 * 3600000; // İstanbul 23:00
