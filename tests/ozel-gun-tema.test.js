@@ -35,3 +35,10 @@ test('yılbaşı seçenekleri tanımlı; geri sayım doğru', () => {
   assert.equal(s({ yil: 2026, ay: 12, gun: 31 }), 'Yeni yıla son saatler · 2027');
   assert.equal(s({ yil: 2027, ay: 1, gun: 1 }), 'Mutlu Yıllar 2027');
 });
+
+test('zengin yılbaşı: arka katman içeriğin arkasında, kar başlıkları dokunmayı engellemez', () => {
+  const kod = fs.readFileSync(require.resolve('../ozel-gun-tema.js'), 'utf8');
+  assert.ok(T.TEMALAR['yilbasi-zengin'].tabela);
+  assert.match(kod, /\.ot-arka\{position:fixed;inset:0;z-index:-1;pointer-events:none/);
+  assert.match(kod, /\.ot-karli\{position:absolute;left:0;top:0;width:0;height:0;z-index:42;pointer-events:none\}/);
+});

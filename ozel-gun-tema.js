@@ -16,6 +16,9 @@
     yilbasi:     { ad: 'Yılbaşı',            selam: y => 'Mutlu Yıllar ' + y.yeniYil, susler: ['isik', 'kar'] },
     // Yılbaşı seçenekleri (Derin seçince biri 'yilbasi' olur): ?tema=yilbasi-cam / yilbasi-altin
     'yilbasi-cam':   { ad: 'Yılbaşı · Çam ve Süs',    selam: y => 'Mutlu Yıllar ' + y.yeniYil, susler: ['cam-dal', 'kar-az', 'kar-birikinti'] },
+    // Zengin yılbaşı (Derin'in referanslarından: sıcak ışık zinciri, karlı düğmeler,
+    // şeker çubuğu tabela + Noel Baba şapkası, arkada altın ay, kızak ve çamlar).
+    'yilbasi-zengin': { ad: 'Yılbaşı · Altın Ay', selam: geriSayim, susler: ['arka-ay', 'sicak-isik', 'kar-az', 'kar-basliklari', 'logo-sapka'], tabela: true },
     'yilbasi-altin': { ad: 'Yılbaşı · Gece Yarısı',   selam: geriSayim, susler: ['yildiz-parilti', 'altin-konfeti'] },
     sevgililer:  { ad: 'Sevgililer Günü',    selam: () => 'Sevgililer Gününüz Kutlu Olsun', susler: ['kalp'] },
     cumhuriyet:  { ad: '29 Ekim',            selam: y => 'Cumhuriyet Bayramımız Kutlu Olsun · ' + (y.yil - 1923) + '. Yıl', susler: ['bayrak-serit', 'konfeti-kirmizi'] },
@@ -120,6 +123,41 @@
         s += `<span style="left:${R(2, 98).toFixed(1)}%;top:${R(3, 95).toFixed(1)}%;animation-delay:-${R(0, 3).toFixed(1)}s"><svg viewBox="0 0 24 24" width="${b}" height="${b}" aria-hidden="true"><path d="M12 0 C13 9 15 11 24 12 C15 13 13 15 12 24 C11 15 9 13 0 12 C9 11 11 9 12 0Z" fill="#e8d15a"/></svg></span>`;
       }
       ekle(s + '</div>');
+    } else if (tur === 'sicak-isik') {
+      // Sarkan sıcak ampul zincirleri: kahverengi kablo, duy, sıcak sarı ışık.
+      let s = '<div class="ot-sicak">';
+      [[0, 12, 30], [1, 20, 26]].forEach(([n, sark, adet]) => {
+        const y0 = 1 + n * 3;
+        s += `<svg class="ot-kablo2" viewBox="0 0 1000 ${sark + 30}" preserveAspectRatio="none" style="height:${sark + 30}px" aria-hidden="true"><path d="M-10 ${y0} Q 250 ${y0 + sark} 500 ${y0 + 4} T 1010 ${y0}" fill="none" stroke="#4a3320" stroke-width="2"/></svg>`;
+        for (let i = 0; i < adet; i++) {
+          const t = (i + 0.5) / adet, x = t * 100;
+          // aynı eğri üzerinde (iki yarım parabol) yaklaşık yükseklik
+          const u = t < 0.5 ? t * 2 : (t - 0.5) * 2;
+          const y = y0 + (t < 0.5 ? sark * 4 * u * (1 - u) / 2 + 2 * u : sark * 4 * u * (1 - u) / 2 + 2) + 2;
+          s += `<span class="ot-ampul" style="left:${x.toFixed(2)}%;top:${y.toFixed(1)}px;animation-delay:-${R(0, 4).toFixed(1)}s"><i></i><b></b></span>`;
+        }
+      });
+      ekle(s + '</div>');
+    } else if (tur === 'arka-ay') {
+      // En arkada: altın dolunay, önünden geçen kızak + geyikler, altta çam siluetleri, altın toz.
+      const geyik = x => `<g transform="translate(${x} 0)"><path d="M0 14 q6 -6 16 -3 l4 -9 l2 1 l-3 9 q4 1 4 5 l-3 1 l-2 9 l-2 0 l1 -8 l-8 0 l-3 8 l-2 0 l2 -9 q-5 0 -6 -4 z"/><path d="M20 2 l-2 -6 M20 2 l3 -5 M20 2 l-5 -3 M22 -3 l3 -1" stroke="#0b0b0d" stroke-width="1.2" fill="none"/></g>`;
+      const kizak = `<svg class="ot-kizak" viewBox="-10 -12 270 44" aria-hidden="true"><g fill="#0b0b0d">${[60, 98, 136, 174, 212].map(geyik).join('')}<path d="M-6 16 q0 -10 10 -12 l26 0 q6 0 8 -10 l6 0 q-2 14 -6 20 l-38 4 z"/><path d="M-8 24 q20 4 48 -2" stroke="#0b0b0d" stroke-width="2" fill="none"/></g><path d="M36 10 L 60 16 M80 14 L 98 16 M118 14 L 136 16 M156 14 L 174 16 M194 14 L 212 16" stroke="#0b0b0d" stroke-width=".8"/></svg>`;
+      let cam = '';
+      for (let i = 0; i < 26; i++) {
+        const x = i * 40 + R(-8, 8), h = R(90, 220), w = h * 0.42;
+        cam += `<path d="M${x.toFixed(0)} 260 L${(x + w / 2).toFixed(0)} ${(260 - h).toFixed(0)} L${(x + w).toFixed(0)} 260 Z"/>`;
+      }
+      let toz = '';
+      for (let i = 0; i < 60; i++) toz += `<i style="left:${R(0, 100).toFixed(1)}%;top:${R(0, 100).toFixed(1)}%;width:${R(1, 3).toFixed(1)}px;height:${R(1, 3).toFixed(1)}px;animation-delay:-${R(0, 4).toFixed(1)}s"></i>`;
+      const arka = document.createElement('div');
+      arka.className = 'ot-arka';
+      arka.setAttribute('aria-hidden', 'true');
+      arka.innerHTML = `<div class="ot-ay"></div>${kizak}<svg class="ot-camlik" viewBox="0 0 1040 260" preserveAspectRatio="none" aria-hidden="true"><g fill="#0d1410">${cam}</g></svg><div class="ot-toz">${toz}</div>`;
+      document.body.insertBefore(arka, document.body.firstChild);
+    } else if (tur === 'kar-basliklari') {
+      karBasliklari();
+    } else if (tur === 'logo-sapka') {
+      kok.dataset.sapka = '1';
     } else if (tur === 'bayrak-serit') {
       let s = '<div class="ot-serit">';
       for (let i = 0; i < 18; i++) s += `<span style="animation-delay:${(i % 6) * 0.25}s">${bayrakSvg(36)}</span>`;
@@ -130,6 +168,41 @@
       for (let i = 0; i < 30; i++) s += `<i style="border-top-color:${renk[i % renk.length]};animation-delay:${(i % 4) * 0.3}s"></i>`;
       ekle(s + '</div>');
     }
+  }
+
+  const KARLI = ['.mk-art img', '.mk-main', '.mk-tab'];
+  const karSvg = w => `<svg viewBox="0 0 100 16" preserveAspectRatio="none" style="width:${w}px;height:${Math.max(7, Math.min(11, w / 14))}px" aria-hidden="true"><path d="M0 9 Q2 1 10 2 Q20 0 30 3 Q42 0 54 2 Q66 0 78 3 Q90 0 100 6 L100 9 Q96 9 95 13 Q94 16 92 13 Q91 9 86 9 Q76 10 70 9 Q66 9 65 14 Q63 17 61 13 Q60 9 52 9 L36 9 Q31 9 30 12 Q29 15 27 12 Q26 9 18 9 L0 9Z" fill="#fff"/><path d="M0 9 L100 9" stroke="#dfe8f0" stroke-width=".6"/></svg>`;
+  const SAPKA = '<svg class="ot-sapka" viewBox="0 0 64 54" aria-hidden="true"><path d="M8 40 Q12 10 38 6 Q56 6 58 30 Q50 18 40 20 Q30 24 26 40 Z" fill="#c8102e"/><path d="M36 8 Q48 4 56 12 Q50 10 44 14 Z" fill="#a50d26"/><rect x="2" y="36" width="34" height="12" rx="6" fill="#f4f1e9"/><circle cx="58" cy="32" r="6" fill="#f4f1e9"/></svg>';
+  function karBasliklari() {
+    let kat = document.querySelector('.ot-karli');
+    if (!kat) {
+      kat = document.createElement('div');
+      kat.className = 'ot-karli';
+      kat.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(kat);
+    }
+    const ciz = () => {
+      let html = '';
+      const sx = window.scrollX, sy = window.scrollY;
+      document.querySelectorAll(KARLI.join(',')).forEach((e, i) => {
+        const r = e.getBoundingClientRect();
+        if (r.width < 30 || r.height < 16 || getComputedStyle(e).visibility === 'hidden') return;
+        if (e.matches('.mk-tab') && e !== e.parentElement.querySelector('.mk-tab')) return; // yalnız ilk sekme
+        html += `<span style="left:${(r.left + sx - 2).toFixed(0)}px;top:${(r.top + sy - 4).toFixed(0)}px">${karSvg(r.width + 4)}</span>`;
+      });
+      const logo = document.querySelector('.wordmark');
+      if (document.querySelector('.ot-kok[data-sapka]') && logo) {
+        const r = logo.getBoundingClientRect();
+        html += `<span style="left:${(r.left + sx - 36).toFixed(0)}px;top:${(r.top + sy - 24).toFixed(0)}px;transform:rotate(-22deg)">${SAPKA}</span>`;
+      }
+      kat.innerHTML = html;
+    };
+    let bekle = null;
+    const sonra = () => { clearTimeout(bekle); bekle = setTimeout(ciz, 150); };
+    window.addEventListener('resize', sonra);
+    try { new MutationObserver(m => { if (m.some(x => !kat.contains(x.target))) sonra(); }).observe(document.body, { childList: true, subtree: true }); } catch (e) {}
+    setInterval(ciz, 4000);
+    setTimeout(ciz, 50);
   }
 
   const STIL = `
@@ -163,11 +236,35 @@
   .ot-parilti span{position:absolute;animation:ot-parilda 2.8s ease-in-out infinite}
   @keyframes ot-salla{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
   @keyframes ot-parilda{0%,100%{opacity:0;transform:scale(.4)}50%{opacity:.9;transform:scale(1)}}
+  .ot-arka{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+  .ot-ay{position:absolute;right:4%;top:6%;width:min(36vw,440px);aspect-ratio:1;border-radius:50%;
+    background:radial-gradient(circle at 40% 38%,#f3c86a,#d99a2b 62%,#b97a1c);opacity:.13;box-shadow:0 0 120px 40px rgba(232,180,80,.12)}
+  .ot-kizak{position:absolute;top:22%;width:min(30vw,340px);animation:ot-ucus 48s linear infinite;opacity:.55}
+  .ot-camlik{position:absolute;left:0;right:0;bottom:0;width:100%;height:28vh;opacity:.85}
+  .ot-toz i{position:absolute;border-radius:50%;background:#e8c35a;animation:ot-parilda 3.2s ease-in-out infinite}
+  .ot-sicak{position:absolute;left:0;right:0;top:0;height:40px}
+  .ot-kablo2{position:absolute;left:0;top:0;width:100%}
+  .ot-ampul{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;animation:ot-titre 3.6s ease-in-out infinite}
+  .ot-ampul i{width:5px;height:6px;background:#2c2014;border-radius:1px}
+  .ot-ampul b{width:11px;height:13px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:radial-gradient(circle at 45% 40%,#fffbe6,#ffd98a 45%,#f2a93b);
+    box-shadow:0 0 8px 3px rgba(255,200,110,.75),0 0 22px 8px rgba(255,180,80,.35)}
+  .ot-karli{position:absolute;left:0;top:0;width:0;height:0;z-index:42;pointer-events:none}
+  .ot-karli span{position:absolute;display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+  .ot-karli svg{display:block}
+  .ot-sapka{width:34px;height:29px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}
+  .ot-selam.ot-tabela{background:repeating-linear-gradient(-45deg,#c8102e 0 14px,#e0334f 14px 28px);border:0;border-radius:14px;
+    padding:13px 26px 11px 44px;font:700 16px/1.2 Inter,system-ui,sans-serif;letter-spacing:.02em;overflow:visible;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.35),inset 0 -6px 12px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.45);text-shadow:0 1px 2px rgba(0,0,0,.35)}
+  .ot-tabela b{display:none}
+  .ot-tabela .ot-tabela-kar{position:absolute;left:-3px;right:-3px;top:-9px;height:16px}
+  .ot-tabela .ot-tabela-sapka{position:absolute;left:-22px;top:-24px;width:52px;height:44px;transform:rotate(-24deg)}
+  @keyframes ot-ucus{from{transform:translateX(-40vw) translateY(0)}50%{transform:translateX(55vw) translateY(-30px)}to{transform:translateX(140vw) translateY(10px)}}
+  @keyframes ot-titre{0%,100%{opacity:1}45%{opacity:.82}55%{opacity:.95}}
   @keyframes ot-parla{0%,100%{opacity:.95}50%{opacity:.35}}
   @keyframes ot-dus{to{transform:translate(var(--salla),110vh) rotate(260deg)}}
   @keyframes ot-yuksel{to{transform:translate(var(--salla),-115vh)}}
   @keyframes ot-dalga{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
-  @media (max-width:560px){.ot-top:nth-child(n+5){display:none}.ot-dal{width:140px}.ot-dal-sag{right:auto;left:150px}.ot-birikinti{height:22px}.ot-selam{font-size:11px;padding:7px 14px;bottom:auto;top:96px;white-space:normal;text-align:center;width:max-content;line-height:1.35}.ot-serit span:nth-child(n+9),.ot-isiklar i:nth-child(n+15){display:none}}
+  @media (max-width:560px){.ot-ay{width:70vw;right:-10%;top:18%}.ot-kizak{width:60vw}.ot-camlik{height:18vh}.ot-sicak svg:nth-of-type(2),.ot-ampul:nth-child(n+33){display:none}.ot-ampul:nth-child(even){display:none}.ot-selam.ot-tabela{font-size:13px;padding:11px 16px 9px 34px}.ot-top:nth-child(n+5){display:none}.ot-dal{width:140px}.ot-dal-sag{right:auto;left:150px}.ot-birikinti{height:22px}.ot-selam{font-size:11px;padding:7px 14px;bottom:auto;top:96px;white-space:normal;text-align:center;width:max-content;line-height:1.35}.ot-serit span:nth-child(n+9),.ot-isiklar i:nth-child(n+15){display:none}}
   @media (prefers-reduced-motion:reduce){.ot-kok *{animation:none!important}.ot-yagmur{display:none}}`;
 
   function kur() {
@@ -186,6 +283,10 @@
     const selam = document.createElement('div');
     selam.className = 'ot-selam';
     selam.innerHTML = '<b>✦</b>';
+    if (tema.tabela) {
+      selam.classList.add('ot-tabela');
+      selam.insertAdjacentHTML('beforeend', '<span class="ot-tabela-kar">' + karSvg(10).replace('style="width:10px;height:10px"', 'style="width:100%;height:16px"') + '</span>' + SAPKA.replace('class="ot-sapka"', 'class="ot-tabela-sapka"'));
+    }
     selam.appendChild(document.createTextNode(tema.selam({ yil: t.yil, ay: t.ay, gun: t.gun, yeniYil: t.ay === 12 ? t.yil + 1 : t.yil })));
     document.body.appendChild(selam);
   }
