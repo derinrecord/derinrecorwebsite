@@ -27,3 +27,11 @@ test('süs katmanı dokunmayı engellemez ve şube ekranına bağlıdır', () =>
   assert.match(kod, /prefers-reduced-motion/);
   assert.match(fs.readFileSync(require.resolve('../coffee-marka.html'), 'utf8'), /ozel-gun-tema\.js\?v=1/);
 });
+
+test('yılbaşı seçenekleri tanımlı; geri sayım doğru', () => {
+  assert.ok(T.TEMALAR['yilbasi-cam'] && T.TEMALAR['yilbasi-altin']);
+  const s = T.TEMALAR['yilbasi-altin'].selam;
+  assert.equal(s({ yil: 2026, ay: 12, gun: 26 }), 'Yeni yıla 6 gün · 2027');
+  assert.equal(s({ yil: 2026, ay: 12, gun: 31 }), 'Yeni yıla son saatler · 2027');
+  assert.equal(s({ yil: 2027, ay: 1, gun: 1 }), 'Mutlu Yıllar 2027');
+});
