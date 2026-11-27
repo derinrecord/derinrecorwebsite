@@ -30,6 +30,6 @@ test('Projelerim: v1 yerinde DEMO / ORİJİNAL; yönetici değiştirir, müşter
   assert.match(js, /e\.stopPropagation\(\)/);
   const html = oku('my-projects.html');
   assert.match(html, /\.pt-demo\.acik\{/);
-  assert.match(html, /\.pt-demo\.orijinal\{border-color:rgba\(216,187,44,\.45\);color:var\(--pj-altin2\)\}/);
-  assert.match(html, /projects\.js\?v=20261127c/);
+  assert.match(html, /\.pt-demo\.orijinal\{background:#e8d15a;border-color:#e8d15a;color:#0b0b0d\}/);
+  assert.match(html, /projects\.js\?v=20261127d/);
 });
