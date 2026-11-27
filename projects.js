@@ -204,18 +204,20 @@
     const yuzde=at<0?0:Math.round((at+1)/STAGES.length*100);
     return `<div class="stage-bar"><div class="stage-ust"><span>ÜRETİM SÜRECİ</span><b>%${yuzde}</b></div><div class="stage-row">${STAGES.map((s,i)=>`<div class="stage-step ${at<0?'':i<at?'done':i===at?'now':''}"><div class="stage-dot"></div>${s.l}</div>`).join('')}</div></div>`;};
 
-  // DEMO etiketi (27 Kasım): parça adının yanında. Yönetici basarak açıp kapatır;
-  // demo parçalar ÖDEMELERİM'de ve CRM gelirinde sayılmaz (supabase/parca-demo.sql).
-  // Müşteri yalnız demo parçada görür (tıklanmaz) — hangisi demo, hangisi asıl anlaşılsın.
+  // DEMO / ORİJİNAL etiketi (27 Kasım): satırın sağında, eski "v1" yerinde.
+  // Yönetici basarak değiştirir; müşteri de görür ama basamaz. Demo parçalar
+  // ÖDEMELERİM'de ve CRM gelirinde sayılmaz (supabase/parca-demo.sql).
+  // Sürüm numarası parça detayında ("v2 sürüm") görünmeye devam eder.
   function demoEtiketi(tr){
-    const acik=!!tr.demo;
+    const demo=!!tr.demo;
+    const yazi=demo?'DEMO':L('ORİJİNAL','ORIGINAL');
+    const sinif=`pt-demo ${demo?'acik':'orijinal'}`;
     if(!admin){
-      if(!acik)return '';
-      const t=L('Demo — asıl sürüm değil','Demo — not the final version');
-      return `<span class="pt-demo acik salt" title="${t}" aria-label="${t}"><i aria-hidden="true"></i>DEMO</span>`;
+      const t=demo?L('Demo — asıl sürüm değil','Demo — not the final version'):L('Orijinal sürüm','Original version');
+      return `<span class="${sinif} salt" title="${t}" aria-label="${t}"><i aria-hidden="true"></i>${yazi}</span>`;
     }
-    const baslik=acik?L('Demo — ödemelerde görünmez. Kaldırmak için bas.','Demo — hidden from payments. Tap to remove.'):L('Demo olarak işaretle (ödemelerde görünmez)','Mark as demo (hidden from payments)');
-    return `<span role="button" tabindex="0" class="pt-demo${acik?' acik':''}" data-tddemo="${safe(tr.id)}" aria-pressed="${acik}" title="${baslik}" aria-label="${baslik}"><i aria-hidden="true"></i>DEMO</span>`;
+    const baslik=demo?L('Demo — ödemelerde görünmez. Orijinal yapmak için bas.','Demo — hidden from payments. Tap to make original.'):L('Orijinal — demo yapmak için bas (ödemelerde görünmez).','Original — tap to mark as demo (hidden from payments).');
+    return `<span role="button" tabindex="0" class="${sinif}" data-tddemo="${safe(tr.id)}" aria-pressed="${demo}" title="${baslik}" aria-label="${baslik}"><i aria-hidden="true"></i>${yazi}</span>`;
   }
 
   function trackBlock(tr,i,p){
@@ -227,9 +229,9 @@
     return `<div role="button" tabindex="0" class="proj-track" data-tb="${tr.id}" data-tdopen="${tr.id}">
       <span class="pt-no">${String(i+1).padStart(2,'0')}</span>
       <span class="pt-kaset ${renk}"><img src="assets/demo-cassette-derin-record.png" alt="" loading="lazy"></span>
-      <span class="pt-ad"><strong><span class="pt-baslik">${safe(tr.label||'Parça')}</span>${demoEtiketi(tr)}${tr.indirme_izni?`<span class="pt-indir" title="${L('İndirmesi açık','Download allowed')}" aria-label="${L('İndirmesi açık','Download allowed')}">⤓</span>`:''}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small>${(admin&&tr.satin_alma_durum&&tr.satin_alma_durum!=='odendi')?`<span class="pt-sa ${safe(tr.satin_alma_durum)}">${tr.satin_alma_durum==='dekont'?L('🧾 DEKONT YÜKLENDİ','🧾 RECEIPT UPLOADED'):L('🛒 SATIN ALMA TALEBİ','🛒 PURCHASE REQUEST')}</span>`:''}</span>
+      <span class="pt-ad"><strong><span class="pt-baslik">${safe(tr.label||'Parça')}</span>${tr.indirme_izni?`<span class="pt-indir" title="${L('İndirmesi açık','Download allowed')}" aria-label="${L('İndirmesi açık','Download allowed')}">⤓</span>`:''}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small>${(admin&&tr.satin_alma_durum&&tr.satin_alma_durum!=='odendi')?`<span class="pt-sa ${safe(tr.satin_alma_durum)}">${tr.satin_alma_durum==='dekont'?L('🧾 DEKONT YÜKLENDİ','🧾 RECEIPT UPLOADED'):L('🛒 SATIN ALMA TALEBİ','🛒 PURCHASE REQUEST')}</span>`:''}</span>
       ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${L(`${n} not — parçayı açıp klasöründe gör`,`${n} ${n===1?'note':'notes'} — open the track to see its folder`)}">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
-      <span class="pt-surum${has?' hazir':''}">v${safe(tr.version||1)}</span>
+      ${demoEtiketi(tr)}
       <span class="pt-ok" aria-hidden="true">→</span>
     </div>`;
   }
@@ -2231,7 +2233,7 @@
           await tekSatir(client.from('project_tracks').update({demo:yeni}).eq('id',t.id),L('Demo işareti kaydedilemedi.','Demo mark could not be saved.'));
           t.demo=yeni;
           render();
-          bildir(yeni?L('Demo olarak işaretlendi · ödemelerde görünmeyecek.','Marked as demo · hidden from payments.'):L('Demo işareti kaldırıldı.','Demo mark removed.'),'ok');
+          bildir(yeni?L('Demo olarak işaretlendi · ödemelerde görünmeyecek.','Marked as demo · hidden from payments.'):L('Orijinal olarak işaretlendi.','Marked as original.'),'ok');
         }catch(err){ delete el.dataset.mesgul; bildir(err.message||L('Demo işareti kaydedilemedi.','Demo mark could not be saved.'),'hata'); }
       };
       el.onclick=degistir;
