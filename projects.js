@@ -204,6 +204,14 @@
     const yuzde=at<0?0:Math.round((at+1)/STAGES.length*100);
     return `<div class="stage-bar"><div class="stage-ust"><span>ÜRETİM SÜRECİ</span><b>%${yuzde}</b></div><div class="stage-row">${STAGES.map((s,i)=>`<div class="stage-step ${at<0?'':i<at?'done':i===at?'now':''}"><div class="stage-dot"></div>${s.l}</div>`).join('')}</div></div>`;};
 
+  // DEMO etiketi (27 Kasım): yalnız yönetici görür. Basınca parça demo olur;
+  // demo parçalar ÖDEMELERİM'de ve CRM gelirinde sayılmaz (supabase/parca-demo.sql).
+  function demoEtiketi(tr){
+    const acik=!!tr.demo;
+    const baslik=acik?L('Demo — ödemelerde görünmez. Kaldırmak için bas.','Demo — hidden from payments. Tap to remove.'):L('Demo olarak işaretle (ödemelerde görünmez)','Mark as demo (hidden from payments)');
+    return `<span role="button" tabindex="0" class="pt-demo${acik?' acik':''}" data-tddemo="${safe(tr.id)}" aria-pressed="${acik}" title="${baslik}" aria-label="${baslik}"><i aria-hidden="true"></i>DEMO</span>`;
+  }
+
   function trackBlock(tr,i,p){
     const has=!!tr.audio_path;
     const renkler=['aerobik','acrobatik','artistik','ritmik','trambolin'];
@@ -213,7 +221,7 @@
     return `<div role="button" tabindex="0" class="proj-track" data-tb="${tr.id}" data-tdopen="${tr.id}">
       <span class="pt-no">${String(i+1).padStart(2,'0')}</span>
       <span class="pt-kaset ${renk}"><img src="assets/demo-cassette-derin-record.png" alt="" loading="lazy"></span>
-      <span class="pt-ad"><strong>${safe(tr.label||'Parça')}${tr.indirme_izni?` <span class="pt-indir" title="${L('İndirmesi açık','Download allowed')}" aria-label="${L('İndirmesi açık','Download allowed')}">⤓</span>`:''}</strong><small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small>${(admin&&tr.satin_alma_durum&&tr.satin_alma_durum!=='odendi')?`<span class="pt-sa ${safe(tr.satin_alma_durum)}">${tr.satin_alma_durum==='dekont'?L('🧾 DEKONT YÜKLENDİ','🧾 RECEIPT UPLOADED'):L('🛒 SATIN ALMA TALEBİ','🛒 PURCHASE REQUEST')}</span>`:''}</span>
+      <span class="pt-ad"><strong>${safe(tr.label||'Parça')}${tr.indirme_izni?` <span class="pt-indir" title="${L('İndirmesi açık','Download allowed')}" aria-label="${L('İndirmesi açık','Download allowed')}">⤓</span>`:''}</strong>${admin?demoEtiketi(tr):''}<small>${has?'Düzenlenmiş kayıt · dinle ve not bırak':'Ham kaynak · düzenleme bekliyor'}</small>${(admin&&tr.satin_alma_durum&&tr.satin_alma_durum!=='odendi')?`<span class="pt-sa ${safe(tr.satin_alma_durum)}">${tr.satin_alma_durum==='dekont'?L('🧾 DEKONT YÜKLENDİ','🧾 RECEIPT UPLOADED'):L('🛒 SATIN ALMA TALEBİ','🛒 PURCHASE REQUEST')}</span>`:''}</span>
       ${(()=>{ const n=parcaNotlari(p.id,tr.id).hepsi.length; return n?`<span class="pt-not" title="${L(`${n} not — parçayı açıp klasöründe gör`,`${n} ${n===1?'note':'notes'} — open the track to see its folder`)}">${klasorIkon} ${n}</span>`:'<span class="pt-not"></span>'; })()}
       <span class="pt-surum${has?' hazir':''}">v${safe(tr.version||1)}</span>
       <span class="pt-ok" aria-hidden="true">→</span>
@@ -2206,6 +2214,23 @@
       if(tr&&project)openTrackDetail(tr,project);
     });
     list.querySelectorAll('.proj-track[data-tdopen]').forEach(el=>el.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); el.click(); } });
+
+    list.querySelectorAll('[data-tddemo]').forEach(el=>{
+      const degistir=async e=>{
+        e.preventDefault(); e.stopPropagation();
+        if(el.dataset.mesgul)return;
+        const t=Object.values(tracks).flat().find(x=>x.id===el.dataset.tddemo); if(!t)return;
+        const yeni=!t.demo; el.dataset.mesgul='1';
+        try{
+          await tekSatir(client.from('project_tracks').update({demo:yeni}).eq('id',t.id),L('Demo işareti kaydedilemedi.','Demo mark could not be saved.'));
+          t.demo=yeni;
+          render();
+          bildir(yeni?L('Demo olarak işaretlendi · ödemelerde görünmeyecek.','Marked as demo · hidden from payments.'):L('Demo işareti kaldırıldı.','Demo mark removed.'),'ok');
+        }catch(err){ delete el.dataset.mesgul; bildir(err.message||L('Demo işareti kaydedilemedi.','Demo mark could not be saved.'),'hata'); }
+      };
+      el.onclick=degistir;
+      el.onkeydown=e=>{ e.stopPropagation(); if(e.key==='Enter'||e.key===' ')degistir(e); };
+    });
 
     list.querySelectorAll('[data-stage]').forEach(s=>s.onchange=async()=>{
       s.disabled=true;

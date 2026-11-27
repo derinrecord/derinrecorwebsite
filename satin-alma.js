@@ -166,7 +166,7 @@
           <h3 class="sa-h sa-h--kucuk">${kacis(etiket)}</h3>
         </div>
         <label class="sa-fiyat sa-fiyat--yaz"><span>${L('TUTAR', 'PRICE')}</span>
-          <b><input type="text" class="sa-tutar-kutu" inputmode="decimal" data-satutar="${id}" value="${kacis(tutarDeger)}" placeholder="5.500" aria-label="${L('Bu parçanın ücreti (₺)', 'Price of this track (₺)')}"><em class="sa-lira">₺</em></b></label>
+          <b><input type="text" class="sa-tutar-kutu" inputmode="decimal" data-satutar="${id}" value="${kacis(tutarDeger)}" aria-label="${L('Bu parçanın ücreti (₺)', 'Price of this track (₺)')}"><em class="sa-lira">₺</em></b></label>
       </div>
       ${adimlar(d, L)}
       ${d === 'dekont' && tr.dekont_tarama === 'dogrulanamadi' && tr.dekont_tarama_not ? `<p class="sa-not sa-tarama-not">${L('Bulunamayan', 'Not found')}: ${kacis(tr.dekont_tarama_not)}</p>` : ''}

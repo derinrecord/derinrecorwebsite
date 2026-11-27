@@ -55,6 +55,7 @@
     const r = await client.from('project_tracks')
       .select('id,label,project_id,satin_alma_durum,satin_alma_tutar,dekont_path,satin_alma_istendi_at,dekont_at,odendi_at')
       .not('satin_alma_durum', 'is', null)
+      .eq('demo', false) // demo parçalar ödemelerde sayılmaz (supabase/parca-demo.sql)
       .order('satin_alma_istendi_at', { ascending: false, nullsFirst: false });
     if (r.error) { durum.textContent = L('Ödemeler alınamadı: ', 'Payments could not be loaded: ') + r.error.message; durum.className = 'od-msg err'; return; }
     const parcalar = r.data || [];

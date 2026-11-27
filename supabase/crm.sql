@@ -603,7 +603,7 @@ begin
         from public.project_tracks t
         left join public.music_projects m on m.id = t.project_id
         left join public.profiles p on p.id = m.coach_id
-       where t.satin_alma_durum = 'odendi' and t.odendi_at is not null
+       where t.satin_alma_durum = 'odendi' and t.odendi_at is not null and not t.demo
          and extract(year from (t.odendi_at at time zone 'Europe/Istanbul'))::int = v_yil
     ), aylar as (
       select g.ay,
@@ -618,12 +618,12 @@ begin
       'yil', v_yil,
       'bugun', public.crm_bugun(),
       'yillar', (select coalesce(jsonb_agg(distinct y order by y), '[]'::jsonb) from (
-                   select extract(year from (odendi_at at time zone 'Europe/Istanbul'))::int y from public.project_tracks where satin_alma_durum = 'odendi' and odendi_at is not null
+                   select extract(year from (odendi_at at time zone 'Europe/Istanbul'))::int y from public.project_tracks where satin_alma_durum = 'odendi' and odendi_at is not null and not demo
                    union select extract(year from public.crm_bugun())::int) q),
       'aylar', (select jsonb_agg(jsonb_build_object('ay', ay, 'parca', parca, 'parca_adet', parca_adet, 'toplam', parca, 'satislar', satislar) order by ay) from aylar),
       'yil_toplam', (select coalesce(sum(parca), 0) from aylar),
       'bekleyen', (select jsonb_build_object('tutar', coalesce(sum(satin_alma_tutar), 0), 'adet', count(*)::int)
-                     from public.project_tracks where satin_alma_durum in ('istendi', 'dekont'))
+                     from public.project_tracks where satin_alma_durum in ('istendi', 'dekont') and not demo)
     ));
 end $$;
 revoke execute on function public.crm_gelir(int) from public, anon;
