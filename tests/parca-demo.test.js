@@ -19,12 +19,14 @@ test('Ödemelerim: demo parçaları çekmez', () => {
   assert.match(oku('odemelerim.js'), /\.eq\('demo', false\)/);
 });
 
-test('Projelerim: DEMO etiketi yalnız yöneticide, satıra tıklamayı açmaz', () => {
+test('Projelerim: DEMO etiketi başlığın yanında; yönetici açar/kapatır, müşteri yalnız demo parçada görür', () => {
   const js = oku('projects.js');
-  assert.match(js, /\$\{admin\?demoEtiketi\(tr\):''\}/);
+  assert.match(js, /<span class="pt-baslik">\$\{safe\(tr\.label\|\|'Parça'\)\}<\/span>\$\{demoEtiketi\(tr\)\}/);
+  assert.match(js, /if\(!admin\)\{\s*if\(!acik\)return '';/);
+  assert.match(js, /class="pt-demo acik salt"/);
   assert.match(js, /data-tddemo=/);
   assert.match(js, /update\(\{demo:yeni\}\)/);
   assert.match(js, /e\.stopPropagation\(\)/);
   assert.match(oku('my-projects.html'), /\.pt-demo\.acik\{/);
-  assert.match(oku('my-projects.html'), /projects\.js\?v=20261127a/);
+  assert.match(oku('my-projects.html'), /projects\.js\?v=20261127b/);
 });
