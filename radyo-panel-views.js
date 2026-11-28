@@ -988,7 +988,7 @@
   }
 
   function uyariSeridi(D, ui) {
-    return paylasimSeridi(D, ui) + alarmSeridi(D, ui) + kesintiSeridi(D, ui) + duzelenSeridi(D, ui);
+    return paylasimSeridi(D, ui) + alarmSeridi(D, ui) + kesintiSeridi(D, ui) + baglanmayanSeridi(D, ui) + duzelenSeridi(D, ui);
   }
 
   // Düzelen uyarılar (25 Kasım, Derin: "sorun düzelince uyarılar yeşile dönüp
@@ -1045,9 +1045,49 @@
   }
 
   // Sessiz şube şeridi: hangi şube, ne zamandır ve kimin tarafında.
+  // 12+ saattir hiç bağlanmayan şube (28 Kasım; Derin: 3 gün değil 12 saat): kırmızı "YAYIN DURDU" yerine
+  // sakin turuncu şeritte durur; takipten düşmez. Durdurulmuş marka girmez.
+  // Aynı şubeler için Pazartesi 09:00'da Telegram hatırlatması gider
+  // (supabase/radio-baglanmayan-sube.sql).
+  const BAGLANMAYAN_MS = 12 * 3600 * 1000;
+  function baglanmayanSubeler(D, now) {
+    return (D.players || []).filter(p => {
+      if (!p.bound_device_id || !p.last_seen_at) return false;
+      const b = (D.brands || []).find(x => x.id === p.brand_id);
+      if (!b || b.is_active === false) return false;
+      return now - new Date(p.last_seen_at).getTime() >= BAGLANMAYAN_MS;
+    }).sort((a, b) => new Date(a.last_seen_at) - new Date(b.last_seen_at));
+  }
+
+  function baglanmayanSeridi(D, ui) {
+    const now = ui.now();
+    const liste = baglanmayanSubeler(D, now);
+    if (!liste.length) return '';
+    // "14 saattir", "2 gündür" gibi okunur süre.
+    const sure = p => {
+      const saat = Math.floor((now - new Date(p.last_seen_at).getTime()) / 3600000);
+      return saat < 48 ? { kisa: saat + ' sa', cumle: saat + ' saattir' } : { kisa: Math.floor(saat / 24) + ' gün', cumle: Math.floor(saat / 24) + ' gündür' };
+    };
+    const ilk = liste[0];
+    const baslik = liste.length === 1
+      ? `${ilk.label} ${sure(ilk).cumle} bağlanmıyor`
+      : `${liste.length} şube 12+ saattir bağlanmıyor · en uzunu ${ilk.label} (${sure(ilk).kisa})`;
+    const dugmeler = liste.slice(0, 4).map(p =>
+      `<button class="btn sm" data-act="branch-open" data-id="${esc(p.id)}" type="button">${esc(p.label)} · ${esc(sure(p).kisa)}</button>`).join('');
+    return `<div class="uyari-serit baglanmayan">
+      <span class="chip lock">12+ SAATTİR BAĞLANMIYOR</span>
+      <div class="uyari-govde">
+        <b>${esc(baslik)}</b>
+        <span class="sub">Mekân kapandıysa markayı durdur; açıksa cihazı kontrol ettir · Pazartesi Telegram'a hatırlatma gider</span>
+      </div>
+      <div class="uyari-dugmeler">${dugmeler}</div>
+    </div>`;
+  }
+
   function kesintiSeridi(D, ui) {
     const now = ui.now();
-    const sessiz = sessizSubeler(D, now);
+    const uzak = new Set(baglanmayanSubeler(D, now).map(p => p.id));
+    const sessiz = sessizSubeler(D, now).filter(s => !uzak.has(s.p.id));
     if (!sessiz.length) return '';
     const ilk = sessiz[0];
     const baslik = sessiz.length === 1

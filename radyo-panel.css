@@ -151,6 +151,9 @@ a.nav-item{text-decoration:none}
 .uyari-serit.yukleniyor{border-bottom-color:rgba(232,209,90,.4);
   background:linear-gradient(90deg,rgba(232,209,90,.14),rgba(232,209,90,.03))}
 .uyari-serit.yukleniyor .uyari-govde .sub{color:rgba(244,234,164,.8)}
+.uyari-serit.baglanmayan{border-bottom-color:rgba(240,161,50,.45);
+  background:linear-gradient(90deg,rgba(240,161,50,.13),rgba(240,161,50,.04))}
+.uyari-serit.baglanmayan .uyari-govde .sub{color:rgba(250,214,160,.85)}
 .uyari-serit.duzeldi{border-bottom-color:rgba(34,201,138,.4);
   background:linear-gradient(90deg,rgba(34,201,138,.18),rgba(34,201,138,.04))}
 .uyari-serit.duzeldi .uyari-govde .sub{color:rgba(200,255,232,.78)}
