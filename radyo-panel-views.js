@@ -1854,9 +1854,9 @@
       return `<tr class="selectable" data-act="folder-open" data-id="${esc(f.id)}"${surukle
         ? ` draggable="true" data-klasor="${esc(f.id)}"` : ''}>
         <td><div class="cell-main">${surukle ? '<span class="drag" title="Sürükleyerek sırala" aria-hidden="true">⋮⋮</span>' : ''}${kapakHucre(f.cover_path, ui, '🎵', 'gold')}
-          <span><b>${esc(f.name)}</b><span class="sub">${esc(f.description || 'açıklama yok')}</span></span></div></td>
+          <span><b>${esc(f.name)}</b>${f.description?`<span class="sub">${esc(f.description)}</span>`:''}</span></div></td>
         <td class="tight" data-etiket="İçerik">${adet} parça${kapaksiz ? ' ' + chip('gold', kapaksiz + ' KAPAK YOK') : ''}</td>
-        <td class="tight" data-etiket="Durum">${yayinda ? chip('live', 'YAYINDA', true) : chip('off', 'beklemede')}</td>
+        <td class="tight" data-etiket="Durum">${yayinda ? chip('live', 'YAYINDA', true) : chip('off', 'BEKLEMEDE')}</td>
         <td class="tight" data-etiket="Çalma">${f.shuffle === false ? '<span class="sub">sırayla</span>' : '<span class="sub">karışık</span>'}</td>
         <td class="kart-islem"><div class="row-actions">
           <button class="btn sm" data-act="folder-open" data-id="${esc(f.id)}" type="button">AÇ ›</button>
@@ -2240,7 +2240,7 @@
       // kapakları tek tek elle yerleştirilebilir.
       return `<tr class="selectable" data-act="list-open" data-id="${esc(pl.id)}">
         <td><div class="cell-main">${kapakHucre(pl.cover_path, ui, '🎧', 'gold')}
-          <span><b>${esc(pl.name)}</b><span class="sub">${esc(pl.description || 'açıklama yok')}${kapakYok(pl) ? ' · kapağı yok' : ''}</span></span></div></td>
+          <span><b>${esc(pl.name)}</b>${(pl.description||kapakYok(pl))?`<span class="sub">${esc(pl.description||'')}${pl.description&&kapakYok(pl)?' · ':''}${kapakYok(pl)?'kapağı yok':''}</span>`:''}</span></div></td>
         <td class="tight">${adet} parça${kapaksiz ? ' · ' + kapaksiz + ' kapağı yok' : ''}</td>
         <td class="tight">${kullanan ? chip('live', 'YAYINDA', true) : chip('off', 'kullanılmıyor')}</td>
         <td><div class="row-actions">

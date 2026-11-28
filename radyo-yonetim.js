@@ -952,7 +952,7 @@
     const bagli = D.players.filter(p => V.canliMi(p, now)).length;
     const nokta = el('live-dot');
     nokta.className = 'status-dot' + (bagli ? '' : ' bekliyor');
-    el('live-text').textContent = bagli ? `${bagli} şube bağlı` : (caliyor ? `${caliyor} kanal çalıyor` : 'canlı bağlantı yok');
+    el('live-text').textContent = bagli ? `${bagli} şube bağlı` : (caliyor ? `${caliyor} kanal çalıyor` : 'bağlı şube yok');
     satirSuruklemeBagla();
     // Bildirimler ekranı açıkken damga hemen tazelenir: ekran bir önceki
     // damgayla çizildi (yeni satırlar "yeni" göründü), rozet ise bu turda

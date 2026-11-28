@@ -754,7 +754,8 @@ test('eksik kapak satırda işaretlenir, kapak yerleşince işaret kaybolur', ()
   // Liste satırı marka sayfasında durur: eksik kapak orada okunur.
   const marka = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1' }), D, ui).html;
   assert.match(marka, /2 parça · 2 kapağı yok/, 'liste satırı eksik kapağı söylemeli');
-  assert.match(marka, /· kapağı yok/, 'kapağı olmayan liste kendini belli etmeli');
+  assert.match(marka, /<span class="sub">kapağı yok<\/span>/, 'kapağı olmayan liste kendini belli etmeli');
+  assert.ok(!marka.includes('açıklama yok'), 'boş açıklama yazılmaz (28 Kasım)');
 
   const akis = V.gorunum(durum({ nav: 'musteri', sub: 'markalar', openBrand: 'b1', openPlaylist: 'l1' }), D, ui).html;
   assert.ok(akis.includes('2 KAPAK YOK'), 'liste akışı eksik kapağı sayar');
